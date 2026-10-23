@@ -5,6 +5,11 @@
 ## Built-in capabilities
 
 - Local source and configuration analysis, dependency and container inventory, infrastructure-as-code review, SBOM workflows, saved-report handling, and bounded security reports are included in the source tree.
+- Supported source-to-sink analysis covers SQL and command injection, XSS, SSRF, open redirect, path traversal, unsafe deserialization, XXE, expression-language, and LDAP risk patterns, with SARIF `codeFlows` where available.
+- Built-in route and authorization analysis surfaces unprotected-route candidates (CWE-862) and potential IDOR paths (CWE-639) in supported Python and JavaScript/TypeScript source to prioritize authorized manual penetration testing and evidence-led validation across separate test users and roles.
+- Supply-chain workflows include dependency and container inventory, CycloneDX/SPDX SBOM generation/import, VEX, reachability context, and configured local vulnerability evidence.
+- Infrastructure review covers supported Dockerfile, Terraform, Kubernetes, Helm, Compose, cloud IAM, CI, mobile, browser-extension, and desktop-application security configuration.
+- Findings can be prioritized with CVSS 3.1/4.0, CISA SSVC, attack paths, ownership, baselines, and quality gates, then shared through JSON, HTML, SARIF, GitLab, SBOM, VEX, and supported PDF workflows.
 - Manual command-line workflows and a loopback web interface support operation without an AI client.
 - The canonical exhaustive map of built-in, optional, prerequisite-dependent, and human-review controls is [docs/CAPABILITIES.md](docs/CAPABILITIES.md). A mapped control is not a claim that it ran or passed.
 

@@ -34,6 +34,19 @@ application. Start by inspecting the checked-in command contract:
 python3 scripts/sniper-project-audit --help
 ```
 
+## Prioritize IDOR checks in an authorized manual penetration test
+
+| Stage | What to expect |
+| --- | --- |
+| Input | Supported Python or JavaScript/TypeScript application source from a project you are authorized to assess. |
+| Checks | Route and authorization inventory for unprotected-route candidates (CWE-862) and object lookups that may expose an Insecure Direct Object Reference (IDOR) path (CWE-639). |
+| Output | A focused review list with file, route, line, framework, method, and available protection context. |
+| Manual verification | In a controlled test environment, an authorized tester can compare separate test users, roles, and synthetic object identifiers while respecting written scope and stop conditions. |
+
+This workflow reduces endpoint triage before manual penetration testing. Reviewers validate each IDOR candidate with
+separate test identities and account for runtime enforcement outside the analyzed handler. All validation stays
+inside the written authorization scope and uses synthetic or explicitly approved test objects.
+
 ## Dependency inventory and SBOM review
 
 | Stage | What to expect |

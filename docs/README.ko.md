@@ -19,6 +19,29 @@ SBOM 분석(SCA), 컨테이너 아티팩트, 코드형 인프라(IaC), CI 설정
 | 플랫폼 팀 | Terraform, Kubernetes, Helm, Dockerfile, Compose, 클라우드 IAM, CI 워크플로를 검토 |
 | 보안 검토자 | SARIF 및 지원되는 저장 보고서를 제한된 요약과 증거로 정리하고 사람이 재검토 |
 
+## 보안 검토 주요 기능
+
+- 지원되는 데이터 흐름에서 SQL/명령 주입, XSS, SSRF, 오픈 리다이렉트, 경로 탐색, 안전하지 않은
+  역직렬화, XXE 검토 지점을 추적합니다.
+- 경로, 역할, 객체 식별자를 정리해 IDOR(CWE-639)와 권한 검사 누락 후보(CWE-862)의 수동 검증 순서를 정합니다.
+- 시크릿 단서와 개인정보 흐름을 검토하고 의존성, 컨테이너, CycloneDX/SPDX SBOM, VEX, 도달 가능성
+  컨텍스트를 하나의 검토 흐름으로 연결합니다.
+- Dockerfile, Terraform, Kubernetes, Helm, Compose, 클라우드 IAM, CI, 모바일, 브라우저 확장, 데스크톱 앱의
+  보안 설정을 검토합니다.
+- CVSS 3.1/4.0, CISA SSVC, 공격 경로, 기준선, 품질 게이트로 대응 우선순위를 정하고 JSON, HTML, SARIF,
+  GitLab, SBOM, VEX, 지원되는 PDF 워크플로로 공유합니다.
+- 로컬 Web, CLI, CI 또는 stdio MCP를 통해 사람과 AI가 같은 증거를 활용할 수 있습니다.
+
+## IDOR 및 수동 침투 테스트 지원
+
+지원되는 Python 및 JavaScript/TypeScript 소스에서 내장 경로·권한 인벤토리는 권한 검사 누락 후보
+(CWE-862)와 잠재적인 Insecure Direct Object Reference(IDOR) 경로(CWE-639)를 파일, 경로, 줄 번호 근거와
+함께 제시합니다. 이를 통해 승인을 받은 테스터는 서로 다른 테스트 사용자, 역할, 합성 객체를 사용하는
+수동 침투 테스트의 우선순위를 정할 수 있습니다.
+
+각 후보는 승인된 범위에서 서로 다른 테스트 사용자·역할과 합성 객체로 수동 검증할 수 있는 근거 중심의
+출발점을 제공합니다.
+
 ## 내장 기능과 선택형 엔진
 
 내장 분석기, 보고서 파서, MCP 서버, CLI, 루프백 Web UI는 소스 트리에 포함됩니다. 여기에 더해 root 권한이
