@@ -463,6 +463,25 @@ def _safe_relative(rel: Any) -> PurePosixPath:
     return path
 
 
+def _open_absolute_directory_nofollow(root: Path, flags: int) -> int:
+    """Mutlak dizini ``/`` tanımlayıcısından başlayarak, hiçbir bileşeni izlemeden aç."""
+    parts = root.parts
+    if not root.is_absolute() or parts[:1] != ("/",) or any(part in ("", ".", "..") for part in parts[1:]):
+        raise TriageError("Proje kökü bulunamadı.")
+    current_fd: int | None = None
+    try:
+        current_fd = os.open("/", flags)
+        for part in parts[1:]:
+            next_fd = os.open(part, flags, dir_fd=current_fd)
+            os.close(current_fd)
+            current_fd = next_fd
+        return current_fd
+    except OSError:
+        if current_fd is not None:
+            os.close(current_fd)
+        raise
+
+
 def project_file_lines(project_path: str, rel: Any) -> tuple[PurePosixPath, list[str]]:
     """Proje kökü içindeki düzenli dosyanın satırları (ham; maskelenmemiş — çağıran maskeler). Sembolik bağ (her
     bileşende), '..', mutlak yol ve kök dışı reddedilir; boyut MAX_SOURCE_BYTES ile sınırlı."""
@@ -480,13 +499,7 @@ def project_file_lines(project_path: str, rel: Any) -> tuple[PurePosixPath, list
     directory_fd: int | None = None
     file_fd: int | None = None
     try:
-        root_info = os.lstat(root)
-        if stat.S_ISLNK(root_info.st_mode) or not stat.S_ISDIR(root_info.st_mode):
-            raise TriageError("Proje kökü bulunamadı.")
-        directory_fd = os.open(root, directory_flags)
-        opened_root = os.fstat(directory_fd)
-        if (opened_root.st_dev, opened_root.st_ino) != (root_info.st_dev, root_info.st_ino):
-            raise TriageError("Proje kökü okuma sırasında değişti.")
+        directory_fd = _open_absolute_directory_nofollow(root, directory_flags)
 
         for part in relative.parts[:-1]:
             next_fd = os.open(part, directory_flags, dir_fd=directory_fd)

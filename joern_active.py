@@ -600,7 +600,7 @@ def annotate_fast_engine_matches(root: Path, sources: dict[str, list[Path]], fin
                 continue
             files[path.relative_to(root).as_posix()] = raw.decode("utf-8", "replace")
         mod = root / "go.mod"
-        if language == "go" and mod.is_file() and not mod.is_symlink():
+        if language == "go":
             try:
                 # Eski davranış ilk 20.000 Unicode karakteri kullanıyordu.
                 # Dört bayt/karakter + son kod noktası payı, dosyanın tamamını

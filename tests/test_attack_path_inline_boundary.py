@@ -5,10 +5,68 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import ai_triage
 from attack_path_correlator import _enclosing_names, correlate_attack_paths
+from project_analyzer import validate_project_path
 
 
 class AttackPathInlineBoundaryTests(unittest.TestCase):
+    def test_project_reader_rejects_symlink_project_root(self) -> None:
+        with tempfile.TemporaryDirectory(dir=Path.home()) as temp:
+            base = Path(temp)
+            real_project = base / "real-project"
+            real_project.mkdir()
+            (real_project / "chosen.py").write_text("VALUE = 1\n", encoding="utf-8")
+            linked_project = base / "linked-project"
+            linked_project.symlink_to(real_project, target_is_directory=True)
+
+            with self.assertRaises(ai_triage.TriageError):
+                ai_triage.project_file_lines(str(linked_project), "chosen.py")
+
+    def test_stored_audit_lookup_rejects_project_parent_symlink_replacement(self) -> None:
+        with tempfile.TemporaryDirectory(dir=Path.home()) as temp:
+            base = Path(temp)
+            work = base / "work"
+            project = work / "project"
+            project.mkdir(parents=True)
+            (project / "chosen.py").write_text("VALUE = 1\n", encoding="utf-8")
+            outside = base / "outside"
+            outside_project = outside / "project"
+            outside_project.mkdir(parents=True)
+            (outside_project / "chosen.py").write_text(
+                "def payload_selected_handler():\n    return 'outside'\n",
+                encoding="utf-8",
+            )
+            validated = validate_project_path(str(project), allowed_roots=(base,))
+            original_lstat = ai_triage.os.lstat
+            original_open = ai_triage.os.open
+            swapped = False
+
+            def replace_parent() -> None:
+                nonlocal swapped
+                if not swapped:
+                    swapped = True
+                    work.rename(base / "work-safe")
+                    work.symlink_to(outside, target_is_directory=True)
+
+            def replace_parent_before_root_lstat(path: object) -> object:
+                if Path(path) == validated:
+                    replace_parent()
+                return original_lstat(path)
+
+            def replace_parent_before_component_open(path: object, *args: object, **kwargs: object) -> int:
+                if path == "work":
+                    replace_parent()
+                return original_open(path, *args, **kwargs)
+
+            # The root was policy-validated, but its writable parent changes
+            # before project_file_lines establishes its descriptor.
+            with mock.patch.object(ai_triage.os, "lstat", side_effect=replace_parent_before_root_lstat), \
+                    mock.patch.object(ai_triage.os, "open", side_effect=replace_parent_before_component_open):
+                names = _enclosing_names(validated, "chosen.py", 2)
+
+        self.assertEqual(names, set())
+
     def test_stored_audit_lookup_rejects_intermediate_symlink_replacement(self) -> None:
         with tempfile.TemporaryDirectory(dir=Path.home()) as temp:
             base = Path(temp)

@@ -23,6 +23,7 @@ import os
 from pathlib import Path, PurePosixPath
 import posixpath
 import re
+import stat
 import zipfile
 from typing import Any, Iterable
 
@@ -133,6 +134,55 @@ _RS_SUFFIXES = {".rs"}
 _JVM_SUFFIXES = {".java", ".kt", ".kts", ".scala", ".groovy"}
 _DOTNET_SUFFIXES = {".cs", ".cshtml", ".razor", ".vb", ".fs", ".fsx"}
 _MAX_FILE_BYTES = 1_000_000
+
+
+def _read_bytes_path_nofollow(path: Path, max_bytes: int, *, allow_empty: bool = False) -> bytes | None:
+    """Read a regular file without following a symlink in any path component."""
+    if max_bytes < 0:
+        return None
+    absolute = Path(os.path.abspath(os.fspath(path)))
+    parts = absolute.parts
+    if len(parts) < 2:
+        return None
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+    file_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
+    directory_fd = -1
+    fd = -1
+    try:
+        directory_fd = os.open(parts[0], directory_flags)
+        for part in parts[1:-1]:
+            child_fd = os.open(part, directory_flags, dir_fd=directory_fd)
+            os.close(directory_fd)
+            directory_fd = child_fd
+        fd = os.open(parts[-1], file_flags, dir_fd=directory_fd)
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_size > max_bytes:
+            return None
+        chunks: list[bytes] = []
+        total = 0
+        while total <= max_bytes:
+            chunk = os.read(fd, min(65_536, max_bytes + 1 - total))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+        if total > max_bytes or (total == 0 and not allow_empty):
+            return None
+        return b"".join(chunks)
+    except (OSError, TypeError, ValueError):
+        return None
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        if directory_fd >= 0:
+            os.close(directory_fd)
+
+
+def _read_text_path_nofollow(path: Path, max_bytes: int, *, allow_empty: bool = False) -> str | None:
+    raw = _read_bytes_path_nofollow(path, max_bytes, allow_empty=allow_empty)
+    return None if raw is None else raw.decode("utf-8", errors="replace")
+
+
 _MAX_FILES = 20_000
 
 
@@ -2396,13 +2446,11 @@ def cargo_dependency_aliases(root: Path, skip_dirs: Iterable[str]) -> dict[str, 
             if filename.casefold() != "cargo.toml":
                 continue
             path = Path(current) / filename
-            if path.is_symlink():
-                continue
             seen += 1
             if seen > 200:
                 break
             try:
-                text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
                 if text is None:
                     continue
                 import tomllib
@@ -2448,13 +2496,11 @@ def npm_dependency_aliases(root: Path, skip_dirs: Iterable[str]) -> dict[str, se
             if filename.casefold() != "package.json":
                 continue
             path = Path(current) / filename
-            if path.is_symlink():
-                continue
             seen += 1
             if seen > 200:
                 break
             try:
-                text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
                 if text is None:
                     continue
                 data = json.loads(text)
@@ -2555,7 +2601,7 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
             resolved.relative_to(root_resolved)
             if resolved in requirement_files:
                 return found
-            raw = read_bytes_bounded(resolved, 1_000_000, allow_empty=True)
+            raw = _read_bytes_path_nofollow(resolved, 1_000_000, allow_empty=True)
             if raw is None or requirement_bytes + len(raw) > 8_000_000:
                 return found
             size = len(raw)
@@ -2590,12 +2636,10 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
         for name in files:
             lowered = name.casefold()
             path = Path(current) / name
-            if path.is_symlink():
-                continue
             try:
                 if lowered == "package.json":
                     seen += 1
-                    text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                    text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
                     if text is None:
                         continue
                     data = json.loads(text)
@@ -2613,7 +2657,7 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                     import tomllib
 
                     seen += 1
-                    text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                    text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
                     if text is None:
                         continue
                     data = tomllib.loads(text)
@@ -2632,7 +2676,7 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                     seen += 1
                     parser = configparser.ConfigParser(interpolation=None)
                     try:
-                        text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                        text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
                         if text is None:
                             continue
                         parser.read_string(text)
@@ -2675,7 +2719,7 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                     seen += 1
                     parser = configparser.ConfigParser(interpolation=None)
                     try:
-                        text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                        text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
                         if text is None:
                             continue
                         parser.read_string(text)
@@ -2698,13 +2742,13 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                                 names.add(match.group(1).casefold().replace("_", "-"))
                 elif lowered == "setup.py":
                     seen += 1
-                    text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                    text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
                     if text is None:
                         continue
                     names.update(_setup_py_direct(text))
                 elif lowered == "noxfile.py":
                     seen += 1
-                    text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                    text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
                     if text is None:
                         continue
                     nox_names, includes = _noxfile_direct(text)
@@ -2718,7 +2762,7 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
 
                     seen += 1
                     try:
-                        text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                        text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
                         if text is None:
                             continue
                         data = yaml.safe_load(text)
@@ -2753,7 +2797,7 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                     import tomllib
 
                     seen += 1
-                    text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                    text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
                     if text is None:
                         continue
                     data = tomllib.loads(text)
@@ -2826,7 +2870,7 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                                 for specs in list(extras.values())[:1_000]:
                                     add_specs(specs)
                 elif path.suffix.casefold() == ".py" and script_files < 1_000 and script_bytes < 8_000_000:
-                    raw = read_bytes_bounded(path, 1_000_000, allow_empty=True)
+                    raw = _read_bytes_path_nofollow(path, 1_000_000, allow_empty=True)
                     if raw is not None and script_bytes + len(raw) <= 8_000_000:
                         size = len(raw)
                         script_files += 1
@@ -2837,7 +2881,7 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                             names.update(_pep723_direct(text))
                 elif lowered == "go.mod":
                     seen += 1
-                    text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                    text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
                     if text is None:
                         continue
                     for line in text.splitlines():
@@ -2846,7 +2890,7 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                             names.add(match.group(1).casefold())
                 elif lowered in _MORE_DIRECT_MANIFESTS or lowered.endswith((".csproj", ".fsproj", ".vbproj")):
                     seen += 1
-                    text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                    text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
                     if text is None:
                         continue
                     names.update(_direct_from_manifest(lowered, text))

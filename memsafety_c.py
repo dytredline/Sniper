@@ -477,11 +477,53 @@ def _object_defines(text: str) -> list[tuple[str, str]]:
     return out
 
 
+def _strip_define_comments(body: str) -> str:
+    """Remove C block and trailing line comments with one forward scan."""
+    parts: list[str] = []
+    cursor = 0
+    literal_start = 0
+    length = len(body)
+    while cursor + 1 < length:
+        if body[cursor] != "/":
+            cursor += 1
+            continue
+        marker = body[cursor + 1]
+        if marker == "/":
+            parts.append(body[literal_start:cursor])
+            break
+        if marker != "*":
+            cursor += 1
+            continue
+
+        block_start = cursor
+        scan = cursor + 2
+        first_line_comment = -1
+        block_end = -1
+        while scan + 1 < length:
+            if body[scan] == "/" and body[scan + 1] == "/" and first_line_comment < 0:
+                first_line_comment = scan
+            if body[scan] == "*" and body[scan + 1] == "/":
+                block_end = scan
+                break
+            scan += 1
+        parts.append(body[literal_start:block_start])
+        if block_end < 0:
+            # Preserve an unterminated block marker as before, but a later line
+            # comment still consumes the remainder of the logical macro line.
+            parts.append(body[block_start:first_line_comment if first_line_comment >= 0 else length])
+            break
+        cursor = block_end + 2
+        literal_start = cursor
+    else:
+        parts.append(body[literal_start:])
+    return "".join(parts).strip()
+
+
 def _collect_defines(text: str) -> dict[str, list[Tok]]:
     out: dict[str, list[Tok]] = {}
     for name, raw_body in _object_defines(text):
         body = raw_body.replace("\\\n", " ")
-        body = re.sub(r"/\*.*?\*/|//.*$", "", body).strip()
+        body = _strip_define_comments(body)
         if not body or len(body) > 200 or '"' in body:
             continue
         toks = core.tokenize(body, rust=False)
