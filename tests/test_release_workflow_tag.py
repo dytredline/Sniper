@@ -24,10 +24,18 @@ class TestCommunityRelease(unittest.TestCase):
         self.assertIn('tags: ["v*"]', workflow)
         self.assertIn("VERSION=$(tr -d '\\n\\r' < COMMUNITY_VERSION)", workflow)
         self.assertIn('"${GITHUB_REF_NAME}" != "v${VERSION}"', workflow)
-        self.assertIn("python scripts/build-community-source.py", workflow)
+        self.assertIn('RELEASE_TREE="${RUNNER_TEMP}/sniper-community-${VERSION}"', workflow)
+        self.assertIn('RELEASE_ARCHIVE="${GITHUB_WORKSPACE}/sniper-community-${VERSION}.tar.gz"', workflow)
+        self.assertIn('python scripts/build-community-source.py --output "${RELEASE_TREE}"', workflow)
+        self.assertNotIn(
+            'python scripts/build-community-source.py --output "sniper-community-${VERSION}"',
+            workflow,
+        )
+        self.assertIn('--root "${RELEASE_TREE}" --scan-release-tree', workflow)
+        self.assertIn('-C "${RUNNER_TEMP}"', workflow)
         self.assertIn("--scan-release-tree", workflow)
         self.assertIn("tar --sort=name --mtime='UTC 1970-01-01'", workflow)
-        self.assertIn('-czf "sniper-community-${VERSION}.tar.gz"', workflow)
+        self.assertIn('-czf "${RELEASE_ARCHIVE}"', workflow)
         self.assertIn('sha256sum "sniper-community-${VERSION}.tar.gz"', workflow)
         self.assertIn(
             "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2",
