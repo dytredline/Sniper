@@ -225,7 +225,7 @@ class OfflineMatchTests(unittest.TestCase):
         self.assertEqual(report["skipped"]["no_concrete_version"], 1)
         coverage = {c["ecosystem"]: c for c in report["coverage"]}
         self.assertEqual(coverage["crates.io"]["status"], "unavailable")  # veritabanı yok → kapsam dışı, uyarı
-        self.assertTrue(any("crates.io" in w for w in report["warnings"]))
+        self.assertIn("crates.io: çevrimdışı veritabanı yok. 1 bileşen denetlenmedi.", report["warnings"])
         self.assertEqual(report["source"], "osv")
         self.assertTrue(report["source_path"].startswith("osv-offline:"))
 

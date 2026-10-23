@@ -2339,8 +2339,10 @@ class SniperHandler(BaseHTTPRequestHandler):
         if path == "/api/dependency-security/sbom":
             try:
                 project_path = clean_text(payload, "project_path", maximum=1024, required=True)
-                document = generate_cyclonedx_sbom(project_path)
-                resolved_path = str(Path(os.path.expandvars(os.path.expanduser(project_path))).resolve(strict=True))
+                # Pin the authorized canonical directory once. Re-resolving the submitted
+                # path after generation would let a symlink swap mislabel the saved SBOM.
+                resolved_path = str(validate_project_path(project_path))
+                document = generate_cyclonedx_sbom(resolved_path)
                 return self._json(STORE.save_dependency_sbom(resolved_path, document), status=HTTPStatus.CREATED)
             except OSError:
                 return self._error(HTTPStatus.BAD_REQUEST, "Proje dosyaları okunamadı (izin veya erişim hatası).")
