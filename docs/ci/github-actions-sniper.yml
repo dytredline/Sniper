@@ -1,6 +1,6 @@
 # Sniper "yalnız değişenler" iş akışı ÖRNEĞİ — yayınlanmadı; kendi deponuzda .github/workflows/ altına kopyalayın.
 # Varsayım: Sniper kendi barındırılan (self-hosted) bir çalıştırıcıda çevrimdışı kurulu
-# (ör. ~/.local/share/sniper/app). Sniper dış ağa çıkmaz; yalnız depo kodunu yerelde okur.
+# (ör. /opt/sniper-community). Sniper dış ağa çıkmaz; yalnız depo kodunu yerelde okur.
 name: sniper-changed
 on:
   pull_request:
@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0          # taban dalın commit'i yerelde olmalı
       - name: Sniper (yalnız PR'ın değiştirdiği dosyalar)
         env:
-          SNIPER_APP: ${{ vars.SNIPER_APP || '/home/community-user/.local/share/sniper/app' }}
+          SNIPER_APP: ${{ vars.SNIPER_APP || '/opt/sniper-community' }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           python3 "$SNIPER_APP/cli_reports.py" auto-scan "$GITHUB_WORKSPACE" \

@@ -79,6 +79,20 @@ class PublicIdentityHygieneTests(unittest.TestCase):
                 source = (ROOT / relative).read_text(encoding="utf-8")
                 self.assertNotRegex(source, r"segments\s*\[\s*2\s*\]\s*===\s*['\"]")
 
+    def test_public_tree_does_not_point_users_at_the_installed_private_app(self) -> None:
+        legacy = "~/.local/share/" + "sniper/app"
+        matches = []
+        for path in ROOT.rglob("*"):
+            if not path.is_file() or ".git" in path.parts or path.name == "COMMUNITY-SOURCE-MANIFEST.sha256":
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
+            if legacy in text:
+                matches.append(path.relative_to(ROOT).as_posix())
+        self.assertEqual(matches, [])
+
     def test_release_validator_rejects_nonportable_identity_surfaces(self) -> None:
         builder = _load(BUILDER, "public_identity_builder_test")
         validator = _load(VALIDATOR, "public_identity_validator_test")
@@ -102,6 +116,11 @@ class PublicIdentityHygieneTests(unittest.TestCase):
                     "static/trufflehog_filesystem.js",
                     lambda text: text + "\nconst leakedHomeRule = segments[2] === 'operator';\n",
                     "hard-coded home account",
+                ),
+                (
+                    "static/index.html",
+                    lambda text: text + "\n<!-- ~/.local/share/" + "sniper/app -->\n",
+                    "installed private product path",
                 ),
                 (
                     "tests/test_zap_target_active_api.py",

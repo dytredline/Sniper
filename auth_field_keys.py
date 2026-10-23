@@ -26,7 +26,7 @@ KEYRING_FORMAT = "sniper-auth-field-keys/1"
 CIPHERTEXT_PREFIX = "enc1"
 MAX_KEYRING_BYTES = 64 * 1024
 _KEY_ID_RE = re.compile(r"^[0-9a-f]{16}$")
-CRYPTOGRAPHY_RUNTIME_VERSION = "41.0.7"
+CRYPTOGRAPHY_RUNTIME_VERSION = "50.0.2"
 APPLICATION_ROOT = Path(__file__).resolve().parent
 
 if cryptography.__version__ != CRYPTOGRAPHY_RUNTIME_VERSION:

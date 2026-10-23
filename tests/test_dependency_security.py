@@ -42,6 +42,31 @@ class DependencySecurityTests(unittest.TestCase):
         self.assertEqual(flask["version"], "3.1.0")
         self.assertEqual(flask["purl"], "pkg:pypi/flask@3.1.0")
 
+    def test_requirements_lock_files_are_included_with_test_dependencies_optional(self):
+        (self.project / "requirements-runtime.lock").write_text(
+            "cryptography==50.0.2\npackaging==26.3\nPyYAML==6.0.3\n",
+            encoding="utf-8",
+        )
+        (self.project / "requirements-test.lock").write_text(
+            "pytest==9.1.1\npluggy==1.6.0\n",
+            encoding="utf-8",
+        )
+
+        document = generate_cyclonedx_sbom(str(self.project), allowed_roots=self.allowed)
+        components = {item["name"].casefold(): item for item in document["components"]}
+
+        self.assertEqual(set(components), {"cryptography", "packaging", "pyyaml", "pytest", "pluggy"})
+        self.assertEqual(
+            components["cryptography"]["properties"][0],
+            {"name": "sniper:manifest", "value": "requirements-runtime.lock"},
+        )
+        self.assertNotIn("scope", components["cryptography"])
+        self.assertEqual(components["pytest"]["scope"], "optional")
+        self.assertIn(
+            {"name": "sniper:dependency-section", "value": "develop"},
+            components["pytest"]["properties"],
+        )
+
     def test_saved_sbom_delta_runtime_result(self):
         temp_dir = tempfile.TemporaryDirectory(dir=Path.home())
         base = Path(temp_dir.name)

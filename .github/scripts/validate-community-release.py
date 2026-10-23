@@ -137,6 +137,7 @@ FORBIDDEN_RELEASE_SURFACE = {
         "protected-" + "v1|distribution_" + "entitlement|SNIPER_" + "ENTITLEMENT|customer-" + "entitlement",
         re.I,
     ),
+    "installed private product path": re.compile(r"~/\.local/share/" + "sniper/app" + r"(?:/|\b)"),
 }
 
 FORBIDDEN_ARTIFACT_DIRS = frozenset({
@@ -534,7 +535,12 @@ def _validate_release_tree(entries: list[ReleaseEntry], failures: list[str]) -> 
         _validate_portable_public_identity(relative_text, scan_text, failures)
         if PRIVATE_HOME.search(scan_text):
             fail(f"release tree: private home path: {relative_text}", failures)
-        for label in ("migration workspace", "frozen or evidence workspace", "session/project codename"):
+        for label in (
+            "migration workspace",
+            "frozen or evidence workspace",
+            "session/project codename",
+            "installed private product path",
+        ):
             if FORBIDDEN_RELEASE_SURFACE[label].search(scan_text):
                 fail(f"release tree: {label}: {relative_text}", failures)
         if PRIVATE_PUBLICATION_WORDING.search(scan_text):

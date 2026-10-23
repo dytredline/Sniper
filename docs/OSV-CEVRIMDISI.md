@@ -18,8 +18,8 @@ Bağımlılık açıkları, resmî OSV deposundan indirilmiş yerel arşivlerle 
 ## Güncelleme
 
 ```
-python3 ~/.local/share/sniper/app/scripts/osv_refresh.py            # yapılandırılmış tüm ekosistemler
-python3 ~/.local/share/sniper/app/scripts/osv_refresh.py --status   # ekosistem başına durum
+python3 /ABSOLUTE/PATH/TO/sniper/scripts/osv_refresh.py            # yapılandırılmış tüm ekosistemler
+python3 /ABSOLUTE/PATH/TO/sniper/scripts/osv_refresh.py --status   # ekosistem başına durum
 ```
 
 Liste: `SNIPER_OSV_ECOSYSTEMS=npm,PyPI,Go` ya da `~/.local/state/sniper/osv-db/ecosystems.json`

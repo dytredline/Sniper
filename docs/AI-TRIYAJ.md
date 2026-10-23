@@ -92,7 +92,7 @@ Araçlar:
 Belirteçsiz oturum **yalnız okur**. Öneri göndermek için:
 
 ```bash
-cd ~/.local/share/sniper/app            # kurulu Sniper dizini
+cd /ABSOLUTE/PATH/TO/sniper             # Sniper Community kaynak dizini
 python3 cli_reports.py triage mcp-token create --username analist1 --label claude-code \
     --out ~/.config/sniper/mcp-token
 ```
@@ -111,7 +111,7 @@ Biçim bu makinedeki Claude Code 2.1.303'ün `claude mcp add --help` çıktısı
 `--` sonrası komut ve bağımsız değişkenleri):
 
 ```bash
-claude mcp add sniper-triage -- python3 ~/.local/share/sniper/app/scripts/sniper-mcp \
+claude mcp add sniper-triage -- python3 /ABSOLUTE/PATH/TO/sniper/scripts/sniper-mcp \
     --token-file ~/.config/sniper/mcp-token
 ```
 
@@ -128,7 +128,7 @@ claude mcp add sniper-triage -- python3 ~/.local/share/sniper/app/scripts/sniper
 ```toml
 [mcp_servers.sniper-triage]
 command = "python3"
-args = ["/home/community-user/.local/share/sniper/app/scripts/sniper-mcp",
+args = ["/ABSOLUTE/PATH/TO/sniper/scripts/sniper-mcp",
         "--token-file", "/home/community-user/.config/sniper/mcp-token"]
 ```
 
