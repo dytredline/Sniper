@@ -12,6 +12,7 @@ from typing import Any
 
 from project_analyzer import validate_project_path, ProjectRejected
 from project_tree import ProjectTreeError
+from trivy_config_active import _open_trusted_binary
 from trivy_vuln_active import (
     TrivyVulnUnavailable,
     TrivyVulnBusy,
@@ -44,6 +45,7 @@ def run_local_trivy_image_archive_vulnerability(
     if not archive_name.endswith(".tar"):
         raise TrivyImageArchiveInvalidInput("archive_name .tar ile bitmeli")
 
+    binary_fd: int | None = None
     try:
         archive_data = _read_root_project_file(
             src_root,
@@ -95,17 +97,10 @@ def run_local_trivy_image_archive_vulnerability(
         raise TrivyVulnBusy("Başka bir Trivy taraması sürüyor.")
 
     try:
-        # Resolve binary — require absolute, regular, non-symlink, executable
-        trivy_bin = os.environ.get("SNIPER_TRIVY_BINARY")
-        if not trivy_bin:
-            raise TrivyVulnUnavailable("Trivy ikilisi yapılandırılmamış.")
-        trivy_path = Path(trivy_bin)
-        if not trivy_path.is_absolute():
-            raise TrivyVulnUnavailable("Trivy ikili yolu mutlak olmalı.")
-        if trivy_path.is_symlink() or not trivy_path.is_file():
-            raise TrivyVulnUnavailable("Trivy ikilisi normal bir dosya olmalı.")
-        if not os.access(trivy_path, os.X_OK):
-            raise TrivyVulnUnavailable("Trivy ikilisi çalıştırılabilir olmalı.")
+        try:
+            _trivy_path, binary_fd = _open_trusted_binary()
+        except RuntimeError as exc:
+            raise TrivyVulnUnavailable(str(exc)) from exc
 
         # Validate cache dir and DB (same as trivy_vuln_active.py)
         cache_dir = os.environ.get("SNIPER_TRIVY_VULN_CACHE_DIR")
@@ -162,7 +157,7 @@ def run_local_trivy_image_archive_vulnerability(
 
             # Build argument vector per spec — use VALIDATED cache dir and --input
             cmd = [
-                str(trivy_path),
+                f"/proc/self/fd/{binary_fd}",
                 "image",
                 "--input", str(staged_archive),
                 "--scanners", "vuln",
@@ -192,6 +187,7 @@ def run_local_trivy_image_archive_vulnerability(
                     stderr=subprocess.DEVNULL,
                     timeout=90,
                     check=False,
+                    pass_fds=(binary_fd,),
                 )
             except subprocess.TimeoutExpired:
                 raise TrivyVulnExecutionError("Trivy çalıştırması zaman aşımına uğradı.")
@@ -232,6 +228,8 @@ def run_local_trivy_image_archive_vulnerability(
             return summary
 
     finally:
+        if binary_fd is not None:
+            os.close(binary_fd)
         if lock_fd is not None:
             try:
                 fcntl.flock(lock_fd, fcntl.LOCK_UN)

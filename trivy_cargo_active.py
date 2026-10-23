@@ -120,27 +120,25 @@ def _open_trivy_binary() -> int:
     configured = os.environ.get("SNIPER_TRIVY_BINARY")
     if not configured or not Path(configured).is_absolute():
         raise TrivyVulnUnavailable("Trivy çalıştırılabiliri kullanılamıyor")
+    expected = os.environ.get("SNIPER_TRIVY_BINARY_SHA256", "")
+    if len(expected) != 64 or any(c not in "0123456789abcdef" for c in expected):
+        raise TrivyVulnUnavailable("Trivy çalıştırılabilir özeti yapılandırılmamış veya geçersiz")
     try:
         fd = os.open(configured, _FILE_FLAGS)
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode) or not info.st_mode & 0o111:
             os.close(fd)
             raise TrivyVulnUnavailable("Trivy çalıştırılabiliri güvensiz")
-        expected = os.environ.get("SNIPER_TRIVY_BINARY_SHA256")
-        if expected:
-            if len(expected) != 64 or any(c not in "0123456789abcdef" for c in expected):
-                os.close(fd)
-                raise TrivyVulnUnavailable("Trivy çalıştırılabilir özeti geçersiz")
-            digest = hashlib.sha256()
-            while True:
-                data = os.read(fd, 65536)
-                if not data:
-                    break
-                digest.update(data)
-            if digest.hexdigest() != expected:
-                os.close(fd)
-                raise TrivyVulnUnavailable("Trivy çalıştırılabilir özeti eşleşmiyor")
-            os.lseek(fd, 0, os.SEEK_SET)
+        digest = hashlib.sha256()
+        while True:
+            data = os.read(fd, 65536)
+            if not data:
+                break
+            digest.update(data)
+        if digest.hexdigest() != expected:
+            os.close(fd)
+            raise TrivyVulnUnavailable("Trivy çalıştırılabilir özeti eşleşmiyor")
+        os.lseek(fd, 0, os.SEEK_SET)
         return fd
     except OSError as exc:
         raise TrivyVulnUnavailable("Trivy çalıştırılabiliri kullanılamıyor") from exc

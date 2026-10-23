@@ -39,10 +39,12 @@ class TrivyImageArchiveApiTests(unittest.TestCase):
         self.expected_sha = hashlib.sha256(b"fake db content").hexdigest()
 
         self.old_trivy_bin = os.environ.get("SNIPER_TRIVY_BINARY")
+        self.old_trivy_sha = os.environ.get("SNIPER_TRIVY_BINARY_SHA256")
         self.old_data_dir = os.environ.get("SNIPER_DATA_DIR")
         self.old_cache_dir = os.environ.get("SNIPER_TRIVY_VULN_CACHE_DIR")
         self.old_db_sha = os.environ.get("SNIPER_TRIVY_VULN_DB_SHA256")
         os.environ["SNIPER_TRIVY_BINARY"] = str(self.fake_bin)
+        os.environ["SNIPER_TRIVY_BINARY_SHA256"] = hashlib.sha256(self.fake_bin.read_bytes()).hexdigest()
         os.environ["SNIPER_DATA_DIR"] = str(self.data_dir)
         os.environ["SNIPER_TRIVY_VULN_CACHE_DIR"] = str(self.cache_dir)
         os.environ["SNIPER_TRIVY_VULN_DB_SHA256"] = self.expected_sha
@@ -65,9 +67,10 @@ class TrivyImageArchiveApiTests(unittest.TestCase):
         self.httpd.server_close()
         self.thread.join(timeout=2)
         server.STORE = self.previous_store
-        for k in ["SNIPER_TRIVY_BINARY", "SNIPER_DATA_DIR", "SNIPER_TRIVY_VULN_CACHE_DIR", "SNIPER_TRIVY_VULN_DB_SHA256"]:
+        for k in ["SNIPER_TRIVY_BINARY", "SNIPER_TRIVY_BINARY_SHA256", "SNIPER_DATA_DIR", "SNIPER_TRIVY_VULN_CACHE_DIR", "SNIPER_TRIVY_VULN_DB_SHA256"]:
             os.environ.pop(k, None)
         if self.old_trivy_bin is not None: os.environ["SNIPER_TRIVY_BINARY"] = self.old_trivy_bin
+        if self.old_trivy_sha is not None: os.environ["SNIPER_TRIVY_BINARY_SHA256"] = self.old_trivy_sha
         if self.old_data_dir is not None: os.environ["SNIPER_DATA_DIR"] = self.old_data_dir
         if self.old_cache_dir is not None: os.environ["SNIPER_TRIVY_VULN_CACHE_DIR"] = self.old_cache_dir
         if self.old_db_sha is not None: os.environ["SNIPER_TRIVY_VULN_DB_SHA256"] = self.old_db_sha

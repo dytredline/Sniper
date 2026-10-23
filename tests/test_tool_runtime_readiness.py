@@ -134,17 +134,50 @@ class RuntimeReadinessTests(unittest.TestCase):
             (db_dir / "metadata.json").write_text("{}")
             db = db_dir / "trivy.db"
             db.write_bytes(b"pinned fixture")
-            env = {"SNIPER_TRIVY_BINARY": str(binary), "SNIPER_TRIVY_VULN_CACHE_DIR": str(root / "cache"),
+            env = {"SNIPER_TRIVY_BINARY": str(binary),
+                   "SNIPER_TRIVY_BINARY_SHA256": hashlib.sha256(binary.read_bytes()).hexdigest(),
+                   "SNIPER_TRIVY_VULN_CACHE_DIR": str(root / "cache"),
                    "SNIPER_TRIVY_VULN_DB_SHA256": hashlib.sha256(db.read_bytes()).hexdigest()}
             with mock.patch.dict(os.environ, env):
                 ready = runtime_readiness_payload()
                 self.assertEqual(profile(ready, "trivy", "/api/tool-runs/trivy-vulnerability")["runtime"], "precheck_passed")
                 self.assertEqual(profile(ready, "trivy", "/api/tool-runs/trivy-secret")["runtime"], "precheck_passed")
-                self.assertEqual(profile(ready, "trivy", "/api/tool-runs/trivy-dockerfile-config")["runtime"], "unavailable")
+                self.assertEqual(profile(ready, "trivy", "/api/tool-runs/trivy-dockerfile-config")["runtime"], "precheck_passed")
                 db.write_bytes(b"tampered")
                 changed = runtime_readiness_payload()
                 self.assertEqual(profile(changed, "trivy", "/api/tool-runs/trivy-vulnerability")["reason_code"], "pinned_database_unavailable")
                 self.assertEqual(profile(changed, "trivy", "/api/tool-runs/trivy-secret")["runtime"], "precheck_passed")
+
+    def test_all_active_trivy_routes_reject_a_binary_digest_mismatch(self):
+        with tempfile.TemporaryDirectory(dir=Path.home()) as temp:
+            root = Path(temp)
+            binary = root / "trivy"
+            binary.write_text("#!/bin/sh\nexit 0\n")
+            binary.chmod(0o755)
+            db_dir = root / "cache" / "db"
+            db_dir.mkdir(parents=True)
+            (db_dir / "metadata.json").write_text("{}")
+            db = db_dir / "trivy.db"
+            db.write_bytes(b"pinned fixture")
+            env = {
+                "SNIPER_TRIVY_BINARY": str(binary),
+                "SNIPER_TRIVY_BINARY_SHA256": "0" * 64,
+                "SNIPER_TRIVY_VULN_CACHE_DIR": str(root / "cache"),
+                "SNIPER_TRIVY_VULN_DB_SHA256": hashlib.sha256(db.read_bytes()).hexdigest(),
+            }
+            routes = (
+                "/api/tool-runs/trivy-secret",
+                "/api/tool-runs/trivy-vulnerability",
+                "/api/tool-runs/trivy-npm-vulnerability",
+                "/api/tool-runs/trivy-go-mod-vulnerability",
+                "/api/tool-runs/trivy-image-archive-vulnerability",
+            )
+            with mock.patch.dict(os.environ, env):
+                payload = runtime_readiness_payload()
+            for route in routes:
+                item = profile(payload, "trivy", route)
+                self.assertEqual(item["runtime"], "unavailable", route)
+                self.assertEqual(item["reason_code"], "binary_digest_mismatch", route)
 
     def test_zap_requires_user_bus_for_on_demand_service(self):
         with tempfile.TemporaryDirectory(dir=Path.home()) as temp:
@@ -199,6 +232,7 @@ class RuntimeReadinessTests(unittest.TestCase):
             db.write_bytes(b"pinned fixture")
             env = {
                 "SNIPER_TRIVY_BINARY": str(binary),
+                "SNIPER_TRIVY_BINARY_SHA256": hashlib.sha256(binary.read_bytes()).hexdigest(),
                 "SNIPER_TRIVY_VULN_CACHE_DIR": str(root / "cache"),
                 "SNIPER_TRIVY_VULN_DB_SHA256": hashlib.sha256(db.read_bytes()).hexdigest(),
             }

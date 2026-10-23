@@ -12,6 +12,7 @@ from typing import Any
 
 from process_group_runner import run_in_process_group
 from project_analyzer import validate_project_path, ProjectRejected
+from trivy_config_active import _open_trusted_binary
 
 
 def run_local_trivy_secret(project_path: str) -> dict[str, Any]:
@@ -50,18 +51,9 @@ def run_local_trivy_secret(project_path: str) -> dict[str, Any]:
             os.close(lock_fd)
         raise RuntimeError("Başka bir Trivy taraması sürüyor.")
 
+    binary_fd: int | None = None
     try:
-        # Resolve binary — require absolute, regular, non-symlink, executable
-        trivy_bin = os.environ.get("SNIPER_TRIVY_BINARY")
-        if not trivy_bin:
-            raise RuntimeError("Trivy ikilisi yapılandırılmamış.")
-        trivy_path = Path(trivy_bin)
-        if not trivy_path.is_absolute():
-            raise RuntimeError("Trivy ikili yolu mutlak olmalı.")
-        if trivy_path.is_symlink() or not trivy_path.is_file():
-            raise RuntimeError("Trivy ikilisi normal bir dosya olmalı.")
-        if not os.access(trivy_path, os.X_OK):
-            raise RuntimeError("Trivy ikilisi çalıştırılabilir olmalı.")
+        _trivy_path, binary_fd = _open_trusted_binary()
 
         # Use system temp dir (PrivateTmp makes it service-private)
         with tempfile.TemporaryDirectory(prefix="sniper_trivy_") as tmpdir:
@@ -158,7 +150,7 @@ def run_local_trivy_secret(project_path: str) -> dict[str, Any]:
 
             # Build argument vector per spec
             cmd = [
-                str(trivy_path),
+                f"/proc/self/fd/{binary_fd}",
                 "fs",
                 "--scanners", "secret",
                 "--offline-scan",
@@ -190,6 +182,7 @@ def run_local_trivy_secret(project_path: str) -> dict[str, Any]:
                     stderr=subprocess.DEVNULL,
                     timeout=45,
                     check=False,
+                    pass_fds=(binary_fd,),
                 )
             except subprocess.TimeoutExpired:
                 raise RuntimeError("Trivy çalıştırması zaman aşımına uğradı.")
@@ -230,6 +223,8 @@ def run_local_trivy_secret(project_path: str) -> dict[str, Any]:
             return summary
 
     finally:
+        if binary_fd is not None:
+            os.close(binary_fd)
         if lock_fd is not None:
             fcntl.flock(lock_fd, fcntl.LOCK_UN)
             os.close(lock_fd)

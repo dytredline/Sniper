@@ -214,7 +214,11 @@ class ActiveModuleTimeoutTests(_TreeMixin, unittest.TestCase):
 
     def test_trivy_timeout_kills_group(self) -> None:
         script, pidfile = self.make_tree(self.root, "fake_trivy")
-        env = {"SNIPER_DATA_DIR": str(self.data_dir), "SNIPER_TRIVY_BINARY": str(script)}
+        env = {
+            "SNIPER_DATA_DIR": str(self.data_dir),
+            "SNIPER_TRIVY_BINARY": str(script),
+            "SNIPER_TRIVY_BINARY_SHA256": hashlib.sha256(script.read_bytes()).hexdigest(),
+        }
         with mock.patch.dict(os.environ, env), \
                 mock.patch.object(trivy_active, "run_in_process_group", _force_timeout(0.5)):
             with self.assertRaisesRegex(RuntimeError, "^Trivy çalıştırması zaman aşımına uğradı\\.$"):
