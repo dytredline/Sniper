@@ -32,9 +32,20 @@ REQUIRED_FILES = (
     "SECURITY-MAINTAINERS.md",
     "CONTRIBUTING.md",
     "CODE_OF_CONDUCT.md",
+    "CHANGELOG.md",
+    "SUPPORT.md",
+    "CITATION.cff",
+    "COMMUNITY-TOOLS.lock.json",
     "COMMUNITY_VERSION",
     ".github/CODEOWNERS",
     ".github/VULNERABILITY_REPORT.yml",
+    ".github/ISSUE_TEMPLATE/bug_report.yml",
+    ".github/ISSUE_TEMPLATE/feature_request.yml",
+    ".github/ISSUE_TEMPLATE/config.yml",
+    ".github/pull_request_template.md",
+    ".github/dependabot.yml",
+    "docs/COMMUNITY-TOOLS.md",
+    "scripts/install-community-tools",
     "docs/COMMUNITY-MCP.md",
     "docs/examples/mcp/stdio-community.json",
     "docs/examples/mcp/stdio-read-only.json",
@@ -63,8 +74,8 @@ REQUIRED_TEXT = {
     ),
     "VALIDATION.md": (
         "Sniper Community validation evidence",
-        "2,786 tests, 0 failures, 0 errors",
-        "158 passed",
+        "2,787 tests, 0 failures, 0 errors",
+        "163 passed",
         "426 passed, 0 failed",
         "not a security certification",
         "No step in this validation snapshot scans an external website",
@@ -120,6 +131,79 @@ REQUIRED_TEXT = {
         "right to submit the contribution",
     ),
     "CODE_OF_CONDUCT.md": ("Contributor Covenant", "Enforcement"),
+    "CHANGELOG.md": (
+        "# Changelog",
+        "Sniper Community 1.0.0",
+        "Apache-2.0",
+        "human-confirmed MCP action plans",
+    ),
+    "SUPPORT.md": (
+        "# Community support",
+        "no support SLA",
+        "Private Vulnerability Reporting",
+        "explicitly authorized",
+    ),
+    "CITATION.cff": (
+        "cff-version: 1.2.0",
+        "title: Sniper Community",
+        "Gökçe Baran",
+        "Karakamış",
+        "version: 1.0.0",
+        "license: Apache-2.0",
+        "https://github.com/dytredline/Sniper",
+    ),
+    "COMMUNITY-TOOLS.lock.json": (
+        '"schema": "sniper-community-tools-lock-v1"',
+        '"local"',
+        '"linux-aarch64"',
+        '"linux-x86_64"',
+        '"sha256"',
+        '"license"',
+    ),
+    "docs/COMMUNITY-TOOLS.md": (
+        "# Community tool installation",
+        "python3 scripts/install-community-tools --profile local --accept-third-party-licenses",
+        "COMMUNITY-TOOLS.lock.json",
+        "Burp Suite Professional",
+        "must remain unavailable",
+    ),
+    "scripts/install-community-tools": (
+        "community_tool_installer",
+        "--accept-third-party-licenses",
+        "COMMUNITY-TOOLS.lock.json",
+    ),
+    ".github/ISSUE_TEMPLATE/bug_report.yml": (
+        "name: Bug report",
+        "Do not report security vulnerabilities in a public issue",
+        "Sniper Community version or commit",
+        "Safe local reproduction",
+        "I removed secrets, personal data, and production evidence",
+    ),
+    ".github/ISSUE_TEMPLATE/feature_request.yml": (
+        "name: Feature request",
+        "Defensive use case",
+        "Observable outcome",
+        "Authorization and safety boundary",
+    ),
+    ".github/ISSUE_TEMPLATE/config.yml": (
+        "blank_issues_enabled: false",
+        "Private vulnerability report",
+        "https://github.com/dytredline/Sniper/security/advisories/new",
+    ),
+    ".github/pull_request_template.md": (
+        "## Observable behavior",
+        "## Tests actually run",
+        "No external target was scanned",
+        "No live Sniper database was used",
+    ),
+    ".github/dependabot.yml": (
+        "version: 2",
+        'package-ecosystem: "pip"',
+        'package-ecosystem: "npm"',
+        'package-ecosystem: "github-actions"',
+        'package-ecosystem: "docker"',
+        'interval: "monthly"',
+    ),
     "docs/COMMUNITY-MCP.md": (
         "stdin/stdout",
         "confirm_request",
@@ -626,6 +710,70 @@ def validate(root: Path, *, scan_release_tree: bool = False) -> list[str]:
         ):
             if fragment not in license_text:
                 fail(f"LICENSE: not a complete Apache-2.0 text ({fragment!r} absent)", failures)
+
+    tool_lock_text = texts.get("COMMUNITY-TOOLS.lock.json")
+    if tool_lock_text is not None:
+        try:
+            tool_lock = json.loads(tool_lock_text)
+            if not isinstance(tool_lock, dict) or tool_lock.get("schema") != "sniper-community-tools-lock-v1":
+                raise ValueError("unexpected schema")
+            profiles = tool_lock.get("profiles")
+            tools = tool_lock.get("tools")
+            expected_local = {"nuclei", "trivy", "gitleaks", "trufflehog", "opengrep"}
+            if not isinstance(profiles, dict) or set(profiles.get("local", ())) != expected_local:
+                raise ValueError("local profile does not contain the supported locked engines")
+            if not isinstance(tools, dict) or not expected_local.issubset(tools):
+                raise ValueError("local tool definitions are incomplete")
+            for tool_id in sorted(expected_local):
+                tool = tools[tool_id]
+                if not isinstance(tool, dict) or not all(
+                    isinstance(tool.get(key), str) and tool[key]
+                    for key in ("version", "license", "destination", "binary", "env_binary", "env_sha256")
+                ):
+                    raise ValueError(f"{tool_id}: incomplete metadata")
+                for key in ("destination", "binary"):
+                    relative = PurePosixPath(tool[key])
+                    if relative.is_absolute() or not relative.parts or ".." in relative.parts:
+                        raise ValueError(f"{tool_id}: unsafe {key}")
+                platforms = tool.get("platforms")
+                if not isinstance(platforms, dict) or set(platforms) != {"linux-aarch64", "linux-x86_64"}:
+                    raise ValueError(f"{tool_id}: expected Linux ARM64 and x86-64 artifacts")
+                for platform_name, artifact in platforms.items():
+                    if not isinstance(artifact, dict):
+                        raise ValueError(f"{tool_id}/{platform_name}: invalid artifact")
+                    url = artifact.get("url")
+                    asset_name = artifact.get("asset_name")
+                    digest = artifact.get("sha256")
+                    kind = artifact.get("kind")
+                    maximum = artifact.get("max_bytes")
+                    if not isinstance(url, str) or not url.startswith("https://github.com/"):
+                        raise ValueError(f"{tool_id}/{platform_name}: non-GitHub HTTPS artifact")
+                    if not isinstance(asset_name, str) or PurePosixPath(asset_name).name != asset_name:
+                        raise ValueError(f"{tool_id}/{platform_name}: invalid asset name")
+                    if not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+                        raise ValueError(f"{tool_id}/{platform_name}: invalid SHA-256")
+                    if kind not in {"raw", "zip", "tar.gz"}:
+                        raise ValueError(f"{tool_id}/{platform_name}: invalid archive kind")
+                    if type(maximum) is not int or not 1 <= maximum <= 4_000_000_000:
+                        raise ValueError(f"{tool_id}/{platform_name}: invalid size bound")
+                    if kind != "raw":
+                        member = PurePosixPath(artifact.get("member", ""))
+                        if member.is_absolute() or not member.parts or ".." in member.parts:
+                            raise ValueError(f"{tool_id}/{platform_name}: unsafe archive member")
+        except (TypeError, ValueError, json.JSONDecodeError) as exc:
+            fail(f"COMMUNITY-TOOLS.lock.json: invalid tool lock: {exc}", failures)
+
+    installer_relative = "scripts/install-community-tools"
+    if entry_map is not None:
+        installer_entry = entry_map.get(installer_relative)
+        installer_mode = installer_entry.mode if installer_entry is not None else 0
+    else:
+        try:
+            installer_mode = (root / installer_relative).lstat().st_mode
+        except OSError:
+            installer_mode = 0
+    if installer_mode and not installer_mode & 0o111:
+        fail("scripts/install-community-tools: entrypoint is not executable", failures)
 
     for relative in (
         "docs/examples/mcp/stdio-community.json",

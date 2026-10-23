@@ -1,0 +1,38 @@
+name: Feature request
+description: Propose a focused defensive capability or workflow improvement.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Defensive use case
+      description: Describe the problem and who encounters it.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Observable outcome
+      description: State what a user, API caller, or MCP host should observe when the feature is complete.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Authorization and safety boundary
+      description: Explain any network, target, credential, execution, or data-handling implications.
+    validations:
+      required: true
+  - type: checkboxes
+    id: community-scope
+    attributes:
+      label: Community scope
+      options:
+        - label: This request does not depend on private Enterprise implementation
+          required: true

@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use Sniper Community in research or published work, please cite this software."
+type: software
+title: Sniper Community
+authors:
+  - family-names: "Karakamış"
+    given-names: "Gökçe Baran"
+    website: "https://github.com/dytredline"
+version: 1.0.0
+license: Apache-2.0
+repository-code: "https://github.com/dytredline/Sniper"
+url: "https://github.com/dytredline/Sniper"
+abstract: >-
+  A local-first defensive application-security toolkit with source, dependency,
+  container, reporting, web, command-line, and human-approved MCP workflows.

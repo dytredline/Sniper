@@ -1,0 +1,142 @@
+{
+  "schema": "sniper-community-tools-lock-v1",
+  "profiles": {
+    "local": [
+      "nuclei",
+      "trivy",
+      "gitleaks",
+      "trufflehog",
+      "opengrep"
+    ]
+  },
+  "tools": {
+    "nuclei": {
+      "version": "3.11.1",
+      "license": "MIT",
+      "destination": "nuclei-3.11.1",
+      "binary": "nuclei",
+      "env_binary": "SNIPER_NUCLEI_BINARY",
+      "env_sha256": "SNIPER_NUCLEI_SHA256",
+      "platforms": {
+        "linux-aarch64": {
+          "url": "https://github.com/projectdiscovery/nuclei/releases/download/v3.11.1/nuclei_3.11.1_linux_arm64.zip",
+          "asset_name": "nuclei_3.11.1_linux_arm64.zip",
+          "sha256": "8044e3d9768ba0a744b2872c1a87e813006f013da97ca9f50f7661a4203bec07",
+          "kind": "zip",
+          "member": "nuclei",
+          "max_bytes": 180000000
+        },
+        "linux-x86_64": {
+          "url": "https://github.com/projectdiscovery/nuclei/releases/download/v3.11.1/nuclei_3.11.1_linux_amd64.zip",
+          "asset_name": "nuclei_3.11.1_linux_amd64.zip",
+          "sha256": "ea63d4ae232808cd7c6bc00d0142428e231fab59dae01042246097d195835ab6",
+          "kind": "zip",
+          "member": "nuclei",
+          "max_bytes": 190000000
+        }
+      }
+    },
+    "trivy": {
+      "version": "0.75.0",
+      "license": "Apache-2.0",
+      "destination": "trivy-0.75.0",
+      "binary": "trivy",
+      "env_binary": "SNIPER_TRIVY_BINARY",
+      "env_sha256": "SNIPER_TRIVY_BINARY_SHA256",
+      "platforms": {
+        "linux-aarch64": {
+          "url": "https://github.com/aquasecurity/trivy/releases/download/v0.75.0/trivy_0.75.0_Linux-ARM64.tar.gz",
+          "asset_name": "trivy_0.75.0_Linux-ARM64.tar.gz",
+          "sha256": "a1ee9f6ffb7d112b64ff726a2a0717c21175c1114361391f4a132956751a13b3",
+          "kind": "tar.gz",
+          "member": "trivy",
+          "max_bytes": 260000000
+        },
+        "linux-x86_64": {
+          "url": "https://github.com/aquasecurity/trivy/releases/download/v0.75.0/trivy_0.75.0_Linux-64bit.tar.gz",
+          "asset_name": "trivy_0.75.0_Linux-64bit.tar.gz",
+          "sha256": "c6e65abddb348e25f10549df887045629cf28cc72453cd1c63acb717316b3f3f",
+          "kind": "tar.gz",
+          "member": "trivy",
+          "max_bytes": 280000000
+        }
+      }
+    },
+    "gitleaks": {
+      "version": "8.30.1",
+      "license": "MIT",
+      "destination": "gitleaks-8.30.1-stdlib",
+      "binary": "gitleaks",
+      "env_binary": "SNIPER_GITLEAKS_BINARY",
+      "env_sha256": "SNIPER_GITLEAKS_SHA256",
+      "platforms": {
+        "linux-aarch64": {
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_arm64.tar.gz",
+          "asset_name": "gitleaks_8.30.1_linux_arm64.tar.gz",
+          "sha256": "e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080",
+          "kind": "tar.gz",
+          "member": "gitleaks",
+          "max_bytes": 50000000
+        },
+        "linux-x86_64": {
+          "url": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz",
+          "asset_name": "gitleaks_8.30.1_linux_x64.tar.gz",
+          "sha256": "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb",
+          "kind": "tar.gz",
+          "member": "gitleaks",
+          "max_bytes": 55000000
+        }
+      }
+    },
+    "trufflehog": {
+      "version": "3.99.0",
+      "license": "AGPL-3.0",
+      "destination": "trufflehog-3.99.0-unpacked",
+      "binary": "trufflehog",
+      "env_binary": "SNIPER_TRUFFLEHOG_BINARY",
+      "env_sha256": "SNIPER_TRUFFLEHOG_SHA256",
+      "platforms": {
+        "linux-aarch64": {
+          "url": "https://github.com/trufflesecurity/trufflehog/releases/download/v3.99.0/trufflehog_3.99.0_linux_arm64.tar.gz",
+          "asset_name": "trufflehog_3.99.0_linux_arm64.tar.gz",
+          "sha256": "ad6fb802f0e6f097829c1eee659b97fc0533a08fa34633cde15bc8fc3258dfb7",
+          "kind": "tar.gz",
+          "member": "trufflehog",
+          "max_bytes": 180000000
+        },
+        "linux-x86_64": {
+          "url": "https://github.com/trufflesecurity/trufflehog/releases/download/v3.99.0/trufflehog_3.99.0_linux_amd64.tar.gz",
+          "asset_name": "trufflehog_3.99.0_linux_amd64.tar.gz",
+          "sha256": "e35ae3fd1e4b7a0c1699d0fda1814282bf906d03379bd4337b092b3a84c6740b",
+          "kind": "tar.gz",
+          "member": "trufflehog",
+          "max_bytes": 200000000
+        }
+      }
+    },
+    "opengrep": {
+      "version": "1.30.1",
+      "license": "LGPL-2.1-only",
+      "destination": "opengrep-1.30.1",
+      "binary": "opengrep",
+      "env_binary": "SNIPER_OPENGREP_BINARY",
+      "env_sha256": "SNIPER_OPENGREP_SHA256",
+      "platforms": {
+        "linux-aarch64": {
+          "url": "https://github.com/opengrep/opengrep/releases/download/v1.30.1/opengrep_manylinux_aarch64",
+          "asset_name": "opengrep_manylinux_aarch64",
+          "sha256": "a730f6fdce1e978ea29e610a2e0503bfe1ec31fce08979a9a84e3699f03e16ee",
+          "kind": "raw",
+          "max_bytes": 70000000
+        },
+        "linux-x86_64": {
+          "url": "https://github.com/opengrep/opengrep/releases/download/v1.30.1/opengrep_manylinux_x86",
+          "asset_name": "opengrep_manylinux_x86",
+          "sha256": "d3195b9d8d5ae93179f6aa5f5daaba6a920a5a09d38c5d5ae5e60924050210c4",
+          "kind": "raw",
+          "max_bytes": 70000000
+        }
+      }
+    }
+  }
+}

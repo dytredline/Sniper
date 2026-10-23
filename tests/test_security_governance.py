@@ -23,6 +23,44 @@ def _load(path: Path, name: str):
 
 
 class SecurityGovernanceTests(unittest.TestCase):
+    def test_public_collaboration_surface_is_release_gated(self) -> None:
+        builder = _load(BUILDER, "collaboration_surface_builder_test")
+        validator = _load(VALIDATOR, "collaboration_surface_validator_test")
+        expected = {
+            "CHANGELOG.md",
+            "SUPPORT.md",
+            "CITATION.cff",
+            "COMMUNITY-TOOLS.lock.json",
+            ".github/ISSUE_TEMPLATE/bug_report.yml",
+            ".github/ISSUE_TEMPLATE/feature_request.yml",
+            ".github/ISSUE_TEMPLATE/config.yml",
+            ".github/pull_request_template.md",
+            ".github/dependabot.yml",
+            "docs/COMMUNITY-TOOLS.md",
+            "scripts/install-community-tools",
+        }
+
+        self.assertEqual(expected - set(validator.REQUIRED_FILES), set())
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "community"
+            builder.build(ROOT, output)
+            self.assertEqual(validator.validate(output, scan_release_tree=True), [])
+
+            for relative in sorted(expected):
+                path = output / relative
+                original = path.read_bytes()
+                path.unlink()
+                try:
+                    failures = validator.validate(output, scan_release_tree=True)
+                finally:
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_bytes(original)
+                with self.subTest(relative=relative):
+                    self.assertTrue(
+                        any(f"missing required file: {relative}" in failure for failure in failures),
+                        failures,
+                    )
+
     def test_named_security_maintainer_contract_is_complete(self) -> None:
         policy = (ROOT / "SECURITY.md").read_text(encoding="utf-8")
         maintainers = (ROOT / "SECURITY-MAINTAINERS.md").read_text(encoding="utf-8")

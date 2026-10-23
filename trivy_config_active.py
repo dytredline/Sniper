@@ -6,6 +6,7 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 import signal
 import stat
 import subprocess
@@ -35,6 +36,11 @@ class TrivyConfigExecutionError(RuntimeError):
     pass
 
 
+def expected_trivy_sha256() -> str:
+    configured = os.environ.get("SNIPER_TRIVY_BINARY_SHA256", "").strip()
+    return configured if re.fullmatch(r"[0-9a-f]{64}", configured) else EXPECTED_TRIVY_SHA256
+
+
 def _trusted_binary() -> Path:
     configured = os.environ.get("SNIPER_TRIVY_BINARY", "")
     path = Path(configured)
@@ -45,7 +51,7 @@ def _trusted_binary() -> Path:
             digest = hashlib.file_digest(stream, "sha256").hexdigest()
     except OSError as exc:
         raise TrivyConfigUnavailable("Trivy ikilisi okunamıyor.") from exc
-    if digest != EXPECTED_TRIVY_SHA256:
+    if digest != expected_trivy_sha256():
         raise TrivyConfigUnavailable("Trivy ikilisi hash değeri uyuşmuyor.")
     return path
 

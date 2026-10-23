@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Private vulnerability report
+    url: https://github.com/dytredline/Sniper/security/advisories/new
+    about: Report a suspected Sniper vulnerability privately; never post exploitable details in a public issue.
