@@ -11,6 +11,22 @@ map is [CAPABILITIES.md](CAPABILITIES.md). Use that map when answering what Snip
 **Optional locked engine**, **Prerequisite-dependent**, and **Human review** labels. A listed control describes
 coverage or an integration path, not evidence that a check ran against a particular project.
 
+## High-value security review paths
+
+- Trace supported data flows for SQL and command injection, XSS, SSRF, open redirect, path traversal, unsafe
+  deserialization, XXE, expression-language, and LDAP risks, with SARIF `codeFlows` where available.
+- Prioritize authorization review through CWE-862 route candidates and IDOR candidates (CWE-639), backed by file,
+  route, method, framework, and line evidence for authorized manual penetration testing.
+- Review secret indicators and privacy-oriented data flows while preserving redacted evidence.
+- Inventory dependencies and containers; generate or import CycloneDX/SPDX SBOMs; use VEX, reachability context, and
+  configured local vulnerability evidence to support release decisions.
+- Inspect supported Dockerfile, Terraform, Kubernetes, Helm, Compose, cloud IAM, CI, mobile, browser-extension, and
+  desktop-application security configuration.
+- Correlate and prioritize findings with CVSS 3.1/4.0, CISA SSVC, attack paths, baselines, ownership, and quality
+  gates; share results through JSON, HTML, SARIF, GitLab, SBOM, VEX, and supported PDF workflows.
+- Bring the same review into a loopback web interface, scriptable CLI, CI pipeline, or an AI client through local
+  stdio MCP.
+
 ## Who Sniper Community is for
 
 ### Application and source owners
@@ -23,9 +39,21 @@ evidence. The exact supported languages, frameworks, input formats, analyzers, a
 Typical defensive questions include:
 
 - Which supported source and configuration issues does this checkout contain?
+- Which routes may lack authorization checks, and which object lookups are potential IDOR candidates (CWE-639)?
 - Which dependencies, container artifacts, or infrastructure definitions need review?
 - Can the project produce or consume the documented SBOM and saved-report formats?
 - What did a check actually inspect, skip, or leave prerequisite-blocked?
+
+### IDOR and manual penetration testing support
+
+For supported Python and JavaScript/TypeScript frameworks, Sniper's built-in route inventory identifies
+unprotected-route candidates (CWE-862) and object lookups that may need Insecure Direct Object Reference (IDOR)
+review (CWE-639). File, route, and line evidence gives an authorized tester a practical starting point for manual
+penetration testing with separate test roles, users, and synthetic objects.
+
+The analyzer packages each candidate for evidence-led manual validation. Within an authorized scope, reviewers can
+confirm runtime behavior across separate users and roles while accounting for gateway, middleware, runtime-policy,
+and business-logic controls.
 
 ### Website and API owners
 

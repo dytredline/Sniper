@@ -84,6 +84,17 @@ olduğunda SARIF `codeFlows` içinde taşınır. Yetki veya nonce kontrolü gör
 Bu denetçiler kaynak ve yapılandırmada gördükleri statik kanıta göre sonuç üretir. Örneğin “iş mantığı” satırı,
 uygulamanın bütün iş kurallarının otomatik olarak anlaşıldığı anlamına gelmez.
 
+### IDOR ve manuel sızma testi desteği
+
+Rota/yetki envanteri, desteklenen Python ile JavaScript/TypeScript çatılarında korumasız rota adaylarını (CWE-862)
+ve istekten gelen nesne kimliğinin görünür bir kullanıcı, sahiplik ya da rol denetimi olmadan kullanıldığı IDOR adayı
+yolları (CWE-639) işaretler. Dosya, rota ve satır kanıtı; yetkili bir uzmanın iki ayrı test kullanıcısı, rolü ve
+sentetik nesnesiyle yapacağı manuel sızma testi doğrulamasını önceliklendirmesine yardım eder.
+
+Her IDOR adayı, yetkili test kapsamında iki ayrı kullanıcı/rol ve sentetik nesnelerle manuel doğrulama için kanıtlı
+bir başlangıç noktası sunar. Uzman; ağ geçidi, ara katman, politika servisi ve çalışma zamanı iş kurallarını da bu
+doğrulama sırasında değerlendirir.
+
 ### Altyapı kodu, bulut ve CI
 
 | Tür | Girdi | Doğrulanmış kontrol alanları |

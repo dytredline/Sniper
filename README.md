@@ -14,6 +14,7 @@ an AI client over local stdio MCP, to a person through the CLI, or in the loopba
 | Area | Questions Sniper helps answer |
 | --- | --- |
 | Source code and configuration | Which supported code paths, security patterns, secrets, and configuration choices need human review? |
+| Authorization and IDOR review | Which supported Python or JavaScript/TypeScript routes may lack an authorization check (CWE-862), or load an object identifier without a visible user/role binding and therefore need IDOR review (CWE-639)? |
 | Dependencies and SBOMs | What components are present, how are they related, and what does the available local vulnerability evidence say? |
 | Containers and software supply chain | What packages, layers, manifests, provenance signals, and risky build choices appear in supported local artifacts? |
 | Infrastructure and CI/CD | Do supported Terraform, Kubernetes, Helm, Dockerfile, Compose, cloud IAM, or CI workflow inputs expose known risky settings? |
@@ -24,6 +25,40 @@ The complete, evidence-linked inventory is in [Capabilities and security checks]
 paths for application, API, website, platform, and security teams are in [Use cases](docs/USE-CASES.md). AI systems
 can start with the compact [LLM project index](llms.txt), while people can inspect the latest
 [validation evidence](VALIDATION.md).
+
+## Security review highlights
+
+- **Trace high-impact data flows:** follow supported source-to-sink paths for SQL and command injection, XSS/HTML,
+  SSRF, open redirect, path traversal, unsafe deserialization, XXE, expression-language, and LDAP risks. Supported
+  flow evidence can travel with SARIF `codeFlows` for review in development tooling.
+- **Focus access-control testing:** turn routes, object identifiers, roles, and visible ownership checks into a
+  prioritized list of CWE-862 and IDOR (CWE-639) candidates for authorized manual penetration testing.
+- **Find exposed secrets and privacy paths:** combine provider patterns and entropy signals with privacy-oriented
+  flows toward logs, responses, storage, and third-party destinations while keeping secret evidence redacted.
+- **Understand dependencies and the software supply chain:** inventory direct and transitive components, generate or
+  import CycloneDX/SPDX SBOMs, work with VEX, review reachability context, and bring local vulnerability evidence into
+  release decisions.
+- **Harden containers, cloud, and delivery pipelines:** inspect supported container archives, Dockerfiles, Terraform,
+  Kubernetes, Helm, Compose, cloud IAM, CI workflows, browser extensions, mobile manifests, and desktop-app security
+  configuration from one review surface.
+- **Review APIs, websites, and TLS:** compare local OpenAPI contracts with source routes, inspect authentication
+  mismatches, evaluate supported web-security signals, and prepare bounded actions for owned or authorized targets.
+- **Prioritize the work that matters:** enrich findings with CVSS 3.1 and CVSS 4.0, CISA SSVC, attack-path correlation,
+  ownership, due dates, baselines, and quality gates so teams can move from evidence to remediation.
+- **Choose the workflow that fits:** use the loopback web interface, scriptable CLI, CI artifacts, or stdio MCP for
+  AI-assisted review, with JSON, HTML, SARIF, GitLab, SBOM, VEX, and supported PDF outputs.
+
+## IDOR and manual penetration testing support
+
+Sniper turns supported source code into a focused lead list for authorized manual penetration testing. Its built-in
+route and authorization inventory can flag unprotected-route candidates (CWE-862) and potential Insecure Direct
+Object Reference (IDOR) paths (CWE-639), then point the reviewer to the relevant file, route, and line of code. This
+helps a tester prioritize hands-on checks with separate test users, roles, and synthetic objects instead of starting
+from an unstructured endpoint list.
+
+Each candidate is packaged for evidence-led manual validation. Within an authorized test scope, reviewers can
+confirm runtime behavior across separate users and roles while accounting for gateway, middleware, policy-service,
+and business-logic controls.
 
 Sniper includes built-in analyzers and report parsers in the source tree. Its rootless local profile can additionally
 install five pinned, optional third-party engines: **Nuclei**, **Trivy**, **Gitleaks**, **TruffleHog**, and
