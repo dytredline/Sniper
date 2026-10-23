@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import importlib.util
 from pathlib import Path
+from types import SimpleNamespace
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
 TEST_LOCK = ROOT / "requirements-test.lock"
 WORKFLOW = ROOT / ".github" / "workflows" / "ci.yml"
+RUNNER = ROOT / "scripts" / "run_all_tests.py"
 
 EXPECTED_TEST_DEPENDENCIES = {
     "iniconfig": "2.3.1",
@@ -14,6 +18,14 @@ EXPECTED_TEST_DEPENDENCIES = {
     "Pygments": "2.21.0",
     "pytest": "9.1.1",
 }
+
+
+def _load_runner():
+    spec = importlib.util.spec_from_file_location("sniper_run_all_tests_contract", RUNNER)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class CiTestDependencyContractTests(unittest.TestCase):
@@ -42,6 +54,31 @@ class CiTestDependencyContractTests(unittest.TestCase):
         self.assertIn(test_run, workflow)
         self.assertLess(workflow.index(runtime_install), workflow.index(test_install))
         self.assertLess(workflow.index(test_install), workflow.index(test_run))
+
+    def test_local_pytest_probe_requires_runtime_dependencies_in_same_interpreter(self) -> None:
+        runner = _load_runner()
+        completed = SimpleNamespace(returncode=0)
+        with mock.patch.dict(runner.os.environ, {"SNIPER_PYTEST_PYTHON": "/test/python"}), \
+                mock.patch.object(runner.Path, "exists", return_value=True), \
+                mock.patch.object(runner.subprocess, "run", return_value=completed) as run:
+            self.assertEqual(runner._pytest_python(), "/test/python")
+
+        probe = run.call_args.args[0]
+        self.assertEqual(probe[:2], ["/test/python", "-c"])
+        for module in ("pytest", "cryptography", "packaging", "yaml"):
+            self.assertIn(module, probe[2])
+
+    def test_node_24_summary_is_counted(self) -> None:
+        runner = _load_runner()
+        output = "\n".join(("ℹ tests 408", "ℹ pass 408", "ℹ fail 0"))
+        self.assertEqual(runner._summarize_node(output), {"tests": "408", "pass": "408", "fail": "0"})
+
+    def test_readme_installs_both_locks_before_full_local_tests(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertIn(
+            "python3 -m pip install -r requirements-runtime.lock -r requirements-test.lock",
+            readme,
+        )
 
 
 if __name__ == "__main__":

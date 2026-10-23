@@ -4,11 +4,11 @@
 * unittest modules run one process per module (the global HTTP rate limiter and
   module-level state are not shared between modules), in parallel;
 * modules written for pytest (``import pytest`` or bare ``def test_`` functions
-  without a ``unittest.TestCase``) run with pytest;
+  without a ``unittest.TestCase``) run with pytest and the runtime dependencies;
 * ``tests/*.mjs`` run with ``node --test``.
 
-pytest is looked up in this order: ``$SNIPER_PYTEST_PYTHON``, the offline test
-venv ``~/.local/state/sniper-test-venv``, then the current interpreter.
+pytest is looked up in this order: ``$SNIPER_PYTEST_PYTHON``, the current
+interpreter, then the offline test venv ``~/.local/state/sniper-test-venv``.
 Exit status is non-zero when any suite fails or a required runner is missing.
 """
 from __future__ import annotations
@@ -37,11 +37,16 @@ def _is_pytest_module(path: Path) -> bool:
 
 
 def _pytest_python() -> str | None:
-    candidates = [os.environ.get("SNIPER_PYTEST_PYTHON", ""), str(DEFAULT_VENV_PYTHON), sys.executable]
+    candidates = [os.environ.get("SNIPER_PYTEST_PYTHON", ""), sys.executable, str(DEFAULT_VENV_PYTHON)]
+    seen: set[str] = set()
     for candidate in candidates:
-        if not candidate or not Path(candidate).exists():
+        if not candidate or candidate in seen or not Path(candidate).exists():
             continue
-        probe = subprocess.run([candidate, "-c", "import pytest"], capture_output=True)
+        seen.add(candidate)
+        probe = subprocess.run(
+            [candidate, "-c", "import pytest, cryptography, packaging, yaml"],
+            capture_output=True,
+        )
         if probe.returncode == 0:
             return candidate
     return None
@@ -67,6 +72,14 @@ def _summarize_unittest(output: str) -> tuple[int, int, int]:
         counts = dict((k, int(v)) for k, v in re.findall(r"(\w+)=(\d+)", failed.group(1)))
         failures, errors = counts.get("failures", 0), counts.get("errors", 0)
     return total, failures, errors
+
+
+def _summarize_node(output: str) -> dict[str, str]:
+    """Accept the TAP summary prefixes emitted by supported Node 22 and newer runtimes."""
+    return {
+        key: value
+        for key, value in re.findall(r"^(?:#|ℹ)\s+(tests|pass|fail)\s+(\d+)", output, re.M)
+    }
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -109,8 +122,8 @@ def main(argv: list[str] | None = None) -> int:
         python = _pytest_python()
         if python is None:
             ok = False
-            print("[pytest] pytest bulunamadı. Çevrimdışı kurulum: python3 -m venv ~/.local/state/sniper-test-venv && "
-                  "~/.local/state/sniper-test-venv/bin/pip install --no-index --find-links <wheelhouse> pytest")
+            print("[pytest] pytest ve runtime bağımlılıklarını birlikte içeren Python bulunamadı. "
+                  "Aynı venv içine requirements-runtime.lock ve requirements-test.lock kurun.")
         else:
             print(f"[pytest] {len(pytest_modules)} modül ({python})")
             proc = subprocess.run(
@@ -132,12 +145,12 @@ def main(argv: list[str] | None = None) -> int:
             print("[node] node bulunamadı (SNIPER_NODE_BINARY ile belirtilebilir).")
         else:
             proc = subprocess.run([node, "--test", *mjs], cwd=APP_ROOT, capture_output=True, text=True, timeout=1800)
-            summary = {k: v for k, v in re.findall(r"^# (tests|pass|fail) (\d+)", proc.stdout, re.M)}
+            summary = _summarize_node(proc.stdout)
             print(f"[node] test={summary.get('tests', '?')} geçti={summary.get('pass', '?')} başarısız={summary.get('fail', '?')}")
             if proc.returncode != 0:
                 ok = False
                 if args.verbose:
-                    print(proc.stdout[-6000:])
+                    print((proc.stdout + proc.stderr)[-6000:])
 
     print("SONUÇ:", "TÜMÜ GEÇTİ" if ok else "BAŞARISIZLIK VAR")
     return 0 if ok else 1

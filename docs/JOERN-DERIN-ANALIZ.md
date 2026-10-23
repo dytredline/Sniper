@@ -11,7 +11,7 @@ Python ve JS/TS projeleri için Sniper'ın kendi fonksiyonlar/dosyalar arası ve
    - Joern v4.0.647 `joern-cli-linux-arm64.zip` ve `joern-cli-linux-arm64.zip.sha512`, GitHub.
 2. Kurun ve doğrulayın:
    ```bash
-   python3 ~/.local/share/sniper/app/scripts/install_joern.py \
+   python3 /ABSOLUTE/PATH/TO/sniper/scripts/install_joern.py \
      --jdk-archive OpenJDK25U-jdk_aarch64_linux_hotspot_25.0.4.1_1.tar.gz \
      --joern-archive joern-cli-linux-arm64.zip --joern-sha512 joern-cli-linux-arm64.zip.sha512
    ```

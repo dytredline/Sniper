@@ -9,7 +9,7 @@ karşılaştırarak **bu değişikliğin getirdiği yeni bulguları** raporlar.
 - API: `POST /api/project-audits` gövdesi `{"project_path": "...", "scope": {"changed_only": true, "base_ref": "origin/main"}}`.
   Sonuçta `changed_scan` özeti (değişen dosyalar, yeni bulgu sayısı, düzelen bulgular) ve her bulguda
   `is_new`, `in_changed_lines`, `context_fingerprint` alanları bulunur.
-- CLI: `python3 ~/.local/share/sniper/app/cli_reports.py auto-scan <proje> --changed-since origin/main --sarif out.sarif --fail-on high [--no-store]`
+- CLI: `python3 /ABSOLUTE/PATH/TO/sniper/cli_reports.py auto-scan <proje> --changed-since origin/main --sarif out.sarif --fail-on high [--no-store]`
   Eşik (`--fail-on`) yalnız değişenler modunda yalnız YENİ bulguları sayar; aşılırsa çıkış kodu 1.
   SARIF 2.1.0 çıktısında `baselineState` (new/unchanged) ve `partialFingerprints.sniperContext/v1` dolu.
 - Örnekler: `docs/ci/pre-commit-sniper.sh` (pre-commit kancası), `docs/ci/github-actions-sniper.yml` (kendi

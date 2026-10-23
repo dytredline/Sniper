@@ -1530,9 +1530,17 @@ def _swiftpm_components(root: Path) -> list[dict[str, str]]:
 # ---------------------------------------------------------------------------
 # 18. tur: gerçek dünya manifest çeşitliliği (ek Python/npm kaynakları, alt dizinler, hoşgörülü mod)
 # ---------------------------------------------------------------------------
-_REQ_FILE = re.compile(r"(?i)^(?:requirements|reqs?)(?:[-_.][A-Za-z0-9_.-]*)?\.txt$|^[A-Za-z0-9_.-]*[-_]requirements\.txt$")
+_REQ_FILE = re.compile(
+    r"(?i)^(?:requirements|reqs?)(?:[-_.][A-Za-z0-9_.-]*)?\.(?:txt|lock)$"
+    r"|^[A-Za-z0-9_.-]*[-_]requirements\.(?:txt|lock)$"
+)
 _EXACT_PY = re.compile(r"^([A-Za-z0-9][A-Za-z0-9_.-]*)(?:\[[^\]]*\])?\s*===?\s*([A-Za-z0-9][A-Za-z0-9_.+!-]*)$")
 MAX_REQUIREMENT_FILES = 50
+
+
+def _requirements_scope(path: Path) -> str | None:
+    tokens = {part for part in re.split(r"[-_.]+", path.stem.casefold()) if part}
+    return "optional" if tokens & {"dev", "development", "test", "tests"} else None
 
 
 def _requirement_lines(text: str) -> list[str]:
@@ -1552,7 +1560,7 @@ def _requirement_lines(text: str) -> list[str]:
 
 
 def _requirements_extra_components(root: Path, project_root: Path | None = None) -> list[dict[str, str]]:
-    """requirements*.txt / *-requirements.txt / requirements/*.txt ve ``-r``/``-c`` içermeleri (proje kökü dışına
+    """requirements*.txt|lock / *-requirements.txt|lock ve ``-r``/``-c`` içermeleri (proje kökü dışına
     çıkmadan, en çok 50 dosya). Kök requirements.txt'nin satırları ayrıca _python_components'ta okunur; tekrar
     discover_inventory'de tekilleşir."""
     project_root = (project_root or root).resolve()
@@ -1561,7 +1569,10 @@ def _requirements_extra_components(root: Path, project_root: Path | None = None)
         queue += sorted(p for p in root.iterdir() if p.is_file() and not p.is_symlink() and _REQ_FILE.match(p.name))
         sub = root / "requirements"
         if sub.is_dir() and not sub.is_symlink():
-            queue += sorted(p for p in sub.iterdir() if p.is_file() and not p.is_symlink() and p.suffix == ".txt")
+            queue += sorted(
+                p for p in sub.iterdir()
+                if p.is_file() and not p.is_symlink() and p.suffix.casefold() in {".txt", ".lock"}
+            )
     except OSError:
         return []
     seen: set[Path] = set()
@@ -1587,7 +1598,11 @@ def _requirements_extra_components(root: Path, project_root: Path | None = None)
                 continue
             parsed = _split_requirement(stripped)
             if parsed and parsed[1]:
-                result.append({"name": parsed[0], "version": parsed[1], "ecosystem": "PyPI", "manifest": rel})
+                item = {"name": parsed[0], "version": parsed[1], "ecosystem": "PyPI", "manifest": rel}
+                scope = _requirements_scope(path)
+                if scope is not None:
+                    item["scope"] = scope
+                result.append(item)
                 if len(result) > MAX_COMPONENTS:
                     return result
     return result

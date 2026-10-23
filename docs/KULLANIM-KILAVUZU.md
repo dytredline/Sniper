@@ -5,8 +5,8 @@ altyapı tanımlarını (IaC), konteyner imajlarını ve SBOM dosyalarını anal
 rapor üretir ve CI'da kapı olarak çalışır. Hiçbir veri dışarı gönderilmez. Varsayılan adres:
 `http://127.0.0.1:8787/`.
 
-Komutlar `~/.local/share/sniper/app` dizininden çalıştırılır. Örneklerdeki `cli_reports.py`,
-`python3 ~/.local/share/sniper/app/cli_reports.py` anlamına gelir.
+Komutlar Sniper Community kaynak dizininden çalıştırılır. Örneklerdeki `cli_reports.py`,
+bu dizindeki `python3 cli_reports.py` komutunu ifade eder.
 
 Ayrıntılı konu belgeleri:
 - [kurulum.md](kurulum.md)
@@ -59,7 +59,7 @@ bir güvenlik kararıdır.
 | Listeleme / kilit açma | `users list`, `users unlock -u <ad>` |
 | Girişi kapatma / açma | `users disable-auth`, `users enable-auth` |
 | TOTP | Arayüzde kullanıcı kutusundaki **Hesap** düğmesi › "İki adımlı doğrulama (TOTP)" › Kurulumu başlat ile açılır (`/api/auth/totp/begin` ve `confirm`). Kurtarma kodları bir kez gösterilir. |
-| TOTP alan anahtarı | `cryptography==41.0.7` zorunlu/pinlidir. `users totp-key-status` yalnız metadata gösterir; `users rotate-totp-key` cross-process kilit altında seed/pending alanlarını açık yeni anahtarla tekrar şifreler. `auth.db` ile uygulama ağacı dışındaki 0600 keyring birlikte yedeklenmelidir. Eski düz metin DB için önce `users totp-migration-status`, sonra en çok bir saatlik `users open-totp-migration --migration-seconds 900` kullanılır; pencere dışında veya daha önce mühürlenmiş satırdaki düz metin reddedilir. |
+| TOTP alan anahtarı | `cryptography==50.0.2` zorunlu/pinlidir. `users totp-key-status` yalnız metadata gösterir; `users rotate-totp-key` cross-process kilit altında seed/pending alanlarını açık yeni anahtarla tekrar şifreler. `auth.db` ile uygulama ağacı dışındaki 0600 keyring birlikte yedeklenmelidir. Eski düz metin DB için önce `users totp-migration-status`, sonra en çok bir saatlik `users open-totp-migration --migration-seconds 900` kullanılır; pencere dışında veya daha önce mühürlenmiş satırdaki düz metin reddedilir. |
 
 **Roller:**
 
@@ -174,7 +174,7 @@ Ayrıntı: [OSV-CEVRIMDISI.md](OSV-CEVRIMDISI.md).
 - npm: package-lock v1/v2/v3, shrinkwrap, yarn, pnpm; kilit yoksa kesin sürümler ve güvenli yerel `node_modules` kurulumu ile doğrulanan `^`, `~` veya karşılaştırma aralıkları. `^1.2`, `^0.2`, `~1`, `~1.2`, `>=1.2` ve `<=1.2` gibi eksik bileşenli npm aralıkları kendi alt/üst wildcard sınırlarıyla değerlendirilir; `>= 1.2.3` biçimindeki yasal karşılaştırıcı boşlukları da aynı yerel sürüm kanıtıyla çözülür.
   `takma-ad: "npm:gerçek-paket@sürüm"` bağımlılıklarında gerçek paket OSV ve doğrudanlık kimliği olarak,
   takma ad ise JavaScript/TypeScript içe aktarma kimliği olarak kullanılır; çalışma alanında çakışan takma ad eşleşmez.
-- Python: `requirements.txt`, pip-tools `requirements.in` ve `requirements/*.{in,txt}` (proje kökü içindeki en fazla 8 düzey/100 dosyalık `-r` içermeleri, devam satırları, hash'ler), `setup.py`, `setup.cfg`, tox `testenv` bağımlılıkları, Nox oturumlarındaki sabit `session.install(...)` paketleri, Conda `environment.yml/.yaml` ana ve iç içe pip bağımlılıkları, PEP 723 `# /// script` bağımlılık blokları, Pipfile/Pipfile.lock, poetry, uv, pdm. Tox `deps`, Nox kurulumları ve Conda iç içe pip listelerindeki proje içi `-r` dosyaları aynı kök/depth sınırlarıyla izlenir; komut, `-c` kısıt ve ortam ayarları paket sayılmaz. Nox dosyaları çalıştırılmaz; yalnız `@nox.session` ilk parametresindeki sabit install argümanları okunur. PEP 723 taraması 1.000 Python dosyası ve toplam 8 MB ile sınırlıdır. Pipfile doğrudanlığı yalnız `[packages]` ve `[dev-packages]` tablolarından okunur; kaynak ve çalışma zamanı tabloları paket sayılmaz. Doğrudanlık
+- Python: `requirements*.txt|lock`, `*-requirements.txt|lock`, pip-tools `requirements.in` ve `requirements/*.{in,txt,lock}` (proje kökü içindeki en fazla 8 düzey/100 dosyalık `-r` içermeleri, devam satırları, hash'ler), `setup.py`, `setup.cfg`, tox `testenv` bağımlılıkları, Nox oturumlarındaki sabit `session.install(...)` paketleri, Conda `environment.yml/.yaml` ana ve iç içe pip bağımlılıkları, PEP 723 `# /// script` bağımlılık blokları, Pipfile/Pipfile.lock, poetry, uv, pdm. Adında `test` veya `dev` bölümü bulunan requirements dosyaları SBOM'da isteğe bağlı geliştirme bağımlılığı olarak işaretlenir. Tox `deps`, Nox kurulumları ve Conda iç içe pip listelerindeki proje içi `-r` dosyaları aynı kök/depth sınırlarıyla izlenir; komut, `-c` kısıt ve ortam ayarları paket sayılmaz. Nox dosyaları çalıştırılmaz; yalnız `@nox.session` ilk parametresindeki sabit install argümanları okunur. PEP 723 taraması 1.000 Python dosyası ve toplam 8 MB ile sınırlıdır. Pipfile doğrudanlığı yalnız `[packages]` ve `[dev-packages]` tablolarından okunur; kaynak ve çalışma zamanı tabloları paket sayılmaz. Doğrudanlık
   sınıflandırması `pyproject.toml` içindeki PEP 621 ana/isteğe bağlı bağımlılıklarını, PEP 735
   `dependency-groups` dizelerindeki paketleri, Poetry ana/eski geliştirme/adlandırılmış grup tablolarını ve
   PDM/uv geliştirme bağımlılığı gruplarını, Hatch ortam bağımlılıklarını, Rye geliştirme bağımlılıklarını,

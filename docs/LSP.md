@@ -53,7 +53,7 @@ Tanılama içeriği:
 Sunucu Sniper uygulama dizinindedir:
 
 ```
-~/.local/share/sniper/app/scripts/sniper-lsp [--data-dir DİZİN] [--cache-dir DİZİN] [--timeout SN]
+/ABSOLUTE/PATH/TO/sniper/scripts/sniper-lsp [--data-dir DİZİN] [--cache-dir DİZİN] [--timeout SN]
 ```
 
 Seçenekler:
@@ -77,7 +77,7 @@ Proje klasörü, arayüzdeki analizle aynı kurala uyar: kullanıcı dizini ya d
 
 ```lua
 vim.lsp.config('sniper', {
-  cmd = { vim.fn.expand('~/.local/share/sniper/app/scripts/sniper-lsp') },
+  cmd = { '/ABSOLUTE/PATH/TO/sniper/scripts/sniper-lsp' },
   filetypes = { 'python', 'javascript', 'typescript', 'javascriptreact', 'typescriptreact',
                 'go', 'ruby', 'java', 'kotlin', 'cs', 'php', 'rust', 'c', 'cpp',
                 'terraform', 'yaml', 'dockerfile' },
@@ -97,7 +97,7 @@ local util = require('lspconfig.util')
 if not configs.sniper then
   configs.sniper = {
     default_config = {
-      cmd = { vim.fn.expand('~/.local/share/sniper/app/scripts/sniper-lsp') },
+      cmd = { '/ABSOLUTE/PATH/TO/sniper/scripts/sniper-lsp' },
       filetypes = { 'python', 'javascript', 'typescript', 'go', 'java', 'kotlin', 'cs', 'php', 'ruby', 'rust', 'c', 'cpp' },
       root_dir = util.root_pattern('.git'),
       init_options = { minSeverity = 'low' },
@@ -112,7 +112,7 @@ require('lspconfig').sniper.setup({})
 VS Code'da yerleşik "herhangi bir LSP sunucusunu çalıştır" ayarı yoktur. İki yol var:
 
 1. **Genel LSP istemci uzantısı:** Pazar yerinde "generic LSP client" türü uzantılar komut + argüman + dil
-   listesiyle bir sunucu başlatabilir. Komut olarak `~/.local/share/sniper/app/scripts/sniper-lsp` verin. Ayar
+   listesiyle bir sunucu başlatabilir. Komut olarak `/ABSOLUTE/PATH/TO/sniper/scripts/sniper-lsp` verin. Ayar
    adları uzantıya göre değişir; uzantının belgesine bakın.
 2. **Birkaç satırlık yerel uzantı** (`vscode-languageclient` ile; kendi makinenizde `code --install-extension`
    ile paketleyip kurabilirsiniz):

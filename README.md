@@ -145,6 +145,7 @@ existing output directory. Review `COMMUNITY-RELEASE-LIMITATIONS.md` in its outp
 The repository's complete local test launcher is:
 
 ```bash
+python3 -m pip install -r requirements-runtime.lock -r requirements-test.lock
 python3 scripts/run_all_tests.py
 ```
 

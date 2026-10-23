@@ -5,13 +5,14 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 
 
 APP = Path(__file__).resolve().parents[1]
 RUNTIME_PINS = {
-    "cryptography==41.0.7",
+    "cryptography==50.0.2",
     "packaging==26.3",
     "PyYAML==6.0.3",
 }
@@ -47,14 +48,14 @@ print(json.dumps({'state':state,'user':done['id'],'crypto':cryptography.__versio
 """
             env = {"PATH": "/usr/bin:/bin", "PYTHONNOUSERSITE": "1", "PYTHONDONTWRITEBYTECODE": "1"}
             completed = subprocess.run(
-                ["/usr/bin/python3", "-I", "-c", script, str(APP), str(root)],
+                [sys.executable, "-I", "-c", script, str(APP), str(root)],
                 cwd=root, env=env, capture_output=True, text=True, timeout=30,
             )
 
         self.assertEqual(completed.returncode, 0, completed.stderr)
         result = json.loads(completed.stdout)
         self.assertEqual(result["state"], "totp")
-        self.assertEqual(result["crypto"], "41.0.7")
+        self.assertEqual(result["crypto"], "50.0.2")
         self.assertTrue(result["user"].startswith("usr_"))
         self.assertNotIn("PYTHONPATH", env)
 
