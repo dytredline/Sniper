@@ -305,3 +305,28 @@ S	Yerel raporu içe aktar	ローカルレポートをインポート
 S	Yerel analiz onayını işaretleyin.	ローカル分析の承認チェックボックスをオンにしてください。
 S	Yerel kontrolü açıkça onaylayın.	ローカル確認を明示的に承認してください。
 S	Claude Code, Codex gibi kodlama ajanları bulguları MCP sunucusu (scripts/sniper-mcp) ya da dosya paketiyle (cli_reports.py triage export) inceleyip öneri gönderir. Öneriler bulgu durumunu değiştirmez; kabul ettiğinizde bulgu takibine ve denetim kaydına "AI önerisiyle" notuyla yazılır. Bağlama: docs/AI-TRIYAJ.md.	Claude CodeやCodexなどのコーディングエージェントは、MCPサーバー（scripts/sniper-mcp）またはファイルパッケージ（cli_reports.py triage export）を介して検出事項を確認し、提案を送信します。提案だけで検出事項の状態は変わりません。承認すると、検出事項の追跡と監査ログに「AIの提案による」と記録されます。設定：docs/AI-TRIYAJ.md。
+S	Sniper — Yerel güvenlik stüdyosu	Sniper — ローカルセキュリティスタジオ
+S	Sniper ana sayfa	Sniperホーム
+S	YEREL GÜVENLİK STÜDYOSU	ローカルセキュリティスタジオ
+S	Sniper, düşük etkili kontroller yapar. DoS trafiği veya parola listesi çalıştırmaz.	Sniperは低負荷のチェックを実行します。DoSトラフィックやパスワードリストは使用しません。
+S	BAĞIMSIZ GÜVENLİK GÖRÜNÜMÜ	独立したセキュリティビュー
+S	Riskleri erken görün,	リスクを早期に把握し、
+S	kontrol sizde kalsın.	コントロールを維持。
+S	Eklediğiniz web varlıklarında temel güvenlik kontrollerini tek merkezden yönetin ve iyileştirmeleri ölçün.	追加したWeb資産の基本的なセキュリティチェックを一元管理し、改善を測定します。
+S	Hızlı erişim	クイックアクセス
+S	En fazla 3 GET isteği, sömürü yok, parola denemesi yok.	GETリクエストは最大3件。悪用やパスワード試行は行いません。
+S	KAPSAM YÖNETİMİ	スコープ管理
+S	Web adresini ekleyin; alan adı sahiplik dosyası veya ayrı doğrulama adımı gerekmez.	Webアドレスを追加します。ドメイン所有権ファイルや別の確認手順は不要です。
+S	＋ Yeni hedef	＋ 新しい対象
+S	Alan adı ara…	ドメインを検索…
+S	Web varlığı	Web資産
+S	Son puan	最新スコア
+S	Taramalar	スキャン
+S	İlk hedefinizi ekleyin	最初の対象を追加
+S	Web adresini kaydettikten sonra güvenli temel taramayı doğrudan başlatabilirsiniz.	Webアドレスを保存すると、安全なベースラインスキャンをすぐに開始できます。
+S	Yeni hedef ekle	新しい対象を追加
+S	Sniper — Giriş	Sniper — ログイン
+S	Doğrulama kodu (6 hane)	確認コード（6桁）
+S	ya da kurtarma kodu	またはリカバリーコード
+S	Hesabınızı kaybettiyseniz yönetici, sunucuda	アカウントにアクセスできない場合、管理者はサーバー上で
+S	ile sıfırlayabilir.	を使ってリセットできます。

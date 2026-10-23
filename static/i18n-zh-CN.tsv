@@ -352,3 +352,11 @@ S	Konteyner taban imajı sabitlenmemiş (:latest)	容器基础镜像未固定（
 S	Konteyner, Kubernetes ve CI/CD güvenliği	容器、Kubernetes 与 CI/CD 安全
 S	Konteyner/Pod ana makine ağ uzayını (hostNetwork) paylaşıyor	容器／Pod 共享主机网络命名空间（hostNetwork）
 S	Konteyner/Pod privileged (tam yetkili) modda çalışıyor	容器／Pod 以 privileged（完全特权）模式运行
+S	Sniper ana sayfa	Sniper 主页
+S	＋ Yeni hedef	＋ 新目标
+S	Son puan	最新评分
+S	Taramalar	扫描
+S	Yeni hedef ekle	添加新目标
+S	ya da kurtarma kodu	或恢复代码
+S	Hesabınızı kaybettiyseniz yönetici, sunucuda	如果您无法访问帐户，管理员可以在服务器上使用
+S	ile sıfırlayabilir.	进行重置。
