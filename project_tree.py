@@ -132,7 +132,10 @@ class ProjectTree:
         try:
             directory_fd = os.open("/", _DIR_FLAGS)
             for component in self._root_components:
-                next_fd = os.open(component, _DIR_FLAGS, dir_fd=directory_fd)
+                safe_component = os.path.basename(component)
+                if safe_component != component:
+                    raise ProjectTreeError("Proje yolu geçersiz bir bileşen içeriyor.")
+                next_fd = os.open(safe_component, _DIR_FLAGS, dir_fd=directory_fd)
                 os.close(directory_fd)
                 directory_fd = next_fd
             if not stat.S_ISDIR(os.fstat(directory_fd).st_mode):
@@ -198,10 +201,16 @@ class ProjectTree:
         file_fd: int | None = None
         try:
             for component in parts[:-1]:
-                next_fd = os.open(component, _DIR_FLAGS, dir_fd=directory_fd)
+                safe_component = os.path.basename(component)
+                if safe_component != component:
+                    raise ProjectTreeError("Göreli proje yolu geçersiz bir bileşen içeriyor.")
+                next_fd = os.open(safe_component, _DIR_FLAGS, dir_fd=directory_fd)
                 os.close(directory_fd)
                 directory_fd = next_fd
-            file_fd = os.open(parts[-1], _FILE_FLAGS, dir_fd=directory_fd)
+            safe_leaf = os.path.basename(parts[-1])
+            if safe_leaf != parts[-1]:
+                raise ProjectTreeError("Göreli proje yolu geçersiz bir bileşen içeriyor.")
+            file_fd = os.open(safe_leaf, _FILE_FLAGS, dir_fd=directory_fd)
             info = os.fstat(file_fd)
             if not stat.S_ISREG(info.st_mode):
                 raise ProjectTreeError("Proje girdisi normal bir dosya değil.")
