@@ -29,7 +29,7 @@ tree.
 | --- | --- |
 | Community metadata/release-surface validation | PASS — 43 required release files checked |
 | Assembled source validation | PASS — deterministic source builder completed; assembled tree passed the release-tree scan |
-| Python unittest launcher | 2,812 tests, 0 failures, 0 errors |
+| Python unittest launcher | 2,819 tests, 0 failures, 0 errors |
 | Python pytest modules | 204 passed |
 | JavaScript/Node tests | 432 passed, 0 failed |
 | CJK real-browser layout | PASS — Turkish, English, Japanese, Simplified Chinese, and Korean at desktop and mobile viewports (10/10) |
@@ -56,6 +56,14 @@ A subsequent analysis of the merged source reconstructed deeper call paths and r
 alerts. Eight were reproduced as real root/parent-directory races or polynomial-complexity defects and fixed. Three
 were redundant metadata checks or a defended fixed-glob read; they were removed or documented only after focused
 adversarial controls passed. Publication policy requires a fresh CI and CodeQL pass after these changes.
+
+The final full-tree review surfaced 100 additional alerts that were audited individually. Fifty-two were deliberate
+positive static-analysis fixtures and five were bounded loopback or temporary-project test patterns; all 57 were
+closed as **used in tests** with their test boundary recorded. Thirty-nine were closed as false positives only after
+the relevant allowlist, containment, no-follow, XML-entity, header, redirect, and redaction controls passed focused
+runtime checks. The remaining four caused code changes: one real SBOM saved-path identity race was fixed in the
+product, and three unnecessary test-harness patterns were replaced with safer equivalents. The candidate still
+requires a fresh PR and post-merge CodeQL run before a release tag is created.
 
 These numbers describe this exact snapshot. Future commits can legitimately change test totals, and optional-engine
 availability varies by host.
