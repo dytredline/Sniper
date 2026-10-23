@@ -44,6 +44,16 @@ python3 scripts/sniper-mcp --help
 The final command is intentionally side-effect free: it prints the actual stdio MCP options and does not open a
 database or start a scan.
 
+Install the supported rootless local tool profile with locked upstream artifacts after reviewing its third-party
+licenses:
+
+```bash
+python3 scripts/install-community-tools --profile local --accept-third-party-licenses
+```
+
+See [docs/COMMUNITY-TOOLS.md](docs/COMMUNITY-TOOLS.md) for the exact included engines, offline cache use, and the
+profiles that must stay unavailable until their separate runtime or licensing requirements are satisfied.
+
 ## AI-first MCP quick start
 
 Sniper's MCP server communicates only over the child process's stdin/stdout. Point an MCP client at the existing
@@ -119,7 +129,9 @@ project to evade access controls, scan unrelated systems, or conceal activity.
 Security Maintainer: **Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline)). See
 [SECURITY.md](SECURITY.md) for private vulnerability reporting,
 [SECURITY-MAINTAINERS.md](SECURITY-MAINTAINERS.md) for the role contract, and
-[CONTRIBUTING.md](CONTRIBUTING.md) for development rules.
+[CONTRIBUTING.md](CONTRIBUTING.md) for development rules. Community help boundaries are in
+[SUPPORT.md](SUPPORT.md), public changes are recorded in [CHANGELOG.md](CHANGELOG.md), and research attribution is
+available in [CITATION.cff](CITATION.cff).
 
 ## Validation and tests
 

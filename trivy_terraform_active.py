@@ -40,6 +40,11 @@ class TrivyConfigExecutionError(RuntimeError):
     pass
 
 
+def expected_trivy_sha256() -> str:
+    configured = os.environ.get("SNIPER_TRIVY_BINARY_SHA256", "").strip()
+    return configured if re.fullmatch(r"[0-9a-f]{64}", configured) else EXPECTED_TRIVY_SHA256
+
+
 class _VerifiedBinary:
     """Own a sealed, digest-verified executable snapshot until the child exits."""
 
@@ -110,7 +115,7 @@ def _trusted_binary() -> _VerifiedBinary:
                 raise TrivyConfigUnavailable("Doğrulanmış Trivy çalıştırılabiliri eksik.")
             digest.update(chunk)
             offset += len(chunk)
-        if digest.hexdigest() != EXPECTED_TRIVY_SHA256:
+        if digest.hexdigest() != expected_trivy_sha256():
             raise TrivyConfigUnavailable("Trivy ikilisi hash değeri uyuşmuyor.")
         verified = _VerifiedBinary(snapshot_fd)
         snapshot_fd = None

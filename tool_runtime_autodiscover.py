@@ -214,7 +214,13 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
     bindings: dict[str, str] = {}
     tool_results: list[dict[str, Any]] = []
 
-    # 1. Semgrep
+    # 1. Opengrep / Semgrep
+    opengrep_bin = _first_valid_file(
+        ([Path(dropin_defaults["SNIPER_OPENGREP_BINARY"])] if "SNIPER_OPENGREP_BINARY" in dropin_defaults else [])
+        + [r / "opengrep-1.30.1" / "opengrep" for r in portable_roots]
+        + [home / ".local" / "bin" / "opengrep", Path("/usr/local/bin/opengrep"), Path("/usr/bin/opengrep")],
+        executable=True,
+    )
     semgrep_bin = _first_valid_file(
         ([Path(dropin_defaults["SNIPER_SEMGREP_BINARY"])] if "SNIPER_SEMGREP_BINARY" in dropin_defaults else [])
         + [r / "semgrep" / "bin" / "semgrep" for r in portable_roots]
@@ -230,16 +236,23 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
         + [r / "semgrep-1.93.0" / "sniper-local-rules.yml" for r in portable_roots],
         executable=False,
     )
-    if semgrep_bin and semgrep_rules:
+    opengrep_sha = _sha256_file(opengrep_bin) if opengrep_bin else None
+    if opengrep_bin and opengrep_sha:
+        bindings["SNIPER_OPENGREP_BINARY"] = str(opengrep_bin)
+        bindings["SNIPER_OPENGREP_SHA256"] = opengrep_sha
+    elif semgrep_bin and semgrep_rules:
         bindings["SNIPER_SEMGREP_BINARY"] = str(semgrep_bin)
+        semgrep_sha = _sha256_file(semgrep_bin)
+        if semgrep_sha:
+            bindings["SNIPER_SEMGREP_SHA256"] = semgrep_sha
         bindings["SNIPER_SEMGREP_RULES"] = str(semgrep_rules)
     tool_results.append({
         "id": "semgrep",
-        "bound": bool(semgrep_bin and semgrep_rules),
-        "mode": "local_binary_and_rulepack",
+        "bound": bool((opengrep_bin and opengrep_sha) or (semgrep_bin and semgrep_rules)),
+        "mode": "pinned_opengrep_or_semgrep_rulepack",
     })
 
-    # 2. Trivy + Offline Vulnerability DB
+    # 2. Trivy binary; the offline vulnerability DB is an optional, separately pinned input.
     trivy_bin = _first_valid_file(
         ([Path(dropin_defaults["SNIPER_TRIVY_BINARY"])] if "SNIPER_TRIVY_BINARY" in dropin_defaults else [])
         + [r / "trivy" / "trivy" for r in portable_roots]
@@ -258,13 +271,17 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
         trivy_db_sha = _sha256_file(trivy_cache / "db" / "trivy.db")
     if trivy_bin:
         bindings["SNIPER_TRIVY_BINARY"] = str(trivy_bin)
+        trivy_sha = _sha256_file(trivy_bin)
+        if trivy_sha:
+            bindings["SNIPER_TRIVY_BINARY_SHA256"] = trivy_sha
+            bindings["SNIPER_TRIVY_SHA256"] = trivy_sha
     if trivy_cache and trivy_db_sha:
         bindings["SNIPER_TRIVY_VULN_CACHE_DIR"] = str(trivy_cache)
         bindings["SNIPER_TRIVY_VULN_DB_SHA256"] = trivy_db_sha
     tool_results.append({
         "id": "trivy",
-        "bound": bool(trivy_bin and trivy_cache and trivy_db_sha),
-        "mode": "local_binary_and_offline_db",
+        "bound": bool(trivy_bin),
+        "mode": "local_binary_with_optional_offline_db",
     })
 
     # 3. Gitleaks
@@ -277,6 +294,9 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
     )
     if gitleaks_bin:
         bindings["SNIPER_GITLEAKS_BINARY"] = str(gitleaks_bin)
+        gitleaks_sha = _sha256_file(gitleaks_bin)
+        if gitleaks_sha:
+            bindings["SNIPER_GITLEAKS_SHA256"] = gitleaks_sha
     tool_results.append({
         "id": "gitleaks",
         "bound": bool(gitleaks_bin),
@@ -293,6 +313,9 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
     )
     if trufflehog_bin:
         bindings["SNIPER_TRUFFLEHOG_BINARY"] = str(trufflehog_bin)
+        trufflehog_sha = _sha256_file(trufflehog_bin)
+        if trufflehog_sha:
+            bindings["SNIPER_TRUFFLEHOG_SHA256"] = trufflehog_sha
     tool_results.append({
         "id": "trufflehog",
         "bound": bool(trufflehog_bin),
@@ -523,7 +546,7 @@ def _autodiscover_locked(*, apply_env: bool, persist: bool, trust_disk: bool) ->
 
 
 def portable_bundle_manifest() -> dict[str, Any]:
-    """Return the zero-setup portable bundle specification for a brand-new PC."""
+    """Return an honest portable-bundle specification for this checkout and host."""
     readiness = runtime_readiness_payload()
     ready_by_tool: dict[str, bool] = {}
     for tool in readiness.get("tools", []):
@@ -533,6 +556,18 @@ def portable_bundle_manifest() -> dict[str, Any]:
         ready_by_tool[tid] = bool(active_profiles) and any(
             p.get("runtime") == "precheck_passed" for p in active_profiles
         )
+
+    app_dir = Path(__file__).resolve().parent
+    configured_root = os.environ.get("SNIPER_PORTABLE_RUNTIMES_DIR", "").strip()
+    roots = [app_dir / "runtimes", Path.home() / ".local" / "state" / "sniper-tool-runtimes"]
+    if configured_root:
+        roots.insert(0, Path(configured_root).expanduser())
+
+    def bundle_present(*relatives: str) -> bool:
+        return all(any(
+            (root / relative).exists() and not (root / relative).is_symlink()
+            for root in roots
+        ) for relative in relatives)
 
     components = [
         {
@@ -544,26 +579,29 @@ def portable_bundle_manifest() -> dict[str, Any]:
             "requires_docker": False,
             "approx_size_mb": 5,
             "ready_on_this_host": True,
+            "bundle_present": True,
         },
         {
             "id": "nuclei",
-            "name": "Nuclei 3.11.1 + Sabitlenmiş HTTP Şablon Kataloğu (11.655 şablon)",
-            "bundle_relpath": "runtimes/nuclei-3.11.1/ + runtimes/nuclei-templates-20261011/",
-            "packaging_type": "single_static_binary_and_data",
+            "name": "Nuclei 3.11.1 + Sniper'ın Yerleşik Sabitlenmiş Loopback Şablonu",
+            "bundle_relpath": "runtimes/nuclei-3.11.1/nuclei + templates/nuclei/local-powered-by.yaml",
+            "packaging_type": "single_static_binary_and_builtin_loopback_template",
             "requires_separate_install": False,
             "requires_docker": False,
             "approx_size_mb": 95,
             "ready_on_this_host": ready_by_tool.get("nuclei", False),
+            "bundle_present": bundle_present("nuclei-3.11.1/nuclei"),
         },
         {
             "id": "trivy",
-            "name": "Trivy 0.75.0 + Çevrimdışı Zafiyet Veritabanı (trivy.db)",
-            "bundle_relpath": "runtimes/trivy-0.75.0/trivy + runtimes/trivy-db/cache/",
-            "packaging_type": "single_static_binary_and_offline_db",
+            "name": "Trivy 0.75.0 (Yapılandırma; zafiyet profilleri ayrıca sabitlenmiş çevrimdışı DB ister)",
+            "bundle_relpath": "runtimes/trivy-0.75.0/trivy",
+            "packaging_type": "single_static_binary_optional_offline_db",
             "requires_separate_install": False,
             "requires_docker": False,
             "approx_size_mb": 160,
             "ready_on_this_host": ready_by_tool.get("trivy", False),
+            "bundle_present": bundle_present("trivy-0.75.0/trivy"),
         },
         {
             "id": "gitleaks",
@@ -574,6 +612,7 @@ def portable_bundle_manifest() -> dict[str, Any]:
             "requires_docker": False,
             "approx_size_mb": 18,
             "ready_on_this_host": ready_by_tool.get("gitleaks", False),
+            "bundle_present": bundle_present("gitleaks-8.30.1-stdlib/gitleaks"),
         },
         {
             "id": "trufflehog",
@@ -584,16 +623,18 @@ def portable_bundle_manifest() -> dict[str, Any]:
             "requires_docker": False,
             "approx_size_mb": 85,
             "ready_on_this_host": ready_by_tool.get("trufflehog", False),
+            "bundle_present": bundle_present("trufflehog-3.99.0-unpacked/trufflehog"),
         },
         {
             "id": "semgrep",
-            "name": "Semgrep 1.180.0 + Yerel Güvenlik Kural Paketi (YAML)",
-            "bundle_relpath": "runtimes/semgrep-1.180.0/ + runtimes/semgrep-1.180.0-smoke/rules/",
-            "packaging_type": "portable_venv_and_rulepack",
+            "name": "Opengrep 1.30.1 + Sniper Yerel Güvenlik Kural Paketi",
+            "bundle_relpath": "runtimes/opengrep-1.30.1/opengrep + rules/opengrep/sniper-core.yaml",
+            "packaging_type": "single_static_binary_and_builtin_rulepack",
             "requires_separate_install": False,
             "requires_docker": False,
             "approx_size_mb": 140,
             "ready_on_this_host": ready_by_tool.get("semgrep", False),
+            "bundle_present": bundle_present("opengrep-1.30.1/opengrep"),
         },
         {
             "id": "osv-scanner",
@@ -604,6 +645,7 @@ def portable_bundle_manifest() -> dict[str, Any]:
             "requires_docker": False,
             "approx_size_mb": 45,
             "ready_on_this_host": ready_by_tool.get("osv-scanner", False),
+            "bundle_present": bundle_present("osv-scanner/osv-scanner", "osv-db/NPM-OFFLINE-DB-MANIFEST-v2.json"),
         },
         {
             "id": "testssl",
@@ -614,6 +656,7 @@ def portable_bundle_manifest() -> dict[str, Any]:
             "requires_docker": False,
             "approx_size_mb": 5,
             "ready_on_this_host": ready_by_tool.get("testssl", False),
+            "bundle_present": bundle_present("testssl-3.2.4/testssl.sh"),
         },
         {
             "id": "npm-audit",
@@ -624,6 +667,7 @@ def portable_bundle_manifest() -> dict[str, Any]:
             "requires_docker": False,
             "approx_size_mb": 110,
             "ready_on_this_host": ready_by_tool.get("npm-audit", False),
+            "bundle_present": bundle_present("node-v22.23.4/bin/node"),
         },
         {
             "id": "owasp-zap",
@@ -634,6 +678,7 @@ def portable_bundle_manifest() -> dict[str, Any]:
             "requires_docker": False,
             "approx_size_mb": 420,
             "ready_on_this_host": ready_by_tool.get("owasp-zap", False),
+            "bundle_present": bundle_present("zap-2.17.0-arm64/zap/zap-2.17.0.jar"),
         },
         {
             "id": "nmap",
@@ -644,14 +689,27 @@ def portable_bundle_manifest() -> dict[str, Any]:
             "requires_docker": False,
             "approx_size_mb": 25,
             "ready_on_this_host": ready_by_tool.get("nmap", False),
+            "bundle_present": any(
+                path.is_file() and not path.is_symlink()
+                for path in (Path("/usr/bin/nmap"), Path("/usr/local/bin/nmap"))
+            ),
         },
     ]
 
+    for component in components:
+        if component["id"] != "sniper-core":
+            component["requires_separate_install"] = not bool(component["bundle_present"])
+
     return {
         "format": "sniper-portable-bundle-manifest-v1",
-        "zero_setup_supported": True,
+        "zero_setup_supported": all(bool(component["bundle_present"]) for component in components),
         "requires_manual_env_configuration": False,
         "requires_docker_for_core_and_local_tools": False,
+        "installer_command": (
+            "python3 scripts/install-community-tools --profile local "
+            "--accept-third-party-licenses"
+        ),
+        "license_acceptance_required": True,
         "total_estimated_bundle_mb": sum(int(c["approx_size_mb"]) for c in components),
         "components": components,
     }

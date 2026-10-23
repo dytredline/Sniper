@@ -38,6 +38,7 @@ release-signing.key
 # Docker
 *.tar
 .env
+/runtimes/
 
 # OS
 .DS_Store
