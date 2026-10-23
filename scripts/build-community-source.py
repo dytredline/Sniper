@@ -25,11 +25,11 @@ READ_CHUNK_BYTES = 1024 * 1024
 
 EXCLUDED_DIRS = frozenset({
     ".git", ".codebase-memory", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", ".venv",
-    "__pycache__", "node_modules", "runtimes", "data", "backup", "backups", "evidence",
+    "__pycache__", "node_modules", "runtimes", "data", "backup", "backups", "evidence", ".auth-field-keys",
     "dev-" + "evidence", "frozen-" + "evidence",
 })
 EXCLUDED_SUFFIXES = (
-    ".pyc", ".pyo", ".db", ".sqlite", ".sqlite3", "-wal", "-shm", "-journal",
+    ".pyc", ".pyo", ".db", ".sqlite", ".sqlite3", "-wal", "-shm", "-journal", ".key", ".tar",
 )
 EXCLUDED_NAMES = frozenset({"RELEASE.json", ".DS_Store", ".coverage"})
 EXCLUDED_NAMES_CASEFOLD = frozenset(name.casefold() for name in EXCLUDED_NAMES)
@@ -141,13 +141,18 @@ def _is_under(relative: str, parent: str) -> bool:
 
 def _excluded(relative: Path) -> bool:
     relative_text = relative.as_posix()
+    name_casefold = relative.name.casefold()
     if relative_text in CLOSED_DELIVERY_PATHS:
         return True
-    if any(part in EXCLUDED_DIRS for part in relative.parts[:-1]):
+    if any(part.casefold() in EXCLUDED_DIRS for part in relative.parts[:-1]):
         return True
-    if relative.name.endswith(EXCLUDED_SUFFIXES):
+    if name_casefold.endswith(EXCLUDED_SUFFIXES):
         return True
-    if relative.name.casefold() in EXCLUDED_NAMES_CASEFOLD or relative.name.startswith(".coverage."):
+    if name_casefold in EXCLUDED_NAMES_CASEFOLD or relative.name.startswith(".coverage."):
+        return True
+    if name_casefold == ".env" or name_casefold.startswith(".env."):
+        return True
+    if "auth-field-keys" in name_casefold and name_casefold.endswith(".json"):
         return True
     return any(_is_under(relative_text, item) for item in INTERNAL_EVALUATION_PATHS)
 
@@ -244,7 +249,7 @@ def _source_files(source: Path) -> tuple[list[SourceFile], int]:
                 if stat.S_ISLNK(observed.st_mode):
                     raise ValueError(f"symbolic links are not accepted: {relative_text}")
                 if stat.S_ISDIR(observed.st_mode):
-                    if any(part in EXCLUDED_DIRS for part in relative.parts):
+                    if any(part.casefold() in EXCLUDED_DIRS for part in relative.parts):
                         skipped += 1
                         continue
                     try:
