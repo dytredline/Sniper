@@ -1,0 +1,307 @@
+# sniper-i18n/1	ja
+S	Tarama raporu	スキャンレポート
+S	Yönetici özeti	エグゼクティブサマリー
+S	Kaydet	保存
+S	Kapat	閉じる
+S	Taramayı başlat	スキャンを開始
+S	Analizi başlat	分析を開始
+S	Proje klasörü	プロジェクトフォルダー
+S	Hedef seçin	対象を選択
+S	Kritik	重大
+S	Yüksek	高
+S	Orta	中
+S	Düşük	低
+S	Tamamlandı	完了
+S	Bekliyor	待機中
+S	Hata	エラー
+S	Oturum aç	ログイン
+S	Kullanıcı adı	ユーザー名
+S	Parola	パスワード
+S	Giriş yap	ログイン
+S	Doğrula	確認
+S	Genel bakış	概要
+S	Hedefler	対象
+S	Uygulama analizi	アプリケーション分析
+S	Bulgu takibi	検出事項の追跡
+S	Portföy ve SLA	ポートフォリオとSLA
+S	Manuel test	手動テスト
+S	Araç matrisi	ツールマトリクス
+S	Güvenlik laboratuvarı	セキュリティラボ
+S	Raporlar	レポート
+S	İşlem geçmişi	操作履歴
+S	Zamanlanmış taramalar	スケジュール済みスキャン
+S	Bildirimler	通知
+S	Güvenli profil	安全プロファイル
+S	Yerel ve düşük etkili	ローカル・低負荷
+S	Yerel servis etkin	ローカルサービス稼働中
+S	Yeni hedef	新しい対象
+S	İçeriğe geç	コンテンツへ移動
+S	Menüyü aç	メニューを開く
+S	Menüyü kapat	メニューを閉じる
+S	Ana menü	メインメニュー
+S	ÇALIŞMA ALANI	ワークスペース
+S	YÖNETİM	管理
+S	SON DURUM	最新状況
+S	Varlık sağlığı	資産の健全性
+S	BULGU DAĞILIMI	検出事項の分布
+S	Açık riskler	未解決リスク
+S	Tüm hedefler →	すべての対象 →
+S	Henüz ölçüm yok	測定データはまだありません
+S	ORTALAMA GÜVENLİK PUANI	平均セキュリティスコア
+S	Güvenli tarama ilkesi	安全なスキャン方針
+S	Önem	重要度
+S	Dosya	ファイル
+S	Durum	状態
+S	Analiz	分析
+S	Araçlar	ツール
+S	Ayarlar	設定
+S	Evet	はい
+S	Hayır	いいえ
+P	İstek {0} durum koduyla başarısız oldu.	リクエストはステータスコード {0} で失敗しました。
+P	{0} bulgu	検出事項 {0} 件
+S	Analiz başarısız oldu.	分析に失敗しました。
+S	Analiz karşılaştırma	分析の比較
+S	Analiz profili	分析プロファイル
+S	Analiz seçin	分析を選択
+S	Analizleri karşılaştır	分析を比較
+S	Arayüzden durum güncellendi.	画面から状態を更新しました。
+S	Araç / Biçim	ツール／形式
+S	ARAÇ / YÖNTEM	ツール／方法
+S	Araç bağlama başarısız oldu.	ツールの関連付けに失敗しました。
+S	Akışı çalıştır	フローを実行
+S	Arka planda çalıştır (iş kuyruğu)	バックグラウンドで実行（ジョブキュー）
+S	Atlandı (aynı hedefte iş var)	スキップ（同じ対象のジョブが存在します）
+S	Atlandı (önceki iş sürüyor)	スキップ（前のジョブが実行中です）
+S	Ayrıca kapanan bulgular	追加でクローズされた検出事項
+S	Ayrıntı	詳細
+S	Açık	未解決
+S	Açık Bulgu:	未解決の検出事項：
+S	Açık bulgu	未解決の検出事項
+S	Açık bulgu yok.	未解決の検出事項はありません。
+S	Açık güvenlik bulgusu tespit edilmedi.	未解決のセキュリティ検出事項はありません。
+S	Açık kaynak	オープンソース
+S	Açık kaynak / yerleşik	オープンソース／内蔵
+S	Açık onay gerekli	明示的な承認が必要です
+S	Açık port	開放ポート
+S	Açık tarama yetkisi onayı gerekli.	スキャン権限の明示的な承認が必要です。
+S	Açık yerel girdi onayıyla	ローカル入力の明示的な承認あり
+S	Açık yerel onay ve hedef gerekli	ローカル操作の明示的な承認と対象が必要です
+S	Açık yerel onay ve işlem gerekli	ローカル操作の明示的な承認とアクションが必要です
+S	Açık yerel tarama ve kanıt bağlama onayı gerekli.	ローカルスキャンと証拠の関連付けには明示的な承認が必要です。
+S	Açık yetki ve aktif tarama onayı gerekli.	明示的な権限付与とアクティブスキャンの承認が必要です。
+S	Bağlantı hatası oluştu.	接続エラーが発生しました。
+S	Bağlı toplu araç kanıtları	関連付けられたツール証拠の集計
+S	Bağlı toplu araç kanıtı bulunmuyor.	関連付けられたツール証拠の集計はありません。
+S	Başarısız	失敗
+S	Başarısız eşikler	不合格のしきい値
+S	Başarısız tarama	失敗したスキャン
+S	Başlangıç	開始
+S	Başlangıç (UTC)	開始（UTC）
+S	Benzer bulgu grupları hazırlanıyor…	類似する検出事項のグループを準備しています…
+S	Benzer bulguları toplu düzelt	類似する検出事項を一括修正
+S	Bildirim yok	通知はありません
+S	Bilgi	情報
+S	Bilinmiyor	不明
+S	Bir araç önerisi kontrolün tamamlandığı anlamına gelmez; sonuç uzman tarafından doğrulanır.	ツールの提案だけでは確認完了とはなりません。結果は専門家が検証します。
+S	Bir proje analizi tamamlandığında bulguları burada analizler arasında izlenir.	プロジェクト分析が完了すると、検出事項をここで分析間にわたって追跡できます。
+S	Bir proje seçin	プロジェクトを選択
+S	Bitiş	終了
+S	Bitiş (UTC)	終了（UTC）
+S	Biçim	形式
+S	Biçim:	形式：
+S	Bu analiz için tehdit modeli yok ve proje klasörü okunamıyor.	この分析には脅威モデルがなく、プロジェクトフォルダーも読み取れません。
+S	Bu araç için başka bir yalıtılmış çalıştırma sürüyor.	このツールの別の分離実行が進行中です。
+S	Bu bulgu için otomatik yama üretilemedi (yalnız metinsel öneri).	この検出事項の自動パッチを生成できませんでした（テキストによる提案のみ）。
+S	Bu bulgu için otomatik yama üretilemedi.	この検出事項の自動パッチを生成できませんでした。
+S	Bu bulgu türü için otomatik düzeltme önerisi yok.	この種類の検出事項に自動修正の提案はありません。
+S	Bu filtrede bulgu yok	このフィルターに該当する検出事項はありません
+S	Bu filtrede bulgu yok.	このフィルターに該当する検出事項はありません。
+S	Bu hedef için karşılaştırılabilecek daha eski tamamlanmış tarama yok.	この対象には比較できる過去の完了済みスキャンがありません。
+S	Bu hedef için zaten bir tarama çalışıyor.	この対象ではすでにスキャンが実行中です。
+S	Bu hedefte tamamlanmış temel tarama yok.	この対象には完了済みのベースラインスキャンがありません。
+S	Bu işi kuyruğa almak için yetkiniz yok.	このジョブをキューに追加する権限がありません。
+S	Bu işlem için yetkiniz yok.	この操作を行う権限がありません。
+S	Bu kategoride bulgu yok.	このカテゴリーに検出事項はありません。
+S	Bu kayıt yalnızca yerel planlama ve maskeli kanıt içindir.	この記録はローカルでの計画とマスキング済み証拠にのみ使用されます。
+S	Bu kullanıcı adı zaten var.	このユーザー名はすでに使用されています。
+S	Bu profil için önce bir proje denetimi, tarama veya çalışma kaydı oluşturun.	このプロファイルを使用する前に、プロジェクト監査、スキャン、または実行記録を作成してください。
+S	Bu profil kullanılamıyor: operatör izin listesi veya sabitlenmiş çalışma zamanı hazır değil.	このプロファイルは使用できません。オペレーターの許可リストまたは固定済みランタイムの準備ができていません。
+S	Bu profil yalnız satır içi içerikle çalışır; içerik alanını doldurun.	このプロファイルはインラインコンテンツでのみ動作します。コンテンツ欄を入力してください。
+S	Bu profil yapılandırılmamış veya kullanılamıyor.	このプロファイルは未設定か、使用できません。
+S	Bu rapor daha önce içe aktarılmış.	このレポートはすでにインポートされています。
+S	Bu sayılar otomatik doğrulanmış güvenlik açığı hükmü değildir; uzman incelemesi gerekir.	これらの数値は自動検証済みの脆弱性判定ではありません。専門家による確認が必要です。
+S	Bu sonuç dinamik ve manuel test gereksinimini ortadan kaldırmaz.	この結果によって動的テストや手動テストが不要になるわけではありません。
+S	Bu sonuç statik ve düşük etkili bir ön incelemedir; çalışan uygulama davranışını kanıtlamaz.	この結果は静的かつ低負荷の予備評価であり、実行中のアプリケーションの動作を証明するものではありません。
+S	Bu temel profilde risk işareti görülmedi.	このベースラインプロファイルではリスクの兆候は見つかりませんでした。
+S	Bulgu	検出事項
+S	Bulgu başlığı	検出事項のタイトル
+S	Bulgu başlığı yok	検出事項のタイトルがありません
+S	Bulgu bulunamadı.	検出事項が見つかりません。
+S	Bulgu durumu güncellendi; sonraki analizlere de taşınır.	検出事項の状態を更新しました。以降の分析にも引き継がれます。
+S	Bulgu kaydediliyor…	検出事項を保存しています…
+S	Bulgu sayısı	検出事項数
+S	Bulgu sayısı güvenli sınırı aşıyor.	検出事項数が安全上の上限を超えています。
+S	Bulgu takibi:	検出事項の追跡：
+S	Bulgu tespit edilmedi	検出事項はありません
+S	Bulgu türü	検出事項の種類
+S	Bulgu var	検出事項あり
+S	Bulgu yok	検出事項なし
+S	Bulgu:	検出事項：
+S	Bulgular	検出事項
+S	Bulgunun dosya yolu geçersiz.	検出事項のファイルパスが無効です。
+S	Bulgunun dosyası artık yok.	検出事項のファイルはすでに存在しません。
+S	Bulguyu güncelle	検出事項を更新
+S	Bulguyu güncelleyin	検出事項を更新してください
+S	Bulguyu kaydet	検出事項を保存
+S	CSV indir	CSVをダウンロード
+S	CycloneDX SBOM oluşturuldu	CycloneDX SBOMを作成しました
+S	CycloneDX SBOM üret	CycloneDX SBOMを生成
+S	Denetim açılamadı	監査を開けませんでした
+S	Denetim durumu	監査の状態
+S	Depo sahibi	リポジトリ所有者
+S	Depo, kilit dosyaları, SBOM ve CI	リポジトリ、ロックファイル、SBOM、CI
+S	Desteklenen kaynak kod veya bağımlılık bildirimi bulunamadı.	対応するソースコードまたは依存関係マニフェストが見つかりません。
+S	Değerlendirme durumu	評価状態
+S	Dosya okuma hatası.	ファイルの読み取りエラーです。
+S	Dosya okunamadı: izin veya yol hatası.	ファイルを読み取れませんでした。権限またはパスのエラーです。
+S	Dosya proje kökü dışında.	ファイルがプロジェクトルートの外にあります。
+S	Doğrulama başarısız.	検証に失敗しました。
+S	Doğrulanmamış toplam bulgu	未検証の検出事項合計
+S	Doğruluk panosu	精度ダッシュボード
+S	Durum bilinmiyor	状態は不明です
+S	Durum dağılımı	状態の分布
+S	Durum güncellendi.	状態を更新しました。
+S	Durum:	状態：
+S	Düzelen bulgular	修正済みの検出事項
+S	Dışa aktarma güvenliği	エクスポートのセキュリティ
+S	Eklenti Durumu	プラグインの状態
+S	Eklenti etkinleştirme başarısız oldu.	プラグインの有効化に失敗しました。
+S	Etkin bağımlılık bulgusu yok	有効な依存関係の検出事項はありません
+S	Formu aç	フォームを開く
+S	Genel durum	全体の状態
+S	Geçerli bir yerel proje klasörü girin.	有効なローカルプロジェクトフォルダーを入力してください。
+S	Geçerli bir yerel rapor dosyası girin.	有効なローカルレポートファイルを入力してください。
+S	Geçersiz bulgu durumu.	検出事項の状態が無効です。
+S	Geçersiz bulgu önem derecesi.	検出事項の重要度が無効です。
+S	Geçersiz durum filtresi.	状態フィルターが無効です。
+S	Geçersiz iş durumu.	ジョブの状態が無効です。
+S	Geçersiz proje yolu veya erişilebilirlik girdisi.	プロジェクトパスまたは到達可能性の入力が無効です。
+S	Geçersiz rapor	無効なレポート
+S	Geçersiz rapor türü.	レポートの種類が無効です。
+S	Geçersiz tarama özeti.	スキャン概要が無効です。
+S	Bağımlılık analizi	依存関係の分析
+S	Bağımlılık açıkları, IaC yanlış yapılandırmaları, container imajları ve sırlar.	依存関係の脆弱性、IaCの設定不備、コンテナイメージ、シークレット。
+S	Bağımlılık bulgusu bulunamadı.	依存関係の検出事項が見つかりません。
+S	Bağımlılık bulgusu durumu güncellendi.	依存関係の検出事項の状態を更新しました。
+S	Bağımlılık bulgusu güncellendi	依存関係の検出事項を更新しました
+S	Bağımlılık envanteri	依存関係インベントリ
+S	Bağımlılık envanteri (CycloneDX SBOM)	依存関係インベントリ（CycloneDX SBOM）
+S	Bağımlılık güvenliği (OSV-Scanner, çevrimdışı)	依存関係セキュリティ（OSV-Scanner、オフライン）
+S	Bağımlılık iyileştirme planı	依存関係の修復計画
+S	Bağımlılık kesintisi	依存関係の障害
+S	Bağımlılık raporu içe aktarıldı	依存関係レポートをインポートしました
+S	Bağımlılık sayısı güvenli sınırı aşıyor.	依存関係の数が安全上の上限を超えています。
+S	Bağımlılık uyarıları	依存関係のアラート
+S	Bağımlılık ve sürüm bildirimi	依存関係とバージョンの開示
+S	Bağımlılık zafiyet erişilebilirlik (Reachability) analizi	依存関係の脆弱性到達可能性（Reachability）分析
+S	Bağımlılıklar	依存関係
+S	Bir veya her iki SBOM kaydı bulunamadı veya farklı proje.	一方または両方のSBOM記録が見つからないか、異なるプロジェクトに属しています。
+S	SBOM kaydı bulunamadı.	SBOM記録が見つかりません。
+S	SBOM ve bağımlılık açıkları	SBOMと依存関係の脆弱性
+S	SBOM ve köken kanıtı	SBOMと来歴の証拠
+S	SBOM üretilemedi.	SBOMを生成できませんでした。
+S	SBOM üretiliyor…	SBOMを生成しています…
+S	SCA, IaC, sır ve imaj tarama	SCA、IaC、シークレット、イメージのスキャン
+S	Salt-okunur bağımlılık düzeltme planı	読み取り専用の依存関係修復計画
+S	Trivy Dockerfile yapılandırma taraması	Trivy Dockerfile設定スキャン
+S	Trivy Kubernetes manifest toplu taraması	Trivy Kubernetesマニフェスト一括スキャン
+S	Trivy Kubernetes toplu taraması başarısız oldu.	Trivy Kubernetes一括スキャンに失敗しました。
+S	Trivy Kubernetes yapılandırma taraması başarısız oldu.	Trivy Kubernetes設定スキャンに失敗しました。
+S	Trivy Terraform yapılandırma taraması	Trivy Terraform設定スキャン
+S	Trivy Terraform çoklu .tf dizin taraması	Trivy Terraform複数.tfディレクトリスキャン
+S	Trivy tek Kubernetes manifesti taraması	Trivy単一Kubernetesマニフェストスキャン
+S	Trivy yapılandırma tarayıcısı kullanılamıyor veya meşgul.	Trivy設定スキャナーは使用できないか、処理中です。
+S	Trivy zafiyet taraması	Trivy脆弱性スキャン
+S	Trivy zafiyet taraması başarısız oldu.	Trivy脆弱性スキャンに失敗しました。
+S	Trivy zafiyet tarayıcısı kullanılamıyor veya meşgul.	Trivy脆弱性スキャナーは使用できないか、処理中です。
+S	Trivy zafiyet veritabanı kullanılamıyor.	Trivy脆弱性データベースを使用できません。
+S	Konteyner ayrıcalıklı (root) kullanıcıyla çalışıyor	コンテナが特権（root）ユーザーで実行されています
+S	Konteyner içine docker.sock soketi bağlanmış	docker.sockソケットがコンテナにマウントされています
+S	Konteyner taban imajı sabitlenmemiş (:latest)	コンテナのベースイメージが固定されていません（:latest）
+S	Konteyner, Kubernetes ve CI/CD güvenliği	コンテナ、Kubernetes、CI/CDのセキュリティ
+S	Konteyner/Pod ana makine ağ uzayını (hostNetwork) paylaşıyor	コンテナ／Podがホストのネットワーク名前空間（hostNetwork）を共有しています
+S	Konteyner/Pod privileged (tam yetkili) modda çalışıyor	コンテナ／Podがprivileged（完全特権）モードで実行されています
+S	Konteyner imajı	コンテナイメージ
+S	Konteyner imajı / rootfs taraması	コンテナイメージ／rootfsスキャン
+S	Konteyner imajını yerelde incele	コンテナイメージをローカルで検査
+S	Konteyner taraması bulunamadı.	コンテナスキャンが見つかりません。
+S	İmaj ya da rootfs yolu	イメージまたはrootfsのパス
+S	İmaj arşivinde beklenen girdi yok.	イメージアーカイブに必要なエントリーがありません。
+S	İmaj dosyası tar arşivi olarak okunamadı.	イメージファイルをtarアーカイブとして読み取れませんでした。
+S	İmaj meta verisi geçerli JSON değil.	イメージのメタデータが有効なJSONではありません。
+S	İmaj yolu bulunamadı veya okunamıyor.	イメージのパスが見つからないか、読み取れません。
+S	İmaj okunamadı (izin, bozuk arşiv ya da bellek sınırı).	イメージを読み取れませんでした（権限、破損したアーカイブ、またはメモリ上限）。
+S	Terraform altyapı kaynağında şifreleme devre dışı (encrypted = false)	Terraformインフラストラクチャリソースで暗号化が無効です（encrypted = false）
+S	Terraform bulut depolama kaynağında herkese açık erişim	Terraformクラウドストレージリソースが一般公開されています
+S	Terraform güvenlik grubunda dünyaya açık (0.0.0.0/0) ağ erişimi	Terraformセキュリティグループで全世界（0.0.0.0/0）からのネットワークアクセスが許可されています
+S	Yerel Dockerfile taraması tamamlanamadı. Dockerfile dosyasını ve Trivy aracını denetleyin.	ローカルDockerfileスキャンを完了できませんでした。DockerfileとTrivyツールを確認してください。
+S	Yerel Kubernetes manifest taraması tamamlanamadı. Dosyaları ve Trivy aracını denetleyin.	ローカルKubernetesマニフェストのスキャンを完了できませんでした。ファイルとTrivyツールを確認してください。
+S	Yerel Terraform taraması tamamlanamadı. .tf dosyasını ve Trivy aracını denetleyin.	ローカルTerraformスキャンを完了できませんでした。.tfファイルとTrivyツールを確認してください。
+S	Kanıt	証拠
+S	Kanıt bağlama	証拠の関連付け
+S	Kanıt bağlamak için etkin denetimi ve test adımını seçin.	証拠を関連付ける有効な監査とテスト手順を選択してください。
+S	Kanıt hash’i zorunlu	証拠のハッシュは必須です
+S	Kanıt kaydı	証拠記録
+S	Kanıt referansı	証拠参照
+S	Kaynak kod	ソースコード
+S	Kaynak kod analizi için bir klasör seçin.	ソースコード分析用のフォルダーを選択してください。
+S	Kaynak kod, yapılandırma ve kilit dosyası denetimleri	ソースコード、設定、ロックファイルの検査
+S	Kaynak kodda doğrudan kullanılmıyor (dolaylı bağımlılık olabilir)	ソースコードでは直接使用されていません（推移的依存関係の可能性があります）
+S	Kaynak kodda sabit sır olasılığı	ソースコードにハードコードされたシークレットの可能性があります
+S	Rapor JSON içeriği	レポートのJSON内容
+S	Rapor JSON nesnesi veya dizisi olmalı.	レポートはJSONオブジェクトまたは配列である必要があります。
+S	Rapor SHA-256 kopyalama	レポートのSHA-256をコピー
+S	Rapor açılamadı	レポートを開けませんでした
+S	Rapor boyutu sınırı aşıldı.	レポートのサイズ上限を超えています。
+S	Rapor dosyası bulunamadı veya okunamıyor.	レポートファイルが見つからないか、読み取れません。
+S	Rapor doğrulanıyor…	レポートを検証しています…
+S	Rapor geçerli UTF-8 JSON değil.	レポートが有効なUTF-8 JSONではありません。
+S	Rapor geçmişi sayfaları	レポート履歴ページ
+S	Rapor geçmişi sayfası yüklenemedi.	レポート履歴ページを読み込めませんでした。
+S	Rapor içeriği	レポート内容
+S	Rapor türü	レポートの種類
+S	Rapor yolu normal bir dosya olmalıdır.	レポートのパスは通常ファイルである必要があります。
+S	Rapor yükleniyor	レポートを読み込んでいます
+S	Rapor çok büyük	レポートが大きすぎます
+S	Rapor önizlemesini aç	レポートのプレビューを開く
+S	Raporu aç	レポートを開く
+S	Risk kabulü	リスク受容
+S	Yanlış alarm	誤検知
+S	Sorumlu	担当者
+S	Son tarih	期限
+S	Sorumlu güncellendi.	担当者を更新しました。
+S	Son tarih güncellendi.	期限を更新しました。
+S	Son tarih kaldırıldı.	期限を削除しました。
+S	Sorumlu: atanmamış	担当者：未割り当て
+S	Son tarihler	期限
+S	Son tarihi geçen	期限超過
+S	Sorumlusuz etkin	担当者のいない有効な検出事項
+S	Sorumlusuz	担当者なし
+S	Hazır	準備完了
+S	Reddedildi	却下
+S	Zafiyet	脆弱性
+S	Zafiyet grubu sayısı	脆弱性グループ数
+S	Yetki / değişiklik referansı	権限／変更の参照
+S	Yetki referansı	権限参照
+S	Yetkili denetim	承認済み監査
+S	Yetkili denetim seçin	承認済み監査を選択
+S	Yetkili denetim ve test adımı seçin.	承認済み監査とテスト手順を選択してください。
+S	Yetkili denetim yüklenemedi.	承認済み監査を読み込めませんでした。
+S	Yetkili olduğumu onaylıyorum	権限があることを確認します
+S	Yerel proje dizini	ローカルプロジェクトディレクトリ
+S	Yerel proje klasörü	ローカルプロジェクトフォルダー
+S	Yerel proje yolu	ローカルプロジェクトパス
+S	Yerel raporu içe aktar	ローカルレポートをインポート
+S	Yerel analiz onayını işaretleyin.	ローカル分析の承認チェックボックスをオンにしてください。
+S	Yerel kontrolü açıkça onaylayın.	ローカル確認を明示的に承認してください。
+S	Claude Code, Codex gibi kodlama ajanları bulguları MCP sunucusu (scripts/sniper-mcp) ya da dosya paketiyle (cli_reports.py triage export) inceleyip öneri gönderir. Öneriler bulgu durumunu değiştirmez; kabul ettiğinizde bulgu takibine ve denetim kaydına "AI önerisiyle" notuyla yazılır. Bağlama: docs/AI-TRIYAJ.md.	Claude CodeやCodexなどのコーディングエージェントは、MCPサーバー（scripts/sniper-mcp）またはファイルパッケージ（cli_reports.py triage export）を介して検出事項を確認し、提案を送信します。提案だけで検出事項の状態は変わりません。承認すると、検出事項の追跡と監査ログに「AIの提案による」と記録されます。設定：docs/AI-TRIYAJ.md。

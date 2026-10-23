@@ -1,0 +1,304 @@
+# sniper-i18n/1	ko
+S	Tarama raporu	스캔 보고서
+S	Yönetici özeti	경영진 요약
+S	Kaydet	저장
+S	Kapat	닫기
+S	Taramayı başlat	스캔 시작
+S	Analizi başlat	분석 시작
+S	Proje klasörü	프로젝트 폴더
+S	Hedef seçin	대상 선택
+S	Kritik	심각
+S	Yüksek	높음
+S	Orta	보통
+S	Düşük	낮음
+S	Tamamlandı	완료
+S	Bekliyor	대기 중
+S	Hata	오류
+S	Oturum aç	로그인
+S	Kullanıcı adı	사용자 이름
+S	Parola	비밀번호
+S	Giriş yap	로그인
+S	Doğrula	확인
+S	Genel bakış	개요
+S	Hedefler	대상
+S	Uygulama analizi	애플리케이션 분석
+S	Bulgu takibi	발견 사항 추적
+S	Portföy ve SLA	포트폴리오 및 SLA
+S	Manuel test	수동 테스트
+S	Araç matrisi	도구 매트릭스
+S	Güvenlik laboratuvarı	보안 실험실
+S	Raporlar	보고서
+S	İşlem geçmişi	작업 기록
+S	Zamanlanmış taramalar	예약된 스캔
+S	Bildirimler	알림
+S	Güvenli profil	안전 프로필
+S	Yerel ve düşük etkili	로컬 및 저영향
+S	Yerel servis etkin	로컬 서비스 활성
+S	Yeni hedef	새 대상
+S	İçeriğe geç	콘텐츠로 이동
+S	Menüyü aç	메뉴 열기
+S	Menüyü kapat	메뉴 닫기
+S	Ana menü	기본 메뉴
+S	ÇALIŞMA ALANI	작업 공간
+S	YÖNETİM	관리
+S	SON DURUM	최근 상태
+S	Varlık sağlığı	자산 상태
+S	BULGU DAĞILIMI	발견 사항 분포
+S	Açık riskler	미해결 위험
+S	Tüm hedefler →	모든 대상 →
+S	Henüz ölçüm yok	아직 측정값이 없습니다
+S	ORTALAMA GÜVENLİK PUANI	평균 보안 점수
+S	Güvenli tarama ilkesi	안전 스캔 정책
+S	Önem	심각도
+S	Dosya	파일
+S	Durum	상태
+S	Analiz	분석
+S	Araçlar	도구
+S	Ayarlar	설정
+S	Evet	예
+S	Hayır	아니요
+P	İstek {0} durum koduyla başarısız oldu.	요청이 상태 코드 {0}(으)로 실패했습니다.
+P	{0} bulgu	발견 사항 {0}개
+S	Giriş başarısız.	로그인에 실패했습니다.
+S	Giriş etkin değil.	로그인이 활성화되어 있지 않습니다.
+S	Giriş zaten etkin.	로그인이 이미 활성화되어 있습니다.
+S	Girişi etkinleştir	로그인 활성화
+S	Giriş: kapalı (yalnız yerel erişim)	로그인: 꺼짐(로컬 액세스만)
+S	Oturum	세션
+S	Parolayı değiştir	비밀번호 변경
+S	Mevcut parola	현재 비밀번호
+S	Yeni parola	새 비밀번호
+S	Kullanıcı	사용자
+S	Kullanıcı bulunamadı.	사용자를 찾을 수 없습니다.
+S	Rol	역할
+S	Yönetici	관리자
+S	Bu işlem için yetkiniz yok.	이 작업을 수행할 권한이 없습니다.
+S	Bu işi kuyruğa almak için yetkiniz yok.	이 작업을 대기열에 추가할 권한이 없습니다.
+S	2FA sıfırla	2FA 재설정
+S	Doğrulama kodu	인증 코드
+S	Son giriş	마지막 로그인
+S	İptal	취소
+S	Geri	뒤로
+S	Yenile	새로 고침
+S	Yükleniyor…	불러오는 중…
+S	Başarısız	실패
+S	Uyarı	경고
+S	Bilgi	정보
+S	Bilinmiyor	알 수 없음
+S	Kullanılabilir	사용 가능
+S	Bağlantı hatası oluştu.	연결 오류가 발생했습니다.
+S	Proje	프로젝트
+S	Proje analizi	프로젝트 분석
+S	Proje analizleri	프로젝트 분석
+S	Proje analizi bulunamadı.	프로젝트 분석을 찾을 수 없습니다.
+S	Proje denetimi bulunamadı.	프로젝트 감사를 찾을 수 없습니다.
+S	Proje klasörü bulunamadı veya okunamıyor.	프로젝트 폴더를 찾을 수 없거나 읽을 수 없습니다.
+S	Proje klasörü veya satır içi içerik gereklidir.	프로젝트 폴더 또는 인라인 콘텐츠가 필요합니다.
+S	Proje klasörü yolu girin.	프로젝트 폴더 경로를 입력하세요.
+S	Proje yolu	프로젝트 경로
+S	Proje yolu gerekli.	프로젝트 경로가 필요합니다.
+S	Proje klasörünü yerelde incele	프로젝트 폴더를 로컬에서 검토
+S	Proje kod ve veri akışı analizi	프로젝트 코드 및 데이터 흐름 분석
+S	Proje geneli	프로젝트 전체
+S	Proje analizi — yalnız değişenler (git)	프로젝트 분석 — 변경된 항목만(git)
+S	Analiz profili	분석 프로필
+S	Analiz seçin	분석 선택
+S	Analiz karşılaştırma	분석 비교
+S	Analizleri karşılaştır	분석 비교
+S	Analiz başarısız oldu.	분석에 실패했습니다.
+S	Analiz edilebilir dosya kalmadı:	분석할 수 있는 파일이 없습니다:
+S	Kaynak kodu	소스 코드
+S	Dosya sayısı	파일 수
+S	Satır	줄
+S	Kural	규칙
+S	Kategori	범주
+S	Dil	언어
+S	Kapsam	범위
+S	Tarama kapsamı	스캔 범위
+S	Tarama kapsamı kaydedildi; proje yolu alan tüm yerel taramalara uygulanacak.	스캔 범위가 저장되었으며 프로젝트 경로를 사용하는 모든 로컬 스캔에 적용됩니다.
+S	Tarama kapsamı varsayılana döndü.	스캔 범위가 기본값으로 재설정되었습니다.
+S	Tarama kimliği	스캔 ID
+S	Tarama durumu	스캔 상태
+S	Tarama türü	스캔 유형
+S	Tarama sonucu	스캔 결과
+S	Tarama sonuçları burada görünür.	스캔 결과가 여기에 표시됩니다.
+S	Tarama başlatılıyor…	스캔을 시작하는 중…
+S	Tarama başladı	스캔이 시작되었습니다
+S	Tarama sırada	스캔 대기 중
+S	Tarama sıraya alındı	스캔이 대기열에 추가되었습니다
+S	Tarama tamamlandı.	스캔이 완료되었습니다.
+S	Tarama tamamlanamadı.	스캔을 완료하지 못했습니다.
+S	Tarama başlatılamadı.	스캔을 시작하지 못했습니다.
+S	Tarama bulunamadı.	스캔을 찾을 수 없습니다.
+S	Tarama durduruluyor…	스캔을 중지하는 중…
+S	Tarama durduruldu.	스캔이 중지되었습니다.
+S	Tarama güvenli profille başlatıldı.	안전 프로필로 스캔이 시작되었습니다.
+S	Taramalar	스캔
+S	Bulgu	발견 사항
+S	Bulgular	발견 사항
+S	Bulgu başlığı	발견 사항 제목
+S	Bulgu başlığı yok	발견 사항 제목 없음
+S	Bulgu bulunamadı.	발견 사항을 찾을 수 없습니다.
+S	Bulgu sayısı	발견 사항 수
+S	Bulgu türü	발견 사항 유형
+S	Bulgu tespit edilmedi	발견 사항이 감지되지 않았습니다
+S	Bulgu yok	발견 사항 없음
+S	Bulgu var	발견 사항 있음
+S	Açık bulgu	미해결 발견 사항
+S	Açık bulgu yok.	미해결 발견 사항이 없습니다.
+S	Yeni Bulgular	새 발견 사항
+S	Yeni	신규
+S	Yeniden açıldı	다시 열림
+S	Düzeltildi	수정됨
+S	Yanlış alarm	오탐
+S	Risk kabulü	위험 수용
+S	Bastırılan	억제됨
+S	Bulguyu güncelle	발견 사항 업데이트
+S	Bulguyu güncelleyin	발견 사항을 업데이트하세요
+S	Bulguyu kaydet	발견 사항 저장
+S	Bulgu kaydediliyor…	발견 사항 저장 중…
+S	Bulgu durumu güncellendi; sonraki analizlere de taşınır.	발견 사항 상태가 업데이트되었으며 이후 분석에도 이어집니다.
+S	Öneri	권장 사항
+S	Kanıt	증거
+S	CWE	CWE
+S	CVSS	CVSS
+S	SSVC	SSVC
+S	Risk	위험
+S	Risk puanı	위험 점수
+S	Çözüm	해결 방법
+S	Rapor	보고서
+S	HTML Rapor	HTML 보고서
+S	Rapor türü	보고서 유형
+S	Rapor içeriği	보고서 내용
+S	Rapor JSON'u	보고서 JSON
+S	Rapor JSON içeriği	보고서 JSON 내용
+S	Rapor SHA-256 kopyalama	보고서 SHA-256 복사
+S	Rapor yükleniyor	보고서 불러오는 중
+S	Rapor doğrulanıyor…	보고서 검증 중…
+S	Rapor önizlemesini aç	보고서 미리 보기 열기
+S	Raporu aç	보고서 열기
+S	Rapor açılamadı	보고서를 열 수 없습니다
+S	Rapor çok büyük	보고서가 너무 큽니다
+S	Rapor boyutu sınırı aşıldı.	보고서 크기 제한을 초과했습니다.
+S	Rapor dosyası bulunamadı veya okunamıyor.	보고서 파일을 찾을 수 없거나 읽을 수 없습니다.
+S	Rapor geçerli UTF-8 JSON değil.	보고서가 유효한 UTF-8 JSON이 아닙니다.
+S	Rapor bir JSON nesnesi olmalı.	보고서는 JSON 객체여야 합니다.
+S	Rapor JSON nesnesi veya dizisi olmalı.	보고서는 JSON 객체 또는 배열이어야 합니다.
+S	Rapor geçmişi sayfaları	보고서 기록 페이지
+S	Rapor geçmişi sayfası yüklenemedi.	보고서 기록 페이지를 불러오지 못했습니다.
+S	İçe aktar	가져오기
+S	Dışa aktar	내보내기
+S	Önizleme	미리 보기
+S	Denetim	감사
+S	Denetimler	감사
+S	Manuel denetim	수동 감사
+S	Denetim kimliği	감사 ID
+S	Etkin denetim	활성 감사
+S	Yetki referansı	권한 참조
+S	Açık onay gerekli	명시적 승인이 필요합니다
+S	Açık tarama yetkisi onayı gerekli.	명시적인 스캔 권한 승인이 필요합니다.
+S	Kaydetmek için onay kutusunu işaretleyin.	저장하려면 승인 확인란을 선택하세요.
+S	Silmek için onay kutusunu işaretleyin.	삭제하려면 승인 확인란을 선택하세요.
+S	Onaylıyorum	승인합니다
+S	Maskeli kanıt	마스킹된 증거
+S	Kapsam dışı	범위 밖
+S	Salt okunur	읽기 전용
+S	Çevrimdışı	오프라인
+S	Yerel / çevrimdışı	로컬 / 오프라인
+S	Yerel	로컬
+S	Güvenli kontroller çalışıyor	안전 검사가 실행 중입니다
+S	Güvenli kayıt hazırlanıyor…	안전한 레코드를 준비하는 중…
+S	Güvenli laboratuvar kaydı oluşturuldu	안전 실험실 레코드가 생성되었습니다
+S	İş kuyruğu	작업 대기열
+S	Kuyruğa al	대기열에 추가
+S	Çalışıyor	실행 중
+S	Durdur	중지
+S	Arka planda çalıştır (iş kuyruğu)	백그라운드에서 실행(작업 대기열)
+S	Araç / Biçim	도구 / 형식
+S	Araç bağlama başarısız oldu.	도구 연결에 실패했습니다.
+S	Yerel Araçları Tek Tuşla Algıla ve Bağla	한 번에 로컬 도구 감지 및 연결
+S	Yerleşik	내장
+S	İsteğe bağlı	선택 사항
+S	Kurulu	설치됨
+S	Hazır	준비됨
+S	Sürüm	버전
+S	SHA-256	SHA-256
+S	Motor	엔진
+S	Opengrep	Opengrep
+S	Yerel Nuclei JSONL rapor özetini göster	로컬 Nuclei JSONL 보고서 요약 표시
+S	Yerel Trivy native JSON özetini göster	로컬 Trivy 네이티브 JSON 요약 표시
+S	Yerel Gitleaks native JSON bulgu özetini göster	로컬 Gitleaks 네이티브 JSON 발견 사항 요약 표시
+S	Yerel TruffleHog JSONL rapor özetini göster	로컬 TruffleHog JSONL 보고서 요약 표시
+S	Yerel SARIF rapor özetini göster	로컬 SARIF 보고서 요약 표시
+S	MCP	MCP
+S	MCP sunucusu	MCP 서버
+S	Bağımlılık analizi	종속성 분석
+S	Bağımlılık envanteri	종속성 인벤토리
+S	Bağımlılık envanteri (CycloneDX SBOM)	종속성 인벤토리(CycloneDX SBOM)
+S	Bağımlılık güvenliği (OSV-Scanner, çevrimdışı)	종속성 보안(OSV-Scanner, 오프라인)
+S	Bağımlılık iyileştirme planı	종속성 개선 계획
+S	Bağımlılık raporu içe aktarıldı	종속성 보고서를 가져왔습니다
+S	Bağımlılık uyarıları	종속성 경고
+S	Bağımlılık ve sürüm bildirimi	종속성 및 버전 공개
+S	Bağımlılık zafiyet erişilebilirlik (Reachability) analizi	종속성 취약점 도달 가능성 분석
+S	Bağımlılıklar	종속성
+S	SBOM kaydı bulunamadı.	SBOM 레코드를 찾을 수 없습니다.
+S	SBOM ve bağımlılık açıkları	SBOM 및 종속성 취약점
+S	SBOM ve köken kanıtı	SBOM 및 출처 증거
+S	SBOM üretilemedi.	SBOM을 생성하지 못했습니다.
+S	SBOM üretiliyor…	SBOM 생성 중…
+S	CycloneDX SBOM üret	CycloneDX SBOM 생성
+S	CycloneDX SBOM oluşturuldu	CycloneDX SBOM이 생성되었습니다
+S	Kayıtlı SBOM farkı	저장된 SBOM 차이
+S	Kayıtlı SBOM farkı gösterilemedi.	저장된 SBOM 차이를 표시하지 못했습니다.
+S	Önceki SBOM	이전 SBOM
+S	Sonraki SBOM	이후 SBOM
+S	Container	컨테이너
+S	Konteyner, Kubernetes ve CI/CD güvenliği	컨테이너, Kubernetes 및 CI/CD 보안
+S	Konteyner taban imajı sabitlenmemiş (:latest)	컨테이너 기본 이미지가 고정되지 않음(:latest)
+S	Konteyner içine docker.sock soketi bağlanmış	docker.sock 소켓이 컨테이너에 마운트됨
+S	Konteyner ayrıcalıklı (root) kullanıcıyla çalışıyor	컨테이너가 권한 있는(root) 사용자로 실행됨
+S	Konteyner/Pod privileged (tam yetkili) modda çalışıyor	컨테이너/Pod가 privileged(전체 권한) 모드로 실행됨
+S	Konteyner/Pod ana makine ağ uzayını (hostNetwork) paylaşıyor	컨테이너/Pod가 호스트 네트워크 네임스페이스(hostNetwork)를 공유함
+S	Altyapı ve alan adı	인프라 및 도메인
+S	Altyapı yapılandırması	인프라 구성
+S	Kapsam içi ana makineler, DNS ve IaC	범위 내 호스트, DNS 및 IaC
+S	Terraform	Terraform
+S	Kubernetes	Kubernetes
+S	Dockerfile	Dockerfile
+S	CI/CD	CI/CD
+S	IaC	IaC
+S	SCA, IaC, sır ve imaj tarama	SCA, IaC, 비밀 및 이미지 스캔
+S	Sır taraması	비밀 스캔
+S	Yapılandırma	구성
+S	Yanlış yapılandırma	잘못된 구성
+S	Güvenlik başlıkları	보안 헤더
+S	Kimlik doğrulama	인증
+S	Yetkilendirme	권한 부여
+S	Veri akışı	데이터 흐름
+S	API güvenliği	API 보안
+S	API kimlik doğrulama	API 인증
+S	API şema doğrulaması	API 스키마 검증
+S	API kaynak sınırları	API 리소스 제한
+S	Ağ ve servis envanteri	네트워크 및 서비스 인벤토리
+S	Güvenlik puanı trendi	보안 점수 추세
+S	Güvenlik trendi	보안 추세
+S	Güvenlik	보안
+S	Açıklama	설명
+S	Ayrıntı	세부 정보
+S	Tarih	날짜
+S	Başlangıç	시작
+S	Bitiş	종료
+S	Son güncelleme	마지막 업데이트
+S	Önceki	이전
+S	Sonraki	다음
+S	Tümü	모두
+S	Ara	검색
+S	Seçin	선택
+S	Seçili	선택됨
+S	Sil	삭제
+S	Düzenle	편집
+S	Ekle	추가
+S	Oluştur	만들기
+S	Güncelle	업데이트
+S	Uygula	적용

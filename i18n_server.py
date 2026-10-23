@@ -1,9 +1,14 @@
-"""Sunucu tarafı dil katmanı: HTML raporlarını `?lang=en` ile İngilizce verir.
+"""Sunucu tarafı dil katmanı: HTML raporlarını ``?lang=...`` ile yerelleştirir.
 
-Arayüzdeki `static/i18n.js` ile aynı sözlüğü (`static/i18n-en.tsv`) ve aynı eşleştirme sırasını kullanır:
+Arayüzdeki ``static/i18n.js`` ile aynı TSV dil paketlerini ve aynı eşleştirme sırasını kullanır:
 tam eşleşme → yer tutuculu kalıp → madde imi → tarih → çok cümleli metin → ayırıcıyla bölme.
 Yalnız etiketler arasındaki metin ve title/aria-label/alt/placeholder öznitelikleri çevrilir;
 script/style/code/pre içerikleri ve sözlükte olmayan veriler (dosya yolları, bulgu kanıtı) değişmez.
+
+İngilizce temel/fallback pakettir; görünür arayüz dizgelerinin tamamını kapsadığı iddia edilmez.
+Japonca, Korece ve Basitleştirilmiş Çince paketleri yerelleştirilmiş dizgeleri bunun üzerine yazar.
+Seçili pakette bulunmayan metin, İngilizce girdisi varsa İngilizceye düşer; o da yoksa özgün Türkçe
+kaynak metin korunur. Yeni bir dil eklemek için yalnız paket kaydı, TSV dosyası ve sözleşme testi gerekir.
 """
 from __future__ import annotations
 
@@ -12,22 +17,45 @@ import html
 from pathlib import Path
 import re
 
-DICTIONARY_PATH = Path(__file__).resolve().parent / "static" / "i18n-en.tsv"
-SUPPORTED = frozenset({"tr", "en"})
+STATIC_DIR = Path(__file__).resolve().parent / "static"
+DICTIONARY_PATHS = {
+    "en": STATIC_DIR / "i18n-en.tsv",
+    "ja": STATIC_DIR / "i18n-ja.tsv",
+    "ko": STATIC_DIR / "i18n-ko.tsv",
+    "zh-CN": STATIC_DIR / "i18n-zh-CN.tsv",
+}
+DICTIONARY_PATH = DICTIONARY_PATHS["en"]  # geriye uyumlu dışa aktarım
+SUPPORTED = frozenset({"tr", *DICTIONARY_PATHS})
+_LANG_ALIASES = {
+    "tr": "tr",
+    "tr-tr": "tr",
+    "en": "en",
+    "en-us": "en",
+    "en-gb": "en",
+    "ja": "ja",
+    "ja-jp": "ja",
+    "ko": "ko",
+    "ko-kr": "ko",
+    "zh": "zh-CN",
+    "zh-cn": "zh-CN",
+    "zh-hans": "zh-CN",
+    "zh-hans-cn": "zh-CN",
+}
 SEPARATORS = (": ", " · ", " — ", " → ", " | ", "; ")
 _MONTHS = {"oca": "Jan", "şub": "Feb", "mar": "Mar", "nis": "Apr", "may": "May", "haz": "Jun",
            "tem": "Jul", "ağu": "Aug", "eyl": "Sep", "eki": "Oct", "kas": "Nov", "ara": "Dec"}
+_MONTH_NUMBERS = {name: index for index, name in enumerate(_MONTHS, start=1)}
 _DATE = re.compile(r"^(\d{1,2})[ .](Oca|Şub|Mar|Nis|May|Haz|Tem|Ağu|Eyl|Eki|Kas|Ara)[a-zçğıöşü]*\.?[ ](\d{4})(.*)$", re.I)
 _SKIP_BLOCK = re.compile(r"(<(script|style|code|pre)\b[^>]*>.*?</\2\s*>)", re.S | re.I)
 _ATTR = re.compile(r'(\s(?:title|aria-label|alt|placeholder)=")([^"]*)(")')
-_HTML_LANG = re.compile(r'(<html\b[^>]*\blang=")tr(")', re.I)
+_HTML_LANG = re.compile(r'(<html\b[^>]*\blang=")[^"]*(")', re.I)
 _SENTENCE_START = frozenset('ABCDEFGHIJKLMNOPQRSTUVWXYZÇĞİÖŞÜ0123456789"“(')
 _BULLET_MARKS = frozenset("•·—–-*")
 
 
 def normalize_lang(value: str | None) -> str:
-    value = (value or "tr").strip().lower()
-    return value if value in SUPPORTED else "tr"
+    value = (value or "tr").strip().replace("_", "-").lower()
+    return _LANG_ALIASES.get(value, "tr")
 
 
 def _normalize(text: str) -> str:
@@ -72,7 +100,8 @@ def _markup_pieces(text: str) -> list[str]:
 
 
 class Translator:
-    def __init__(self, data: dict):
+    def __init__(self, data: dict, locale: str = "en"):
+        self.locale = locale
         self.strings: dict[str, str] = dict(data.get("strings") or {})
         self.patterns = sorted((self._compile(src, dst) for src, dst in data.get("patterns") or []),
                                key=lambda p: -p["weight"])
@@ -208,7 +237,14 @@ class Translator:
         if hit is None:
             d = _DATE.match(core)
             if d and d.group(2).lower() in _MONTHS:
-                hit = f"{d.group(1)} {_MONTHS[d.group(2).lower()]} {d.group(3)}{d.group(4)}"
+                month_key = d.group(2).lower()
+                month_number = _MONTH_NUMBERS[month_key]
+                if self.locale in {"ja", "zh-CN"}:
+                    hit = f"{d.group(3)}年{month_number}月{d.group(1)}日{d.group(4)}"
+                elif self.locale == "ko":
+                    hit = f"{d.group(3)}년 {month_number}월 {d.group(1)}일{d.group(4)}"
+                else:
+                    hit = f"{d.group(1)} {_MONTHS[month_key]} {d.group(3)}{d.group(4)}"
         if hit is None:
             hit = self.sentences(core)
         if hit is None:
@@ -274,9 +310,32 @@ def parse_dictionary(text: str) -> dict:
     return data
 
 
-@lru_cache(maxsize=1)
-def translator() -> Translator:
-    return Translator(parse_dictionary(DICTIONARY_PATH.read_text(encoding="utf-8")))
+def _merged_dictionary(locale: str) -> dict:
+    """Return the English base with locale overrides, keyed by Turkish source text."""
+    base = parse_dictionary(DICTIONARY_PATHS["en"].read_text(encoding="utf-8"))
+    if locale == "en":
+        return base
+    overlay = parse_dictionary(DICTIONARY_PATHS[locale].read_text(encoding="utf-8"))
+    strings = dict(base["strings"])
+    strings.update(overlay["strings"])
+
+    patterns = dict(base["patterns"])
+    patterns.update(dict(overlay["patterns"]))
+    fragments = dict(base["fragments"])
+    fragments.update(dict(overlay["fragments"]))
+    return {
+        "strings": strings,
+        "patterns": list(patterns.items()),
+        "fragments": list(fragments.items()),
+    }
+
+
+@lru_cache(maxsize=len(DICTIONARY_PATHS))
+def translator(lang: str = "en") -> Translator:
+    locale = normalize_lang(lang)
+    if locale == "tr":
+        locale = "en"
+    return Translator(_merged_dictionary(locale), locale=locale)
 
 
 def _translate_markup(chunk: str, tr: Translator) -> str:
@@ -294,10 +353,11 @@ def _translate_markup(chunk: str, tr: Translator) -> str:
 
 
 def localize_html(document: str, lang: str | None) -> str:
-    """HTML belgeyi istenen dile çevirir; 'tr' (varsayılan) için belge değişmeden döner."""
-    if normalize_lang(lang) != "en":
+    """HTML belgeyi desteklenen dile çevirir; ``tr`` için belge değişmeden döner."""
+    locale = normalize_lang(lang)
+    if locale == "tr":
         return document
-    tr = translator()
+    tr = translator(locale)
     parts = _SKIP_BLOCK.split(document)
     out = []
     i = 0
@@ -309,4 +369,4 @@ def localize_html(document: str, lang: str | None) -> str:
             continue
         out.append(_translate_markup(part, tr))
         i += 1
-    return _HTML_LANG.sub(r"\1en\2", "".join(out))
+    return _HTML_LANG.sub(lambda match: f'{match.group(1)}{locale}{match.group(2)}', "".join(out))

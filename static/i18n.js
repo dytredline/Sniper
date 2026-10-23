@@ -1,10 +1,12 @@
-/* Sniper arayüz dil katmanı (Türkçe kaynak → İngilizce).
+/* Sniper arayüz dil katmanı (Türkçe kaynak → seçilen dil).
  *
  * Yaklaşım: arayüz metinleri Türkçe yazılmaya devam eder; bu katman Türkçe kaynak metni anahtar alan
- * sözlükle (static/i18n-en.tsv; proje analizörü .json içeriğini kural metni olarak taradığından düz metin) görünür metin düğümlerini ve placeholder/title/aria-label/alt/value
+ * TSV dil paketleriyle (proje analizörü .json içeriğini kural metni olarak taradığından düz metin) görünür metin düğümlerini ve placeholder/title/aria-label/alt/value
  * özniteliklerini çevirir. Panelleri üreten betiklere dokunmadan yeni kartları da yakalamak için
  * MutationObserver kullanılır. Çeviri yalnız nodeValue/setAttribute ile yapılır (innerHTML asla).
  * Değer içeren iletiler için sözlükteki "{0}" yer tutuculu kalıplar düzenli ifadeye çevrilir.
+ * İngilizce temel/fallback pakettir; ja/ko/zh-CN paketlerindeki yerelleştirilmiş girdiler onun üzerine yazılır.
+ * Eksik bir yerel çeviri İngilizce girdisi varsa ona düşer; o da yoksa özgün Türkçe kaynak korunur.
  * Özgün metin her düğüm için saklanır; Türkçeye dönüşte sayfa yenilenmeden geri yazılır.
  * Kod, kaynak, kanıt alanları (code, pre, textarea, kbd, samp, translate="no", data-i18n-skip) çevrilmez.
  */
@@ -12,7 +14,13 @@
   "use strict";
 
   const STORE_KEY = "sniper.lang";
-  const LANGS = ["tr", "en"];
+  const LANGS = ["tr", "en", "ja", "zh-CN", "ko"];
+  const DICTIONARY_URLS = {
+    en: "/i18n-en.tsv?v=1",
+    ja: "/i18n-ja.tsv?v=1",
+    "zh-CN": "/i18n-zh-CN.tsv?v=1",
+    ko: "/i18n-ko.tsv?v=1",
+  };
   const ATTRS = ["placeholder", "title", "aria-label", "alt"];
   const VALUE_INPUT_TYPES = new Set(["button", "submit", "reset"]);
   const SKIP_SELECTOR = "script,style,code,pre,textarea,kbd,samp,[translate='no'],[data-i18n-skip]";
@@ -26,16 +34,28 @@
   let compiled = [];        // [{prefix, suffix, re, out}]
   let fragments = [];       // [[tr, en]] uzunluğa göre azalan
   let observer = null;
-  let loading = null;
+  let selectionRevision = 0;
+  const dictionaries = new Map();
+  const loading = new Map();
   const cache = new Map();
   const textOrig = new WeakMap();   // Text → {src, out}
   const attrOrig = new WeakMap();   // Element → Map(attr → {src, out})
   const listeners = new Set();
 
+  function normalizeLang(value) {
+    const raw = String(value || "tr").trim().replace(/_/g, "-").toLowerCase();
+    const aliases = {
+      tr: "tr", "tr-tr": "tr", en: "en", "en-us": "en", "en-gb": "en",
+      ja: "ja", "ja-jp": "ja", ko: "ko", "ko-kr": "ko",
+      zh: "zh-CN", "zh-cn": "zh-CN", "zh-hans": "zh-CN", "zh-hans-cn": "zh-CN",
+    };
+    return aliases[raw] || "tr";
+  }
+
   function readStoredLang() {
     try {
       const value = global.localStorage && global.localStorage.getItem(STORE_KEY);
-      return LANGS.includes(value) ? value : "tr";
+      return LANGS.includes(normalizeLang(value)) ? normalizeLang(value) : "tr";
     } catch (_err) {
       return "tr";
     }
@@ -93,7 +113,7 @@
     return data;
   }
 
-  function setDictionary(data) {
+  function activateDictionary(data) {
     if (typeof data === "string") data = parseDictionary(data);
     if (!data || typeof data !== "object" || !data.strings) throw new Error("i18n sözlüğü geçersiz");
     dict = { strings: Object.assign(Object.create(null), data.strings), patterns: Array.isArray(data.patterns) ? data.patterns : [] };
@@ -103,6 +123,22 @@
       .sort((a, b) => b[0].length - a[0].length);
     cache.clear();
     keysCache = null;
+  }
+
+  function setDictionary(data, locale) {
+    if (typeof data === "string") data = parseDictionary(data);
+    if (locale) dictionaries.set(normalizeLang(locale), data);
+    activateDictionary(data);
+  }
+
+  function mergeDictionaries(base, overlay) {
+    const strings = Object.assign(Object.create(null), base.strings || {}, overlay.strings || {});
+    const keyed = (rows) => new Map((rows || []).map(([src, dst]) => [src, dst]));
+    const patterns = keyed(base.patterns);
+    for (const [src, dst] of overlay.patterns || []) patterns.set(src, dst);
+    const fragments = keyed(base.fragments);
+    for (const [src, dst] of overlay.fragments || []) fragments.set(src, dst);
+    return { strings, patterns: Array.from(patterns), fragments: Array.from(fragments) };
   }
 
   function normalize(text) {
@@ -169,12 +205,18 @@
 
   // Türkçe yerel ayarla biçimlenmiş tarihler ("19 Eyl 2026 13:00", "1 Eylül 2026"): ay adı İngilizceye çevrilir.
   const MONTHS = { oca: "Jan", şub: "Feb", mar: "Mar", nis: "Apr", may: "May", haz: "Jun", tem: "Jul", ağu: "Aug", eyl: "Sep", eki: "Oct", kas: "Nov", ara: "Dec" };
+  const MONTH_NUMBERS = { oca: 1, şub: 2, mar: 3, nis: 4, may: 5, haz: 6, tem: 7, ağu: 8, eyl: 9, eki: 10, kas: 11, ara: 12 };
   const DATE_TR = /^(\d{1,2})[ .](Oca|Şub|Mar|Nis|May|Haz|Tem|Ağu|Eyl|Eki|Kas|Ara)[a-zçğıöşü]*\.?[ ](\d{4})(.*)$/i;
   function translateDate(core) {
     const m = DATE_TR.exec(core);
     if (!m) return null;
-    const month = MONTHS[m[2].toLocaleLowerCase("tr")];
-    return month ? `${m[1]} ${month} ${m[3]}${m[4]}` : null;
+    const monthKey = m[2].toLocaleLowerCase("tr");
+    const month = MONTHS[monthKey];
+    const monthNumber = MONTH_NUMBERS[monthKey];
+    if (!month || !monthNumber) return null;
+    if (lang === "ja" || lang === "zh-CN") return `${m[3]}年${monthNumber}月${m[1]}日${m[4]}`;
+    if (lang === "ko") return `${m[3]}년 ${monthNumber}월 ${m[1]}일${m[4]}`;
+    return `${m[1]} ${month} ${m[3]}${m[4]}`;
   }
 
   // "14 kritik, 19 yüksek, 2 düşük" gibi virgüllü listeler: YALNIZ her öğe çevrilebiliyorsa öğe öğe çevrilir (22. tur QA;
@@ -400,15 +442,28 @@
     }
   }
 
-  function loadDictionary() {
-    if (dict) return Promise.resolve(dict);
-    if (loading) return loading;
+  function fetchDictionary(locale) {
+    if (dictionaries.has(locale)) return Promise.resolve(dictionaries.get(locale));
+    if (loading.has(locale)) return loading.get(locale);
     if (typeof global.fetch !== "function") return Promise.reject(new Error("fetch yok"));
-    loading = global.fetch("/i18n-en.tsv?v=1", { credentials: "same-origin" })
+    const request = global.fetch(DICTIONARY_URLS[locale], { credentials: "same-origin" })
       .then((r) => { if (!r.ok) throw new Error("sözlük alınamadı: " + r.status); return r.text(); })
-      .then((data) => { setDictionary(data); return dict; })
-      .finally(() => { loading = null; });
-    return loading;
+      .then((text) => {
+        const data = parseDictionary(text);
+        dictionaries.set(locale, data);
+        return data;
+      })
+      .finally(() => { loading.delete(locale); });
+    loading.set(locale, request);
+    return request;
+  }
+
+  function loadDictionary(locale) {
+    locale = normalizeLang(locale);
+    if (locale === "tr") return Promise.resolve(null);
+    if (locale === "en") return fetchDictionary("en");
+    return Promise.all([fetchDictionary("en"), fetchDictionary(locale)])
+      .then(([base, overlay]) => mergeDictionaries(base, overlay));
   }
 
   function syncSelectors(doc) {
@@ -425,11 +480,19 @@
 
   /** Dili değiştirir (sayfa yenilenmez). */
   function setLang(value, options) {
-    const next = LANGS.includes(value) ? value : "tr";
+    const next = normalizeLang(value);
+    const revision = ++selectionRevision;
     const doc = (options && options.document) || global.document;
     if (!(options && options.persist === false)) storeLang(next);
-    if (next === "en" && !dict) {
-      return loadDictionary().then(() => { lang = next; apply(doc); return lang; }, (err) => {
+    if (next !== "tr") {
+      return loadDictionary(next).then((data) => {
+        if (revision !== selectionRevision) return lang;
+        activateDictionary(data);
+        lang = next;
+        apply(doc);
+        return lang;
+      }, (err) => {
+        if (revision !== selectionRevision) return lang;
         lang = "tr";
         apply(doc);
         if (global.console) global.console.warn("Sniper i18n:", err && err.message);
@@ -465,6 +528,7 @@
     source,
     setDictionary,
     parseDictionary,
+    normalizeLang,
     applyTree,
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     _compilePattern: compilePattern,
