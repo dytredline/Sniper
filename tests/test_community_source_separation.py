@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import os
 from pathlib import Path
@@ -304,6 +305,92 @@ assert 'entitlement' not in payload
             builder.build(source, output)
         self.assertFalse(opened_excluded)
         self.assertFalse((output / "data/sniper.db").exists())
+
+    def test_builder_excludes_installed_tool_runtimes_without_reading_them(self) -> None:
+        builder = _load(BUILDER, "community_tool_runtime_exclusion_builder_test")
+        source = self.root / "minimal-tool-runtime-source"
+        runtime = source / "runtimes" / "demo-1.0"
+        runtime.mkdir(parents=True)
+        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
+        installed_binary = runtime / "demo"
+        installed_binary.write_bytes(b"third-party-runtime-must-not-be-read")
+        install_manifest = source / "runtimes" / "SNIPER-COMMUNITY-TOOLS-MANIFEST.json"
+        install_manifest.write_text('{"schema":"local-runtime"}\n', encoding="utf-8")
+        output = self.root / "tool-runtime-output"
+
+        real_open = builder.os.open
+        opened_runtime_payload = False
+
+        def observing_open(path, flags, *args, **kwargs):
+            nonlocal opened_runtime_payload
+            if path in {"demo", "SNIPER-COMMUNITY-TOOLS-MANIFEST.json"} \
+                    and kwargs.get("dir_fd") is not None:
+                opened_runtime_payload = True
+                raise AssertionError("installed tool runtime payload was opened")
+            return real_open(path, flags, *args, **kwargs)
+
+        with mock.patch.object(builder.os, "open", side_effect=observing_open):
+            builder.build(source, output)
+        self.assertFalse(opened_runtime_payload)
+        self.assertFalse((output / "runtimes").exists())
+        self.assertTrue((output / "COMMUNITY_VERSION").is_file())
+
+    def test_builder_excludes_local_codebase_index_without_reading_it(self) -> None:
+        builder = _load(BUILDER, "community_codebase_index_exclusion_builder_test")
+        source = self.root / "minimal-codebase-index-source"
+        index = source / ".codebase-memory"
+        index.mkdir(parents=True)
+        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
+        graph = index / "graph.db.zst"
+        graph.write_bytes(b"local-structural-index-must-not-be-published")
+        output = self.root / "codebase-index-output"
+
+        real_open = builder.os.open
+        opened_index = False
+
+        def observing_open(path, flags, *args, **kwargs):
+            nonlocal opened_index
+            if path == "graph.db.zst" and kwargs.get("dir_fd") is not None:
+                opened_index = True
+                raise AssertionError("local codebase index was opened")
+            return real_open(path, flags, *args, **kwargs)
+
+        with mock.patch.object(builder.os, "open", side_effect=observing_open):
+            builder.build(source, output)
+        self.assertFalse(opened_index)
+        self.assertFalse((output / ".codebase-memory").exists())
+        self.assertTrue((output / "COMMUNITY_VERSION").is_file())
+
+    def test_validator_rejects_manifest_listed_nested_runtime_artifacts(self) -> None:
+        validator = _load(VALIDATOR, "community_tool_runtime_rejection_validator_test")
+        self.assertEqual(validator.validate(self.output, scan_release_tree=True), [])
+        runtime = self.output / "runtimes" / "demo-1.0"
+        runtime.mkdir(parents=True)
+        installed_binary = runtime / "demo"
+        installed_binary.write_bytes(b"manifest-listed-third-party-runtime")
+        install_manifest = self.output / "runtimes" / "SNIPER-COMMUNITY-TOOLS-MANIFEST.json"
+        install_manifest.write_text('{"schema":"local-runtime"}\n', encoding="utf-8")
+        source_manifest = self.output / "COMMUNITY-SOURCE-MANIFEST.sha256"
+        original_manifest = source_manifest.read_bytes()
+        additions = []
+        for path in (installed_binary, install_manifest):
+            relative = path.relative_to(self.output).as_posix()
+            additions.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {relative}\n")
+        source_manifest.write_bytes(original_manifest + "".join(additions).encode("utf-8"))
+        try:
+            failures = validator.validate(self.output, scan_release_tree=True)
+        finally:
+            source_manifest.write_bytes(original_manifest)
+            installed_binary.unlink()
+            runtime.rmdir()
+            install_manifest.unlink()
+            install_manifest.parent.rmdir()
+
+        self.assertTrue(
+            any("forbidden artifact directory" in failure and "runtimes" in failure for failure in failures),
+            failures,
+        )
+        self.assertFalse(any("manifest:" in failure for failure in failures), failures)
 
     def test_builder_and_validator_fail_closed_on_oversized_regular_file(self) -> None:
         builder = _load(BUILDER, "community_size_bound_builder_test")

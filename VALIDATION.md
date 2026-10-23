@@ -29,9 +29,11 @@ tree.
 | --- | --- |
 | Community metadata/release-surface validation | PASS — 28 required release files checked |
 | Assembled source validation | PASS — deterministic source builder completed; assembled tree passed the release-tree scan |
-| Python unittest launcher | 2,787 tests, 0 failures, 0 errors |
-| Python pytest modules | 167 passed |
+| Python unittest launcher | 2,802 tests, 0 failures, 0 errors |
+| Python pytest modules | 188 passed |
 | JavaScript/Node tests | 426 passed, 0 failed |
+| Locked tool installer smoke | PASS — five Linux ARM64 Community tools installed and reverified from an offline cache; no scanner executed |
+| One-command offline setup smoke | PASS — parseable JSON result, five provenance-bound tools, and both real help entrypoints |
 | Changed-file Python compilation and JavaScript syntax | PASS |
 | Docker Compose configuration | PASS in GitHub Actions |
 | Community container image build | PASS in GitHub Actions |
@@ -59,7 +61,7 @@ availability varies by host.
 Use Python 3.12 and the pinned dependency locks:
 
 ```bash
-python3 -m pip install -r requirements-runtime.lock -r requirements-test.lock
+python3 -m pip install --no-deps -r requirements-runtime.lock -r requirements-test.lock
 python3 .github/scripts/validate-community-release.py
 python3 scripts/run_all_tests.py --verbose
 ```

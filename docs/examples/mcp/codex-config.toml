@@ -1,5 +1,5 @@
 [mcp_servers.sniper-triage]
-command = "python3"
+command = "/ABSOLUTE/PATH/TO/sniper/.venv/bin/python"
 args = [
   "/ABSOLUTE/PATH/TO/sniper/scripts/sniper-mcp",
   "--mode",

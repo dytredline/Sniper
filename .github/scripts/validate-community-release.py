@@ -75,8 +75,8 @@ REQUIRED_TEXT = {
     ),
     "VALIDATION.md": (
         "Sniper Community validation evidence",
-        "2,787 tests, 0 failures, 0 errors",
-        "167 passed",
+        "2,802 tests, 0 failures, 0 errors",
+        "188 passed",
         "426 passed, 0 failed",
         "not a security certification",
         "No step in this validation snapshot scans an external website",
@@ -220,7 +220,7 @@ REQUIRED_TEXT = {
         "consent_scope",
         "MCP host",
         "model provider",
-        "python3 scripts/sniper-mcp --help",
+        ".venv/bin/python scripts/sniper-mcp --help",
     ),
 }
 
@@ -241,8 +241,8 @@ FORBIDDEN_RELEASE_SURFACE = {
 }
 
 FORBIDDEN_ARTIFACT_DIRS = frozenset({
-    "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", "node_modules",
-    "data", "backups", "backup", "evidence", "dev-" + "evidence", "frozen-" + "evidence",
+    "__pycache__", ".codebase-memory", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", "node_modules",
+    "runtimes", "data", "backups", "backup", "evidence", "dev-" + "evidence", "frozen-" + "evidence",
 })
 FORBIDDEN_ARTIFACT_NAMES = frozenset({"release.json", ".coverage"})
 FORBIDDEN_ARTIFACT_SUFFIXES = (
@@ -793,8 +793,9 @@ def validate(root: Path, *, scan_release_tree: bool = False) -> list[str]:
         try:
             payload = json.loads(text)
             server = payload["mcpServers"]["sniper-triage"]
-            if server.get("command") != "python3" or not isinstance(server.get("args"), list):
-                raise ValueError("expected python3 command and args array")
+            if not str(server.get("command", "")).endswith("/.venv/bin/python") \
+                    or not isinstance(server.get("args"), list):
+                raise ValueError("expected repository venv Python command and args array")
             args = server["args"]
             if not all(isinstance(value, str) for value in args):
                 raise ValueError("all args must be strings")
@@ -817,8 +818,9 @@ def validate(root: Path, *, scan_release_tree: bool = False) -> list[str]:
         try:
             payload = tomllib.loads(toml_text)
             server = payload["mcp_servers"]["sniper-triage"]
-            if server.get("command") != "python3" or not isinstance(server.get("args"), list):
-                raise ValueError("expected python3 command and args array")
+            if not str(server.get("command", "")).endswith("/.venv/bin/python") \
+                    or not isinstance(server.get("args"), list):
+                raise ValueError("expected repository venv Python command and args array")
             args = server["args"]
             if "--mode" not in args or args.index("--mode") + 1 >= len(args) \
                     or args[args.index("--mode") + 1] != "community" or "--db" in args:

@@ -24,8 +24,8 @@ MAX_SNAPSHOT_BYTES = 512 * 1024 * 1024
 READ_CHUNK_BYTES = 1024 * 1024
 
 EXCLUDED_DIRS = frozenset({
-    ".git", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", ".venv",
-    "__pycache__", "node_modules", "data", "backup", "backups", "evidence",
+    ".git", ".codebase-memory", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", ".venv",
+    "__pycache__", "node_modules", "runtimes", "data", "backup", "backups", "evidence",
     "dev-" + "evidence", "frozen-" + "evidence",
 })
 EXCLUDED_SUFFIXES = (
@@ -244,6 +244,9 @@ def _source_files(source: Path) -> tuple[list[SourceFile], int]:
                 if stat.S_ISLNK(observed.st_mode):
                     raise ValueError(f"symbolic links are not accepted: {relative_text}")
                 if stat.S_ISDIR(observed.st_mode):
+                    if any(part in EXCLUDED_DIRS for part in relative.parts):
+                        skipped += 1
+                        continue
                     try:
                         child_fd = os.open(name, directory_flags, dir_fd=directory_fd)
                     except OSError as exc:

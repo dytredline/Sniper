@@ -18,7 +18,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends git libseccomp2
 # The exact dependency version is shared by source and container profiles.
 COPY requirements-runtime.lock ./
 RUN pip install --no-cache-dir --disable-pip-version-check --no-deps -r requirements-runtime.lock \
-    && python -c "import cryptography; assert cryptography.__version__ == '50.0.2'"
+    && python -m pip check \
+    && python -c "import cffi, cryptography, pycparser; assert cryptography.__version__ == '50.0.2'"
 
 # Create a non‑root user to run the application
 RUN addgroup --system sniper && \

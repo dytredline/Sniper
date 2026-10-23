@@ -18,7 +18,6 @@ from community_setup import SetupError, setup_community  # noqa: E402
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--venv-dir", type=Path, default=Path(".venv"))
-    parser.add_argument("--install-dir", type=Path, default=Path("runtimes"))
     parser.add_argument("--wheelhouse", type=Path)
     parser.add_argument("--tool-cache-dir", type=Path)
     parser.add_argument(
@@ -31,7 +30,6 @@ def main(argv: list[str] | None = None) -> int:
         result = setup_community(
             APP_ROOT,
             venv_dir=args.venv_dir,
-            install_dir=args.install_dir,
             cache_dir=args.tool_cache_dir,
             wheelhouse=args.wheelhouse,
             accept_third_party_licenses=args.accept_third_party_licenses,
