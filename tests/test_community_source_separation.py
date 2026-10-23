@@ -361,6 +361,49 @@ assert 'entitlement' not in payload
         self.assertFalse((output / ".codebase-memory").exists())
         self.assertTrue((output / "COMMUNITY_VERSION").is_file())
 
+    def test_builder_excludes_deployment_secrets_and_archives(self) -> None:
+        builder = _load(BUILDER, "community_deployment_secret_exclusion_test")
+        source = self.root / "minimal-secret-name-source"
+        source.mkdir()
+        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
+        secret_paths = (
+            source / ".env",
+            source / ".env.local",
+            source / "release-signing.key",
+            source / "RECOVERY.KEY",
+            source / "auth-field-keys.recovery.json",
+            source / "container-image.tar",
+            source / ".auth-field-keys" / "active.json",
+        )
+        for path in secret_paths:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("synthetic-secret-material\n", encoding="utf-8")
+        output = self.root / "secret-name-output"
+
+        builder.build(source, output)
+
+        for path in secret_paths:
+            self.assertFalse((output / path.relative_to(source)).exists(), path.name)
+        self.assertTrue((output / "COMMUNITY_VERSION").is_file())
+
+    def test_validator_rejects_manifest_listed_environment_file(self) -> None:
+        validator = _load(VALIDATOR, "community_environment_rejection_validator_test")
+        self.assertEqual(validator.validate(self.output, scan_release_tree=True), [])
+        environment = self.output / ".env"
+        environment.write_text("GRAFANA_ADMIN_PASSWORD=synthetic-secret-value\n", encoding="utf-8")
+        source_manifest = self.output / "COMMUNITY-SOURCE-MANIFEST.sha256"
+        original_manifest = source_manifest.read_bytes()
+        entry = f"{hashlib.sha256(environment.read_bytes()).hexdigest()}  .env\n".encode("utf-8")
+        source_manifest.write_bytes(original_manifest + entry)
+        try:
+            failures = validator.validate(self.output, scan_release_tree=True)
+        finally:
+            source_manifest.write_bytes(original_manifest)
+            environment.unlink()
+
+        self.assertTrue(any("forbidden secret-bearing filename: .env" in failure for failure in failures), failures)
+        self.assertFalse(any("manifest:" in failure for failure in failures), failures)
+
     def test_validator_rejects_manifest_listed_nested_runtime_artifacts(self) -> None:
         validator = _load(VALIDATOR, "community_tool_runtime_rejection_validator_test")
         self.assertEqual(validator.validate(self.output, scan_release_tree=True), [])
