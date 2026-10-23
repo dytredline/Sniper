@@ -1,0 +1,295 @@
+from __future__ import annotations
+
+import fcntl
+import hashlib
+import json
+import os
+import stat
+import subprocess
+import tempfile
+from pathlib import Path
+from typing import Any
+
+from project_analyzer import validate_project_path, ProjectRejected
+from trivy_vuln_active import (
+    TrivyVulnUnavailable,
+    TrivyVulnBusy,
+    TrivyVulnExecutionError,
+    _streaming_sha256,
+)
+
+
+class TrivyImageArchiveInvalidInput(ValueError):
+    pass
+
+
+def run_local_trivy_image_archive_vulnerability(
+    project_path: str, archive_name: str
+) -> dict[str, Any]:
+    # Validate project path — restrict to home-only (no external mounts)
+    src_root = validate_project_path(
+        project_path, allowed_roots=(Path.home().resolve(),)
+    )
+
+    # Validate archive_name: basename only, no traversal, no symlinks, must end .tar
+    if not isinstance(archive_name, str) or not archive_name.strip():
+        raise TrivyImageArchiveInvalidInput("archive_name boş olmayan bir metin olmalı")
+    if "\0" in archive_name or "/" in archive_name or "\\" in archive_name:
+        raise TrivyImageArchiveInvalidInput("archive_name yalnız bir dosya adı olmalı")
+    if not archive_name.endswith(".tar"):
+        raise TrivyImageArchiveInvalidInput("archive_name .tar ile bitmeli")
+
+    archive_path = src_root / archive_name
+
+    # Must be a regular file, not a symlink, at project root
+    try:
+        st = os.lstat(archive_path)
+    except OSError as e:
+        raise TrivyImageArchiveInvalidInput("archive bulunamadı veya bilgisi alınamadı") from e
+
+    if not stat.S_ISREG(st.st_mode):
+        raise TrivyImageArchiveInvalidInput("archive normal bir dosya olmalı")
+    if stat.S_ISLNK(st.st_mode):
+        raise TrivyImageArchiveInvalidInput("archive sembolik bağ olmamalı")
+
+    # Size bounds: 1..250_000_000 bytes
+    size = st.st_size
+    if size < 1 or size > 250_000_000:
+        raise TrivyImageArchiveInvalidInput("archive boyutu 1 ile 250.000.000 bayt arasında olmalı")
+
+    # Acquire persistent lock in SNIPER_DATA_DIR
+    data_dir = os.environ.get("SNIPER_DATA_DIR")
+    if not data_dir:
+        raise TrivyVulnUnavailable("Trivy zafiyet tarayıcısı kullanılamıyor.")
+    lock_path = Path(data_dir).resolve() / "trivy.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+
+    lock_fd = None
+    try:
+        # Open with O_NOFOLLOW, O_CREAT, O_RDWR
+        lock_fd = os.open(str(lock_path), os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+        try:
+            st_lock = os.fstat(lock_fd)
+            if not stat.S_ISREG(st_lock.st_mode):
+                raise TrivyVulnUnavailable("Trivy zafiyet tarayıcısı kullanılamıyor.")
+        except OSError:
+            if lock_fd is not None:
+                os.close(lock_fd)
+                lock_fd = None
+            raise TrivyVulnUnavailable("Trivy zafiyet tarayıcısı kullanılamıyor.")
+
+        # Try to acquire exclusive non-blocking lock
+        try:
+            fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as e:
+            if lock_fd is not None:
+                os.close(lock_fd)
+                lock_fd = None
+            if e.errno == 11:  # EAGAIN
+                raise TrivyVulnBusy("Başka bir Trivy taraması sürüyor.")
+            raise TrivyVulnBusy("Başka bir Trivy taraması sürüyor.")
+
+    except Exception as e:
+        if lock_fd is not None:
+            os.close(lock_fd)
+            lock_fd = None
+        raise TrivyVulnBusy("Başka bir Trivy taraması sürüyor.")
+
+    try:
+        # Resolve binary — require absolute, regular, non-symlink, executable
+        trivy_bin = os.environ.get("SNIPER_TRIVY_BINARY")
+        if not trivy_bin:
+            raise TrivyVulnUnavailable("Trivy ikilisi yapılandırılmamış.")
+        trivy_path = Path(trivy_bin)
+        if not trivy_path.is_absolute():
+            raise TrivyVulnUnavailable("Trivy ikili yolu mutlak olmalı.")
+        if trivy_path.is_symlink() or not trivy_path.is_file():
+            raise TrivyVulnUnavailable("Trivy ikilisi normal bir dosya olmalı.")
+        if not os.access(trivy_path, os.X_OK):
+            raise TrivyVulnUnavailable("Trivy ikilisi çalıştırılabilir olmalı.")
+
+        # Validate cache dir and DB (same as trivy_vuln_active.py)
+        cache_dir = os.environ.get("SNIPER_TRIVY_VULN_CACHE_DIR")
+        if not cache_dir:
+            raise TrivyVulnUnavailable("Trivy zafiyet önbellek dizini yapılandırılmamış.")
+        raw_cache_path = Path(cache_dir)
+        if not raw_cache_path.is_absolute():
+            raise TrivyVulnUnavailable("Trivy önbellek dizini yolu mutlak olmalı.")
+        if raw_cache_path.is_symlink():
+            raise TrivyVulnUnavailable("Trivy önbellek dizini normal bir dizin olmalı.")
+        cache_abs = raw_cache_path.resolve()
+        if not cache_abs.is_dir():
+            raise TrivyVulnUnavailable("Trivy önbellek dizini mevcut olmalı.")
+
+        # Check intermediate db directory (unresolved)
+        db_dir = Path(cache_dir) / "db"
+        if db_dir.is_symlink():
+            raise TrivyVulnUnavailable("Trivy veritabanı dizini normal bir dizin olmalı.")
+        if not db_dir.is_dir():
+            raise TrivyVulnUnavailable("Trivy veritabanı dizini mevcut olmalı.")
+
+        metadata_path = cache_abs / "db" / "metadata.json"
+        trivy_db_path = cache_abs / "db" / "trivy.db"
+
+        for p in (metadata_path, trivy_db_path):
+            if p.is_symlink():
+                raise TrivyVulnUnavailable("Trivy veritabanı dosyası normal bir dosya olmalı.")
+            if not p.is_file():
+                raise TrivyVulnUnavailable("Trivy veritabanı dosyası mevcut olmalı.")
+
+        # Validate DB SHA256
+        expected_sha = os.environ.get("SNIPER_TRIVY_VULN_DB_SHA256")
+        if not expected_sha:
+            raise TrivyVulnUnavailable("Trivy veritabanı SHA256 değeri yapılandırılmamış.")
+        if len(expected_sha) != 64 or not all(c in "0123456789abcdef" for c in expected_sha.lower()):
+            raise TrivyVulnUnavailable("Trivy veritabanı SHA256 değeri 64 karakterlik küçük harfli onaltılık metin olmalı.")
+
+        actual_sha = _streaming_sha256(trivy_db_path)
+        if actual_sha.lower() != expected_sha.lower():
+            raise TrivyVulnUnavailable("Trivy veritabanı SHA256 değeri uyuşmuyor.")
+
+        # Use system temp dir (PrivateTmp makes it service-private)
+        with tempfile.TemporaryDirectory(prefix="sniper_trivy_image_archive_") as tmpdir:
+            snapshot_root = Path(tmpdir)
+            input_dir = snapshot_root / "input"
+            input_dir.mkdir(parents=True, exist_ok=True)
+
+            # Copy archive with O_NOFOLLOW and bounded streaming + fstat validation
+            fd = None
+            try:
+                fd = os.open(archive_path, os.O_RDONLY | os.O_NOFOLLOW)
+                try:
+                    st2 = os.fstat(fd)
+                    if not stat.S_ISREG(st2.st_mode):
+                        raise TrivyImageArchiveInvalidInput("archive lstat sonrasında değişti")
+                    if st2.st_size != size:
+                        raise TrivyImageArchiveInvalidInput("archive boyutu lstat sonrasında değişti")
+
+                    if st2.st_dev != st.st_dev or st2.st_ino != st.st_ino or st2.st_size != st.st_size:
+                        raise TrivyImageArchiveInvalidInput("archive kimliği lstat sonrasında değişti")
+
+                    # Record snapshot metadata for later validation
+                    snapshot_st = st2
+
+                    # Bounded streaming copy to temp
+                    dest = input_dir / archive_name
+                    with os.fdopen(os.open(str(dest), os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600), "wb") as out_f:
+                        copied = 0
+                        while copied < size:
+                            chunk = os.read(fd, min(65536, size - copied))
+                            if not chunk:
+                                raise TrivyImageArchiveInvalidInput("archive kopyası eksik: erken dosya sonu")
+                            out_f.write(chunk)
+                            copied += len(chunk)
+                        if copied != size:
+                            raise TrivyImageArchiveInvalidInput("archive kopyası eksik: bayt sayısı uyuşmuyor")
+
+                    # Validate destination file is regular and size matches
+                    dest_fd = os.open(str(dest), os.O_RDONLY | os.O_NOFOLLOW)
+                    try:
+                        dest_st = os.fstat(dest_fd)
+                        if not stat.S_ISREG(dest_st.st_mode):
+                            raise TrivyImageArchiveInvalidInput("hedef normal bir dosya değil")
+                        if dest_st.st_size != copied:
+                            raise TrivyImageArchiveInvalidInput("kopyalama sonrası hedef boyutu uyuşmuyor")
+                    finally:
+                        os.close(dest_fd)
+
+                    # Validate source file unchanged during copy: re-fstat source and compare to snapshot
+                    re_st = os.fstat(fd)
+                    if (re_st.st_dev != snapshot_st.st_dev or
+                        re_st.st_ino != snapshot_st.st_ino or
+                        re_st.st_size != snapshot_st.st_size or
+                        re_st.st_mtime_ns != snapshot_st.st_mtime_ns or
+                        re_st.st_ctime_ns != snapshot_st.st_ctime_ns):
+                        raise TrivyImageArchiveInvalidInput("archive dosyası kopyalama sırasında değişti")
+                finally:
+                    if fd is not None:
+                        os.close(fd)
+                        fd = None
+            except OSError as e:
+                if fd is not None:
+                    os.close(fd)
+                    fd = None
+                raise TrivyImageArchiveInvalidInput("archive okunamadı/kopyalanamadı") from e
+
+            # Prepare output report file
+            report_file = snapshot_root / "report.json"
+
+            # Build argument vector per spec — use VALIDATED cache dir and --input
+            cmd = [
+                str(trivy_path),
+                "image",
+                "--input", str(input_dir / archive_name),
+                "--scanners", "vuln",
+                "--offline-scan",
+                "--skip-db-update",
+                "--skip-java-db-update",
+                "--skip-check-update",
+                "--skip-version-check",
+                "--config=",
+                "--ignorefile=",
+                "--format", "json",
+                "--output", str(report_file),
+                "--cache-dir", str(cache_abs),
+                "--timeout", "60s",
+            ]
+
+            env = os.environ.copy()
+            env["HOME"] = str(snapshot_root)
+            env["XDG_CACHE_HOME"] = str(snapshot_root / "cache")
+
+            # Run bounded runner
+            try:
+                proc = subprocess.run(
+                    cmd,
+                    env=env,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=90,
+                    check=False,
+                )
+            except subprocess.TimeoutExpired:
+                raise TrivyVulnExecutionError("Trivy çalıştırması zaman aşımına uğradı.")
+            except OSError:
+                raise TrivyVulnExecutionError("Trivy çalıştırılamadı.")
+
+            # Fail closed if subprocess returned non-zero
+            if proc.returncode != 0:
+                raise TrivyVulnExecutionError("Trivy çalıştırılamadı.")
+
+            # Enforce 2 MB report cap and existence
+            if not report_file.is_file() or report_file.is_symlink():
+                raise TrivyVulnExecutionError("Trivy rapor dosyası üretmedi.")
+            if report_file.stat().st_size > 2_000_000:
+                raise TrivyVulnExecutionError("Trivy raporu 2 MB sınırını aşıyor.")
+
+            # Load and parse report
+            try:
+                raw = report_file.read_text(encoding="utf-8")
+                report = json.loads(raw)
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                raise TrivyVulnExecutionError("Trivy raporu geçerli JSON değil.")
+
+            # Reuse existing parser
+            from tool_report_trivy import parse_trivy_native_json_summary
+            try:
+                summary = parse_trivy_native_json_summary(report)
+            except ValueError as e:
+                raise TrivyVulnExecutionError("Trivy raporu geçerli JSON değil.") from e
+
+            # Add profile label
+            summary["profile"] = "local-image-archive-offline-v1"
+
+            # Compute dynamic SHA256 of canonical JSON report
+            canonical = json.dumps(report, sort_keys=True, separators=(",", ":"))
+            summary["report_sha256"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+            return summary
+
+    finally:
+        if lock_fd is not None:
+            try:
+                fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            finally:
+                os.close(lock_fd)

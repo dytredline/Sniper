@@ -1,0 +1,57 @@
+/* Portföy ve SLA (17. tur). Uygulama renk değişkenlerini (app.css :root) kullanır; görünüm Codex çalışmasıyla
+   birlikte değişebilir. */
+.portfolio-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 12px 0; }
+.portfolio-card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--paper); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.portfolio-card b { font-size: 20px; line-height: 1.1; color: var(--ink); }
+.portfolio-card span { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.portfolio-card.bad b { color: var(--red); }
+.portfolio-card.good b { color: var(--green); }
+.portfolio-sev { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.portfolio-sev .sev-pill { border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; font-size: 11px; background: var(--wash); }
+.portfolio-sev .sev-pill.sev-critical { border-color: var(--red); color: var(--red); background: var(--red-soft); }
+.portfolio-sev .sev-pill.sev-high { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
+.portfolio-sev .sev-pill.sev-medium { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
+
+.portfolio-trend { margin: 8px 0 16px; }
+.portfolio-trend svg { width: 100%; max-width: 760px; height: auto; display: block; }
+.portfolio-trend .axis { stroke: var(--line); stroke-width: 1; }
+.portfolio-trend .bar-new { fill: var(--amber); opacity: .75; }
+.portfolio-trend .bar-fixed { fill: var(--green); opacity: .75; }
+.portfolio-trend .line-active { fill: none; stroke: var(--red); stroke-width: 2; }
+.portfolio-trend text { font-size: 10px; fill: var(--muted); }
+.portfolio-trend figcaption { font-size: 11px; color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.portfolio-trend .key { display: inline-block; width: 12px; height: 8px; border-radius: 2px; }
+.portfolio-trend .key-active { background: var(--red); }
+.portfolio-trend .key-new { background: var(--amber); }
+.portfolio-trend .key-fixed { background: var(--green); }
+
+.portfolio-table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0 16px; }
+.portfolio-table th, .portfolio-table td { border-bottom: 1px solid var(--line-soft); padding: 7px 8px; text-align: left; vertical-align: top; }
+.portfolio-table th { color: var(--muted); font-weight: 700; white-space: nowrap; }
+.portfolio-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.portfolio-table td.bad { color: var(--red); font-weight: 700; }
+.portfolio-table td.sev-critical { color: var(--red); }
+.portfolio-table td.sev-high { color: var(--amber); }
+.portfolio-table.compact td, .portfolio-table.compact th { padding: 5px 7px; }
+#portfolio-view .table-scroll { overflow-x: auto; }
+#portfolio-view h3 { font-size: 13px; margin: 14px 0 4px; }
+
+.portfolio-policy, .portfolio-export { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
+.portfolio-policy label, .portfolio-export label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted); min-width: 120px; }
+.portfolio-policy label.check { flex-direction: row; align-items: center; gap: 6px; color: var(--ink); min-width: 0; }
+.portfolio-policy input[type=number] { width: 110px; }
+.portfolio-policy .portfolio-actions { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+.portfolio-policy p.muted, .portfolio-export + p.muted { width: 100%; font-size: 11px; }
+
+@media (max-width: 760px) {
+  .portfolio-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .portfolio-policy input[type=number] { width: 100%; }
+}
+
+/* 20. tur: bağımlılık önceliklendirme çipleri (çevrimdışı OSV taraması ve portföy) */
+.prio-chip { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11px; font-weight: 700; border: 1px solid var(--line); }
+.prio-chip.prio-fix_first { background: #fdecec; color: #8f1d1d; border-color: #f2b8b8; }
+.prio-chip.prio-plan { background: #fff4e0; color: #7a4a00; border-color: #f0d29a; }
+.prio-chip.prio-monitor { background: var(--wash); color: var(--ink-2); }
+.osv-priority-list { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 4px; font-size: 12px; }
+.portfolio-filter { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: end; margin: 8px 0 4px; } /* 25. tur: grup/kök süzgeci */

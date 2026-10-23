@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "sniper-triage": {
+      "command": "python3",
+      "args": [
+        "/ABSOLUTE/PATH/TO/sniper/scripts/sniper-mcp",
+        "--mode",
+        "authenticated",
+        "--db",
+        "/ABSOLUTE/PATH/TO/sniper.db",
+        "--token-file",
+        "/ABSOLUTE/PATH/TO/private/mcp-token"
+      ]
+    }
+  }
+}

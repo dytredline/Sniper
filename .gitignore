@@ -1,0 +1,47 @@
+# Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual env
+venv/
+.venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Data
+*.db
+*.sqlite
+data/*.db
+
+# Logs
+*.log
+logs/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+.auth-field-keys/
+**/.auth-field-keys/
+release-signing.key
+*auth-field-keys*.json
+*.key
+
+# Docker
+*.tar
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Ajan değerlendirme koşuları (SanDisk yoksa yerel yedek)
+agent/eval/runs/

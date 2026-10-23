@@ -1,0 +1,26 @@
+{
+ "format": "sniper-iac-rules-v1",
+ "framework": "ci",
+ "checks": [
+  {
+   "id": "SNP-IAC-CI-001",
+   "title": "GitHub Actions adım çıktısı komut enjeksiyonuna veri taşıyor",
+   "severity": "critical",
+   "category": "supplychain",
+   "reference": "CWE-78",
+   "evidence": "Güvenilmeyen GitHub olay alanı bir adım çıktısına yazılıp sonraki run/script komutunda ifade olarak kullanılıyor.",
+   "recommendation": "Olay verisini komut ifadesine yerleştirmeyin; değeri env ile aktarın, sabit komut kullanın ve izin verilen biçimi doğrulayın.",
+   "checkov": []
+  },
+  {
+   "id": "SNP-IAC-CI-002",
+   "title": "GitLab CI dotenv zinciri güvenilmeyen veriyi kabuk komutuna taşıyor",
+   "severity": "high",
+   "category": "supplychain",
+   "reference": "CWE-78",
+   "evidence": "Merge request verisi dotenv yapıtına yazılıp sonraki işin script komutunda kullanılıyor.",
+   "recommendation": "Dotenv ile taşınan olay verisini kabuk kodu olarak yorumlamayın; argüman sınırlarını koruyun ve izin verilen değerleri doğrulayın.",
+   "checkov": []
+  }
+ ]
+}

@@ -1,0 +1,199 @@
+{
+ "format": "sniper-iac-rules-v1",
+ "framework": "kubernetes",
+ "checks": [
+  {
+   "id": "SNP-IAC-K8S-001",
+   "title": "Konteyner/Pod privileged (tam yetkili) modda çalışıyor",
+   "severity": "high",
+   "category": "container",
+   "reference": "CWE-250",
+   "evidence": "Yapılandırmada privileged: true ayarı ile konteynere tam ana makine yetkisi verildiği görüldü.",
+   "recommendation": "privileged modunu kapatın; yalnızca gerçekten gereken Linux yeteneklerini (capabilities) tek tek tanımlayın.",
+   "checkov": [
+    "CKV_K8S_16"
+   ]
+  },
+  {
+   "id": "SNP-IAC-K8S-002",
+   "title": "Kubernetes iş yükünde yetki yükseltme (allowPrivilegeEscalation) açık",
+   "severity": "medium",
+   "category": "container",
+   "reference": "CWE-250",
+   "evidence": "Pod/Container securityContext içinde allowPrivilegeEscalation: true ayarı görüldü.",
+   "recommendation": "securityContext altında allowPrivilegeEscalation: false ve runAsNonRoot: true ayarlarını zorunlu kılın.",
+   "checkov": [
+    "CKV_K8S_20"
+   ]
+  },
+  {
+   "id": "SNP-IAC-K8S-003",
+   "title": "Konteyner/Pod ana makine ağ uzayını (hostNetwork) paylaşıyor",
+   "severity": "medium",
+   "category": "container",
+   "reference": "CWE-284",
+   "evidence": "Yapılandırmada hostNetwork: true veya network_mode: host kullanımı görüldü.",
+   "recommendation": "Konteyner ağ yalıtımını koruyun; yalnızca gerekli portları açıkça yayınlayın.",
+   "checkov": [
+    "CKV_K8S_19"
+   ]
+  },
+  {
+   "id": "SNP-IAC-K8S-004",
+   "title": "Konteyner içine docker.sock soketi bağlanmış",
+   "severity": "critical",
+   "category": "container",
+   "reference": "CWE-250",
+   "evidence": "Ana makine Docker daemon soketinin (/var/run/docker.sock) konteynere bağlandığı görüldü.",
+   "recommendation": "docker.sock soketini konteynerlere bağlamayın; bu erişim ana makine üzerinde root yetkisine eşdeğerdir.",
+   "checkov": [
+    "CKV_K8S_27"
+   ]
+  },
+  {
+   "id": "SNP-IAC-K8S-005",
+   "title": "Konteyner/Pod ana makine süreç uzayını (hostPID) paylaşıyor",
+   "severity": "high",
+   "category": "container",
+   "reference": "CWE-250",
+   "evidence": "hostPID: true (ya da compose pid: host) ile konteyner ana makinedeki tüm süreçleri görebilir ve onlara sinyal gönderebilir.",
+   "recommendation": "hostPID/pid: host ayarını kaldırın; izleme ajanları için ayrı, sıkı denetlenen bir ad alanı kullanın.",
+   "checkov": [
+    "CKV_K8S_17"
+   ]
+  },
+  {
+   "id": "SNP-IAC-K8S-006",
+   "title": "Konteyner/Pod ana makine IPC uzayını (hostIPC) paylaşıyor",
+   "severity": "medium",
+   "category": "container",
+   "reference": "CWE-250",
+   "evidence": "hostIPC: true (ya da compose ipc: host) ile konteyner ana makinenin paylaşılan belleğine erişebilir.",
+   "recommendation": "hostIPC/ipc: host ayarını kaldırın.",
+   "checkov": [
+    "CKV_K8S_18"
+   ]
+  },
+  {
+   "id": "SNP-IAC-K8S-007",
+   "title": "Pod ana makinenin hassas bir dizinini (hostPath) bağlıyor",
+   "severity": "medium",
+   "category": "container",
+   "reference": "CWE-668",
+   "evidence": "Pod, ana makinenin kök, /etc, /proc, /root, /var/run ya da kubelet dizinlerinden birini hostPath ile bağlıyor.",
+   "recommendation": "hostPath yerine PersistentVolume/ConfigMap kullanın; zorunluysa readOnly bağlayın ve PodSecurity 'restricted' politikasıyla sınırlayın.",
+   "checkov": []
+  },
+  {
+   "id": "SNP-IAC-K8S-008",
+   "title": "Konteynere tehlikeli Linux yeteneği ekleniyor (SYS_ADMIN, ALL vb.)",
+   "severity": "high",
+   "category": "container",
+   "reference": "CWE-250",
+   "evidence": "capabilities.add (ya da compose cap_add) ile SYS_ADMIN, ALL, NET_ADMIN, SYS_PTRACE ya da SYS_MODULE gibi geniş yetkiler veriliyor.",
+   "recommendation": "Tüm yetenekleri düşürün (drop: [ALL]) ve yalnız gerçekten gereken dar yetenekleri ekleyin.",
+   "checkov": [
+    "CKV_K8S_39"
+   ]
+  },
+  {
+   "id": "SNP-IAC-K8S-009",
+   "title": "Konteyner açıkça root kullanıcısıyla (UID 0) çalıştırılıyor",
+   "severity": "medium",
+   "category": "container",
+   "reference": "CWE-250",
+   "evidence": "securityContext.runAsUser: 0 (ya da compose user: root/0) ayarı görüldü.",
+   "recommendation": "runAsNonRoot: true ile birlikte 10000 üstü bir UID kullanın.",
+   "checkov": [
+    "CKV_K8S_23"
+   ]
+  },
+  {
+   "id": "SNP-IAC-K8S-010",
+   "title": "Konteynerde seccomp/AppArmor koruması kapatılmış (unconfined)",
+   "severity": "medium",
+   "category": "container",
+   "reference": "CWE-693",
+   "evidence": "seccomp ya da AppArmor profili Unconfined/unconfined olarak ayarlanmış.",
+   "recommendation": "RuntimeDefault seccomp profilini ve varsayılan AppArmor profilini kullanın.",
+   "checkov": [
+    "CKV_K8S_31",
+    "CKV_K8S_32"
+   ]
+  },
+  {
+   "id": "SNP-IAC-K8S-011",
+   "title": "Konteyner imajı sabitlenmemiş (:latest ya da etiketsiz)",
+   "severity": "low",
+   "category": "supplychain",
+   "reference": "CWE-1104",
+   "evidence": "İş yükü imajı :latest etiketiyle ya da etiketsiz kullanılıyor; dağıtılan sürüm denetlenemez.",
+   "recommendation": "İmajı belirli bir sürüm etiketine ya da tercihen @sha256 özetine sabitleyin.",
+   "checkov": [
+    "CKV_K8S_14",
+    "CKV_K8S_43"
+   ]
+  },
+  {
+   "id": "SNP-IAC-K8S-012",
+   "title": "Konteyner ortam değişkenine sabit sır yazılmış",
+   "severity": "high",
+   "category": "secrets",
+   "reference": "CWE-798",
+   "evidence": "Sır adı taşıyan ortam değişkenine manifestte sabit değer atanmış (değer kaydedilmedi).",
+   "recommendation": "Değeri Secret nesnesinden (valueFrom.secretKeyRef) ya da harici bir secret store'dan okuyun.",
+   "checkov": [
+    "CKV_K8S_35"
+   ]
+  },
+  {
+   "id": "SNP-IAC-K8S-013",
+   "title": "Kubernetes iş yükünde güvenlik sertleştirmesi eksik",
+   "severity": "low",
+   "category": "container",
+   "reference": "CWE-250",
+   "evidence": "Eksik ayarlar: {missing}.",
+   "recommendation": "securityContext altında runAsNonRoot: true, readOnlyRootFilesystem: true, capabilities.drop: [ALL] ve resources.limits tanımlayın (PodSecurity 'restricted').",
+   "checkov": [
+    "CKV_K8S_22",
+    "CKV_K8S_23",
+    "CKV_K8S_11",
+    "CKV_K8S_13",
+    "CKV_K8S_37",
+    "CKV_K8S_28"
+   ]
+  },
+  {
+   "id": "SNP-IAC-K8S-014",
+   "title": "Kubernetes RBAC rolü tüm kaynaklarda tüm işlemlere izin veriyor (*)",
+   "severity": "high",
+   "category": "authz",
+   "reference": "CWE-269",
+   "evidence": "Role/ClusterRole kuralında verbs ve resources joker (*) olarak tanımlanmış.",
+   "recommendation": "Rolü yalnız gereken kaynak ve işlemlerle sınırlayın (en az ayrıcalık).",
+   "checkov": [
+    "CKV_K8S_49"
+   ]
+  },
+  {
+   "id": "SNP-IAC-K8S-015",
+   "title": "Kubernetes hizmet hesabına cluster-admin yetkisi verilmiş",
+   "severity": "high",
+   "category": "authz",
+   "reference": "CWE-269",
+   "evidence": "ClusterRoleBinding bir ServiceAccount'a cluster-admin rolü bağlıyor; bu hesabın belirteci tüm kümeyi yönetebilir.",
+   "recommendation": "Hizmet hesabına yalnız gereken izinleri içeren özel bir rol bağlayın.",
+   "checkov": []
+  },
+  {
+   "id": "SNP-IAC-K8S-016",
+   "title": "Dışa açık Kubernetes iş yükü geniş RBAC yetkisi kullanıyor",
+   "severity": "critical",
+   "category": "authz",
+   "reference": "CWE-269",
+   "evidence": "Ingress, bağlı Gateway API Route, doğrudan NodePort/LoadBalancer veya genel externalIP ile açılan Service'in seçtiği iş yükü, tüm kaynaklarda tüm işlemlere izin veren role bağlı bir ServiceAccount kullanıyor.",
+   "recommendation": "Dışa açık iş yükünün ServiceAccount rolünü gereken kaynak ve fiillerle sınırlayın; ayrı bir en az ayrıcalık hesabı kullanın.",
+   "checkov": []
+  }
+ ]
+}

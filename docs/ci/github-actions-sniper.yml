@@ -1,0 +1,29 @@
+# Sniper "yalnız değişenler" iş akışı ÖRNEĞİ — yayınlanmadı; kendi deponuzda .github/workflows/ altına kopyalayın.
+# Varsayım: Sniper kendi barındırılan (self-hosted) bir çalıştırıcıda çevrimdışı kurulu
+# (ör. ~/.local/share/sniper/app). Sniper dış ağa çıkmaz; yalnız depo kodunu yerelde okur.
+name: sniper-changed
+on:
+  pull_request:
+permissions:
+  contents: read
+  security-events: write   # SARIF yüklemek için (isteğe bağlı)
+jobs:
+  sniper:
+    runs-on: [self-hosted, sniper]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # taban dalın commit'i yerelde olmalı
+      - name: Sniper (yalnız PR'ın değiştirdiği dosyalar)
+        env:
+          SNIPER_APP: ${{ vars.SNIPER_APP || '/home/community-user/.local/share/sniper/app' }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          python3 "$SNIPER_APP/cli_reports.py" auto-scan "$GITHUB_WORKSPACE" \
+            --changed-since "$BASE_SHA" --sarif sniper.sarif --fail-on high --no-store
+      - name: SARIF yükle (isteğe bağlı)
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: sniper.sarif
+          category: sniper

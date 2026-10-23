@@ -1,0 +1,1101 @@
+{
+ "format": "sniper-iac-rules-v1",
+ "framework": "terraform",
+ "checks": [
+  {
+   "id": "SNP-IAC-TF-001",
+   "title": "Terraform güvenlik grubunda dünyaya açık (0.0.0.0/0) ağ erişimi",
+   "severity": "high",
+   "category": "container",
+   "reference": "CWE-284",
+   "evidence": "Güvenlik duvarı veya güvenlik grubu kuralında 0.0.0.0/0 veya ::/0 üzerinden geniş/kritik port erişimi tanımlanmış.",
+   "recommendation": "Yönetim ve veritabanı portlarını yalnız güvenilir CIDR bloklarıyla sınırlandırın.",
+   "checkov": [
+    "CKV_AWS_24",
+    "CKV_AWS_25",
+    "CKV_AWS_260",
+    "CKV_GCP_2",
+    "CKV_GCP_3",
+    "CKV_AZURE_9",
+    "CKV_AZURE_10"
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-002",
+   "title": "Terraform bulut depolama kaynağında herkese açık erişim",
+   "severity": "high",
+   "category": "container",
+   "reference": "CWE-732",
+   "evidence": "Bulut nesne deposu veya veri kaynağında public-read ACL ya da açık genel erişim ayarı bulundu.",
+   "recommendation": "Bulut depolama kaynaklarında genel erişimi kapatın ve block_public_acls = true uygulayın.",
+   "checkov": [
+    "CKV_AWS_20",
+    "CKV_AWS_53",
+    "CKV_AWS_54",
+    "CKV_AWS_55",
+    "CKV_AWS_56",
+    "CKV_AZURE_59",
+    "CKV_AZURE_34",
+    "CKV_GCP_28"
+   ],
+   "match": [
+    {
+     "resources": [
+      "aws_s3_bucket",
+      "aws_s3_bucket_acl"
+     ],
+     "path": "acl",
+     "op": "in",
+     "value": [
+      "public-read",
+      "public-read-write",
+      "authenticated-read"
+     ]
+    },
+    {
+     "resources": [
+      "aws_s3_bucket_public_access_block",
+      "aws_s3_account_public_access_block"
+     ],
+     "path": "block_public_acls",
+     "op": "eq",
+     "value": false
+    },
+    {
+     "resources": [
+      "aws_s3_bucket_public_access_block",
+      "aws_s3_account_public_access_block"
+     ],
+     "path": "block_public_policy",
+     "op": "eq",
+     "value": false
+    },
+    {
+     "resources": [
+      "aws_s3_bucket_public_access_block",
+      "aws_s3_account_public_access_block"
+     ],
+     "path": "ignore_public_acls",
+     "op": "eq",
+     "value": false
+    },
+    {
+     "resources": [
+      "aws_s3_bucket_public_access_block",
+      "aws_s3_account_public_access_block"
+     ],
+     "path": "restrict_public_buckets",
+     "op": "eq",
+     "value": false
+    },
+    {
+     "resources": "azurerm_*",
+     "path": "public_network_access_enabled",
+     "op": "eq",
+     "value": true
+    },
+    {
+     "resources": [
+      "azurerm_storage_account"
+     ],
+     "path": "allow_blob_public_access",
+     "op": "eq",
+     "value": true
+    },
+    {
+     "resources": [
+      "azurerm_storage_account"
+     ],
+     "path": "allow_nested_items_to_be_public",
+     "op": "eq",
+     "value": true
+    },
+    {
+     "resources": [
+      "azurerm_storage_container"
+     ],
+     "path": "container_access_type",
+     "op": "in",
+     "value": [
+      "blob",
+      "container"
+     ]
+    },
+    {
+     "resources": [
+      "google_storage_bucket_iam_member",
+      "google_storage_bucket_iam_binding",
+      "google_storage_bucket_access_control",
+      "google_storage_default_object_access_control",
+      "google_storage_object_access_control"
+     ],
+     "path": "member",
+     "op": "in",
+     "value": [
+      "allUsers",
+      "allAuthenticatedUsers"
+     ]
+    },
+    {
+     "resources": [
+      "google_storage_bucket_iam_member",
+      "google_storage_bucket_iam_binding",
+      "google_storage_bucket_access_control",
+      "google_storage_default_object_access_control",
+      "google_storage_object_access_control"
+     ],
+     "path": "entity",
+     "op": "in",
+     "value": [
+      "allUsers",
+      "allAuthenticatedUsers"
+     ]
+    },
+    {
+     "resources": [
+      "google_storage_bucket_iam_binding"
+     ],
+     "path": "members",
+     "op": "contains_any",
+     "value": [
+      "allUsers",
+      "allAuthenticatedUsers"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-003",
+   "title": "Terraform altyapı kaynağında şifreleme devre dışı (encrypted = false)",
+   "severity": "medium",
+   "category": "crypto",
+   "reference": "CWE-311",
+   "evidence": "Veritabanı veya disk kaynağında yerleşik şifreleme açıkça devre dışı bırakılmış.",
+   "recommendation": "Tüm bulut disk ve veritabanı kaynaklarında KMS tabanlı şifrelemeyi (encrypted = true) zorunlu kılın.",
+   "checkov": [
+    "CKV_AWS_3",
+    "CKV_AWS_5",
+    "CKV_AWS_6",
+    "CKV_AWS_16",
+    "CKV_AWS_29",
+    "CKV_AWS_30",
+    "CKV_AWS_43",
+    "CKV_AWS_106",
+    "CKV_AZURE_3"
+   ],
+   "match": [
+    {
+     "resources": "*",
+     "path": "storage_encrypted",
+     "op": "eq",
+     "value": false
+    },
+    {
+     "resources": "*",
+     "path": "encrypted",
+     "op": "eq",
+     "value": false
+    },
+    {
+     "resources": "*",
+     "path": "enable_https_traffic_only",
+     "op": "eq",
+     "value": false
+    },
+    {
+     "resources": "*",
+     "path": "https_traffic_only_enabled",
+     "op": "eq",
+     "value": false
+    },
+    {
+     "resources": [
+      "aws_elasticsearch_domain",
+      "aws_opensearch_domain"
+     ],
+     "path": "encrypt_at_rest.enabled",
+     "op": "eq",
+     "value": false
+    },
+    {
+     "resources": [
+      "aws_elasticsearch_domain",
+      "aws_opensearch_domain"
+     ],
+     "path": "node_to_node_encryption.enabled",
+     "op": "eq",
+     "value": false
+    },
+    {
+     "resources": [
+      "aws_elasticache_replication_group"
+     ],
+     "path": "at_rest_encryption_enabled",
+     "op": "eq",
+     "value": false
+    },
+    {
+     "resources": [
+      "aws_elasticache_replication_group"
+     ],
+     "path": "transit_encryption_enabled",
+     "op": "eq",
+     "value": false
+    },
+    {
+     "resources": [
+      "aws_ebs_encryption_by_default"
+     ],
+     "path": "enabled",
+     "op": "eq",
+     "value": false
+    },
+    {
+     "resources": [
+      "aws_kinesis_stream"
+     ],
+     "path": "encryption_type",
+     "op": "eq",
+     "value": "NONE"
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-004",
+   "title": "Terraform sunucu örneğinde IMDSv2 zorunluluğu kapalı (http_tokens = optional)",
+   "severity": "medium",
+   "category": "ssrf",
+   "reference": "CWE-918",
+   "evidence": "Bulut sanal makinesinde IMDSv1 açık bırakılmış; SSRF üzerinden metadata kimlik bilgisi çalınabilir.",
+   "recommendation": "metadata_options bloğunda http_tokens = \"required\" ayarını zorunlu kılın.",
+   "checkov": [
+    "CKV_AWS_79"
+   ],
+   "match": [
+    {
+     "resources": "*",
+     "path": "metadata_options.http_tokens",
+     "op": "eq",
+     "value": "optional",
+     "unless": {
+      "path": "metadata_options.http_endpoint",
+      "value": "disabled"
+     }
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-005",
+   "title": "Terraform veritabanı kaynağı internetten erişilebilir (publicly_accessible = true)",
+   "severity": "high",
+   "category": "container",
+   "reference": "CWE-284",
+   "evidence": "Veritabanı/veri ambarı kaynağında publicly_accessible = true ayarı görüldü; uç nokta genel IP alır.",
+   "recommendation": "Veritabanlarını özel alt ağlarda tutun (publicly_accessible = false); erişimi VPN/bastion üzerinden verin.",
+   "checkov": [
+    "CKV_AWS_17",
+    "CKV_AWS_87",
+    "CKV_AWS_89"
+   ],
+   "match": [
+    {
+     "resources": [
+      "aws_db_instance",
+      "aws_rds_cluster_instance",
+      "aws_redshift_cluster",
+      "aws_dms_replication_instance",
+      "aws_docdb_cluster_instance",
+      "aws_neptune_cluster_instance"
+     ],
+     "path": "publicly_accessible",
+     "op": "eq",
+     "value": true
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-006",
+   "title": "Terraform IAM politikasında tüm eylemlere tüm kaynaklarda izin (Action * / Resource *)",
+   "severity": "high",
+   "category": "authz",
+   "reference": "CWE-269",
+   "evidence": "IAM politika belgesinde Effect Allow ile Action \"*\" ve Resource \"*\" birlikte verilmiş (tam yönetici yetkisi).",
+   "recommendation": "Politikayı yalnız gereken eylem ve kaynak ARN'leriyle sınırlayın; yönetici erişimi gerekiyorsa ayrı, denetimli bir rol kullanın.",
+   "checkov": [
+    "CKV_AWS_1",
+    "CKV_AWS_62",
+    "CKV_AWS_63",
+    "CKV_AWS_286"
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-007",
+   "title": "Terraform kaynak politikası herkese (Principal *) koşulsuz izin veriyor",
+   "severity": "high",
+   "category": "authz",
+   "reference": "CWE-732",
+   "evidence": "Kaynak politikasında Effect Allow ile Principal \"*\" verilmiş ve Condition yok; kaynak herkese açık.",
+   "recommendation": "Principal'ı belirli hesap/rol ARN'leriyle sınırlayın ya da aws:SourceArn/aws:PrincipalOrgID koşulu ekleyin.",
+   "checkov": [
+    "CKV_AWS_70",
+    "CKV_AWS_72",
+    "CKV_AWS_168"
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-008",
+   "title": "Terraform KMS anahtarında otomatik anahtar döndürme kapalı",
+   "severity": "medium",
+   "category": "crypto",
+   "reference": "CWE-320",
+   "evidence": "aws_kms_key kaynağında enable_key_rotation = false ayarı görüldü.",
+   "recommendation": "Simetrik KMS anahtarlarında enable_key_rotation = true kullanın.",
+   "checkov": [
+    "CKV_AWS_7"
+   ],
+   "match": [
+    {
+     "resources": [
+      "aws_kms_key"
+     ],
+     "path": "enable_key_rotation",
+     "op": "eq",
+     "value": false
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-009",
+   "title": "Terraform CloudFront dağıtımı şifresiz HTTP'ye izin veriyor (allow-all)",
+   "severity": "medium",
+   "category": "crypto",
+   "reference": "CWE-319",
+   "evidence": "viewer_protocol_policy = \"allow-all\" ile istemciler içeriğe şifresiz HTTP üzerinden erişebilir.",
+   "recommendation": "viewer_protocol_policy değerini redirect-to-https ya da https-only yapın.",
+   "checkov": [
+    "CKV_AWS_34"
+   ],
+   "match": [
+    {
+     "resources": [
+      "aws_cloudfront_distribution"
+     ],
+     "path": "default_cache_behavior.viewer_protocol_policy",
+     "op": "eq",
+     "value": "allow-all"
+    },
+    {
+     "resources": [
+      "aws_cloudfront_distribution"
+     ],
+     "path": "ordered_cache_behavior.viewer_protocol_policy",
+     "op": "eq",
+     "value": "allow-all"
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-010",
+   "title": "Terraform kaynağında eski TLS sürümüne izin veriliyor (TLS 1.0/1.1)",
+   "severity": "medium",
+   "category": "crypto",
+   "reference": "CWE-327",
+   "evidence": "Yük dengeleyici, depolama, veritabanı ya da arama hizmetinde TLS 1.2 altına izin veren bir ilke/sürüm seçilmiş.",
+   "recommendation": "En düşük TLS sürümünü 1.2 yapın (ör. ELBSecurityPolicy-TLS13-1-2-2021-06, min_tls_version = \"TLS1_2\").",
+   "checkov": [
+    "CKV_AWS_103",
+    "CKV_AZURE_44",
+    "CKV_AZURE_52"
+   ],
+   "match": [
+    {
+     "resources": [
+      "aws_lb_listener",
+      "aws_alb_listener"
+     ],
+     "path": "ssl_policy",
+     "op": "in",
+     "value": [
+      "ELBSecurityPolicy-2015-05",
+      "ELBSecurityPolicy-2016-08",
+      "ELBSecurityPolicy-TLS-1-0-2015-04",
+      "ELBSecurityPolicy-TLS-1-1-2017-01",
+      "ELBSecurityPolicy-FS-2018-06",
+      "ELBSecurityPolicy-FS-1-1-2019-08"
+     ]
+    },
+    {
+     "resources": [
+      "azurerm_storage_account"
+     ],
+     "path": "min_tls_version",
+     "op": "in",
+     "value": [
+      "TLS1_0",
+      "TLS1_1"
+     ]
+    },
+    {
+     "resources": "azurerm_*",
+     "path": "minimum_tls_version",
+     "op": "in",
+     "value": [
+      "1.0",
+      "1.1",
+      "TLS1_0",
+      "TLS1_1"
+     ]
+    },
+    {
+     "resources": "azurerm_*",
+     "path": "ssl_minimal_tls_version_enforced",
+     "op": "in",
+     "value": [
+      "TLS1_0",
+      "TLS1_1"
+     ]
+    },
+    {
+     "resources": "azurerm_*",
+     "path": "site_config.minimum_tls_version",
+     "op": "in",
+     "value": [
+      "1.0",
+      "1.1"
+     ]
+    },
+    {
+     "resources": [
+      "google_compute_ssl_policy"
+     ],
+     "path": "min_tls_version",
+     "op": "in",
+     "value": [
+      "TLS_1_0",
+      "TLS_1_1"
+     ]
+    },
+    {
+     "resources": [
+      "aws_elasticsearch_domain",
+      "aws_opensearch_domain"
+     ],
+     "path": "domain_endpoint_options.tls_security_policy",
+     "op": "eq",
+     "value": "Policy-Min-TLS-1-0-2019-07"
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-011",
+   "title": "Terraform veritabanında şifresiz (SSL'siz) bağlantıya izin veriliyor",
+   "severity": "medium",
+   "category": "crypto",
+   "reference": "CWE-319",
+   "evidence": "Veritabanı kaynağında SSL/TLS zorunluluğu kapatılmış (require_ssl = false / ssl_enforcement_enabled = false).",
+   "recommendation": "Veritabanı bağlantılarında SSL/TLS'i zorunlu kılın.",
+   "checkov": [
+    "CKV_GCP_6",
+    "CKV_AZURE_28",
+    "CKV_AZURE_29"
+   ],
+   "match": [
+    {
+     "resources": [
+      "google_sql_database_instance"
+     ],
+     "path": "settings.ip_configuration.require_ssl",
+     "op": "eq",
+     "value": false
+    },
+    {
+     "resources": [
+      "google_sql_database_instance"
+     ],
+     "path": "settings.ip_configuration.ssl_mode",
+     "op": "eq",
+     "value": "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
+    },
+    {
+     "resources": "azurerm_*",
+     "path": "ssl_enforcement_enabled",
+     "op": "eq",
+     "value": false
+    },
+    {
+     "resources": [
+      "azurerm_redis_cache"
+     ],
+     "path": "enable_non_ssl_port",
+     "op": "eq",
+     "value": true
+    },
+    {
+     "resources": [
+      "azurerm_redis_cache"
+     ],
+     "path": "non_ssl_port_enabled",
+     "op": "eq",
+     "value": true
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-012",
+   "title": "Terraform CloudTrail denetim günlüğü kapatılmış",
+   "severity": "medium",
+   "category": "logging",
+   "reference": "CWE-778",
+   "evidence": "aws_cloudtrail kaynağında enable_logging = false ayarı görüldü; API etkinlikleri kaydedilmez.",
+   "recommendation": "CloudTrail günlüğünü açık tutun ve günlük dosyası doğrulamasını etkinleştirin.",
+   "checkov": [
+    "CKV_AWS_67"
+   ],
+   "match": [
+    {
+     "resources": [
+      "aws_cloudtrail"
+     ],
+     "path": "enable_logging",
+     "op": "eq",
+     "value": false
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-013",
+   "title": "Terraform EKS küme API uç noktası internete açık",
+   "severity": "medium",
+   "category": "container",
+   "reference": "CWE-284",
+   "evidence": "aws_eks_cluster vpc_config içinde endpoint_public_access = true ve public_access_cidrs 0.0.0.0/0 (ya da tanımsız).",
+   "recommendation": "endpoint_public_access = false yapın ya da public_access_cidrs'i güvenilir adreslerle sınırlayın.",
+   "checkov": [
+    "CKV_AWS_38",
+    "CKV_AWS_39"
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-014",
+   "title": "Terraform GKE kümesinde eski ABAC yetkilendirmesi açık",
+   "severity": "high",
+   "category": "authz",
+   "reference": "CWE-285",
+   "evidence": "google_container_cluster kaynağında enable_legacy_abac = true; RBAC yerine geniş izinli eski ABAC kullanılır.",
+   "recommendation": "enable_legacy_abac = false yapın ve RBAC kullanın.",
+   "checkov": [
+    "CKV_GCP_7"
+   ],
+   "match": [
+    {
+     "resources": [
+      "google_container_cluster"
+     ],
+     "path": "enable_legacy_abac",
+     "op": "eq",
+     "value": true
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-015",
+   "title": "Terraform Cloud SQL örneği tüm internete açık (0.0.0.0/0)",
+   "severity": "high",
+   "category": "container",
+   "reference": "CWE-284",
+   "evidence": "google_sql_database_instance authorized_networks içinde 0.0.0.0/0 tanımlanmış.",
+   "recommendation": "Yetkili ağları belirli adreslerle sınırlayın ya da yalnız özel IP / Cloud SQL Auth Proxy kullanın.",
+   "checkov": [
+    "CKV_GCP_11"
+   ],
+   "match": [
+    {
+     "resources": [
+      "google_sql_database_instance"
+     ],
+     "path": "settings.ip_configuration.authorized_networks.value",
+     "op": "in",
+     "value": [
+      "0.0.0.0/0",
+      "::/0"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-016",
+   "title": "Terraform veritabanı güvenlik duvarı kuralı tüm IP'lere açık",
+   "severity": "high",
+   "category": "container",
+   "reference": "CWE-284",
+   "evidence": "Azure veritabanı güvenlik duvarı kuralı 0.0.0.0 – 255.255.255.255 aralığına izin veriyor.",
+   "recommendation": "Kuralı yalnız gereken istemci adresleriyle sınırlayın; mümkünse özel uç nokta kullanın.",
+   "checkov": [
+    "CKV_AZURE_11"
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-017",
+   "title": "Terraform AKS kümesinde Kubernetes RBAC kapalı",
+   "severity": "high",
+   "category": "authz",
+   "reference": "CWE-285",
+   "evidence": "azurerm_kubernetes_cluster kaynağında RBAC devre dışı bırakılmış.",
+   "recommendation": "role_based_access_control_enabled = true kullanın ve Azure AD tümleştirmesini açın.",
+   "checkov": [
+    "CKV_AZURE_5"
+   ],
+   "match": [
+    {
+     "resources": [
+      "azurerm_kubernetes_cluster"
+     ],
+     "path": "role_based_access_control_enabled",
+     "op": "eq",
+     "value": false
+    },
+    {
+     "resources": [
+      "azurerm_kubernetes_cluster"
+     ],
+     "path": "role_based_access_control.enabled",
+     "op": "eq",
+     "value": false
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-018",
+   "title": "Terraform web uygulamasında HTTPS zorunluluğu kapalı",
+   "severity": "medium",
+   "category": "crypto",
+   "reference": "CWE-319",
+   "evidence": "Azure App Service/Function uygulamasında https_only = false ayarı görüldü.",
+   "recommendation": "https_only = true yapın.",
+   "checkov": [
+    "CKV_AZURE_14"
+   ],
+   "match": [
+    {
+     "resources": [
+      "azurerm_app_service",
+      "azurerm_linux_web_app",
+      "azurerm_windows_web_app",
+      "azurerm_function_app",
+      "azurerm_linux_function_app",
+      "azurerm_windows_function_app"
+     ],
+     "path": "https_only",
+     "op": "eq",
+     "value": false
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-019",
+   "title": "Terraform Lambda işlev URL'si kimlik doğrulamasız",
+   "severity": "medium",
+   "category": "authz",
+   "reference": "CWE-306",
+   "evidence": "aws_lambda_function_url kaynağında authorization_type = \"NONE\"; işlev internetten kimlik doğrulamasız çağrılabilir.",
+   "recommendation": "authorization_type = \"AWS_IAM\" kullanın ya da işlevin kendi içinde kimlik doğrulaması yaptığını belgeleyin.",
+   "checkov": [
+    "CKV_AWS_258"
+   ],
+   "match": [
+    {
+     "resources": [
+      "aws_lambda_function_url"
+     ],
+     "path": "authorization_type",
+     "op": "eq",
+     "value": "NONE"
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-020",
+   "title": "IaC yapılandırmasında sabit sır (parola/erişim anahtarı)",
+   "severity": "high",
+   "category": "secrets",
+   "reference": "CWE-798",
+   "evidence": "Terraform kaynağında ya da sağlayıcısında sır adı taşıyan alana sabit değer yazılmış (değer kaydedilmedi).",
+   "recommendation": "Sırları değişken (sensitive = true) ve secret store (Vault, AWS Secrets Manager, Key Vault) üzerinden verin; durum dosyasını şifreleyin.",
+   "checkov": [
+    "CKV_AWS_41",
+    "CKV_AWS_45",
+    "CKV_SECRET_6"
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-021",
+   "title": "Terraform sanal makinesinde seri konsol erişimi açık",
+   "severity": "medium",
+   "category": "container",
+   "reference": "CWE-284",
+   "evidence": "google_compute_instance metadata içinde serial-port-enable = true; seri konsol üzerinden etkileşimli erişim açılır.",
+   "recommendation": "serial-port-enable meta verisini kaldırın ya da false yapın.",
+   "checkov": [
+    "CKV_GCP_35"
+   ],
+   "match": [
+    {
+     "resources": [
+      "google_compute_instance",
+      "google_compute_instance_template",
+      "google_compute_project_metadata"
+     ],
+     "path": "metadata.serial-port-enable",
+     "op": "in",
+     "value": [
+      true,
+      "true",
+      "TRUE",
+      "1"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-022",
+   "title": "Terraform altyapı kaynağında şifreleme devre dışı (encrypted = false)",
+   "severity": "medium",
+   "category": "crypto",
+   "reference": "CWE-311",
+   "evidence": "Veritabanı kaynağında depolama şifrelemesi hiç tanımlanmamış; sağlayıcı varsayılanı şifresizdir (storage_encrypted yok).",
+   "recommendation": "Tüm bulut disk ve veritabanı kaynaklarında KMS tabanlı şifrelemeyi (encrypted = true) zorunlu kılın.",
+   "checkov": [
+    "CKV_AWS_16",
+    "CKV_AWS_96"
+   ],
+   "match": [
+    {
+     "resources": [
+      "aws_db_instance"
+     ],
+     "path": "storage_encrypted",
+     "op": "absent",
+     "unless_present": [
+      "replicate_source_db",
+      "snapshot_identifier",
+      "kms_key_id"
+     ],
+     "value": null
+    },
+    {
+     "resources": [
+      "aws_rds_cluster"
+     ],
+     "path": "storage_encrypted",
+     "op": "absent",
+     "unless_present": [
+      "replication_source_identifier",
+      "snapshot_identifier",
+      "kms_key_id",
+      "engine_mode",
+      "global_cluster_identifier"
+     ],
+     "value": null
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-023",
+   "title": "Terraform sunucu örneğinde IMDSv2 zorunluluğu kapalı (http_tokens = optional)",
+   "severity": "medium",
+   "category": "ssrf",
+   "reference": "CWE-918",
+   "evidence": "Sanal makine tanımında metadata_options bloğu yok; sağlayıcı varsayılanı IMDSv1'e izin verir.",
+   "recommendation": "metadata_options bloğunda http_tokens = \"required\" ayarını zorunlu kılın.",
+   "checkov": [
+    "CKV_AWS_79"
+   ],
+   "match": [
+    {
+     "resources": [
+      "aws_instance",
+      "aws_launch_template"
+     ],
+     "path": "metadata_options",
+     "op": "absent",
+     "unless_present": [
+      "launch_template"
+     ],
+     "value": null
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-024",
+   "title": "Terraform KMS anahtarında otomatik anahtar döndürme kapalı",
+   "severity": "medium",
+   "category": "crypto",
+   "reference": "CWE-320",
+   "evidence": "aws_kms_key kaynağında enable_key_rotation tanımlanmamış; varsayılan olarak otomatik döndürme kapalıdır.",
+   "recommendation": "Simetrik KMS anahtarlarında enable_key_rotation = true kullanın.",
+   "checkov": [
+    "CKV_AWS_7"
+   ],
+   "match": [
+    {
+     "resources": [
+      "aws_kms_key"
+     ],
+     "path": "enable_key_rotation",
+     "op": "absent",
+     "unless_present": [
+      "customer_master_key_spec",
+      "key_spec"
+     ],
+     "value": null
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-025",
+   "title": "Terraform S3 kovasında sürümleme yapılandırılmamış (varsayılan ayar)",
+   "severity": "low",
+   "category": "container",
+   "reference": "CWE-693",
+   "evidence": "Kovada versioning bloğu ya da kovaya bağlı aws_s3_bucket_versioning kaynağı yok; sağlayıcı/AWS varsayılanı sürümleme kapalıdır (silinen ya da üzerine yazılan nesne geri alınamaz).",
+   "recommendation": "Kritik veriler için aws_s3_bucket_versioning ile sürümlemeyi açın (gerekirse MFA delete).",
+   "checkov": [
+    "CKV_AWS_21"
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-026",
+   "title": "Terraform S3 kovasında erişim günlüğü yapılandırılmamış (varsayılan ayar)",
+   "severity": "low",
+   "category": "logging",
+   "reference": "CWE-778",
+   "evidence": "Kovada logging bloğu ya da kovaya bağlı aws_s3_bucket_logging kaynağı yok; varsayılanda sunucu erişim günlüğü tutulmaz.",
+   "recommendation": "aws_s3_bucket_logging ile ayrı bir günlük kovasına erişim günlüğü yazın (günlük kovasının kendisi hariç).",
+   "checkov": [
+    "CKV_AWS_18"
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-027",
+   "title": "Terraform EBS biriminde şifreleme ayarlanmamış (varsayılan ayar)",
+   "severity": "medium",
+   "category": "crypto",
+   "reference": "CWE-311",
+   "evidence": "aws_ebs_volume kaynağında encrypted yok ve aynı modülde hesap düzeyi varsayılan EBS şifrelemesi (aws_ebs_encryption_by_default) tanımlı değil; sağlayıcı varsayılanı şifresizdir.",
+   "recommendation": "encrypted = true (ve kms_key_id) verin ya da hesapta aws_ebs_encryption_by_default etkinleştirin.",
+   "checkov": [
+    "CKV_AWS_3"
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-028",
+   "title": "Terraform veri deposunda bekleyen veri şifrelemesi tanımlanmamış (varsayılan ayar)",
+   "severity": "medium",
+   "category": "crypto",
+   "reference": "CWE-311",
+   "evidence": "Kaynakta bekleyen veri (at-rest) şifreleme ayarı hiç yazılmamış; sağlayıcı varsayılanı şifresizdir.",
+   "recommendation": "Şifreleme ayarını açıkça true yapın ve müşteri yönetimli KMS anahtarı kullanın.",
+   "checkov": [
+    "CKV_AWS_74",
+    "CKV_AWS_44",
+    "CKV_AWS_42",
+    "CKV_AWS_29",
+    "CKV_AWS_5"
+   ],
+   "match": [
+    {
+     "resources": [
+      "aws_docdb_cluster",
+      "aws_neptune_cluster"
+     ],
+     "path": "storage_encrypted",
+     "op": "absent",
+     "value": null,
+     "unless_present": [
+      "snapshot_identifier",
+      "kms_key_arn",
+      "global_cluster_identifier"
+     ]
+    },
+    {
+     "resources": [
+      "aws_efs_file_system"
+     ],
+     "path": "encrypted",
+     "op": "absent",
+     "value": null,
+     "unless_present": [
+      "kms_key_id"
+     ]
+    },
+    {
+     "resources": [
+      "aws_elasticache_replication_group"
+     ],
+     "path": "at_rest_encryption_enabled",
+     "op": "absent",
+     "value": null,
+     "unless_present": [
+      "kms_key_id",
+      "global_replication_group_id",
+      "snapshot_name",
+      "snapshot_arns"
+     ]
+    },
+    {
+     "resources": [
+      "aws_elasticsearch_domain",
+      "aws_opensearch_domain"
+     ],
+     "path": "encrypt_at_rest",
+     "op": "absent",
+     "value": null
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-029",
+   "title": "Terraform CloudTrail günlük dosyası doğrulaması kapalı (varsayılan ayar)",
+   "severity": "low",
+   "category": "logging",
+   "reference": "CWE-354",
+   "evidence": "aws_cloudtrail kaynağında enable_log_file_validation yazılmamış; varsayılanı false'tur (günlüğün değiştirildiği anlaşılamaz).",
+   "recommendation": "enable_log_file_validation = true ayarlayın.",
+   "checkov": [
+    "CKV_AWS_36"
+   ],
+   "match": [
+    {
+     "resources": [
+      "aws_cloudtrail"
+     ],
+     "path": "enable_log_file_validation",
+     "op": "absent",
+     "value": null
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-030",
+   "title": "Terraform SNS konusunda sunucu tarafı şifreleme tanımlanmamış (varsayılan ayar)",
+   "severity": "low",
+   "category": "crypto",
+   "reference": "CWE-311",
+   "evidence": "aws_sns_topic kaynağında kms_master_key_id yok; varsayılanda iletiler KMS ile şifrelenmez.",
+   "recommendation": "kms_master_key_id ile (ör. alias/aws/sns ya da müşteri anahtarı) şifrelemeyi açın.",
+   "checkov": [
+    "CKV_AWS_26"
+   ],
+   "match": [
+    {
+     "resources": [
+      "aws_sns_topic"
+     ],
+     "path": "kms_master_key_id",
+     "op": "absent",
+     "value": null
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-031",
+   "title": "Terraform GCS kovasında tek tip kova düzeyi erişim kapalı (varsayılan ayar)",
+   "severity": "low",
+   "category": "container",
+   "reference": "CWE-732",
+   "evidence": "google_storage_bucket kaynağında uniform_bucket_level_access yazılmamış; varsayılan false'tur (nesne ACL'leri ayrı ayrı açılabilir).",
+   "recommendation": "uniform_bucket_level_access = true ayarlayın.",
+   "checkov": [
+    "CKV_GCP_29"
+   ],
+   "match": [
+    {
+     "resources": [
+      "google_storage_bucket"
+     ],
+     "path": "uniform_bucket_level_access",
+     "op": "absent",
+     "value": null
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-032",
+   "title": "Terraform GKE kümesinde ana düğüm yetkili ağları tanımlanmamış (varsayılan ayar)",
+   "severity": "low",
+   "category": "container",
+   "reference": "CWE-284",
+   "evidence": "google_container_cluster kaynağında master_authorized_networks_config yok ve özel uç nokta açık değil; kontrol düzlemi tüm IP'lerden erişilebilir.",
+   "recommendation": "master_authorized_networks_config ile yönetim CIDR'lerini sınırlayın ya da özel uç nokta kullanın.",
+   "checkov": [
+    "CKV_GCP_20"
+   ],
+   "match": [
+    {
+     "resources": [
+      "google_container_cluster"
+     ],
+     "path": "master_authorized_networks_config",
+     "op": "absent",
+     "value": null,
+     "unless": {
+      "path": "private_cluster_config.enable_private_endpoint",
+      "value": true
+     }
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-033",
+   "title": "Terraform Azure Key Vault'ta silme koruması kapalı (varsayılan ayar)",
+   "severity": "low",
+   "category": "container",
+   "reference": "CWE-693",
+   "evidence": "azurerm_key_vault kaynağında purge_protection_enabled yazılmamış; varsayılan false'tur (silinen anahtarlar kalıcı temizlenebilir).",
+   "recommendation": "purge_protection_enabled = true ayarlayın.",
+   "checkov": [
+    "CKV_AZURE_42"
+   ],
+   "match": [
+    {
+     "resources": [
+      "azurerm_key_vault"
+     ],
+     "path": "purge_protection_enabled",
+     "op": "absent",
+     "value": null
+    }
+   ]
+  },
+  {
+   "id": "SNP-IAC-TF-034",
+   "title": "Terraform uygulama yük dengeleyicisinde geçersiz başlık alanları düşürülmüyor (varsayılan ayar)",
+   "severity": "low",
+   "category": "container",
+   "reference": "CWE-444",
+   "evidence": "aws_lb (uygulama türü) kaynağında drop_invalid_header_fields yazılmamış; varsayılan false'tur (HTTP istek kaçakçılığı riskini artırır).",
+   "recommendation": "drop_invalid_header_fields = true ayarlayın.",
+   "checkov": [
+    "CKV_AWS_131"
+   ],
+   "match": [
+    {
+     "resources": [
+      "aws_lb",
+      "aws_alb"
+     ],
+     "path": "drop_invalid_header_fields",
+     "op": "absent",
+     "value": null,
+     "unless": {
+      "path": "load_balancer_type",
+      "value": [
+       "network",
+       "gateway"
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

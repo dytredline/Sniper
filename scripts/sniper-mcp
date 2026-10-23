@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+"""Sniper triyaj MCP sunucusu (stdio). Claude Code / Codex bağlama örnekleri için docs/AI-TRIYAJ.md."""
+
+from __future__ import annotations
+
+from pathlib import Path
+import sys
+
+APP_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(APP_DIR))
+
+import mcp_triage_server  # noqa: E402
+
+if __name__ == "__main__":
+    raise SystemExit(mcp_triage_server.main())

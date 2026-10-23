@@ -1,0 +1,141 @@
+{
+ "format": "sniper-iac-rules-v1",
+ "framework": "dockerfile",
+ "checks": [
+  {
+   "id": "SNP-IAC-DF-001",
+   "title": "Konteyner taban imajı sabitlenmemiş (:latest)",
+   "severity": "low",
+   "category": "container",
+   "reference": "CWE-1104",
+   "evidence": "Dockerfile içinde :latest etiketli veya sürümü sabitlenmemiş taban imajı (FROM) görüldü.",
+   "recommendation": "Tekrarlanabilir ve güvenli derlemeler için taban imajını belirli bir sürüm etiketine veya SHA-256 özetine sabitleyin.",
+   "checkov": [
+    "CKV_DOCKER_7"
+   ]
+  },
+  {
+   "id": "SNP-IAC-DF-002",
+   "title": "Konteyner derlemesinde doğrulanmamış uzaktan betik çalıştırma (curl | sh)",
+   "severity": "high",
+   "category": "container",
+   "reference": "CWE-829",
+   "evidence": "Konteyner derleme adımlarında ağdan indirilen betiğin doğrudan kabuğa (sh/bash) aktarıldığı görüldü.",
+   "recommendation": "İndirilen kurulum dosyalarının kriptografik özetini (SHA-256) doğrulamadan doğrudan kabukta çalıştırmayın.",
+   "checkov": []
+  },
+  {
+   "id": "SNP-IAC-DF-003",
+   "title": "Konteyner ayrıcalıklı (root) kullanıcıyla çalışıyor",
+   "severity": "medium",
+   "category": "container",
+   "reference": "CWE-250",
+   "evidence": "Dockerfile içinde ayrıcalıksız USER yönergesi bulunmadı; konteyner varsayılan olarak root ile çalışır.",
+   "recommendation": "Konteyner çalışma zamanı için ayrıcalıksız bir kullanıcı oluşturun ve USER yönergesiyle root olmayan kullanıcıya geçin.",
+   "checkov": [
+    "CKV_DOCKER_3"
+   ]
+  },
+  {
+   "id": "SNP-IAC-DF-004",
+   "title": "Konteyner ayrıcalıklı (root) kullanıcıyla çalışıyor",
+   "severity": "medium",
+   "category": "container",
+   "reference": "CWE-250",
+   "evidence": "Dockerfile içinde etkin USER yönergesinin root/0 olarak bırakıldığı görüldü.",
+   "recommendation": "Konteyner çalışma zamanı için ayrıcalıksız bir kullanıcı oluşturun ve USER yönergesiyle root olmayan kullanıcıya geçin.",
+   "checkov": [
+    "CKV_DOCKER_8"
+   ]
+  },
+  {
+   "id": "SNP-IAC-DF-005",
+   "title": "Dockerfile ADD ile uzak adresten doğrulamasız dosya indiriliyor",
+   "severity": "medium",
+   "category": "supplychain",
+   "reference": "CWE-494",
+   "evidence": "ADD yönergesine http(s) adresi verilmiş; indirilen dosyanın bütünlüğü doğrulanmıyor.",
+   "recommendation": "Uzak dosyaları RUN curl/wget ile indirip SHA-256 özetini doğrulayın ya da ADD --checksum kullanın; yerel dosyalar için COPY tercih edin.",
+   "checkov": [
+    "CKV_DOCKER_4"
+   ]
+  },
+  {
+   "id": "SNP-IAC-DF-006",
+   "title": "Dockerfile RUN adımında sudo kullanılıyor",
+   "severity": "low",
+   "category": "container",
+   "reference": "CWE-250",
+   "evidence": "Derleme adımında sudo çağrısı görüldü; imajda sudo bulunması ayrıcalık yükseltmeyi kolaylaştırır.",
+   "recommendation": "Derleme adımları zaten root ile çalışır; sudo kurmayın, gerekiyorsa USER yönergesiyle kullanıcı değiştirin.",
+   "checkov": [
+    "CKV2_DOCKER_1"
+   ]
+  },
+  {
+   "id": "SNP-IAC-DF-007",
+   "title": "Dockerfile içinde ENV/ARG ile sabit sır tanımlanmış",
+   "severity": "high",
+   "category": "secrets",
+   "reference": "CWE-798",
+   "evidence": "Sır adı taşıyan ENV/ARG değişkenine sabit değer atanmış; değer imaj katmanlarında ve geçmişte kalır (değer kaydedilmedi).",
+   "recommendation": "Sırları imaja gömmeyin; derleme için BuildKit gizli bağlamalarını (RUN --mount=type=secret), çalışma zamanı için ortam/secret store kullanın.",
+   "checkov": []
+  },
+  {
+   "id": "SNP-IAC-DF-008",
+   "title": "Dockerfile içinde herkese yazılabilir izin (chmod 777)",
+   "severity": "medium",
+   "category": "container",
+   "reference": "CWE-732",
+   "evidence": "chmod 777 (ya da a+rwx) ile dosya/dizine herkese yazma izni verildiği görüldü.",
+   "recommendation": "En az ayrıcalık ilkesiyle sahiplik (chown) ve 750/640 gibi dar izinler kullanın.",
+   "checkov": []
+  },
+  {
+   "id": "SNP-IAC-DF-009",
+   "title": "Dockerfile derleme adımında TLS/imza doğrulaması kapatılmış",
+   "severity": "medium",
+   "category": "supplychain",
+   "reference": "CWE-295",
+   "evidence": "Paket ya da dosya indirirken sertifika veya imza doğrulamasını kapatan bir seçenek görüldü (curl -k, wget --no-check-certificate, --trusted-host, strict-ssl false, allow-unauthenticated vb.).",
+   "recommendation": "Doğrulamayı kapatmayın; gerekiyorsa kurumsal CA sertifikasını imaja ekleyin.",
+   "checkov": [
+    "CKV2_DOCKER_2",
+    "CKV2_DOCKER_3",
+    "CKV2_DOCKER_4",
+    "CKV2_DOCKER_5",
+    "CKV2_DOCKER_6",
+    "CKV2_DOCKER_7",
+    "CKV2_DOCKER_8",
+    "CKV2_DOCKER_9",
+    "CKV2_DOCKER_10",
+    "CKV2_DOCKER_11"
+   ]
+  },
+  {
+   "id": "SNP-IAC-DF-010",
+   "title": "Dockerfile SSH portunu (22) dışarı açıyor",
+   "severity": "low",
+   "category": "container",
+   "reference": "CWE-284",
+   "evidence": "EXPOSE 22 görüldü; konteyner içinde SSH sunucusu çalıştırmak saldırı yüzeyini büyütür.",
+   "recommendation": "Konteynere SSH koymayın; hata ayıklama için docker exec / kubectl exec kullanın.",
+   "checkov": [
+    "CKV_DOCKER_1"
+   ]
+  },
+  {
+   "id": "SNP-IAC-DF-011",
+   "title": "Dockerfile içinde HEALTHCHECK tanımı yok",
+   "severity": "info",
+   "category": "container",
+   "reference": "CWE-693",
+   "evidence": "İmajda HEALTHCHECK yönergesi yok; bozulan süreç çalışır görünmeye devam edebilir.",
+   "recommendation": "Uygulamanın sağlık ucunu yoklayan bir HEALTHCHECK ekleyin (Kubernetes'te liveness/readiness yoklamaları da yeterlidir).",
+   "checkov": [
+    "CKV_DOCKER_2"
+   ]
+  }
+ ]
+}

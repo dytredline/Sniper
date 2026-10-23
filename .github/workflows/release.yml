@@ -1,0 +1,42 @@
+name: Community release candidate
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate Community metadata
+        run: python .github/scripts/validate-community-release.py
+      - name: Verify source entrypoint
+        run: python scripts/sniper-mcp --help
+      - name: Build and validate review artifact without publishing a release
+        run: |
+          VERSION=$(tr -d '\n\r' < COMMUNITY_VERSION)
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v${VERSION}" ]; then
+            echo "tag must match COMMUNITY_VERSION (expected v${VERSION})" >&2
+            exit 1
+          fi
+          python scripts/build-community-source.py --output "sniper-community-${VERSION}"
+          python .github/scripts/validate-community-release.py \
+            --root "sniper-community-${VERSION}" --scan-release-tree
+          tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+            -czf "sniper-community-${VERSION}.tar.gz" "sniper-community-${VERSION}"
+          sha256sum "sniper-community-${VERSION}.tar.gz" > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sniper-community-source-candidate
+          path: |
+            sniper-community-*.tar.gz
+            SHA256SUMS
+          if-no-files-found: error

@@ -1,0 +1,22 @@
+# Sniper çevrimdışı OSV veritabanı güncellemesi (resmî OSV deposu, HTTPS, imzalı manifest).
+# Kurulum: ~/.config/systemd/user/ altına kopyalayın; zamanlayıcı: sniper-osv-refresh.timer.
+[Unit]
+Description=Sniper OSV çevrimdışı veritabanı güncellemesi
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/.local/share/sniper/app/scripts/osv_refresh.py
+Environment=PYTHONDONTWRITEBYTECODE=1
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=45min
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.local/state/sniper/osv-db
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictSUIDSGID=true

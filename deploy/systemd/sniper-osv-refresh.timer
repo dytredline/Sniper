@@ -1,0 +1,11 @@
+# OSV verisi 7 günde bayat sayılır; haftada iki güncelleme bu sınırın altında kalır.
+[Unit]
+Description=Sniper OSV veritabanı güncellemesi (haftada iki kez)
+
+[Timer]
+OnCalendar=Mon,Thu *-*-* 04:30:00
+RandomizedDelaySec=45min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

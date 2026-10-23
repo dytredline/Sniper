@@ -1,0 +1,25 @@
+// Sniper CI güvenlik kapısı — Jenkins (Declarative) ÖRNEĞİ. Çevrimdışı ajan: Sniper + yerel OSV önceden kurulu.
+pipeline {
+  agent { label 'sniper' }
+  environment {
+    SNIPER_APP = '/opt/sniper/app'
+    SNIPER_OSV_DB_ROOT = '/opt/sniper/osv-db'
+    SNIPER_DATA_DIR = "${WORKSPACE}/.sniper-data"
+  }
+  stages {
+    stage('Sniper kapısı') {
+      steps {
+        script {
+          // 0 geçti · 1 politika ihlali · 2 yapılandırma hatası · 3 analiz hatası
+          def code = sh(returnStatus: true, script: '''
+            python3 "$SNIPER_APP/cli_reports.py" ci "$WORKSPACE" \
+              --sarif sniper.sarif --summary sniper-summary.md --json sniper-gate.json
+          ''')
+          archiveArtifacts artifacts: 'sniper.sarif,sniper-summary.md,sniper-gate.json', allowEmptyArchive: true
+          if (code == 1) { error('Sniper politika ihlali') }
+          if (code != 0) { error("Sniper çalışamadı (çıkış ${code})") }
+        }
+      }
+    }
+  }
+}

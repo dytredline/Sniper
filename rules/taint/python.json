@@ -1,0 +1,488 @@
+{
+  "format": "sniper-taint-models-v1",
+  "language": "python",
+  "description": "Python için veri tabanlı hedef (sink), arındırıcı ve yayıcı modelleri. Özel mantık gerektiren hedefler (log biçimlendirme, subprocess shell=True, SQL yürütme, eval/exec) taint_flow.py içindedir.",
+  "sinks": [
+    {
+      "kind": "path",
+      "names": [
+        "open",
+        "io.open",
+        "codecs.open",
+        "os.open",
+        "builtins.open",
+        "aiofiles.open"
+      ],
+      "args": [
+        0
+      ],
+      "keywords": [
+        "file",
+        "path"
+      ]
+    },
+    {
+      "kind": "path",
+      "names": [
+        "os.remove",
+        "os.unlink",
+        "os.rmdir",
+        "os.removedirs",
+        "os.makedirs",
+        "os.mkdir",
+        "os.listdir",
+        "os.scandir",
+        "os.chmod",
+        "os.chown",
+        "os.rename",
+        "os.replace",
+        "shutil.rmtree",
+        "shutil.copy",
+        "shutil.copy2",
+        "shutil.copyfile",
+        "shutil.move",
+        "tarfile.open",
+        "zipfile.ZipFile"
+      ],
+      "args": [
+        0,
+        1
+      ],
+      "keywords": [
+        "path",
+        "src",
+        "dst",
+        "name",
+        "file"
+      ]
+    },
+    {
+      "kind": "path",
+      "names": [
+        "send_file",
+        "flask.send_file",
+        "FileResponse",
+        "starlette.responses.FileResponse",
+        "fastapi.responses.FileResponse",
+        "django.http.FileResponse"
+      ],
+      "args": [
+        0
+      ],
+      "keywords": [
+        "path",
+        "path_or_file",
+        "filename_or_fp"
+      ]
+    },
+    {
+      "kind": "path",
+      "names": [
+        "*.open_resource",
+        "open_resource",
+        "*.open_instance_resource"
+      ],
+      "args": [
+        0
+      ],
+      "keywords": [
+        "resource"
+      ]
+    },
+    {
+      "kind": "path",
+      "names": [
+        "*.read_text",
+        "*.read_bytes",
+        "*.write_text",
+        "*.write_bytes",
+        "*.unlink",
+        "*.rmdir",
+        "*.iterdir",
+        "*.rmtree"
+      ],
+      "receiver": true,
+      "receiver_calls": [
+        "Path",
+        "pathlib.Path",
+        "PurePath",
+        "pathlib.PurePath",
+        "PosixPath",
+        "pathlib.PosixPath"
+      ]
+    },
+    {
+      "kind": "ssrf",
+      "names": [
+        "requests.get",
+        "requests.post",
+        "requests.put",
+        "requests.patch",
+        "requests.delete",
+        "requests.head",
+        "requests.options",
+        "httpx.get",
+        "httpx.post",
+        "httpx.put",
+        "httpx.patch",
+        "httpx.delete",
+        "httpx.head",
+        "httpx.stream",
+        "urllib.request.urlopen",
+        "urlopen",
+        "urllib.request.Request",
+        "urllib.urlopen",
+        "urllib2.urlopen",
+        "aiohttp.request"
+      ],
+      "args": [
+        0
+      ],
+      "keywords": [
+        "url"
+      ]
+    },
+    {
+      "kind": "ssrf",
+      "names": [
+        "requests.request",
+        "httpx.request"
+      ],
+      "args": [
+        1
+      ],
+      "keywords": [
+        "url"
+      ]
+    },
+    {
+      "kind": "deserialize",
+      "names": [
+        "pickle.loads",
+        "pickle.load",
+        "cPickle.loads",
+        "cPickle.load",
+        "_pickle.loads",
+        "dill.loads",
+        "dill.load",
+        "marshal.loads",
+        "marshal.load",
+        "jsonpickle.decode",
+        "shelve.open",
+        "pandas.read_pickle",
+        "pd.read_pickle",
+        "yaml.unsafe_load",
+        "yaml.unsafe_load_all"
+      ],
+      "args": [
+        0
+      ],
+      "keywords": [
+        "data",
+        "file",
+        "s"
+      ]
+    },
+    {
+      "kind": "deserialize",
+      "names": [
+        "yaml.load",
+        "yaml.load_all"
+      ],
+      "args": [
+        0
+      ],
+      "keywords": [
+        "stream"
+      ],
+      "safe_keyword_values": {
+        "Loader": [
+          "SafeLoader",
+          "yaml.SafeLoader",
+          "CSafeLoader",
+          "yaml.CSafeLoader",
+          "BaseLoader",
+          "yaml.BaseLoader"
+        ]
+      }
+    },
+    {
+      "kind": "deserialize",
+      "names": [
+        "numpy.load",
+        "np.load"
+      ],
+      "args": [
+        0
+      ],
+      "keywords": [
+        "file"
+      ],
+      "required_keyword_values": {
+        "allow_pickle": [
+          "True"
+        ]
+      }
+    },
+    {
+      "kind": "deserialize",
+      "names": [
+        "torch.load"
+      ],
+      "args": [
+        0
+      ],
+      "keywords": [
+        "f"
+      ],
+      "safe_keyword_values": {
+        "weights_only": [
+          "True"
+        ]
+      }
+    },
+    {
+      "kind": "redirect",
+      "names": [
+        "redirect",
+        "flask.redirect",
+        "django.shortcuts.redirect",
+        "HttpResponseRedirect",
+        "HttpResponsePermanentRedirect",
+        "django.http.HttpResponseRedirect",
+        "RedirectResponse",
+        "starlette.responses.RedirectResponse",
+        "fastapi.responses.RedirectResponse"
+      ],
+      "args": [
+        0
+      ],
+      "keywords": [
+        "location",
+        "url",
+        "redirect_to",
+        "to"
+      ]
+    },
+    {
+      "kind": "eval",
+      "names": [
+        "importlib.import_module",
+        "__import__",
+        "compile",
+        "jinja2.Template",
+        "Environment.from_string",
+        "*.from_string"
+      ],
+      "args": [
+        0
+      ],
+      "keywords": [
+        "name",
+        "source"
+      ]
+    },
+    {
+      "kind": "html",
+      "names": [
+        "HTMLResponse",
+        "fastapi.responses.HTMLResponse",
+        "starlette.responses.HTMLResponse"
+      ],
+      "args": [
+        0
+      ],
+      "keywords": [
+        "content"
+      ]
+    },
+    {
+      "kind": "xpath",
+      "names": [
+        "lxml.etree.XPath",
+        "etree.XPath",
+        "XPath",
+        "lxml.etree.ETXPath",
+        "*.xpath"
+      ],
+      "args": [
+        0
+      ],
+      "keywords": [
+        "path",
+        "_path"
+      ]
+    },
+    {
+      "kind": "xpath",
+      "names": [
+        "elementpath.select",
+        "elementpath.iter_select"
+      ],
+      "args": [
+        1
+      ],
+      "keywords": [
+        "path"
+      ]
+    },
+    {
+      "kind": "path",
+      "names": [
+        "os.path.exists",
+        "os.path.isfile",
+        "os.path.isdir",
+        "os.path.getsize",
+        "os.path.getmtime",
+        "os.stat",
+        "os.lstat",
+        "os.access",
+        "os.path.lexists"
+      ],
+      "args": [
+        0
+      ],
+      "keywords": [
+        "path"
+      ]
+    },
+    {
+      "kind": "path",
+      "names": [
+        "*.exists",
+        "*.is_file",
+        "*.is_dir",
+        "*.stat",
+        "*.open",
+        "*.touch",
+        "*.mkdir"
+      ],
+      "receiver": true,
+      "receiver_calls": [
+        "Path",
+        "pathlib.Path",
+        "PurePath",
+        "pathlib.PurePath",
+        "PosixPath",
+        "pathlib.PosixPath"
+      ]
+    },
+    {
+      "kind": "ssrf",
+      "names": [
+        "urllib3.PoolManager.request",
+        "urllib3.PoolManager.urlopen",
+        "urllib3.PoolManager.request_encode_url",
+        "urllib3.poolmanager.PoolManager.request",
+        "urllib3.poolmanager.PoolManager.urlopen",
+        "urllib3.request"
+      ],
+      "args": [
+        1
+      ],
+      "keywords": [
+        "url"
+      ]
+    }
+  ],
+  "sanitizers": [
+    {
+      "names": [
+        "os.path.basename",
+        "posixpath.basename",
+        "ntpath.basename",
+        "secure_filename",
+        "werkzeug.utils.secure_filename",
+        "pathvalidate.sanitize_filename"
+      ],
+      "kinds": [
+        "path"
+      ]
+    },
+    {
+      "names": [
+        "html.escape",
+        "markupsafe.escape",
+        "escape",
+        "cgi.escape",
+        "django.utils.html.escape",
+        "bleach.clean",
+        "nh3.clean"
+      ],
+      "kinds": [
+        "html",
+        "log"
+      ]
+    },
+    {
+      "names": [
+        "ldap3.utils.conv.escape_filter_chars",
+        "escape_filter_chars",
+        "ldap.filter.escape_filter_chars",
+        "ldap.filter.filter_format"
+      ],
+      "kinds": [
+        "ldap"
+      ]
+    },
+    {
+      "names": [
+        "format_html",
+        "django.utils.html.format_html",
+        "conditional_escape",
+        "django.utils.html.conditional_escape",
+        "render_to_string",
+        "django.template.loader.render_to_string",
+        "render_template",
+        "flask.render_template"
+      ],
+      "kinds": [
+        "html"
+      ]
+    }
+  ],
+  "propagators": [
+    "Path",
+    "PosixPath",
+    "PurePath",
+    "ast.literal_eval",
+    "base64.*",
+    "base64.urlsafe_b64decode",
+    "binascii.*",
+    "bytes.decode",
+    "codecs.*",
+    "codecs.decode",
+    "collections.*",
+    "functools.reduce",
+    "html.unescape",
+    "io.BytesIO",
+    "io.StringIO",
+    "itertools.*",
+    "ntpath.*",
+    "operator.itemgetter",
+    "os.path.*",
+    "os.path.abspath",
+    "os.path.dirname",
+    "os.path.expanduser",
+    "os.path.join",
+    "os.path.normpath",
+    "os.path.realpath",
+    "pathlib.Path",
+    "pathlib.PurePath",
+    "posixpath.*",
+    "posixpath.join",
+    "shlex.split",
+    "string.capwords",
+    "textwrap.*",
+    "unicodedata.normalize",
+    "urljoin",
+    "urllib.parse.*",
+    "urllib.parse.urljoin",
+    "urllib.parse.urlparse",
+    "urllib.parse.urlsplit",
+    "urllib.parse.urlunparse",
+    "urlparse",
+    "urlsplit",
+    "urlunparse"
+  ]
+}

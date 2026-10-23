@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+"""Sniper editör tanılama sunucusu (LSP, stdio). Editör yapılandırması için docs/LSP.md."""
+
+from __future__ import annotations
+
+from pathlib import Path
+import sys
+
+APP_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(APP_DIR))
+
+import lsp_server  # noqa: E402
+
+if __name__ == "__main__":
+    raise SystemExit(lsp_server.main())

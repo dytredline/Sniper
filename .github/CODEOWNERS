@@ -1,0 +1,12 @@
+# The account must retain repository write access for GitHub to request its review.
+/SECURITY.md @dytredline
+/SECURITY-MAINTAINERS.md @dytredline
+/.github/CODEOWNERS @dytredline
+/.github/VULNERABILITY_REPORT.yml @dytredline
+/.github/workflows/ @dytredline
+/auth.py @dytredline
+/authz_routes.py @dytredline
+/mcp_*.py @dytredline
+/sandbox_*.py @dytredline
+/tool_sandbox.py @dytredline
+/verified_exec.py @dytredline

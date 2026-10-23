@@ -1,0 +1,828 @@
+# Sniper çekirdek Opengrep kural paketi (sniper-core v1).
+#
+# Bu kurallar Sniper için sıfırdan yazıldı. Semgrep Registry kuralları lisansı
+# (Semgrep Rules License v1.0) başka bir üründe dağıtıma izin vermediği için
+# KULLANILMAZ. Her kuralda CWE, kategori ve Türkçe mesaj vardır; olumlu/olumsuz
+# örnekler tests/fixtures/opengrep_rules/ altında, testi tests/test_opengrep_rulepack.py.
+rules:
+  # ------------------------------------------------------------------ Python
+  - id: sniper.py.sql-injection
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: İstek verisi parametresiz bir SQL sorgusuna ulaşıyor (SQL enjeksiyonu). Parametreli sorgu kullanın.
+    metadata:
+      cwe: "CWE-89: SQL Injection"
+      category: sql-injection
+      confidence: HIGH
+    pattern-sources:
+      - pattern-either:
+          - pattern: request.args
+          - pattern: request.form
+          - pattern: request.values
+          - pattern: request.json
+          - pattern: request.get_json(...)
+          - pattern: request.cookies
+          - pattern: request.headers
+          - pattern: request.data
+          - pattern: request.GET
+          - pattern: request.POST
+          - pattern: request.query_params
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: int(...)
+          - pattern: float(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $CUR.execute($Q, ...)
+              - pattern: $CUR.executemany($Q, ...)
+              - pattern: $CUR.executescript($Q, ...)
+              - pattern: $DB.raw($Q, ...)
+              - pattern: sqlalchemy.text($Q, ...)
+              - pattern: text($Q, ...)
+          - focus-metavariable: $Q
+
+  - id: sniper.py.command-injection
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: İstek verisi bir kabuk komutuna ulaşıyor (komut enjeksiyonu). Argüman listesi ve shell=False kullanın.
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      category: command-injection
+      confidence: HIGH
+    pattern-sources:
+      - pattern-either:
+          - pattern: request.args
+          - pattern: request.form
+          - pattern: request.values
+          - pattern: request.json
+          - pattern: request.get_json(...)
+          - pattern: request.cookies
+          - pattern: request.headers
+          - pattern: request.data
+          - pattern: request.GET
+          - pattern: request.POST
+          - pattern: request.query_params
+    pattern-sinks:
+      - pattern-either:
+          - patterns:
+              - pattern-either:
+                  - pattern: os.system($C)
+                  - pattern: os.popen($C, ...)
+                  - pattern: subprocess.getoutput($C)
+                  - pattern: subprocess.getstatusoutput($C)
+              - focus-metavariable: $C
+          - patterns:
+              - pattern-either:
+                  - pattern: subprocess.$F($C, ..., shell=True, ...)
+              - focus-metavariable: $C
+
+  - id: sniper.py.code-injection
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: İstek verisi eval/exec ile çalıştırılıyor (kod enjeksiyonu).
+    metadata:
+      cwe: "CWE-95: Eval Injection"
+      category: code-execution
+      confidence: HIGH
+    pattern-sources:
+      - pattern-either:
+          - pattern: request.args
+          - pattern: request.form
+          - pattern: request.values
+          - pattern: request.json
+          - pattern: request.get_json(...)
+          - pattern: request.data
+          - pattern: request.GET
+          - pattern: request.POST
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: eval($X, ...)
+              - pattern: exec($X, ...)
+              - pattern: compile($X, ...)
+          - focus-metavariable: $X
+
+  - id: sniper.py.path-traversal
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: İstek verisi dosya yoluna doğrudan giriyor (yol aşımı). Yolu kök dizine göre çözüp sınırı doğrulayın.
+    metadata:
+      cwe: "CWE-22: Path Traversal"
+      category: path-traversal
+      confidence: MEDIUM
+    pattern-sources:
+      - pattern-either:
+          - pattern: request.args
+          - pattern: request.form
+          - pattern: request.values
+          - pattern: request.json
+          - pattern: request.get_json(...)
+          - pattern: request.GET
+          - pattern: request.POST
+          - pattern: request.query_params
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: os.path.basename(...)
+          - pattern: werkzeug.utils.secure_filename(...)
+          - pattern: secure_filename(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: open($P, ...)
+              - pattern: io.open($P, ...)
+              - pattern: send_file($P, ...)
+              - pattern: flask.send_file($P, ...)
+              - pattern: os.remove($P)
+              - pattern: os.unlink($P)
+              - pattern: shutil.rmtree($P, ...)
+              - pattern: pathlib.Path($P, ...)
+              - pattern: Path($P, ...)
+          - focus-metavariable: $P
+
+  - id: sniper.py.ssrf
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: İstek verisi sunucu tarafı bir HTTP isteğinin adresine giriyor (SSRF). Hedefi izin listesiyle doğrulayın.
+    metadata:
+      cwe: "CWE-918: Server-Side Request Forgery"
+      category: ssrf
+      confidence: MEDIUM
+    pattern-sources:
+      - pattern-either:
+          - pattern: request.args
+          - pattern: request.form
+          - pattern: request.values
+          - pattern: request.json
+          - pattern: request.get_json(...)
+          - pattern: request.GET
+          - pattern: request.POST
+          - pattern: request.query_params
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: requests.$M($U, ...)
+              - pattern: httpx.$M($U, ...)
+              - pattern: urllib.request.urlopen($U, ...)
+              - pattern: urlopen($U, ...)
+          - focus-metavariable: $U
+
+  - id: sniper.py.ssti
+    mode: taint
+    languages: [python]
+    severity: ERROR
+    message: İstek verisi şablon kaynağı olarak derleniyor (sunucu tarafı şablon enjeksiyonu).
+    metadata:
+      cwe: "CWE-1336: Server-Side Template Injection"
+      category: code-execution
+      confidence: HIGH
+    pattern-sources:
+      - pattern-either:
+          - pattern: request.args
+          - pattern: request.form
+          - pattern: request.values
+          - pattern: request.json
+          - pattern: request.get_json(...)
+          - pattern: request.GET
+          - pattern: request.POST
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: render_template_string($T, ...)
+              - pattern: flask.render_template_string($T, ...)
+              - pattern: jinja2.Template($T, ...)
+              - pattern: Template($T, ...)
+          - focus-metavariable: $T
+
+  - id: sniper.py.pickle-deserialization
+    languages: [python]
+    severity: ERROR
+    message: pickle/dill/marshal ile seri durumdan çıkarma güvenilmeyen veride kod çalıştırır.
+    metadata:
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      category: deserialization
+      confidence: MEDIUM
+    pattern-either:
+      - pattern: pickle.loads(...)
+      - pattern: pickle.load(...)
+      - pattern: pickle.Unpickler(...)
+      - pattern: cPickle.loads(...)
+      - pattern: dill.loads(...)
+      - pattern: marshal.loads(...)
+      - pattern: shelve.open(...)
+
+  - id: sniper.py.yaml-unsafe-load
+    languages: [python]
+    severity: ERROR
+    message: yaml.load güvenli yükleyici olmadan rastgele nesne oluşturabilir; yaml.safe_load kullanın.
+    metadata:
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      category: deserialization
+      confidence: HIGH
+    pattern-either:
+      - pattern: yaml.unsafe_load(...)
+      - pattern: yaml.full_load(...)
+      - patterns:
+          - pattern: yaml.load(...)
+          - pattern-not: yaml.load(..., Loader=yaml.SafeLoader, ...)
+          - pattern-not: yaml.load(..., Loader=yaml.CSafeLoader, ...)
+          - pattern-not: yaml.load(..., Loader=SafeLoader, ...)
+
+  - id: sniper.py.weak-hash
+    languages: [python]
+    severity: WARNING
+    message: MD5/SHA-1 güvenlik amaçlı kullanım için kırık; SHA-256 veya üstünü kullanın (güvenlik dışı ise usedforsecurity=False belirtin).
+    metadata:
+      cwe: "CWE-328: Use of Weak Hash"
+      category: cryptography
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: hashlib.md5(...)
+          - pattern: hashlib.sha1(...)
+          - pattern: hashlib.new("md5", ...)
+          - pattern: hashlib.new("sha1", ...)
+      - pattern-not: hashlib.$F(..., usedforsecurity=False, ...)
+
+  - id: sniper.py.subprocess-shell-true
+    languages: [python]
+    severity: WARNING
+    message: shell=True ile alt süreç başlatılıyor; komut dizesine dış veri girerse komut enjeksiyonu olur.
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      category: command-injection
+      confidence: LOW
+    patterns:
+      - pattern: subprocess.$F($C, ..., shell=True, ...)
+      - pattern-not: subprocess.$F("...", ..., shell=True, ...)
+
+  - id: sniper.py.tls-verify-disabled
+    languages: [python]
+    severity: WARNING
+    message: TLS sertifika doğrulaması kapatılmış (verify=False); ortadaki adam saldırısına açık.
+    metadata:
+      cwe: "CWE-295: Improper Certificate Validation"
+      category: configuration
+      confidence: HIGH
+    pattern-either:
+      - pattern: requests.$M(..., verify=False, ...)
+      - pattern: httpx.$M(..., verify=False, ...)
+      - pattern: ssl._create_unverified_context(...)
+
+  - id: sniper.py.flask-debug
+    languages: [python]
+    severity: WARNING
+    message: Flask hata ayıklama modu açık; etkileşimli hata ayıklayıcı uzaktan kod çalıştırmaya izin verir.
+    metadata:
+      cwe: "CWE-489: Active Debug Code"
+      category: configuration
+      confidence: HIGH
+    pattern: $APP.run(..., debug=True, ...)
+
+  - id: sniper.py.jwt-signature-disabled
+    languages: [python]
+    severity: ERROR
+    message: JWT imza doğrulaması kapatılmış; sahte belirteçler kabul edilir.
+    metadata:
+      cwe: "CWE-347: Improper Verification of Cryptographic Signature"
+      category: authentication
+      confidence: HIGH
+    pattern-either:
+      - pattern: jwt.decode(..., verify=False, ...)
+      - pattern: 'jwt.decode(..., options={..., "verify_signature": False, ...}, ...)'
+
+  - id: sniper.py.hardcoded-secret
+    languages: [python]
+    severity: WARNING
+    message: Kaynak kodda sabit bir parola/anahtar/belirteç var; gizli yönetim aracına veya ortam değişkenine taşıyın.
+    metadata:
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      category: secrets
+      confidence: LOW
+    patterns:
+      - pattern: $NAME = "$VALUE"
+      - metavariable-regex:
+          metavariable: $NAME
+          regex: (?i)^[a-z_]*(password|passwd|secret|api_?key|access_?key|private_?key|auth_?token)[a-z_]*$
+      - metavariable-regex:
+          metavariable: $VALUE
+          regex: ^[^\s${}<>]{8,}$
+      - metavariable-regex:
+          metavariable: $VALUE
+          regex: (?i)^(?!.*(changeme|example|placeholder|dummy|xxxx|your[_-]|<|test)).*$
+
+  # ------------------------------------------------------- JavaScript / TS
+  - id: sniper.js.sql-injection
+    mode: taint
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: İstek verisi parametresiz bir SQL sorgusuna ulaşıyor (SQL enjeksiyonu). Yer tutuculu sorgu kullanın.
+    metadata:
+      cwe: "CWE-89: SQL Injection"
+      category: sql-injection
+      confidence: HIGH
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.query
+          - pattern: $REQ.body
+          - pattern: $REQ.params
+          - pattern: $REQ.headers
+          - pattern: $REQ.cookies
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: parseInt(...)
+          - pattern: Number(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $DB.query($Q, ...)
+              - pattern: $DB.execute($Q, ...)
+              - pattern: $DB.raw($Q, ...)
+              - pattern: $DB.$queryRawUnsafe($Q, ...)
+              - pattern: $DB.$executeRawUnsafe($Q, ...)
+          - focus-metavariable: $Q
+
+  - id: sniper.js.command-injection
+    mode: taint
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: İstek verisi bir kabuk komutuna ulaşıyor (komut enjeksiyonu). execFile/spawn ile argüman listesi kullanın.
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      category: command-injection
+      confidence: HIGH
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.query
+          - pattern: $REQ.body
+          - pattern: $REQ.params
+          - pattern: $REQ.headers
+          - pattern: $REQ.cookies
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: exec($C, ...)
+              - pattern: execSync($C, ...)
+              - pattern: $CP.exec($C, ...)
+              - pattern: $CP.execSync($C, ...)
+              - pattern: '$CP.spawn($C, ..., {..., shell: true, ...})'
+          - focus-metavariable: $C
+
+  - id: sniper.js.code-injection
+    mode: taint
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: İstek verisi eval/Function/vm ile çalıştırılıyor (kod enjeksiyonu).
+    metadata:
+      cwe: "CWE-95: Eval Injection"
+      category: code-execution
+      confidence: HIGH
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.query
+          - pattern: $REQ.body
+          - pattern: $REQ.params
+          - pattern: $REQ.headers
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: eval($X)
+              - pattern: new Function(..., $X)
+              - pattern: Function(..., $X)
+              - pattern: vm.runInNewContext($X, ...)
+              - pattern: vm.runInThisContext($X, ...)
+              - pattern: setTimeout($X, ...)
+          - focus-metavariable: $X
+
+  - id: sniper.js.path-traversal
+    mode: taint
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: İstek verisi dosya yoluna doğrudan giriyor (yol aşımı). path.resolve sonrası kök dizin sınırını doğrulayın.
+    metadata:
+      cwe: "CWE-22: Path Traversal"
+      category: path-traversal
+      confidence: MEDIUM
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.query
+          - pattern: $REQ.body
+          - pattern: $REQ.params
+    pattern-sanitizers:
+      - pattern: path.basename(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: fs.readFile($P, ...)
+              - pattern: fs.readFileSync($P, ...)
+              - pattern: fs.createReadStream($P, ...)
+              - pattern: fs.writeFile($P, ...)
+              - pattern: fs.writeFileSync($P, ...)
+              - pattern: fs.unlink($P, ...)
+              - pattern: fs.promises.readFile($P, ...)
+              - pattern: $RES.sendFile($P, ...)
+              - pattern: $RES.download($P, ...)
+          - focus-metavariable: $P
+
+  - id: sniper.js.ssrf
+    mode: taint
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: İstek verisi sunucu tarafı bir HTTP isteğinin adresine giriyor (SSRF). Hedefi izin listesiyle doğrulayın.
+    metadata:
+      cwe: "CWE-918: Server-Side Request Forgery"
+      category: ssrf
+      confidence: MEDIUM
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.query
+          - pattern: $REQ.body
+          - pattern: $REQ.params
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: fetch($U, ...)
+              - pattern: axios($U, ...)
+              - pattern: axios.$M($U, ...)
+              - pattern: http.get($U, ...)
+              - pattern: https.get($U, ...)
+              - pattern: http.request($U, ...)
+              - pattern: https.request($U, ...)
+              - pattern: got($U, ...)
+          - focus-metavariable: $U
+
+  - id: sniper.js.open-redirect
+    mode: taint
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: İstek verisi yönlendirme adresi olarak kullanılıyor (açık yönlendirme). Yalnız göreli veya izinli adreslere yönlendirin.
+    metadata:
+      cwe: "CWE-601: Open Redirect"
+      category: security
+      confidence: MEDIUM
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.query
+          - pattern: $REQ.body
+          - pattern: $REQ.params
+    pattern-sinks:
+      - patterns:
+          - pattern: $RES.redirect($U)
+          - focus-metavariable: $U
+
+  - id: sniper.js.reflected-xss
+    mode: taint
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: İstek verisi kaçışsız olarak HTML yanıtına yazılıyor (yansıtılmış XSS).
+    metadata:
+      cwe: "CWE-79: Cross-site Scripting"
+      category: xss
+      confidence: MEDIUM
+    pattern-sources:
+      - pattern-either:
+          - pattern: $REQ.query
+          - pattern: $REQ.body
+          - pattern: $REQ.params
+    pattern-sanitizers:
+      - pattern-either:
+          - pattern: escape(...)
+          - pattern: escapeHtml(...)
+          - pattern: encodeURIComponent(...)
+          - pattern: DOMPurify.sanitize(...)
+          - pattern: JSON.stringify(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: $RES.send($X)
+              - pattern: $RES.write($X)
+              - pattern: $RES.end($X)
+          - focus-metavariable: $X
+
+  - id: sniper.js.dom-xss-sink
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: innerHTML/outerHTML/document.write'a sabit olmayan değer atanıyor; değer kaçışsızsa DOM tabanlı XSS olur.
+    metadata:
+      cwe: "CWE-79: Cross-site Scripting"
+      category: xss
+      confidence: LOW
+    patterns:
+      - pattern-either:
+          - pattern: $EL.innerHTML = $X
+          - pattern: $EL.outerHTML = $X
+          - pattern: document.write($X)
+          - pattern: $EL.insertAdjacentHTML($POS, $X)
+      - pattern-not: $EL.innerHTML = "..."
+      - pattern-not: $EL.outerHTML = "..."
+      - pattern-not: document.write("...")
+      - pattern-not: $EL.insertAdjacentHTML($POS, "...")
+      - pattern-not: $EL.innerHTML = ``
+      - pattern-not: $EL.innerHTML = DOMPurify.sanitize(...)
+
+  - id: sniper.js.insecure-deserialization
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: node-serialize/serialize-to-js ile seri durumdan çıkarma güvenilmeyen veride kod çalıştırır.
+    metadata:
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      category: deserialization
+      confidence: MEDIUM
+    pattern-either:
+      - pattern: $S.unserialize(...)
+      - pattern: unserialize(...)
+      - pattern: serializeToJs.deserialize(...)
+
+  - id: sniper.js.weak-hash
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: MD5/SHA-1 güvenlik amaçlı kullanım için kırık; SHA-256 veya üstünü kullanın.
+    metadata:
+      cwe: "CWE-328: Use of Weak Hash"
+      category: cryptography
+      confidence: MEDIUM
+    pattern-either:
+      - pattern: $C.createHash("md5")
+      - pattern: $C.createHash("sha1")
+      - pattern: $C.createHash("MD5")
+      - pattern: $C.createHash("SHA1")
+
+  - id: sniper.js.tls-verify-disabled
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: TLS sertifika doğrulaması kapatılmış (rejectUnauthorized=false); ortadaki adam saldırısına açık.
+    metadata:
+      cwe: "CWE-295: Improper Certificate Validation"
+      category: configuration
+      confidence: HIGH
+    pattern-either:
+      - pattern: |
+          {..., rejectUnauthorized: false, ...}
+      - pattern: process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0"
+      - pattern: process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0"
+
+  - id: sniper.js.hardcoded-secret
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: Kaynak kodda sabit bir parola/anahtar/belirteç var; gizli yönetim aracına veya ortam değişkenine taşıyın.
+    metadata:
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      category: secrets
+      confidence: LOW
+    patterns:
+      - pattern-either:
+          - pattern: const $NAME = "$VALUE"
+          - pattern: let $NAME = "$VALUE"
+          - pattern: var $NAME = "$VALUE"
+      - metavariable-regex:
+          metavariable: $NAME
+          regex: (?i)^[a-z_]*(password|passwd|secret|api_?key|access_?key|private_?key|auth_?token)[a-z_]*$
+      - metavariable-regex:
+          metavariable: $VALUE
+          regex: ^[^\s${}<>]{8,}$
+      - metavariable-regex:
+          metavariable: $VALUE
+          regex: (?i)^(?!.*(changeme|example|placeholder|dummy|xxxx|your[_-]|<|test)).*$
+
+  - id: sniper.js.jwt-none-algorithm
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: JWT doğrulamasında "none" algoritmasına izin veriliyor; imzasız belirteçler kabul edilir.
+    metadata:
+      cwe: "CWE-347: Improper Verification of Cryptographic Signature"
+      category: authentication
+      confidence: HIGH
+    pattern-either:
+      - pattern: |
+          $JWT.verify($T, $K, {..., algorithms: [..., "none", ...], ...}, ...)
+      - pattern: |
+          $JWT.verify($T, $K, {..., algorithms: [..., 'none', ...], ...}, ...)
+
+  # --------------------------------------------------------------------- Go
+  - id: sniper.go.sql-injection
+    languages: [go]
+    severity: ERROR
+    message: SQL sorgusu dize birleştirme/biçimlendirme ile kuruluyor (SQL enjeksiyonu). Yer tutuculu sorgu kullanın.
+    metadata:
+      cwe: "CWE-89: SQL Injection"
+      category: sql-injection
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: $DB.$M(fmt.Sprintf($F, ...), ...)
+          - pattern: $DB.$M($A + $B, ...)
+          - pattern: |
+              $Q := fmt.Sprintf($F, ...)
+              ...
+              $DB.$M($Q, ...)
+          - pattern: |
+              $Q := $A + $B
+              ...
+              $DB.$M($Q, ...)
+      - metavariable-regex:
+          metavariable: $M
+          regex: ^(Query|QueryRow|QueryContext|QueryRowContext|Exec|ExecContext|Prepare|PrepareContext)$
+
+  - id: sniper.go.command-injection
+    languages: [go]
+    severity: ERROR
+    message: Kabuk "-c" ile sabit olmayan bir komut çalıştırılıyor (komut enjeksiyonu riski).
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      category: command-injection
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: exec.Command($SH, "-c", $X, ...)
+          - pattern: exec.CommandContext($CTX, $SH, "-c", $X, ...)
+      - pattern-not: exec.Command($SH, "-c", "...", ...)
+      - pattern-not: exec.CommandContext($CTX, $SH, "-c", "...", ...)
+
+  - id: sniper.go.tls-insecure-skip-verify
+    languages: [go]
+    severity: WARNING
+    message: InsecureSkipVerify açık; TLS sertifika doğrulaması yapılmıyor.
+    metadata:
+      cwe: "CWE-295: Improper Certificate Validation"
+      category: configuration
+      confidence: HIGH
+    pattern-either:
+      - pattern: |
+          tls.Config{..., InsecureSkipVerify: true, ...}
+      - pattern: $C.InsecureSkipVerify = true
+
+  - id: sniper.go.weak-hash
+    languages: [go]
+    severity: WARNING
+    message: MD5/SHA-1 güvenlik amaçlı kullanım için kırık; SHA-256 veya üstünü kullanın.
+    metadata:
+      cwe: "CWE-328: Use of Weak Hash"
+      category: cryptography
+      confidence: MEDIUM
+    pattern-either:
+      - pattern: md5.New()
+      - pattern: md5.Sum(...)
+      - pattern: sha1.New()
+      - pattern: sha1.Sum(...)
+
+  - id: sniper.go.path-traversal
+    mode: taint
+    languages: [go]
+    severity: ERROR
+    message: İstek verisi dosya yoluna doğrudan giriyor (yol aşımı). filepath.Clean ile kök dizin sınırını doğrulayın.
+    metadata:
+      cwe: "CWE-22: Path Traversal"
+      category: path-traversal
+      confidence: MEDIUM
+    pattern-sources:
+      - pattern-either:
+          - pattern: $R.FormValue(...)
+          - pattern: $R.URL.Query()
+          - pattern: $R.PostFormValue(...)
+    pattern-sanitizers:
+      - pattern: filepath.Base(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: os.Open($P)
+              - pattern: os.OpenFile($P, ...)
+              - pattern: os.ReadFile($P)
+              - pattern: ioutil.ReadFile($P)
+              - pattern: os.Remove($P)
+              - pattern: http.ServeFile($W, $R2, $P)
+          - focus-metavariable: $P
+
+  - id: sniper.go.ssrf
+    mode: taint
+    languages: [go]
+    severity: ERROR
+    message: İstek verisi sunucu tarafı bir HTTP isteğinin adresine giriyor (SSRF).
+    metadata:
+      cwe: "CWE-918: Server-Side Request Forgery"
+      category: ssrf
+      confidence: MEDIUM
+    pattern-sources:
+      - pattern-either:
+          - pattern: $R.FormValue(...)
+          - pattern: $R.URL.Query()
+          - pattern: $R.PostFormValue(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: http.Get($U)
+              - pattern: http.Post($U, ...)
+              - pattern: http.Head($U)
+              - pattern: http.NewRequest($M, $U, ...)
+              - pattern: http.NewRequestWithContext($CTX, $M, $U, ...)
+          - focus-metavariable: $U
+
+  # ------------------------------------------------------------------- Java
+  - id: sniper.java.sql-injection
+    languages: [java]
+    severity: ERROR
+    message: SQL sorgusu dize birleştirme ile kuruluyor (SQL enjeksiyonu). PreparedStatement ve yer tutucu kullanın.
+    metadata:
+      cwe: "CWE-89: SQL Injection"
+      category: sql-injection
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: (java.sql.Statement $S).$M($A + $B, ...)
+          - pattern: (Statement $S).$M($A + $B, ...)
+          - pattern: (java.sql.Connection $C).prepareStatement($A + $B, ...)
+          - pattern: (Connection $C).prepareStatement($A + $B, ...)
+          - pattern: $X.createStatement().$M($A + $B, ...)
+          - pattern: (Statement $S).$M(String.format(...), ...)
+      - metavariable-regex:
+          metavariable: $M
+          regex: ^(execute|executeQuery|executeUpdate|executeLargeUpdate|addBatch|prepareStatement)$
+
+  - id: sniper.java.command-injection
+    languages: [java]
+    severity: ERROR
+    message: İşletim sistemi komutu sabit olmayan bir dizeyle çalıştırılıyor (komut enjeksiyonu riski).
+    metadata:
+      cwe: "CWE-78: OS Command Injection"
+      category: command-injection
+      confidence: MEDIUM
+    patterns:
+      - pattern-either:
+          - pattern: Runtime.getRuntime().exec($X, ...)
+          - pattern: new ProcessBuilder("sh", "-c", $X, ...)
+          - pattern: new ProcessBuilder("bash", "-c", $X, ...)
+          - pattern: new ProcessBuilder("/bin/sh", "-c", $X, ...)
+      - pattern-not: Runtime.getRuntime().exec("...", ...)
+      - pattern-not: new ProcessBuilder($SH, "-c", "...", ...)
+
+  - id: sniper.java.insecure-deserialization
+    languages: [java]
+    severity: ERROR
+    message: ObjectInputStream.readObject güvenilmeyen veride rastgele nesne/kod zinciri çalıştırabilir.
+    metadata:
+      cwe: "CWE-502: Deserialization of Untrusted Data"
+      category: deserialization
+      confidence: MEDIUM
+    pattern-either:
+      - pattern: (java.io.ObjectInputStream $O).readObject()
+      - pattern: (ObjectInputStream $O).readObject()
+      - pattern: new ObjectInputStream(...).readObject()
+      - pattern: new XMLDecoder(...).readObject()
+
+  - id: sniper.java.weak-hash
+    languages: [java]
+    severity: WARNING
+    message: MD5/SHA-1 güvenlik amaçlı kullanım için kırık; SHA-256 veya üstünü kullanın.
+    metadata:
+      cwe: "CWE-328: Use of Weak Hash"
+      category: cryptography
+      confidence: MEDIUM
+    patterns:
+      - pattern: MessageDigest.getInstance($ALG, ...)
+      - metavariable-regex:
+          metavariable: $ALG
+          regex: (?i)^"(md5|md2|sha-?1)"$
+
+  - id: sniper.java.weak-cipher
+    languages: [java]
+    severity: WARNING
+    message: Zayıf şifre veya ECB kipi kullanılıyor (DES/3DES/RC4/ECB); AES-GCM kullanın.
+    metadata:
+      cwe: "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
+      category: cryptography
+      confidence: MEDIUM
+    patterns:
+      - pattern: Cipher.getInstance($ALG, ...)
+      - metavariable-regex:
+          metavariable: $ALG
+          regex: (?i)^"(des|desede|tripledes|rc4|rc2|blowfish|arcfour|aes)(/ecb/.*)?"$|^"[^"]*/ecb/[^"]*"$
+
+  - id: sniper.java.path-traversal
+    mode: taint
+    languages: [java]
+    severity: ERROR
+    message: İstek parametresi dosya yoluna doğrudan giriyor (yol aşımı). Kanonik yolu kök dizine göre doğrulayın.
+    metadata:
+      cwe: "CWE-22: Path Traversal"
+      category: path-traversal
+      confidence: MEDIUM
+    pattern-sources:
+      - pattern-either:
+          - pattern: (HttpServletRequest $REQ).getParameter(...)
+          - pattern: (javax.servlet.http.HttpServletRequest $REQ).getParameter(...)
+          - pattern: (jakarta.servlet.http.HttpServletRequest $REQ).getParameter(...)
+          - pattern: (HttpServletRequest $REQ).getHeader(...)
+    pattern-sinks:
+      - patterns:
+          - pattern-either:
+              - pattern: new File($P, ...)
+              - pattern: new File($D, $P)
+              - pattern: new FileInputStream($P)
+              - pattern: new FileOutputStream($P, ...)
+              - pattern: Paths.get($P, ...)
+              - pattern: Path.of($P, ...)
+          - focus-metavariable: $P

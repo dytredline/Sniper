@@ -1,0 +1,22 @@
+# Sniper CI güvenlik kapısı — GitLab CI ÖRNEĞİ (.gitlab-ci.yml içine ekleyin).
+# Çevrimdışı: Sniper ve yerel OSV veritabanı çalıştırıcı imajına/makinesine önceden kopyalanmış olmalı.
+sniper-gate:
+  stage: test
+  tags: [sniper]
+  variables:
+    SNIPER_APP: /opt/sniper/app
+    SNIPER_OSV_DB_ROOT: /opt/sniper/osv-db
+    SNIPER_DATA_DIR: $CI_PROJECT_DIR/.sniper-data
+    GIT_DEPTH: 0
+  script:
+    - |
+      ARGS=""
+      if [ -n "$CI_MERGE_REQUEST_DIFF_BASE_SHA" ]; then ARGS="--baseline-ref $CI_MERGE_REQUEST_DIFF_BASE_SHA"; fi
+      python3 "$SNIPER_APP/cli_reports.py" ci "$CI_PROJECT_DIR" $ARGS \
+        --gitlab-dir . --sarif sniper.sarif --summary sniper-summary.md --json sniper-gate.json
+  artifacts:
+    when: always
+    reports:
+      sast: gl-sast-report.json
+      dependency_scanning: gl-dependency-scanning-report.json
+    paths: [sniper.sarif, sniper-summary.md, sniper-gate.json]

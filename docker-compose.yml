@@ -1,0 +1,70 @@
+services:
+  sniper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sniper-community:local
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      SNIPER_DATA_DIR: /var/lib/sniper
+      SNIPER_AUTH_FIELD_KEY_FILE: /var/lib/sniper-secrets/auth-field-keys.json
+      SNIPER_ENABLE_PLUGINS: "0"
+      # Süreç konteyner içinde 0.0.0.0'a bağlanır; bu onay yalnız host portunun yukarıda
+      # 127.0.0.1'e yayımlanması içindir. Bu değeri genel arayüz yayınına kopyalamayın.
+      SNIPER_ALLOW_UNAUTHENTICATED_REMOTE: "1"
+    volumes:
+      - sniper_data:/var/lib/sniper
+      - sniper_integrity:/var/lib/sniper-integrity
+      - sniper_secrets:/var/lib/sniper-secrets
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/api/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      sniper:
+        condition: service_healthy
+
+  grafana:
+    image: grafana/grafana:11.2.2
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Run scripts/deploy.sh to create the local secret}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana-dashboard.json:/var/lib/grafana/dashboards/sniper.json:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  sniper_data:
+  sniper_integrity:
+  sniper_secrets:
+  prometheus_data:
+  grafana_data:

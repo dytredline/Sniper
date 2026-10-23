@@ -1,0 +1,657 @@
+"""One-click local/portable tool runtime auto-discovery and zero-setup bundle manifest.
+
+Scans trusted local and portable bundle directories for installed security tool
+binaries, rulepacks, template catalogs, and offline databases; verifies regular
+non-symlink files and SHA-256 digests; and binds SNIPER_* environment variables
+in-memory without exposing raw local filesystem paths in HTTP responses.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import re
+import stat
+import tempfile
+import threading
+from pathlib import Path
+from typing import Any
+
+from tool_pins import PINS
+from tool_runtime_readiness import runtime_readiness_payload
+
+
+# Keşif ve ortam uygulaması tek seferde bir iş parçacığında yapılır (istek iş parçacıkları
+# ile başlangıç keşfi aynı anda os.environ'u değiştirmesin).
+_BIND_LOCK = threading.Lock()
+PINS_FILE = "runtime-bindings-pins.json"
+PINS_FORMAT = "sniper-runtime-bindings-pins-v1"
+_MAX_PINS_BYTES = 64_000
+
+
+def _pins_path() -> Path | None:
+    data_dir = os.environ.get("SNIPER_DATA_DIR", "")
+    if not data_dir:
+        return None
+    path = Path(data_dir)
+    return path / PINS_FILE if _is_regular_dir(path) else None
+
+
+def _load_pins(path: Path | None) -> dict[str, str] | None:
+    """Onaylanmış bağlamaları oku (yalnız süreç sahibine ait, başkasınca yazılamaz normal dosya)."""
+    if path is None:
+        return None
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
+    except OSError:
+        return None
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o022:
+            return None
+        raw = os.read(fd, _MAX_PINS_BYTES + 1)
+    finally:
+        os.close(fd)
+    if len(raw) > _MAX_PINS_BYTES:
+        return None
+    try:
+        data = json.loads(raw)
+    except (ValueError, UnicodeDecodeError):
+        return None
+    bindings = data.get("bindings") if isinstance(data, dict) and data.get("format") == PINS_FORMAT else None
+    if not isinstance(bindings, dict):
+        return None
+    return {
+        str(k): str(v) for k, v in bindings.items()
+        if isinstance(k, str) and k.startswith("SNIPER_") and isinstance(v, str) and len(v) <= 4096
+    }
+
+
+def _save_pins(path: Path | None, bindings: dict[str, str]) -> bool:
+    if path is None:
+        return False
+    try:
+        fd, tmp = tempfile.mkstemp(prefix=".pins-", dir=path.parent)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                json.dump({"format": PINS_FORMAT, "bindings": bindings}, handle, indent=2, sort_keys=True)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.chmod(tmp, 0o600)
+            os.replace(tmp, path)
+        except BaseException:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
+        return True
+    except OSError:
+        return False
+
+
+_ENV_LINE_RE = re.compile(r"^Environment=(?:([A-Za-z0-9_]+)=(.*)|\"([A-Za-z0-9_]+)=(.*)\")\Z")
+
+
+def _is_regular_file(path: Path, *, executable: bool = False) -> bool:
+    try:
+        return (
+            path.is_absolute()
+            and not path.is_symlink()
+            and path.is_file()
+            and (not executable or os.access(path, os.X_OK))
+        )
+    except OSError:
+        return False
+
+
+def _is_regular_dir(path: Path) -> bool:
+    try:
+        return path.is_absolute() and not path.is_symlink() and path.is_dir()
+    except OSError:
+        return False
+
+
+def _sha256_file(path: Path) -> str | None:
+    if not _is_regular_file(path):
+        return None
+    try:
+        with path.open("rb") as stream:
+            return hashlib.file_digest(stream, "sha256").hexdigest()
+    except OSError:
+        return None
+
+
+def _first_valid_file(candidates: list[Path], *, executable: bool = False) -> Path | None:
+    for candidate in candidates:
+        if _is_regular_file(candidate, executable=executable):
+            return candidate
+    return None
+
+
+def _first_valid_unrevoked_executable(
+    candidates: list[Path], revoked_digests: frozenset[str]
+) -> tuple[Path | None, str | None]:
+    """İlk güvenli çalıştırılabilir ikiliyi ve özetini döndür; bilinen geri çekilmiş özetleri atla."""
+    for candidate in candidates:
+        if not _is_regular_file(candidate, executable=True):
+            continue
+        digest = _sha256_file(candidate)
+        if digest is not None and digest not in revoked_digests:
+            return candidate, digest
+    return None, None
+
+
+def _first_valid_dir(candidates: list[Path]) -> Path | None:
+    for candidate in candidates:
+        if _is_regular_dir(candidate):
+            return candidate
+    return None
+
+
+def _read_systemd_dropin_defaults(dropin_dir: Path) -> dict[str, str]:
+    discovered: dict[str, str] = {}
+    if not _is_regular_dir(dropin_dir):
+        return discovered
+    try:
+        entries = sorted(dropin_dir.iterdir())
+    except OSError:
+        return discovered
+    for entry in entries:
+        if entry.suffix != ".conf" or not _is_regular_file(entry):
+            continue
+        try:
+            text = entry.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for raw_line in text.splitlines():
+            line = raw_line.strip()
+            match = _ENV_LINE_RE.match(line)
+            if not match:
+                continue
+            key = match.group(1) or match.group(3)
+            val = match.group(2) if match.group(1) else match.group(4)
+            if key and val is not None and key.startswith("SNIPER_"):
+                discovered[key] = val
+    return discovered
+
+
+def autodiscover_and_bind_runtimes(*, apply_env: bool = True, persist: bool = True,
+                                   trust_disk: bool = False) -> dict[str, Any]:
+    """Yerel/taşınabilir araç çalışma zamanlarını keşfet, SHA-256 değerlerini hesapla, ortamı bağla.
+
+    Güven modeli: diskten hesaplanan hash'ler yalnız açık onayla (``trust_disk=True``, ör.
+    ``POST /api/tooling/autodiscover`` + ``confirm_bind``) veya hiç onaylı kayıt yokken ilk
+    başlangıçta kabul edilir ve veri dizinine (``runtime-bindings-pins.json``, 0600) kaydedilir.
+    Sonraki başlangıçlarda kayıtlı değerler kullanılır; diskteki değer farklıysa bağlama
+    uygulanmaz ve ``pin_mismatches`` içinde raporlanır (sessiz yeniden sabitleme yok).
+    Operatörün verdiği değerler (systemd drop-in, kabuk ortamı) hiçbir zaman ezilmez.
+    """
+    with _BIND_LOCK:
+        return _autodiscover_locked(apply_env=apply_env, persist=persist, trust_disk=trust_disk)
+
+
+def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
+    """Diskteki araçları bul ve bağlanacak değerleri (yol, SHA-256) hesapla; ortama dokunmaz."""
+    app_dir = Path(__file__).resolve().parent
+    sniper_root = app_dir.parent
+    home = Path.home().resolve()
+
+    portable_roots = [
+        app_dir / "runtimes",
+        sniper_root / "runtimes",
+        home / ".local" / "state" / "sniper-tool-runtimes",
+    ]
+    env_portable = os.environ.get("SNIPER_PORTABLE_RUNTIMES_DIR", "").strip()
+    if env_portable:
+        portable_roots.insert(0, Path(env_portable))
+
+    dropin_defaults = _read_systemd_dropin_defaults(
+        home / ".config" / "systemd" / "user" / "sniper.service.d"
+    )
+
+    bindings: dict[str, str] = {}
+    tool_results: list[dict[str, Any]] = []
+
+    # 1. Semgrep
+    semgrep_bin = _first_valid_file(
+        ([Path(dropin_defaults["SNIPER_SEMGREP_BINARY"])] if "SNIPER_SEMGREP_BINARY" in dropin_defaults else [])
+        + [r / "semgrep" / "bin" / "semgrep" for r in portable_roots]
+        + [r / "semgrep-1.180.0" / "bin" / "semgrep" for r in portable_roots]
+        + [r / "semgrep-1.93.0" / "bin" / "semgrep" for r in portable_roots]
+        + [home / ".local" / "bin" / "semgrep", Path("/usr/local/bin/semgrep"), Path("/usr/bin/semgrep")],
+        executable=True,
+    )
+    semgrep_rules = _first_valid_file(
+        ([Path(dropin_defaults["SNIPER_SEMGREP_RULES"])] if "SNIPER_SEMGREP_RULES" in dropin_defaults else [])
+        + [r / "semgrep" / "rules" / "no-eval.yaml" for r in portable_roots]
+        + [r / "semgrep-1.180.0-smoke" / "rules" / "no-eval.yaml" for r in portable_roots]
+        + [r / "semgrep-1.93.0" / "sniper-local-rules.yml" for r in portable_roots],
+        executable=False,
+    )
+    if semgrep_bin and semgrep_rules:
+        bindings["SNIPER_SEMGREP_BINARY"] = str(semgrep_bin)
+        bindings["SNIPER_SEMGREP_RULES"] = str(semgrep_rules)
+    tool_results.append({
+        "id": "semgrep",
+        "bound": bool(semgrep_bin and semgrep_rules),
+        "mode": "local_binary_and_rulepack",
+    })
+
+    # 2. Trivy + Offline Vulnerability DB
+    trivy_bin = _first_valid_file(
+        ([Path(dropin_defaults["SNIPER_TRIVY_BINARY"])] if "SNIPER_TRIVY_BINARY" in dropin_defaults else [])
+        + [r / "trivy" / "trivy" for r in portable_roots]
+        + [r / "trivy-0.75.0" / "trivy" for r in portable_roots]
+        + [home / ".local" / "bin" / "trivy", Path("/usr/local/bin/trivy"), Path("/usr/bin/trivy")],
+        executable=True,
+    )
+    trivy_cache = _first_valid_dir(
+        ([Path(dropin_defaults["SNIPER_TRIVY_VULN_CACHE_DIR"])] if "SNIPER_TRIVY_VULN_CACHE_DIR" in dropin_defaults else [])
+        + [r / "trivy-db" / "cache" for r in portable_roots]
+        + [r / "trivy-vulnerability-db-20261012T1218Z" / "cache" for r in portable_roots]
+        + [r / "trivy-vulnerability-db-20261011" / "cache" for r in portable_roots]
+    )
+    trivy_db_sha: str | None = None
+    if trivy_cache:
+        trivy_db_sha = _sha256_file(trivy_cache / "db" / "trivy.db")
+    if trivy_bin:
+        bindings["SNIPER_TRIVY_BINARY"] = str(trivy_bin)
+    if trivy_cache and trivy_db_sha:
+        bindings["SNIPER_TRIVY_VULN_CACHE_DIR"] = str(trivy_cache)
+        bindings["SNIPER_TRIVY_VULN_DB_SHA256"] = trivy_db_sha
+    tool_results.append({
+        "id": "trivy",
+        "bound": bool(trivy_bin and trivy_cache and trivy_db_sha),
+        "mode": "local_binary_and_offline_db",
+    })
+
+    # 3. Gitleaks
+    gitleaks_bin = _first_valid_file(
+        ([Path(dropin_defaults["SNIPER_GITLEAKS_BINARY"])] if "SNIPER_GITLEAKS_BINARY" in dropin_defaults else [])
+        + [r / "gitleaks" / "gitleaks" for r in portable_roots]
+        + [r / "gitleaks-8.30.1-stdlib" / "gitleaks" for r in portable_roots]
+        + [home / ".local" / "bin" / "gitleaks", Path("/usr/local/bin/gitleaks"), Path("/usr/bin/gitleaks")],
+        executable=True,
+    )
+    if gitleaks_bin:
+        bindings["SNIPER_GITLEAKS_BINARY"] = str(gitleaks_bin)
+    tool_results.append({
+        "id": "gitleaks",
+        "bound": bool(gitleaks_bin),
+        "mode": "single_static_binary",
+    })
+
+    # 4. TruffleHog
+    trufflehog_bin = _first_valid_file(
+        ([Path(dropin_defaults["SNIPER_TRUFFLEHOG_BINARY"])] if "SNIPER_TRUFFLEHOG_BINARY" in dropin_defaults else [])
+        + [r / "trufflehog" / "trufflehog" for r in portable_roots]
+        + [r / "trufflehog-3.99.0-unpacked" / "trufflehog" for r in portable_roots]
+        + [home / ".local" / "bin" / "trufflehog", Path("/usr/local/bin/trufflehog"), Path("/usr/bin/trufflehog")],
+        executable=True,
+    )
+    if trufflehog_bin:
+        bindings["SNIPER_TRUFFLEHOG_BINARY"] = str(trufflehog_bin)
+    tool_results.append({
+        "id": "trufflehog",
+        "bound": bool(trufflehog_bin),
+        "mode": "single_static_binary",
+    })
+
+    # 5. testssl.sh
+    testssl_bin = _first_valid_file(
+        ([Path(dropin_defaults["SNIPER_TESTSSL_BINARY"])] if "SNIPER_TESTSSL_BINARY" in dropin_defaults else [])
+        + [r / "testssl" / "testssl.sh" for r in portable_roots]
+        + [r / "testssl-3.2.4" / "testssl.sh" for r in portable_roots],
+        executable=True,
+    )
+    testssl_sha = _sha256_file(testssl_bin) if testssl_bin else None
+    if testssl_bin and testssl_sha:
+        bindings["SNIPER_TESTSSL_BINARY"] = str(testssl_bin)
+        bindings["SNIPER_TESTSSL_SHA256"] = testssl_sha
+    tool_results.append({
+        "id": "testssl",
+        "bound": bool(testssl_bin and testssl_sha),
+        "mode": "portable_script_bundle",
+    })
+
+    # 6. Nuclei
+    nuclei_bin = _first_valid_file(
+        ([Path(dropin_defaults["SNIPER_NUCLEI_BINARY"])] if "SNIPER_NUCLEI_BINARY" in dropin_defaults else [])
+        + [r / "nuclei" / "nuclei" for r in portable_roots]
+        + [r / "nuclei-3.11.1" / "nuclei" for r in portable_roots]
+        + [home / ".local" / "bin" / "nuclei", Path("/usr/local/bin/nuclei"), Path("/usr/bin/nuclei")],
+        executable=True,
+    )
+    nuclei_sha = _sha256_file(nuclei_bin) if nuclei_bin else None
+    if nuclei_bin and nuclei_sha:
+        bindings["SNIPER_NUCLEI_BINARY"] = str(nuclei_bin)
+        bindings["SNIPER_NUCLEI_SHA256"] = nuclei_sha
+    tool_results.append({
+        "id": "nuclei",
+        "bound": bool(nuclei_bin and nuclei_sha),
+        "mode": "single_static_binary_and_templates",
+    })
+
+    # 7. Nmap
+    nmap_bin = _first_valid_file(
+        ([Path(dropin_defaults["SNIPER_NMAP_BINARY"])] if "SNIPER_NMAP_BINARY" in dropin_defaults else [])
+        + [r / "nmap" / "bin" / "nmap" for r in portable_roots]
+        + [sniper_root / "tools" / "nmap-7.94" / "bin" / "nmap", Path("/usr/bin/nmap"), Path("/usr/local/bin/nmap")],
+        executable=True,
+    )
+    if nmap_bin:
+        bindings["SNIPER_NMAP_BINARY"] = str(nmap_bin)
+    tool_results.append({
+        "id": "nmap",
+        "bound": bool(nmap_bin),
+        "mode": "local_or_bundled_binary",
+    })
+
+    # 8. OpenSSL Loopback
+    openssl_bin = Path("/usr/bin/openssl")
+    openssl_bin_sha = _sha256_file(openssl_bin) if _is_regular_file(openssl_bin, executable=True) else None
+    data_dir_raw = os.environ.get("SNIPER_DATA_DIR", str(sniper_root / "data"))
+    ca_file = Path(data_dir_raw) / "openssl-trust-ca.pem"
+    ca_sha = _sha256_file(ca_file) or dropin_defaults.get("SNIPER_OPENSSL_CA_SHA256")
+    if openssl_bin_sha:
+        bindings["SNIPER_OPENSSL_BINARY_SHA256"] = openssl_bin_sha
+    if ca_sha:
+        bindings["SNIPER_OPENSSL_CA_SHA256"] = ca_sha
+    tool_results.append({
+        "id": "openssl",
+        "bound": bool(openssl_bin_sha and ca_sha),
+        "mode": "system_binary_and_trust_ca",
+    })
+
+    # 9. Node + npm audit
+    node_bin, node_sha = _first_valid_unrevoked_executable(
+        ([Path(dropin_defaults["SNIPER_NODE_BINARY"])] if "SNIPER_NODE_BINARY" in dropin_defaults else [])
+        + [r / "node" / "bin" / "node" for r in portable_roots]
+        + [home / ".local" / "opt" / "node-v22.23.4-linux-arm64" / "bin" / "node", Path("/usr/bin/node")],
+        PINS["node"].revoked_digests,
+    )
+    matching_npm = node_bin.parent.parent / "lib" / "node_modules" / "npm" / "bin" / "npm-cli.js" if node_bin else None
+    npm_cli = _first_valid_file(
+        ([matching_npm] if matching_npm is not None else [])
+        + ([Path(dropin_defaults["SNIPER_NPM_CLI"])] if "SNIPER_NPM_CLI" in dropin_defaults else [])
+        + [r / "node" / "lib" / "node_modules" / "npm" / "bin" / "npm-cli.js" for r in portable_roots]
+        + [home / ".local" / "opt" / "node-v22.23.4-linux-arm64" / "lib" / "node_modules" / "npm" / "bin" / "npm-cli.js"],
+        executable=False,
+    )
+    npm_sha = _sha256_file(npm_cli) if npm_cli else None
+    if node_bin and npm_cli and node_sha and npm_sha:
+        bindings["SNIPER_NODE_BINARY"] = str(node_bin)
+        bindings["SNIPER_NODE_SHA256"] = node_sha
+        bindings["SNIPER_NPM_CLI"] = str(npm_cli)
+        bindings["SNIPER_NPM_CLI_SHA256"] = npm_sha
+    tool_results.append({
+        "id": "npm-audit",
+        "bound": bool(node_bin and npm_cli and node_sha and npm_sha),
+        "mode": "portable_node_runtime",
+    })
+
+    # 10. OSV-Scanner Offline
+    osv_bin = _first_valid_file(
+        ([Path(dropin_defaults["SNIPER_OSV_SCANNER_BINARY"])] if "SNIPER_OSV_SCANNER_BINARY" in dropin_defaults else [])
+        + [r / "osv-scanner" / "osv-scanner" for r in portable_roots],
+        executable=True,
+    )
+    osv_launcher = _first_valid_file([app_dir / "osv_seccomp_launcher.py"], executable=False)
+    osv_manifest = _first_valid_file(
+        ([Path(dropin_defaults["SNIPER_OSV_DB_MANIFEST"])] if "SNIPER_OSV_DB_MANIFEST" in dropin_defaults else [])
+        + [r / "osv-db" / "NPM-OFFLINE-DB-MANIFEST-v2.json" for r in portable_roots],
+        executable=False,
+    )
+    osv_bin_sha = _sha256_file(osv_bin) if osv_bin else None
+    osv_launcher_sha = _sha256_file(osv_launcher) if osv_launcher else None
+    osv_manifest_sha = _sha256_file(osv_manifest) if osv_manifest else None
+    if osv_bin and osv_bin_sha and osv_launcher and osv_launcher_sha and osv_manifest and osv_manifest_sha:
+        bindings["SNIPER_OSV_SCANNER_BINARY"] = str(osv_bin)
+        bindings["SNIPER_OSV_SCANNER_SHA256"] = osv_bin_sha
+        bindings["SNIPER_OSV_SECCOMP_LAUNCHER"] = str(osv_launcher)
+        bindings["SNIPER_OSV_SECCOMP_LAUNCHER_SHA256"] = osv_launcher_sha
+        bindings["SNIPER_OSV_DB_MANIFEST"] = str(osv_manifest)
+        bindings["SNIPER_OSV_DB_MANIFEST_SHA256"] = osv_manifest_sha
+    tool_results.append({
+        "id": "osv-scanner",
+        "bound": bool(osv_bin and osv_bin_sha and osv_manifest and osv_manifest_sha),
+        "mode": "single_static_binary_and_offline_db",
+    })
+
+    # 11. Schemathesis Local & Loopback
+    st_origin = dropin_defaults.get("SNIPER_SCHEMATHESIS_LOCAL_ORIGIN", "http://127.0.0.1:8788")
+    st_ports = dropin_defaults.get("SNIPER_SCHEMATHESIS_ALLOWED_PORTS", "8788")
+    bindings["SNIPER_SCHEMATHESIS_LOCAL_ORIGIN"] = st_origin
+    bindings["SNIPER_SCHEMATHESIS_EPHEMERAL_FIXTURE"] = "1"
+    bindings["SNIPER_SCHEMATHESIS_ALLOWED_PORTS"] = st_ports
+    tool_results.append({
+        "id": "schemathesis",
+        "bound": True,
+        "mode": "synthetic_fixture_and_loopback",
+    })
+
+    # 12. OWASP ZAP (already pinned via zap_passive_active.py)
+    zap_dir = _first_valid_dir(
+        [r / "zap" for r in portable_roots]
+        + [r / "zap-2.17.0-arm64" for r in portable_roots]
+    )
+    tool_results.append({
+        "id": "owasp-zap",
+        "bound": bool(zap_dir),
+        "mode": "portable_java_and_zap_runtime",
+    })
+    return bindings, tool_results
+
+
+def _autodiscover_locked(*, apply_env: bool, persist: bool, trust_disk: bool) -> dict[str, Any]:
+    bindings, tool_results = _discover_bindings()
+    pin_mismatches: list[str] = []
+    pins_recorded = False
+    if apply_env:
+        pins_path = _pins_path() if persist else None
+        stored = _load_pins(pins_path)
+        if stored is not None and not trust_disk:
+            effective: dict[str, str] = {}
+            for key, value in bindings.items():
+                if key in stored and stored[key] != value:
+                    # Onaylı kayıttan farklı: diskteki dosya değişmiş olabilir; uygulanmaz.
+                    pin_mismatches.append(key)
+                    effective[key] = stored[key]
+                else:
+                    effective[key] = value
+            bindings_to_apply = effective
+            new_keys = {k: v for k, v in bindings.items() if k not in stored}
+            if new_keys:
+                pins_recorded = _save_pins(pins_path, {**stored, **new_keys})
+        else:
+            bindings_to_apply = dict(bindings)
+            if persist:
+                pins_recorded = _save_pins(pins_path, {**(stored or {}), **bindings})
+        # Operatörün verdiği değerler (systemd drop-in, kabuk ortamı) asla ezilmez.
+        for key, value in bindings_to_apply.items():
+            if not os.environ.get(key):
+                os.environ[key] = value
+
+    persisted = False
+    if persist:
+        data_dir_str = os.environ.get("SNIPER_DATA_DIR", "")
+        if data_dir_str:
+            data_dir = Path(data_dir_str)
+            if _is_regular_dir(data_dir):
+                manifest_file = data_dir / "runtime-bindings-status.json"
+                try:
+                    manifest_file.write_text(
+                        json.dumps(
+                            {
+                                "format": "sniper-runtime-bindings-status-v1",
+                                "bound_env_count": len(bindings),
+                                "tools": tool_results,
+                            },
+                            indent=2,
+                            sort_keys=True,
+                        ),
+                        encoding="utf-8",
+                    )
+                    persisted = True
+                except OSError:
+                    persisted = False
+
+    readiness = runtime_readiness_payload()
+    ready_profiles = sum(
+        1
+        for tool in readiness.get("tools", [])
+        for prof in tool.get("profiles", [])
+        if prof.get("runtime") == "precheck_passed"
+    )
+    bound_count = sum(1 for item in tool_results if item["bound"])
+
+    return {
+        "format": "sniper-runtime-autodiscover-v1",
+        "status": "bound",
+        "bound_tool_count": bound_count,
+        "total_discoverable_tools": len(tool_results),
+        "bound_env_var_count": len(bindings),
+        "ready_profile_count": ready_profiles,
+        "persisted_status": persisted,
+        "pins_recorded": pins_recorded,
+        "pin_mismatches": sorted(pin_mismatches),
+        "tools": tool_results,
+        "readiness": readiness,
+    }
+
+
+def portable_bundle_manifest() -> dict[str, Any]:
+    """Return the zero-setup portable bundle specification for a brand-new PC."""
+    readiness = runtime_readiness_payload()
+    ready_by_tool: dict[str, bool] = {}
+    for tool in readiness.get("tools", []):
+        tid = str(tool.get("id", ""))
+        profiles = tool.get("profiles", [])
+        active_profiles = [p for p in profiles if p.get("mode") in {"built_in", "local", "authorized"}]
+        ready_by_tool[tid] = bool(active_profiles) and any(
+            p.get("runtime") == "precheck_passed" for p in active_profiles
+        )
+
+    components = [
+        {
+            "id": "sniper-core",
+            "name": "Sniper Çekirdek Motoru (Web/TLS/HTTP, Kaynak Denetimi, SBOM, 161 OWASP Kontrolü, 15+ Rapor Ayrıştırıcı)",
+            "bundle_relpath": "app/",
+            "packaging_type": "pure_python_builtin",
+            "requires_separate_install": False,
+            "requires_docker": False,
+            "approx_size_mb": 5,
+            "ready_on_this_host": True,
+        },
+        {
+            "id": "nuclei",
+            "name": "Nuclei 3.11.1 + Sabitlenmiş HTTP Şablon Kataloğu (11.655 şablon)",
+            "bundle_relpath": "runtimes/nuclei-3.11.1/ + runtimes/nuclei-templates-20261011/",
+            "packaging_type": "single_static_binary_and_data",
+            "requires_separate_install": False,
+            "requires_docker": False,
+            "approx_size_mb": 95,
+            "ready_on_this_host": ready_by_tool.get("nuclei", False),
+        },
+        {
+            "id": "trivy",
+            "name": "Trivy 0.75.0 + Çevrimdışı Zafiyet Veritabanı (trivy.db)",
+            "bundle_relpath": "runtimes/trivy-0.75.0/trivy + runtimes/trivy-db/cache/",
+            "packaging_type": "single_static_binary_and_offline_db",
+            "requires_separate_install": False,
+            "requires_docker": False,
+            "approx_size_mb": 160,
+            "ready_on_this_host": ready_by_tool.get("trivy", False),
+        },
+        {
+            "id": "gitleaks",
+            "name": "Gitleaks 8.30.1 (Yerel Dosya ve Git Geçmişi Sır Tarayıcı)",
+            "bundle_relpath": "runtimes/gitleaks-8.30.1-stdlib/gitleaks",
+            "packaging_type": "single_static_binary",
+            "requires_separate_install": False,
+            "requires_docker": False,
+            "approx_size_mb": 18,
+            "ready_on_this_host": ready_by_tool.get("gitleaks", False),
+        },
+        {
+            "id": "trufflehog",
+            "name": "TruffleHog 3.99.0 (Yerel Dosya ve Git Geçmişi Sır Tarayıcı)",
+            "bundle_relpath": "runtimes/trufflehog-3.99.0-unpacked/trufflehog",
+            "packaging_type": "single_static_binary",
+            "requires_separate_install": False,
+            "requires_docker": False,
+            "approx_size_mb": 85,
+            "ready_on_this_host": ready_by_tool.get("trufflehog", False),
+        },
+        {
+            "id": "semgrep",
+            "name": "Semgrep 1.180.0 + Yerel Güvenlik Kural Paketi (YAML)",
+            "bundle_relpath": "runtimes/semgrep-1.180.0/ + runtimes/semgrep-1.180.0-smoke/rules/",
+            "packaging_type": "portable_venv_and_rulepack",
+            "requires_separate_install": False,
+            "requires_docker": False,
+            "approx_size_mb": 140,
+            "ready_on_this_host": ready_by_tool.get("semgrep", False),
+        },
+        {
+            "id": "osv-scanner",
+            "name": "OSV-Scanner 2.7.0 + Çevrimdışı npm Zafiyet Veritabanı",
+            "bundle_relpath": "runtimes/osv-scanner/ + runtimes/osv-db/",
+            "packaging_type": "single_static_binary_and_offline_db",
+            "requires_separate_install": False,
+            "requires_docker": False,
+            "approx_size_mb": 45,
+            "ready_on_this_host": ready_by_tool.get("osv-scanner", False),
+        },
+        {
+            "id": "testssl",
+            "name": "testssl.sh 3.2.4 (Taşınabilir TLS / Şifre Takımı Denetleyici)",
+            "bundle_relpath": "runtimes/testssl-3.2.4/testssl.sh",
+            "packaging_type": "portable_script_bundle",
+            "requires_separate_install": False,
+            "requires_docker": False,
+            "approx_size_mb": 5,
+            "ready_on_this_host": ready_by_tool.get("testssl", False),
+        },
+        {
+            "id": "npm-audit",
+            "name": "Taşınabilir Node.js 22 + npm CLI (Canlı Kilit Dosyası Denetimi)",
+            "bundle_relpath": "runtimes/node-v22.23.4/",
+            "packaging_type": "portable_node_runtime",
+            "requires_separate_install": False,
+            "requires_docker": False,
+            "approx_size_mb": 110,
+            "ready_on_this_host": ready_by_tool.get("npm-audit", False),
+        },
+        {
+            "id": "owasp-zap",
+            "name": "OWASP ZAP 2.17.0 + Taşınabilir OpenJDK 17 (Pasif / Spider / İzinli Aktif)",
+            "bundle_relpath": "runtimes/zap-2.17.0-arm64/ (ZAP_2.17.0 + java17)",
+            "packaging_type": "portable_java_and_zap_runtime",
+            "requires_separate_install": False,
+            "requires_docker": False,
+            "approx_size_mb": 420,
+            "ready_on_this_host": ready_by_tool.get("owasp-zap", False),
+        },
+        {
+            "id": "nmap",
+            "name": "Nmap 7.94 (Sınırlandırılmış TCP Port ve Hafif Servis Sürüm Taraması)",
+            "bundle_relpath": "tools/nmap-7.94/bin/nmap",
+            "packaging_type": "portable_binary_or_system_package",
+            "requires_separate_install": False,
+            "requires_docker": False,
+            "approx_size_mb": 25,
+            "ready_on_this_host": ready_by_tool.get("nmap", False),
+        },
+    ]
+
+    return {
+        "format": "sniper-portable-bundle-manifest-v1",
+        "zero_setup_supported": True,
+        "requires_manual_env_configuration": False,
+        "requires_docker_for_core_and_local_tools": False,
+        "total_estimated_bundle_mb": sum(int(c["approx_size_mb"]) for c in components),
+        "components": components,
+    }

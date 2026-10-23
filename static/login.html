@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Sniper — Giriş</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/app.css?v=13">
+  <link rel="stylesheet" href="/auth.css?v=1">
+  <link rel="stylesheet" href="/static/ui-refresh.css?v=4">
+  <script src="/i18n.js?v=1" defer></script>
+  <script src="/login.js?v=1" defer></script>
+</head>
+<body class="auth-login-page">
+  <main class="auth-login-card" aria-labelledby="auth-login-title">
+    <p class="eyebrow">SNIPER 2.0</p>
+    <label class="lang-switch" translate="no"><span class="lang-switch-label ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#globe"></use></svg></span><select data-i18n-lang-select aria-label="Dil / Language"><option value="tr">Türkçe</option><option value="en">English</option></select></label>
+    <h1 id="auth-login-title">Oturum aç</h1>
+    <p id="auth-login-message" class="auth-message" role="status" aria-live="polite"></p>
+    <form id="auth-login-form" autocomplete="on">
+      <label>Kullanıcı adı<input name="username" id="auth-username" autocomplete="username" maxlength="64" required></label>
+      <label>Parola<input name="password" id="auth-password" type="password" autocomplete="current-password" maxlength="256" required></label>
+      <button class="button primary" type="submit">Giriş yap</button>
+    </form>
+    <form id="auth-totp-form" class="hidden" autocomplete="off">
+      <label>Doğrulama kodu (6 hane)<input name="code" id="auth-totp-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6"></label>
+      <label>ya da kurtarma kodu<input name="recovery_code" id="auth-recovery-code" autocomplete="off" maxlength="16" placeholder="xxxxx-xxxxx"></label>
+      <button class="button primary" type="submit">Doğrula</button>
+    </form>
+    <p class="auth-hint">Hesabınızı kaybettiyseniz yönetici, sunucuda <code>cli_reports.py users reset-password</code> ile sıfırlayabilir.</p>
+  </main>
+</body>
+</html>

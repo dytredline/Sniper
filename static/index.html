@@ -1,0 +1,1886 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#0c2028">
+  <title>Sniper 2.0 — Yerel güvenlik stüdyosu</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/app.css?v=16">
+  <link rel="stylesheet" href="/auth.css?v=1">
+  <link rel="stylesheet" href="/static/ui-refresh.css?v=4">
+  <script src="/auth.js?v=1" defer></script>
+  <script src="/boot_prefetch.js?v=1" defer></script>
+  <script src="/i18n.js?v=1" defer></script>
+  <script src="/job_queue.js?v=2" defer></script>
+  <script src="/project_jobs.js?v=1" defer></script>
+  <script src="/app.js?v=29" defer></script>
+  <script src="/openssl_loopback_active.js?v=1" defer></script>
+  <script src="/openssl_authorized_active.js?v=1" defer></script>
+  <script type="module" src="/openssl_batch_preview.js?v=1"></script>
+  <script src="/schemathesis_junit_preview.js?v=1" defer></script>
+  <script src="/schemathesis_local.js?v=1" defer></script>
+  <script src="/schemathesis_loopback.js?v=1" defer></script>
+  <script src="/playwright_json_preview.js?v=1" defer></script>
+  <script src="/siem_ecs_preview.js?v=1" defer></script>
+  <script src="/npm_audit_active.js?v=1" defer></script>
+  <script src="/osv_local_active.js?v=1" defer></script>
+  <script src="/trufflehog_git_history.js?v=1" defer></script>
+  <script src="/trufflehog_filesystem.js?v=1" defer></script>
+  <script src="/gitleaks_filesystem.js?v=1" defer></script>
+  <script src="/semgrep_local.js?v=2" defer></script>
+  <script src="/semgrep_evidence_link.js?v=1" defer></script>
+  <script src="/trivy_image_archive_ui.js?v=1" defer></script>
+  <script src="/trivy_kubernetes_single_ui.js?v=1" defer></script>
+  <script src="/trivy_secret_ui.js?v=1" defer></script>
+  <script src="/trivy_kubernetes_batch_ui.js?v=1" defer></script>
+  <script src="/trivy_dockerfile_config_ui.js?v=1" defer></script>
+  <script src="/trivy_terraform_config_ui.js?v=1" defer></script>
+  <script src="/testssl_loopback_full.js?v=1" defer></script>
+  <script src="/testssl_authorized.js?v=1" defer></script>
+  <script src="/nuclei_link_preview.js?v=1" defer></script>
+  <script src="/nmap_preview.js?v=2" defer></script>
+<script src="/zap_target_active.js?v=1" defer></script>
+<script src="/zap_target_spider.js?v=1" defer></script>
+<script src="/zap_authorized.js?v=1" defer></script>
+<script src="/zap_evidence_link.js?v=1" defer></script>
+  <script type="module" src="/tool_boundary_summaries.js?v=2"></script>
+  <script src="/advanced_tools.js?v=7" defer></script>
+  <script src="/jobs_panel.js?v=1" defer></script>
+  <script src="/ops_panel.js?v=1" defer></script>
+  <script src="/joern_deep.js?v=1" defer></script>
+  <script src="/autofix.js?v=1" defer></script>
+  <script src="/taint_rules.js?v=1" defer></script>
+  <script src="/finding_tracking.js?v=5" defer></script>
+  <script src="/ai_triage.js?v=1" defer></script>
+  <script src="/eval_dashboard.js?v=1" defer></script>
+  <script src="/authz_inventory.js?v=2" defer></script>
+  <script src="/threat_model.js?v=1" defer></script>
+  <script src="/system_version.js?v=1" defer></script>
+  <script src="/license_report.js?v=1" defer></script>
+  <script src="/system_health.js?v=1" defer></script>
+  <script src="/mcp_scan_approval.js?v=2" defer></script>
+  <script src="/data_retention.js?v=1" defer></script>
+  <script src="/vex.js?v=1" defer></script>
+  <script src="/container_scan.js?v=2" defer></script>
+  <script src="/osv_offline.js?v=1" defer></script>
+  <script src="/sbom_tools.js?v=1" defer></script>
+  <script src="/bulk_scan.js?v=1" defer></script>
+  <script src="/static/ui-shell.js?v=1" defer></script>
+  <link rel="stylesheet" href="/portfolio.css?v=1"><script src="/portfolio.js?v=1" defer></script>
+</head>
+<body>
+  <a class="ui-skip" href="#main-content">İçeriğe geç</a>
+  <button class="ui-nav-scrim" type="button" tabindex="-1" aria-label="Menüyü kapat"></button>
+  <div class="app-shell">
+    <aside class="sidebar" id="main-navigation" aria-label="Ana menü">
+      <button class="sidebar-close" type="button" aria-label="Menüyü kapat"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#close"></use></svg></span></button>
+      <a class="brand" href="#dashboard" data-nav="dashboard" aria-label="Sniper ana sayfa">
+        <span class="brand-mark" aria-hidden="true"><span class="ui-icon"><svg><use href="/static/ui-icons.svg#shield"></use></svg></span></span>
+        <span><strong>SNIPER 2.0</strong><small>YEREL GÜVENLİK STÜDYOSU</small></span>
+      </a>
+
+      <nav class="nav-list">
+        <p class="ui-nav-heading">ÇALIŞMA ALANI</p>
+        <button class="nav-item active" data-nav="dashboard"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#grid"></use></svg></span>Genel bakış</button>
+        <button class="nav-item" data-nav="targets"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#target"></use></svg></span>Hedefler</button>
+        <button class="nav-item" data-nav="projects"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#code"></use></svg></span>Uygulama analizi</button>
+        <button class="nav-item" data-nav="tracking"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#checklist"></use></svg></span>Bulgu takibi</button>
+        <button class="nav-item" data-nav="portfolio"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#activity"></use></svg></span>Portföy ve SLA</button>
+        <button class="nav-item" data-nav="pentest"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#layers"></use></svg></span>Manuel test</button>
+        <button class="nav-item" data-nav="tooling"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#tools"></use></svg></span>Araç matrisi</button>
+        <button class="nav-item" data-nav="lab"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#flask"></use></svg></span>Güvenlik laboratuvarı</button>
+        <p class="ui-nav-heading">YÖNETİM</p>
+        <button class="nav-item" data-nav="reports"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#report"></use></svg></span>Raporlar</button>
+        <button class="nav-item" data-nav="audit"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#history"></use></svg></span>İşlem geçmişi</button>
+        <button class="nav-item" data-nav="schedules"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#calendar"></use></svg></span>Zamanlanmış taramalar</button>
+        <button class="nav-item" data-nav="notifications"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#bell"></use></svg></span>Bildirimler <b id="ops-unread-badge" class="ops-badge hidden"></b></button>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="safety-badge"><span class="pulse"></span><span><b>Güvenli profil</b><small>Yerel ve düşük etkili</small></span></div>
+        <p>Sniper, düşük etkili kontroller yapar. DoS trafiği veya parola listesi çalıştırmaz.</p>
+      </div>
+    </aside>
+
+    <main class="main" id="main-content" tabindex="-1">
+      <header class="topbar">
+        <button class="mobile-menu" id="mobile-menu" aria-label="Menüyü aç" aria-controls="main-navigation" aria-expanded="false"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#menu"></use></svg></span></button>
+        <div class="crumb"><span>SNIPER</span><i>/</i><strong id="page-label">Genel bakış</strong></div>
+        <div class="top-actions">
+          <label class="lang-switch" translate="no"><span class="lang-switch-label ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#globe"></use></svg></span><select data-i18n-lang-select aria-label="Dil / Language"><option value="tr">Türkçe</option><option value="en">English</option></select></label>
+          <span class="service-status"><i></i>Yerel servis etkin</span>
+          <button class="button primary" data-action="add-target"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#plus"></use></svg></span> Yeni hedef</button>
+        </div>
+      </header>
+
+      <section class="view active" data-view="dashboard">
+        <div class="hero-row">
+          <div>
+            <p class="eyebrow">BAĞIMSIZ GÜVENLİK GÖRÜNÜMÜ</p>
+            <h1>Riskleri erken görün,<br><em>kontrol sizde kalsın.</em></h1>
+            <p class="hero-copy">Eklediğiniz web varlıklarında temel güvenlik kontrollerini tek merkezden yönetin ve iyileştirmeleri ölçün.</p>
+          </div>
+          <div class="hero-score" id="hero-score">
+            <div class="score-ring"><span>—</span><small>/100</small></div>
+            <div><small>ORTALAMA GÜVENLİK PUANI</small><b>Henüz ölçüm yok</b></div>
+          </div>
+        </div>
+
+        <nav class="ui-quick-links" aria-label="Hızlı erişim">
+          <button class="ui-quick-link" type="button" data-nav="projects"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#code"></use></svg></span><span>Uygulama analizi</span><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#arrow"></use></svg></span></button>
+          <button class="ui-quick-link" type="button" data-nav="tooling"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#tools"></use></svg></span><span>Araç matrisi</span><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#arrow"></use></svg></span></button>
+          <button class="ui-quick-link" type="button" data-nav="reports"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#report"></use></svg></span><span>Raporlar</span><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#arrow"></use></svg></span></button>
+        </nav>
+
+        <div class="metric-grid" id="metric-grid" aria-live="polite">
+          <article class="metric skeleton"></article><article class="metric skeleton"></article>
+          <article class="metric skeleton"></article><article class="metric skeleton"></article>
+        </div>
+
+        <div class="dashboard-grid">
+          <section class="panel recent-panel">
+            <div class="panel-head"><div><p class="eyebrow">SON DURUM</p><h2>Varlık sağlığı</h2></div><button class="text-button" data-nav="targets">Tüm hedefler →</button></div>
+            <div id="recent-targets" class="target-rows loading-lines"></div>
+          </section>
+          <section class="panel risk-panel">
+            <div class="panel-head"><div><p class="eyebrow">BULGU DAĞILIMI</p><h2>Açık riskler</h2></div></div>
+            <div id="risk-breakdown" class="risk-breakdown"></div>
+            <div class="safe-note"><span>✓</span><p><b>Güvenli tarama ilkesi</b><small>En fazla 3 GET isteği, sömürü yok, parola denemesi yok.</small></p></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" data-view="targets">
+        <div class="page-intro"><div><p class="eyebrow">KAPSAM YÖNETİMİ</p><h1>Hedefler</h1><p>Web adresini ekleyin; alan adı sahiplik dosyası veya ayrı doğrulama adımı gerekmez.</p></div><button class="button primary" data-action="add-target">＋ Yeni hedef</button></div>
+        <section class="panel table-panel">
+          <div class="toolbar"><label class="search"><span>⌕</span><input id="target-search" type="search" placeholder="Alan adı ara…"></label><span id="target-count-label" class="muted"></span></div>
+          <div class="responsive-table"><table><thead><tr><th>Web varlığı</th><th>Durum</th><th>Son puan</th><th>Taramalar</th><th></th></tr></thead><tbody id="target-table"></tbody></table></div>
+          <div id="target-empty" class="empty-state hidden"><div class="empty-icon">◎</div><h3>İlk hedefinizi ekleyin</h3><p>Web adresini kaydettikten sonra güvenli temel taramayı doğrudan başlatabilirsiniz.</p><button class="button primary" data-action="add-target">Yeni hedef ekle</button></div>
+        </section>
+      </section>
+
+      <section class="view" data-view="tracking" id="tracking-view">
+          <section class="panel">
+            <div class="panel-head"><div><p class="eyebrow">ANALİZLER ARASI</p><h2>Bulgu takibi</h2></div><label class="track-project-label">Proje<select id="tracking-project" aria-label="Proje"></select></label></div>
+            <p class="muted">Bulgular satır kaymasına dayanıklı parmak iziyle analizler arasında eşleşir: yeni, açık, düzelen, yeniden açılan. Yanlış alarm ve risk kabulü kararları sonraki analizlere taşınır; bastırılan bulgular gizlenmez.</p>
+            <div id="tracking-body"></div>
+          </section>
+        </section>
+        <section class="view" data-view="projects">
+        <div class="page-intro"><div><p class="eyebrow">SNIPER 2.0 · YEREL KAYNAK KOD</p><h1>Uygulama güvenliği analizi</h1><p>Ürettiğiniz uygulamanın gerçek kaynaklarını kriptografi, sorgu güvenliği, SSRF, QR, bağımlılık, günlükleme, sır ve port yüzeyi açısından inceleyin.</p></div></div>
+        <section class="panel project-audit-launcher">
+          <div><span class="project-audit-icon">&lt;/&gt;</span><p><b>Proje klasörünü yerelde incele</b><small>Kaynak kod yerel makinenin dışına çıkmaz. Sır değerleri ve kaynak satırları rapora kopyalanmaz; yalnız kural, dosya ve satır numarası saklanır.</small></p></div>
+          <form id="project-audit-form"><label>Yerel proje yolu<input name="project_path" id="project-path" value="~/.local/share/sniper/app" maxlength="1024" autocomplete="off" required></label><label>Mod<select name="scan_mode" id="project-scan-mode"><option value="saved">Kayıtlı kapsam</option><option value="all">Tümünü dahil ederek</option><option value="skipped">Yalnız atlananlar</option><option value="changed">Yalnız değişenler (git)</option></select></label><label class="changed-base hidden" id="changed-base-label">Taban (git ya da prj_…)<input name="base_ref" id="changed-base-ref" value="HEAD" maxlength="200" autocomplete="off" spellcheck="false" title="HEAD = kaydedilmemiş değişiklikler; HEAD~1, origin/main ya da analiz kimliği (prj_…)"></label><button class="button primary" type="submit">Analizi başlat</button></form>
+        </section>
+        <details class="panel scan-scope" id="scan-scope-panel">
+          <summary><b>Tarama kapsamı</b> <span id="scan-scope-badge" class="scan-scope-badge">varsayılan</span><small>Varsayılan olarak atlanan dizin ve dosyaları dahil et. Seçim, proje yolu alan tüm yerel taramalara (uygulama analizi, Joern, Semgrep, denetçiler) uygulanır.</small></summary>
+          <form id="scan-scope-form">
+            <fieldset><legend>Dizinler</legend>
+              <label><input type="checkbox" name="include_dirs" value="tests"> Test dizinleri <small>tests, test, __tests__, fixtures, testdata</small></label>
+              <label><input type="checkbox" name="include_dirs" value="vendor"> Vendor / üçüncü taraf <small>vendor, bower_components, jspm_packages, Pods</small></label>
+              <label><input type="checkbox" name="include_dirs" value="packages"> Paketler <small>node_modules, venv, .venv — uzun sürebilir</small></label>
+              <label><input type="checkbox" name="include_dirs" value="build"> Derleme çıktıları <small>build, dist, .next, .nuxt, coverage</small></label>
+            </fieldset>
+            <fieldset><legend>Dosyalar</legend>
+              <label><input type="checkbox" name="include_generated"> Üretilmiş / küçültülmüş <small>*.min.js, *.bundle.js, *.chunk.js</small></label>
+              <label><input type="checkbox" name="include_non_utf8"> UTF-8 olmayan dosyalar <small>kayıplı çözülür, satır numaraları korunur</small></label>
+            </fieldset>
+            <fieldset><legend>Sınırlar</legend>
+              <label>Tek dosya<select name="max_file_mb"><option value="1">1 MB</option><option value="5">5 MB</option><option value="20">20 MB</option></select></label>
+              <label>Toplam bütçe<select name="max_total_mb"><option value="150">150 MB</option><option value="500">500 MB</option><option value="1000">1000 MB</option></select></label>
+              <label>Dosya sayısı<select name="max_files"><option value="10000">10.000</option><option value="25000">25.000</option><option value="50000">50.000</option></select></label>
+            </fieldset>
+            <div class="button-row"><button class="mini-button" type="button" data-scope-preset="all">Tümünü dahil et</button><button class="mini-button" type="button" data-scope-preset="default">Varsayılana dön</button><button class="button primary" type="submit">Kapsamı kaydet</button></div>
+          </form>
+        </details>
+        <div id="project-audit-summary" class="project-audit-summary"></div>
+        <section id="project-audit-detail" class="panel project-audit-detail hidden"></section>
+        <section class="panel project-audit-history"><div class="panel-head"><div><p class="eyebrow">SORGULANABİLİR YEREL KAYIT</p><h2>Proje analizleri</h2></div><div class="button-row"><span id="project-audit-count" class="muted"></span><button class="mini-button" type="button" data-action="open-project-audit-diff">Analizleri karşılaştır</button></div></div><div id="project-audit-list" class="project-audit-list"></div><div id="project-audit-empty" class="empty-state"><div class="empty-icon">&lt;/&gt;</div><h3>Henüz uygulama analizi yok</h3><p>İlk proje klasörünü incelettiğinizde doğrulanabilir bulgular burada saklanır.</p></div></section>
+        <section class="panel eval-dashboard" id="eval-dashboard"><div class="panel-head"><div><p class="eyebrow">GÜVEN VE ÖLÇÜM</p><h2>Doğruluk panosu</h2></div><div class="button-row"><button class="mini-button" type="button" id="eval-dashboard-refresh">Yenile</button></div></div><div id="eval-dashboard-body" class="eval-dashboard-body"></div></section>
+        <section class="panel dependency-panel">
+          <div class="panel-head"><div><p class="eyebrow">PAKET A · YEREL TEDARİK ZİNCİRİ</p><h2>SBOM ve bağımlılık açıkları</h2></div><a class="mini-button" href="/api/dependency-security/report.json" download>JSON raporu indir</a></div>
+          <div class="dependency-actions">
+            <form id="dependency-sbom-form"><label>Proje yolu<input name="project_path" value="~/.local/share/sniper/app" maxlength="1024" required></label><button class="button primary" type="submit">CycloneDX SBOM üret</button></form>
+            <form id="dependency-import-form"><label>Proje yolu<input name="project_path" value="~/.local/share/sniper/app" maxlength="1024" required></label><label>Trivy / OSV JSON dosyası<input name="report_path" placeholder="~/Downloads/trivy.json" maxlength="1024" required></label><label>Biçim<select name="source"><option value="auto">Otomatik algıla</option><option value="trivy">Trivy</option><option value="osv">OSV</option></select></label><button class="button secondary" type="submit">Yerel raporu içe aktar</button></form>
+          </div>
+          <div class="sbom-delta-browser">
+            <div><b>Kayıtlı SBOM farkı</b><p>Aynı projenin iki kayıtlı anlık görüntüsünü seçin. Yalnız değişim sayıları gösterilir; paket listesi ve ham belge açılmaz.</p></div>
+            <form id="sbom-delta-form">
+              <label>Önceki SBOM<select id="sbom-delta-before" required><option value="">Önceki kaydı seçin</option></select></label>
+              <label>Sonraki SBOM<select id="sbom-delta-after" required><option value="">Sonraki kaydı seçin</option></select></label>
+              <button id="sbom-delta-submit" class="button secondary" type="submit" disabled>Farkı göster</button>
+            </form>
+            <p id="sbom-delta-availability" class="muted"></p>
+            <p id="sbom-delta-error" class="sbom-delta-error hidden" role="alert"></p>
+            <div id="sbom-delta-result" class="sbom-delta-result hidden" role="status" aria-live="polite">
+              <span>Eklenen <b id="sbom-delta-added"></b></span>
+              <span>Çıkarılan <b id="sbom-delta-removed"></b></span>
+              <span>Sürümü değişen <b id="sbom-delta-changed"></b></span>
+            </div>
+          </div>
+          <div id="dependency-summary" class="dependency-summary"></div>
+          <div id="dependency-sources" class="dependency-sources"></div>
+          <div class="responsive-table"><table><thead><tr><th>Açık</th><th>Paket / sürüm</th><th>Önem</th><th>Düzeltme</th><th>Kaynak</th><th>Durum</th></tr></thead><tbody id="dependency-findings"></tbody></table></div>
+          <div id="dependency-empty" class="empty-state"><div class="empty-icon">◇</div><h3>Henüz bağımlılık bulgusu yok</h3><p>SBOM üretin veya daha önce oluşturulmuş güvenilir Trivy/OSV JSON raporunu yerelden içe aktarın.</p></div>
+        </section>
+      </section>
+
+      <section class="view" data-view="pentest">
+        <div class="page-intro"><div><p class="eyebrow">PROFESYONEL ÇALIŞMA ALANI</p><h1>Manuel sızma testi</h1><p>OWASP WSTG kapsamını, test kanıtlarını ve uzman bulgularını tek dosyada yönetin.</p></div><button class="button primary" data-action="add-engagement">＋ Yeni denetim</button></div>
+        <div class="pentest-banner"><span>⌘</span><div><b>18 ana kategori + özel protokoller · 158–161 kontrol adımı</b><p>Kimlik, yetki, oturum, enjeksiyon, sunucu, veri, iş mantığı, istemci, API, altyapı, tedarik zinciri, dayanıklılık ve olay müdahalesi.</p></div><button class="button secondary" data-action="add-engagement">Denetim oluştur</button></div>
+        <div id="engagement-grid" class="engagement-grid"></div>
+        <div id="engagement-empty" class="panel empty-state hidden"><div class="empty-icon">⌘</div><h3>İlk manuel denetiminizi oluşturun</h3><p>Önce kayıtlı bir hedef seçin, kapsam ve test sınırlarını tanımlayın.</p><button class="button primary" data-action="add-engagement">Yeni denetim</button></div>
+      </section>
+
+      <section class="view" data-view="lab">
+        <div class="page-intro"><div><p class="eyebrow">YÜKSEK ETKİLİ TESTLER İÇİN GÜVENLİ HAZIRLIK</p><h1>Güvenlik laboratuvarı</h1><p>Kapasite ve hesap kilitlenme kontrollerini ağ trafiği üretmeden planlayın; yetkili harici testlerin yalnızca maskeli sonucunu kaydedin.</p></div></div>
+        <div class="lab-guard"><span>✓</span><div><b>Yerel planlama modu · 0 ağ isteği</b><p>Bu bölüm saldırı çalıştırmaz. Üretim ortamında otomatik kapasite veya parola denemesi oluşturulamaz; acil durdurma eşikleri planın zorunlu parçasıdır.</p></div><strong>TRAFİK KAPALI</strong></div>
+        <div class="lab-scenario-grid">
+          <article class="lab-scenario"><span class="lab-scenario-icon capacity">↗</span><p class="eyebrow">STAGING / LAB</p><h2>Kapasite planı</h2><p>Hedef hız, süre, gecikme ve hata eşiğinden tahmini istek hacmi ile eşzamanlılık hesaplayın.</p><ul><li>Üretim ortamı reddedilir</li><li>Gecikme ve hata durdurma eşiği</li><li>Acil durum sorumlusu zorunlu</li></ul><button class="button primary" data-action="new-lab" data-type="capacity_plan">Plan oluştur</button>
+          </article>
+          <article class="lab-scenario"><span class="lab-scenario-icon lockout">⌁</span><p class="eyebrow">SENTETİK HESAP</p><h2>Kilitlenme planı</h2><p>Parola veya gerçek kullanıcı bilgisi almadan deneme sayısı, aralık ve beklenen kilit süresini planlayın.</p><ul><li>En fazla 10 kontrollü adım</li><li>Denemeler arasında en az 5 saniye</li><li>Parola listesi alanı bulunmaz</li></ul><button class="button primary" data-action="new-lab" data-type="lockout_plan">Plan oluştur</button>
+          </article>
+          <article class="lab-scenario"><span class="lab-scenario-icon evidence">#</span><p class="eyebrow">MASKELİ KANIT</p><h2>Harici sonuç kaydı</h2><p>Kuruluşun ayrı ve yetkili aracıyla yapılan testin özetini ham günlük ya da veri taşımadan kaydedin.</p><ul><li>Kanıt hash’i zorunlu</li><li>Ham günlük ve kimlik bilgisi yok</li><li>Sniper tarafından üretilen istek: 0</li></ul><button class="button secondary" data-action="new-lab" data-type="external_result">Sonuç kaydet</button>
+          </article>
+        </div>
+        <section class="panel lab-history-panel"><div class="panel-head"><div><p class="eyebrow">YEREL KAYITLAR</p><h2>Laboratuvar dosyaları</h2></div><span id="lab-count-label" class="muted"></span></div><div id="lab-run-list" class="lab-run-list"></div><div id="lab-empty" class="empty-state hidden"><div class="empty-icon">◫</div><h3>Henüz laboratuvar kaydı yok</h3><p>İlk güvenli planınızı oluşturduğunuzda hesaplanan tahminler burada görünür.</p></div></section>
+      </section>
+
+      <section class="view" data-view="tooling">
+        <div class="page-intro"><div><p class="eyebrow">161 KONTROL İÇİN ARAÇ ZİNCİRİ</p><h1>Araç matrisi</h1><p>Her kontrol için uygun otomatik araçları, gerekli girdileri ve uzman doğrulaması gereken alanları görün.</p></div><button class="button secondary" data-action="new-lab" data-type="external_result">Harici sonuç kaydet</button></div>
+        <details class="ui-tool-launcher">
+          <summary><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#tools"></use></svg></span><span><strong>Araç işlemleri</strong><small>Önizlemeler ve yerel çalışma seçenekleri</small></span><span class="ui-icon ui-disclosure-arrow" aria-hidden="true"><svg><use href="/static/ui-icons.svg#arrow"></use></svg></span></summary>
+          <div class="ui-tool-actions">
+                <button class="button secondary" data-action="open-trufflehog-preview">TruffleHog JSONL önizleme</button>
+                <button class="button primary" data-action="open-trufflehog-git-history">Yerel Git geçmişi sır taraması</button>
+                <button class="button primary" data-action="open-trufflehog-filesystem">Yerel dosyalarda sır taraması</button>
+<button class="button secondary" data-action="open-sarif-preview">SARIF önizleme</button>
+<button class="button secondary" data-action="open-schemathesis-junit-preview">Schemathesis JUnit XML önizleme</button>
+<button class="button primary" data-action="open-schemathesis-local">Schemathesis sentetik yerel test</button>
+<button class="button secondary" data-action="open-schemathesis-loopback">Schemathesis onaylı yerel API testi</button>
+<button class="button secondary" data-action="open-playwright-json-preview">Playwright JSON önizleme</button>
+<button class="button secondary" data-action="open-k6-summary-preview">k6 kayıtlı klasik JSON özeti</button>
+<button class="button secondary" data-action="open-k6-machine-summary-preview">k6 machine-readable v1 özeti</button>
+<button class="button secondary" data-action="open-siem-ecs-preview">SIEM ECS JSONL kanıt özeti</button>
+<button class="button secondary" data-action="open-nuclei-jsonl-preview">Nuclei JSONL önizleme</button>
+<button class="button primary" data-action="open-nuclei-http-scan">Nuclei HTTP taraması</button>
+<button class="button primary" data-action="open-direct-nuclei-scan">Doğrudan yetkili Nuclei</button>
+<button class="button secondary" data-action="open-burp-xml-preview">Burp Site-map XML önizleme</button>
+<button class="button secondary" data-action="open-nmap-xml-preview">Nmap XML önizleme</button>
+<button class="button primary" data-action="open-direct-nmap-scan">Doğrudan yetkili Nmap</button>
+<button class="button secondary" data-action="open-testssl-flat-preview">testssl.sh flat JSON önizleme</button>
+<button class="button primary" data-action="open-testssl-loopback-full">Yerel testssl.sh tam TLS taraması</button>
+<button class="button primary" data-action="open-testssl-authorized">Doğrudan yetkili testssl.sh</button>
+<button class="button secondary" data-action="open-gitleaks-json-preview">Gitleaks native JSON önizleme</button>
+<button class="button primary" data-action="open-gitleaks-filesystem">Yerel Gitleaks sır taraması</button>
+<button class="button secondary" data-action="open-dependabot-alerts-preview">Dependabot Alerts JSON önizleme</button>
+<button class="button secondary" data-action="open-npm-audit-preview">npm audit v2 JSON önizleme</button>
+<button class="button secondary" data-action="open-trivy-preview">Trivy native JSON önizleme</button>
+<button class="button secondary" data-action="open-zap-preview">ZAP traditional JSON önizleme</button>
+<button class="button primary" data-action="open-zap-target-active">ZAP hedef aktif taraması</button>
+<button class="button primary" data-action="open-zap-target-spider">ZAP izinli site bağlantı keşfi</button>
+<button class="button primary" data-action="open-zap-authorized">ZAP insan onaylı hedef taraması</button>
+<button class="button secondary" data-action="open-ssllabs-preview">SSL Labs Host JSON önizleme</button>
+<button class="button primary" data-action="open-ssllabs-authorized">Doğrudan yetkili SSL Labs</button>
+<button class="button secondary" data-action="open-openssl-x509-preview">OpenSSL sertifika önizleme</button>
+<button class="button primary" data-action="open-openssl-loopback">OpenSSL yerel TLS sertifika doğrulaması</button>
+<button class="button secondary" data-action="open-openssl-authorized">OpenSSL yetkili HTTPS hedefi</button>
+<button class="button primary" data-action="open-semgrep-local">Yerel Semgrep kod taraması</button>
+<button class="button secondary" data-action="open-semgrep-preview">Semgrep CLI --json önizleme</button>
+<button class="button secondary" data-action="open-semgrep-trivy-compare">Semgrep/Trivy karşılaştırma</button></div>
+        </details>
+        <div class="tooling-summary" id="tooling-summary"></div>
+<section class="panel" id="trivy-vuln-local-panel" aria-labelledby="trivy-vuln-local-title">
+  <div class="panel-head"><div><p class="eyebrow">YEREL BAĞIMLILIK TARAMASI</p><h2 id="trivy-vuln-local-title">Trivy zafiyet taraması</h2></div></div>
+  <p>Yalnız yerel proje kökündeki requirements.txt dosyası, sabitlenmiş çevrimdışı Trivy veritabanıyla taranır. Dış hedef taranmaz; ham bulgular gösterilmez.</p>
+  <form id="trivy-vuln-local-form" class="form-grid">
+    <label class="full">Yerel proje klasörü<input id="trivy-vuln-local-path" name="project_path" value="~/.local/share/sniper/app" maxlength="1024" required></label>
+    <label class="full"><input id="trivy-vuln-local-consent" type="checkbox" required> Bu yerel projenin requirements.txt dosyasında Trivy taraması çalıştırılmasını onaylıyorum</label>
+    <button id="trivy-vuln-local-submit" class="button primary" type="submit" disabled>Taramayı başlat</button>
+  </form>
+  <p id="trivy-vuln-local-error" class="error-message hidden" role="alert"></p>
+  <section id="trivy-vuln-local-result" class="panel hidden" aria-live="polite">
+    <div class="form-grid">
+      <article><small>Sonuç grubu</small><b id="trivy-vuln-local-groups"></b></article>
+      <article><small>Zafiyet</small><b id="trivy-vuln-local-total"></b></article>
+      <article><small>Önem dağılımı</small><b id="trivy-vuln-local-severity"></b></article>
+      <article><small>Rapor SHA-256</small><code id="trivy-vuln-local-hash"></code></article>
+    </div>
+    <p>Bu sayılar otomatik doğrulanmış güvenlik açığı hükmü değildir; uzman incelemesi gerekir.</p>
+  </section>
+</section>
+<section class="panel" id="trivy-secret-panel" aria-labelledby="trivy-secret-title">
+  <div class="panel-head"><div><p class="eyebrow">YEREL SIR TARAMASI</p><h2 id="trivy-secret-title">Trivy yerel sır taraması</h2></div></div>
+  <p>Hizmet kullanıcısının evindeki seçtiğiniz yerel proje, açık onayınızla sınırlandırılmış Trivy secret profiliyle taranır. Dış hedef, ham dosya, yol veya sır değeri sonuçta gösterilmez.</p>
+  <form id="trivy-secret-form" class="form-grid">
+    <label class="full">Yerel proje klasörü<input id="trivy-secret-path" name="project_path" placeholder="/home/community-user/proje" maxlength="1024" required></label>
+    <label class="full"><input id="trivy-secret-consent" type="checkbox" required> Bu yerel proje klasöründe Trivy sır taraması çalıştırılmasını onaylıyorum</label>
+    <button id="trivy-secret-submit" class="button primary" type="submit" disabled>Taramayı başlat</button>
+  </form>
+  <p id="trivy-secret-error" class="error-message hidden" role="alert"></p>
+  <section id="trivy-secret-result" class="panel hidden" aria-live="polite">
+    <div class="form-grid">
+      <article><small>Sonuç grubu</small><b id="trivy-secret-groups"></b></article>
+      <article><small>Olası sır bulgusu</small><b id="trivy-secret-total"></b></article>
+      <article><small>Rapor SHA-256</small><code id="trivy-secret-hash"></code></article>
+    </div>
+    <p>Bu sayılar sırın geçerli olduğunu kanıtlamaz; ham eşleşme gösterilmez ve uzman incelemesi gerekir.</p>
+  </section>
+</section>
+<section class="panel" id="trivy-image-archive-panel" aria-labelledby="trivy-image-archive-title">
+  <div class="panel-head"><div><p class="eyebrow">YEREL İMAJ TARAMASI</p><h2 id="trivy-image-archive-title">Trivy çevrimdışı imaj arşivi taraması</h2></div></div>
+  <p>Yalnız hizmet kullanıcısının evindeki yerel proje kökünde bulunan, normal ve bağlantı olmayan .tar arşivini sabitlenmiş çevrimdışı Trivy veritabanıyla tarar. Docker soketine veya uzak kayda bağlanmaz; arşiv yolu ve ham bulgular sonuçta gösterilmez.</p>
+  <form id="trivy-image-archive-form" class="form-grid">
+    <label class="full">Yerel proje klasörü<input id="trivy-image-archive-path" name="project_path" placeholder="/home/community-user/proje" maxlength="1024" required></label>
+    <label class="full">Proje kökündeki imaj arşivi dosya adı<input id="trivy-image-archive-name" name="archive_name" placeholder="image.tar" maxlength="255" required></label>
+    <label class="full"><input id="trivy-image-archive-consent" type="checkbox" required> Bu yerel .tar imaj arşivinde çevrimdışı Trivy zafiyet taraması çalıştırılmasını onaylıyorum</label>
+    <button id="trivy-image-archive-submit" class="button primary" type="submit" disabled>Taramayı başlat</button>
+  </form>
+  <p id="trivy-image-archive-error" class="error-message hidden" role="alert"></p>
+  <section id="trivy-image-archive-result" class="panel hidden" aria-live="polite">
+    <div class="form-grid">
+      <article><small>Sonuç grubu</small><b id="trivy-image-archive-groups"></b></article>
+      <article><small>Zafiyet</small><b id="trivy-image-archive-total"></b></article>
+      <article><small>Önem dağılımı</small><b id="trivy-image-archive-severity"></b></article>
+      <article><small>Rapor SHA-256</small><code id="trivy-image-archive-hash"></code></article>
+    </div>
+    <p>Bu sayılar otomatik doğrulanmış güvenlik açığı hükmü değildir; uzman incelemesi gerekir.</p>
+  </section>
+</section>
+<section class="panel" id="trivy-kubernetes-single-panel" aria-labelledby="trivy-kubernetes-single-title">
+  <div class="panel-head"><div><p class="eyebrow">YEREL YAPILANDIRMA TARAMASI</p><h2 id="trivy-kubernetes-single-title">Trivy tek Kubernetes manifesti taraması</h2></div></div>
+  <p>Hizmet kullanıcısının evindeki proje kökünden açıkça seçtiğiniz tek .yaml veya .yml dosyası yerel Trivy ile denetlenir. Canlı kümeye bağlanmaz; ham manifest veya bulgu gösterilmez.</p>
+  <form id="trivy-kubernetes-single-form" class="form-grid">
+    <label class="full">Yerel proje klasörü<input id="trivy-kubernetes-single-path" name="project_path" placeholder="/home/community-user/proje" maxlength="1024" required></label>
+    <label class="full">Proje kökündeki YAML manifest dosya adı<input id="trivy-kubernetes-single-name" name="manifest_name" placeholder="pod.yaml" maxlength="129" required></label>
+    <label class="full"><input id="trivy-kubernetes-single-consent" type="checkbox" required> Bu tek yerel YAML manifestinde Trivy yapılandırma taraması çalıştırılmasını onaylıyorum</label>
+    <button id="trivy-kubernetes-single-submit" class="button primary" type="submit" disabled>Taramayı başlat</button>
+  </form>
+  <p id="trivy-kubernetes-single-error" class="error-message hidden" role="alert"></p>
+  <section id="trivy-kubernetes-single-result" class="panel hidden" aria-live="polite">
+    <div class="form-grid">
+      <article><small>Sonuç grubu</small><b id="trivy-kubernetes-single-groups"></b></article>
+      <article><small>Yapılandırma bulgusu</small><b id="trivy-kubernetes-single-total"></b></article>
+      <article><small>Rapor SHA-256</small><code id="trivy-kubernetes-single-hash"></code></article>
+    </div>
+    <p>Bu sayılar otomatik doğrulanmış güvenlik açığı hükmü değildir; uzman incelemesi gerekir.</p>
+  </section>
+</section>
+<section class="panel" id="trivy-kubernetes-batch-panel" aria-labelledby="trivy-kubernetes-batch-title">
+  <div class="panel-head"><div><p class="eyebrow">YEREL YAPILANDIRMA TARAMASI</p><h2 id="trivy-kubernetes-batch-title">Trivy Kubernetes manifest toplu taraması</h2></div></div>
+  <p>Yalnız hizmet kullanıcısının evindeki proje kökünde bulunan, adını tek tek belirttiğiniz en fazla 8 YAML manifesti aynı yerel Trivy çalışmasında denetlenir. Canlı kümeye bağlanmaz ve ham bulguları göstermez.</p>
+  <form id="trivy-kubernetes-batch-form" class="form-grid">
+    <label class="full">Yerel proje klasörü<input id="trivy-kubernetes-batch-path" name="project_path" placeholder="/home/community-user/proje" maxlength="1024" required></label>
+    <label class="full">Proje kökündeki manifest dosya adları, her satıra bir tane<textarea id="trivy-kubernetes-batch-names" name="manifest_names" placeholder="pod.yaml&#10;deployment.yaml" maxlength="1024" rows="5" required></textarea></label>
+    <label class="full"><input id="trivy-kubernetes-batch-consent" type="checkbox" required> Bu yerel YAML manifestlerinde Trivy yapılandırma taraması çalıştırılmasını onaylıyorum</label>
+    <button id="trivy-kubernetes-batch-submit" class="button primary" type="submit" disabled>Taramayı başlat</button>
+  </form>
+  <p id="trivy-kubernetes-batch-error" class="error-message hidden" role="alert"></p>
+  <section id="trivy-kubernetes-batch-result" class="panel hidden" aria-live="polite">
+    <div class="form-grid">
+      <article><small>Sonuç grubu</small><b id="trivy-kubernetes-batch-groups"></b></article>
+      <article><small>Yapılandırma bulgusu</small><b id="trivy-kubernetes-batch-total"></b></article>
+      <article><small>Rapor SHA-256</small><code id="trivy-kubernetes-batch-hash"></code></article>
+    </div>
+    <p>Bu sayılar otomatik doğrulanmış güvenlik açığı hükmü değildir; uzman incelemesi gerekir.</p>
+  </section>
+</section>
+<section class="panel" id="trivy-dockerfile-config-panel" aria-labelledby="trivy-dockerfile-config-title">
+  <div class="panel-head"><div><p class="eyebrow">YEREL YAPILANDIRMA TARAMASI</p><h2 id="trivy-dockerfile-config-title">Trivy Dockerfile yapılandırma taraması</h2></div></div>
+  <p>Yalnız hizmet kullanıcısının evindeki proje kökünde bulunan tek Dockerfile, yerel Trivy ile denetlenir. Dış hedef veya imaj taranmaz; ham dosya ve bulgular gösterilmez.</p>
+  <form id="trivy-dockerfile-config-form" class="form-grid">
+    <label class="full">Yerel proje klasörü<input id="trivy-dockerfile-config-path" name="project_path" placeholder="/home/community-user/proje" maxlength="1024" required></label>
+    <label class="full"><input id="trivy-dockerfile-config-consent" type="checkbox" required> Bu yerel projenin kök Dockerfile dosyasında Trivy yapılandırma taraması çalıştırılmasını onaylıyorum</label>
+    <button id="trivy-dockerfile-config-submit" class="button primary" type="submit" disabled>Taramayı başlat</button>
+  </form>
+  <p id="trivy-dockerfile-config-error" class="error-message hidden" role="alert"></p>
+  <section id="trivy-dockerfile-config-result" class="panel hidden" aria-live="polite">
+    <div class="form-grid">
+      <article><small>Sonuç grubu</small><b id="trivy-dockerfile-config-groups"></b></article>
+      <article><small>Yapılandırma bulgusu</small><b id="trivy-dockerfile-config-total"></b></article>
+      <article><small>Rapor SHA-256</small><code id="trivy-dockerfile-config-hash"></code></article>
+    </div>
+    <p>Bu sayılar otomatik doğrulanmış güvenlik açığı hükmü değildir; uzman incelemesi gerekir.</p>
+  </section>
+</section>
+<section class="panel" id="trivy-terraform-config-panel" aria-labelledby="trivy-terraform-config-title">
+  <div class="panel-head"><div><p class="eyebrow">YEREL YAPILANDIRMA TARAMASI</p><h2 id="trivy-terraform-config-title">Trivy Terraform yapılandırma taraması</h2></div></div>
+  <p>Hizmet kullanıcısının evindeki yerel proje kökünden açıkça seçilen tek .tf dosyası denetlenir. Terraform init/plan veya dış hedef taraması yapılmaz; ham dosya ve bulgular gösterilmez.</p>
+  <form id="trivy-terraform-config-form" class="form-grid">
+    <label class="full">Yerel proje klasörü<input id="trivy-terraform-config-path" name="project_path" placeholder="/home/community-user/proje" maxlength="1024" required></label>
+    <label class="full">Proje kökündeki .tf dosya adı<input id="trivy-terraform-config-file" name="terraform_file" placeholder="main.tf" maxlength="255" required></label>
+    <label class="full"><input id="trivy-terraform-config-consent" type="checkbox" required> Bu yerel .tf dosyasında Trivy yapılandırma taraması çalıştırılmasını onaylıyorum</label>
+    <button id="trivy-terraform-config-submit" class="button primary" type="submit" disabled>Taramayı başlat</button>
+  </form>
+  <p id="trivy-terraform-config-error" class="error-message hidden" role="alert"></p>
+  <section id="trivy-terraform-config-result" class="panel hidden" aria-live="polite">
+    <div class="form-grid">
+      <article><small>Sonuç grubu</small><b id="trivy-terraform-config-groups"></b></article>
+      <article><small>Yapılandırma bulgusu</small><b id="trivy-terraform-config-total"></b></article>
+      <article><small>Rapor SHA-256</small><code id="trivy-terraform-config-hash"></code></article>
+    </div>
+    <p>Bu sayılar otomatik doğrulanmış güvenlik açığı hükmü değildir; uzman incelemesi gerekir.</p>
+  </section>
+</section>
+<section class="panel" id="trivy-npm-local-panel" aria-labelledby="trivy-npm-local-title">
+  <div class="panel-head"><div><p class="eyebrow">YEREL BAĞIMLILIK TARAMASI</p><h2 id="trivy-npm-local-title">Trivy npm kilit dosyası taraması</h2></div></div>
+  <p>Yalnız hizmet kullanıcısının evindeki yerel proje kökündeki package-lock.json dosyası, sabitlenmiş çevrimdışı Trivy veritabanıyla taranır. Dış hedef taranmaz; ham bulgular gösterilmez.</p>
+  <form id="trivy-npm-local-form" class="form-grid">
+    <label class="full">Yerel proje klasörü<input id="trivy-npm-local-path" name="project_path" placeholder="/home/community-user/npm-projesi" maxlength="1024" required></label>
+    <label class="full"><input id="trivy-npm-local-consent" type="checkbox" required> Bu yerel projenin package-lock.json dosyasında Trivy taraması çalıştırılmasını onaylıyorum</label>
+    <button id="trivy-npm-local-submit" class="button primary" type="submit" disabled>Taramayı başlat</button>
+  </form>
+  <p id="trivy-npm-local-error" class="error-message hidden" role="alert"></p>
+  <section id="trivy-npm-local-result" class="panel hidden" aria-live="polite">
+    <div class="form-grid">
+      <article><small>Sonuç grubu</small><b id="trivy-npm-local-groups"></b></article>
+      <article><small>Zafiyet</small><b id="trivy-npm-local-total"></b></article>
+      <article><small>Önem dağılımı</small><b id="trivy-npm-local-severity"></b></article>
+      <article><small>Rapor SHA-256</small><code id="trivy-npm-local-hash"></code></article>
+    </div>
+    <p>Bu sayılar otomatik doğrulanmış güvenlik açığı hükmü değildir; uzman incelemesi gerekir.</p>
+  </section>
+</section>
+<section class="panel" id="npm-audit-active-panel" aria-labelledby="npm-audit-active-title">
+  <div class="panel-head"><div><p class="eyebrow">YEREL BAĞIMLILIK TARAMASI</p><h2 id="npm-audit-active-title">npm audit ile canlı kilit dosyası denetimi</h2></div></div>
+  <p>Yalnız Sniper hizmet kullanıcısının evindeki bir projenin kök package-lock.json dosyası (npm v2/v3) geçici olarak kopyalanır. npm audit, paket adları ve sürümleri için resmî npm registry güvenlik bildirimlerini sorgular. Paket kurulmaz, düzeltme veya proje betiği çalıştırılmaz; dış site hedefi taranmaz. Sonuç yalnız toplu sayıları gösterir ve saklanmaz.</p>
+  <form id="npm-audit-active-form" class="form-grid">
+    <label class="full">Yerel proje klasörü<input id="npm-audit-active-path" name="project_path" type="text" placeholder="/home/community-user/npm-projesi" maxlength="1024" autocomplete="off" autocapitalize="off" spellcheck="false" required></label>
+    <label class="full"><input id="npm-audit-active-local-consent" type="checkbox" required> Bu yerel projenin kök package-lock.json dosyasının geçici kopyasını denetlemeyi onaylıyorum</label>
+    <label class="full"><input id="npm-audit-active-registry-consent" type="checkbox" required> Paket adları ve sürümleriyle resmî npm registry güvenlik bildirimlerinin sorgulanmasını onaylıyorum</label>
+    <button id="npm-audit-active-submit" class="button primary" type="submit" disabled>npm audit çalıştır</button>
+  </form>
+  <p id="npm-audit-active-error" class="error-message hidden" role="alert"></p>
+  <section id="npm-audit-active-result" class="panel hidden" aria-live="polite">
+    <div class="form-grid">
+      <article><small>Etkilenen paket sayısı</small><b id="npm-audit-active-count"></b></article>
+      <article><small>Önem dağılımı</small><b id="npm-audit-active-severity"></b></article>
+      <article><small>Rapor SHA-256</small><code id="npm-audit-active-hash"></code></article>
+    </div>
+    <p>Bu toplu sayılar tek başına doğrulanmış sömürülebilirlik hükmü değildir; uzman incelemesi gerekir.</p>
+  </section>
+</section>
+<section class="panel" id="osv-active-panel" aria-labelledby="osv-active-title">
+  <div class="panel-head"><div><p class="eyebrow">YEREL BAĞIMLILIK ANALİZİ</p><h2 id="osv-active-title">OSV-Scanner ile çevrimdışı npm kilit dosyası analizi</h2></div></div>
+  <p>DGX hizmet kullanıcısının evindeki proje klasörü yolunu girin; bu tarayıcının çalıştığı bilgisayardaki dosya yolu değildir. Yalnız kök package-lock.json dosyasının geçici kopyası ve sabitlenmiş yerel OSV veritabanı incelenir. Tarama sırasında ağ bağlantısı kurmaz, paket veya proje betiği çalıştırmaz; dosya yolu ya da paket adları sonuçta gösterilmez.</p>
+  <form id="osv-active-form" class="form-grid">
+    <label class="full">DGX hizmet kullanıcısının evindeki proje klasörü<input id="osv-active-path" name="project_path" type="text" placeholder="/home/community-user/npm-projesi" maxlength="1024" autocomplete="off" autocapitalize="off" spellcheck="false" required></label>
+    <label class="full"><input id="osv-active-consent" type="checkbox" required> Bu yerel projenin kök package-lock.json dosyasının geçici kopyasını çevrimdışı OSV-Scanner ile incelemeyi açıkça onaylıyorum</label>
+    <button id="osv-active-submit" class="button primary" type="submit" disabled>Çevrimdışı OSV analizi başlat</button>
+  </form>
+  <p id="osv-active-error" class="error-message hidden" role="alert"></p>
+  <section id="osv-active-result" class="panel hidden" aria-live="polite">
+    <div class="form-grid">
+      <article><small>İncelenen paket sayısı</small><b id="osv-active-packages"></b></article>
+      <article><small>Etkilenen paket sayısı</small><b id="osv-active-affected"></b></article>
+      <article><small>Zafiyet grubu sayısı</small><b id="osv-active-groups"></b></article>
+      <article><small>Kapsam</small><b id="osv-active-coverage"></b></article>
+      <article><small>Yerel veritabanı zamanı</small><b id="osv-active-db-time"></b></article>
+      <article><small>Yerel veritabanı SHA-256</small><code id="osv-active-db-hash"></code></article>
+      <article><small>Rapor SHA-256</small><code id="osv-active-report-hash"></code></article>
+    </div>
+    <p>Bu toplu sayılar güvenli veya sömürülebilir hükmü değildir. Kaydedilmiş SARIF rapor önizlemesi ayrı bir akıştır ve bu formdan başlatılmaz.</p>
+  </section>
+</section>
+        <section class="panel" id="completed-backlog-panel" aria-labelledby="completed-backlog-title">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">YERLEŞİK DENETÇİLER VE ÇEVRİMDIŞI ARAÇLAR</p>
+              <h2 id="completed-backlog-title">Kaynak kod, yapılandırma ve kilit dosyası denetimleri</h2>
+            </div>
+            <span class="badge success">Yerel / çevrimdışı</span>
+          </div>
+          <p>Bir proje klasörünü (salt-okunur) veya yapıştırdığınız tek bir dosya içeriğini inceleyin. Satır içi içerik doluysa proje klasörü yerine o içerik denetlenir; sonuçlar özet tabloda, ham JSON altında gösterilir.</p>
+          <form id="completed-trivy-lang-form" class="form-grid">
+            <label>Analiz profili
+              <select id="completed-trivy-route" name="route">
+                <option value="/api/secret-intelligence/audit">Derin sır istihbaratı, entropi, etki çapı ve iptal/rotasyon planı</option>
+                <option value="/api/privacy-dataflow/audit">KVKK / GDPR kişisel veri akışı, çerez rızası ve VERBİS/ROPA envanteri</option>
+                <option value="/api/host-hardening/audit">Linux sunucu CIS sertleştirme (sshd, systemd, sysctl, sudoers, cron)</option>
+                <option value="/api/dos-resilience/audit">Uygulama katmanı DoS dayanıklılığı, ReDoS ve zaman aşımı denetimi</option>
+                <option value="/api/audit-logging/audit">Denetim izi bütünlüğü, log enjeksiyonu ve sessiz uç nokta denetimi</option>
+                <option value="/api/browser-extension-pwa/audit">Tarayıcı uzantısı (MV2/MV3) ve PWA / Service Worker güvenliği</option>
+                <option value="/api/zero-trust-mesh/audit">Sıfır güven: Kubernetes NetworkPolicy ve Istio/Linkerd/Envoy mTLS denetimi</option>
+                <option value="/api/cvss-ssvc/prioritize">CVSS v3.1 + v4.0 puanlama, CISA SSVC kararı ve SLA takibi</option>
+                <option value="/api/business-logic/audit">İş mantığı, finansal suistimal ve yarış durumu (TOCTOU / BFLA) denetimi</option>
+                <option value="/api/crypto-cbom-pqc/audit">Kuantum sonrası kriptografi (NIST PQC) ve CycloneDX CBOM envanteri</option>
+                <option value="/api/threat-model/generate">Otomatik STRIDE + MITRE ATT&amp;CK tehdit modeli ve DFD üretici</option>
+                <option value="/api/supply-chain-slsa/audit">Tedarik zinciri bütünlüğü (Typosquatting / SLSA v1.0 / Lisans) denetimi</option>
+                <option value="/api/database-security/audit">Veritabanı şeması, göç (Migration) ve çok kiracılı RLS denetimi</option>
+                <option value="/api/web3-iot-security/audit">Web3 akıllı sözleşme (Solidity) ve IoT / gömülü yazılım denetimi</option>
+                <option value="/api/blue-team/synthesize-rules">Mavi ekip WAF sanal yama (ModSecurity), Sigma ve Suricata kural üretici</option>
+                <option value="/api/ai-llm-security/audit">Yapay Zeka / LLM ve Ajan güvenliği (OWASP LLM Top 10) denetimi</option>
+                <option value="/api/cloud-iam-security/audit">Bulut IAM, Depolama ve Kubernetes RBAC derin denetimi</option>
+                <option value="/api/desktop-security/audit">Masaüstü uygulama (Electron / Tauri) güvenlik denetimi</option>
+                <option value="/api/attack-paths/correlate">Saldırı yolu ve istismar zinciri (Attack Path) korelasyonu</option>
+                <option value="/api/remediation/auto-patch">Otomatik düzeltme ve kod yaması (Auto-Patch) üretici</option>
+                <option value="/api/reports/executive-pentest">Yönetici özeti ve KVKK/GDPR/DORA/NIS2 sızma testi raporu</option>
+                <option value="/api/mobile-security/audit-project">Mobil uygulama güvenliği (iOS / Android / Flutter / RN / MASVS v2) denetimi</option>
+                <option value="/api/openapi-security/audit">OpenAPI 3.x / Swagger 2.0 / GraphQL sözleşme güvenlik denetimi</option>
+                <option value="/api/dependency-security/reachability">Bağımlılık zafiyet erişilebilirlik (Reachability) analizi</option>
+                <option value="/api/quality-gate/evaluate">CI/CD kalite kapısı (Quality Gate) politikası değerlendirmesi</option>
+                <option value="/api/tool-runs/trivy-go-mod-vulnerability">Trivy Go (go.mod / go.sum) zafiyet analizi</option>
+                <option value="/api/tool-runs/trivy-cargo-lock-vulnerability">Trivy Rust (Cargo.lock) zafiyet analizi</option>
+                <option value="/api/tool-runs/trivy-pnpm-vulnerability">Trivy pnpm (pnpm-lock.yaml) zafiyet analizi</option>
+                <option value="/api/tool-runs/trivy-yarn-vulnerability">Trivy Yarn (yarn.lock) zafiyet analizi</option>
+                <option value="/api/tool-runs/trivy-maven-vulnerability">Trivy Maven (pom.xml) zafiyet analizi</option>
+                <option value="/api/tool-runs/trivy-ruby-vulnerability">Trivy Ruby (Gemfile.lock) zafiyet analizi</option>
+                <option value="/api/tool-runs/trivy-terraform-config-batch">Trivy Terraform çoklu .tf dizin taraması</option>
+                <option value="/api/tool-runs/gitleaks-git-history">Gitleaks yerel Git geçmişi sır taraması</option>
+                <option value="/api/protocol-security/audit">gRPC / WebSocket / Webhook protokol güvenliği (yalnız satır içi)</option>
+                <option value="/api/auth-protocol/audit">JWT / OAuth2 / SAML yapıt denetimi (yalnız satır içi)</option>
+                <option value="/api/mobile-security/audit-manifest">AndroidManifest / Info.plist denetimi (yalnız satır içi)</option>
+                <option value="/api/tool-reports/ssllabs/cache-contract">Kayıtlı SSL Labs rapor JSON'u sınır doğrulaması (yalnız satır içi)</option>
+              </select>
+            </label>
+            <label>DGX hizmet kullanıcısının evindeki proje klasörü (proje kipi)
+              <input id="completed-trivy-path" name="project_path" type="text" placeholder="/home/community-user/proje" maxlength="1024" autocomplete="off" spellcheck="false">
+            </label>
+            <label>Satır içi dosya adı (isteğe bağlı)
+              <input id="completed-inline-filename" name="filename" type="text" placeholder="app.py, gateway.yaml, policy.json…" maxlength="120" autocomplete="off" spellcheck="false">
+            </label>
+            <label class="full">Satır içi içerik (isteğe bağlı; doluysa proje klasörü yerine bu içerik denetlenir)
+              <textarea id="completed-inline-content" name="raw_content" rows="6" maxlength="256000" spellcheck="false" placeholder="Denetlenecek tek bir dosyanın içeriğini yapıştırın"></textarea>
+            </label>
+            <label class="full">CVSS vektörü veya ReDoS deseni (isteğe bağlı; CVSS / DoS profillerinde)
+              <input id="completed-extra-param" name="extra" type="text" placeholder="CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:H/VI:H/VA:H/SC:N/SI:N/SA:N  veya  ^(a+)+$" maxlength="5000" autocomplete="off" spellcheck="false">
+            </label>
+            <label class="full"><input id="completed-trivy-consent" type="checkbox"> Proje klasörü kipinde bu yerel klasörün çevrimdışı ve salt-okunur olarak incelenmesini açıkça onaylıyorum</label>
+            <div class="button-row full">
+              <button id="completed-trivy-submit" class="button primary" type="submit">Seçili yerel analizi başlat</button>
+              <button id="completed-autodiscover-btn" class="button secondary" type="button" data-completed-autodiscover="true">Yerel Araçları Tek Tuşla Algıla ve Bağla</button>
+              <button id="completed-enable-plugins-btn" class="button secondary" type="button" data-completed-enable-plugins="true">Yerleşik Eklentileri Etkinleştir (4/4)</button>
+              <button id="completed-audit-chain-btn" class="mini-button accent" type="button" data-completed-get="/api/audit-log/verify">Denetim İzi Zincir Doğrulaması</button>
+              <button id="completed-bundle-manifest-btn" class="mini-button accent" type="button" data-completed-get="/api/tooling/bundle-manifest">Taşınabilir Paket Envanteri</button>
+              <button id="completed-plugins-list-btn" class="mini-button" type="button" data-completed-get="/api/plugins">Eklenti Durumu</button>
+              <button id="completed-trivy-db-btn" class="mini-button" type="button" data-completed-get="/api/tool-reports/trivy/db-freshness">Trivy DB tazeliği</button>
+              <button id="completed-semgrep-rules-btn" class="mini-button" type="button" data-completed-get="/api/tool-reports/semgrep/rulepack-inventory">Semgrep kural envanteri</button>
+            </div>
+          </form>
+          <p id="completed-backlog-error" class="error-message hidden" role="alert"></p>
+          <div id="completed-backlog-summary" class="hidden" aria-live="polite"></div>
+          <pre id="completed-backlog-output" class="code-box hidden" aria-live="polite"></pre>
+        </section>
+        <section class="panel" id="advanced-tool-panel" aria-labelledby="advanced-tool-title">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">GELİŞMİŞ ARAÇ AKIŞLARI</p>
+              <h2 id="advanced-tool-title">Yetkili tarama, rapor sözleşmesi, kanıt bağlama ve karşılaştırma akışları</h2>
+            </div>
+            <span class="badge">Açık onay gerekli</span>
+          </div>
+          <p>Araç kartlarından açılan ve daha önce yalnız API üzerinden erişilebilen akışlar. Tarama başlatan akışlar yalnız yetkisi ve kapsamı kayıtlı etkin denetimlerle ve işaretlenen onaylarla gönderilir; sunucu aynı koşulları ayrıca doğrular.</p>
+          <form id="advanced-tool-form" class="form-grid">
+            <label class="full">Akış
+              <select id="advanced-tool-route" name="flow"></select>
+            </label>
+            <p id="advanced-tool-route-info" class="muted full"></p>
+            <div id="advanced-tool-fields" class="form-grid full"></div>
+            <div class="button-row full">
+              <button id="advanced-tool-submit" class="button primary" type="submit">Akışı çalıştır</button>
+              <label class="checkbox-inline"><input id="advanced-tool-background" type="checkbox"> Arka planda çalıştır (iş kuyruğu)</label>
+              <button id="advanced-tool-refresh" class="button secondary" type="button">Hedef / denetim listesini yenile</button>
+            </div>
+          </form>
+          <p id="advanced-tool-job-status" class="muted" aria-live="polite"></p>
+          <p id="advanced-tool-error" class="error-message hidden" role="alert"></p>
+          <div id="advanced-tool-summary" class="button-row hidden" aria-live="polite"></div>
+          <pre id="advanced-tool-output" class="code-box hidden" aria-live="polite"></pre>
+        </section>
+        <section class="panel" id="taint-rules-panel" aria-labelledby="taint-rules-title">
+          <div class="panel-head"><div><p class="eyebrow">VERİ AKIŞI KURALLARI</p><h2 id="taint-rules-title">Özel taint kuralları</h2></div>
+            <button id="taint-rules-refresh" class="button secondary" type="button">Yenile</button></div>
+          <p class="muted">Kendi kaynak, hedef ve arındırıcı tanımlarınızı YAML/JSON olarak ekleyin (biçim: <code>sniper-taint-rules-v1</code>). Kurallar yalnız veridir; kod çalıştırılmaz ve taranan proje kural getiremez.</p>
+          <p id="taint-rules-state" class="muted"></p>
+          <div class="responsive-table"><table><thead><tr><th>Ad</th><th>Dil</th><th>Hedef türleri</th><th>Kayıtlar</th><th>Kayıt zamanı</th><th></th></tr></thead><tbody id="taint-rules-body"></tbody></table></div>
+          <p id="taint-rules-empty" class="muted">Henüz özel kural yok.</p>
+          <div class="form-grid">
+            <label class="full">Kural (YAML/JSON)<textarea id="taint-rules-content" rows="10" spellcheck="false" placeholder="format: sniper-taint-rules-v1&#10;name: ornek-kural&#10;language: python&#10;sinks:&#10;  - kind: sql&#10;    calls: [sirket.db.ham_sorgu]&#10;    args: [0]"></textarea></label>
+            <label class="full">Denenecek örnek kod<textarea id="taint-rules-code" rows="6" spellcheck="false"></textarea></label>
+            <label>Örnek dosya adı<input id="taint-rules-filename" type="text" placeholder="ornek.py"></label>
+            <label class="checkbox-inline"><input id="taint-rules-confirm" type="checkbox"> Özel kuralı kaydetmeyi/silmeyi onaylıyorum</label>
+            <div class="button-row full"><button id="taint-rules-try" class="button secondary" type="button">Kuralı dene</button><button id="taint-rules-save" class="button primary" type="button">Kaydet</button><a class="button secondary" href="/api/taint-rules/opengrep" download="sniper-custom-opengrep.json">Opengrep kuralı olarak indir</a></div>
+          </div>
+          <p id="taint-rules-message" class="muted" aria-live="polite"></p>
+          <div id="taint-rules-trial" class="autofix-result hidden" aria-live="polite"></div>
+        </section>
+        <section class="panel" id="jobs-panel" aria-labelledby="jobs-panel-title">
+          <div class="panel-head"><div><p class="eyebrow">ARKA PLAN</p><h2 id="jobs-panel-title">İşler</h2></div>
+            <button id="jobs-panel-refresh" class="button secondary" type="button">Yenile</button></div>
+          <p class="muted">Uzun araç çalıştırmaları (Nuclei, Trivy, ZAP, Semgrep/Opengrep, OSV, proje analizi …) iş kuyruğunda yürür; en çok 2 iş aynı anda çalışır. İptal, aracın alt süreçlerini de durdurur.</p>
+          <p id="jobs-panel-error" class="error-message hidden" role="alert"></p>
+          <div class="responsive-table"><table><thead><tr><th>İş</th><th>Rota</th><th>Durum</th><th>Oluşturma</th><th>Sonuç</th><th></th></tr></thead><tbody id="jobs-panel-body"></tbody></table></div>
+          <p id="jobs-panel-empty" class="muted">Henüz iş yok.</p>
+        </section>
+        <section class="panel" id="joern-deep-panel" aria-labelledby="joern-deep-title"><div class="panel-head"><div><p class="eyebrow">DERİN ANALİZ</p><h2 id="joern-deep-title">Joern (C/C++, Java, Kotlin, PHP, Go, Ruby, C#)</h2></div></div>
+          <p class="muted">Dosyalar arası veri akışı analizi; sabitlenmiş Joern 4.0.647 + JDK 21, iş kuyruğunda, en çok 6 GB bellek ve 15 dakika. Kaynak satır içeriği saklanmaz.</p>
+          <form id="joern-deep-form" class="form-grid"><label class="full">Proje klasörü<input id="joern-deep-path" type="text"></label>
+          <label class="checkbox-inline"><input id="joern-deep-scripting" type="checkbox"> JS/TS ve Python dahil (proje analizinin tamamlayıcısı; deneysel)</label>
+          <label>Süre bütçesi (dakika)<input id="joern-deep-budget" type="number" min="1" max="60" step="1" placeholder="15"></label>
+          <label class="checkbox-inline"><input id="joern-deep-confirm" type="checkbox"> Yerel derin analizi onaylıyorum</label>
+          <div class="button-row full"><button class="button primary" type="submit">Analizi başlat</button><button id="joern-deep-sarif" class="button secondary" type="button" disabled>SARIF indir</button></div></form>
+          <p id="joern-deep-status" class="muted" aria-live="polite"></p><p id="joern-deep-error" class="error-message hidden" role="alert"></p><p id="joern-deep-summary" class="muted"></p><p id="joern-deep-warnings" class="error-message hidden" role="status"></p>
+          <div class="responsive-table"><table><thead><tr><th>Önem</th><th>Bulgu</th><th>Konum</th><th>Akış</th></tr></thead><tbody id="joern-deep-body"></tbody></table></div></section>
+        <section class="panel tooling-policy" id="tooling-policy"></section>
+        <p id="taint-engine-status" class="muted hidden" aria-live="polite"></p>
+        <section class="panel tool-catalog-panel"><div class="panel-head"><div><p class="eyebrow">UYGULAMALAR</p><h2>Önerilen araç zinciri</h2></div><span class="muted" id="tool-count-label"></span></div><div class="tool-card-grid" id="tool-card-grid"></div></section>
+        <section class="panel tool-matrix-panel"><div class="panel-head"><div><p class="eyebrow">KATEGORİ EŞLEMESİ</p><h2>Hangi araç neyi kapsar?</h2></div></div><div class="responsive-table"><table><thead><tr><th>Kategori</th><th>Kontrol</th><th>Yaklaşım</th><th>Önerilen araçlar</th><th>Gerekli girdiler</th></tr></thead><tbody id="tool-matrix-body"></tbody></table></div></section>
+      </section>
+
+      <section class="view" data-view="reports">
+        <div class="page-intro"><div><p class="eyebrow">KANIT VE İYİLEŞTİRME</p><h1>Raporlar</h1><p>Her taramanın puanını, bulgularını ve teknik kanıtını inceleyin.</p></div></div>
+        <section class="panel table-panel">
+          <div class="responsive-table"><table><thead><tr><th>Hedef</th><th>Oluşturulma</th><th>Durum</th><th>Puan</th><th>Bulgu</th><th>Değişim</th><th></th></tr></thead><tbody id="scan-table"></tbody></table></div>
+          <div id="scan-empty" class="empty-state hidden"><div class="empty-icon">▤</div><h3>Henüz rapor yok</h3><p>Kayıtlı bir hedefte tarama başlattığınızda rapor burada görünür.</p></div>
+          <div class="scan-page-controls" aria-label="Rapor geçmişi sayfaları">
+            <button id="scan-page-prev" class="mini-button" data-action="scan-page-prev" disabled>Önceki</button>
+            <span id="scan-page-label" aria-live="polite">Sayfa 1</span>
+            <button id="scan-page-next" class="mini-button" data-action="scan-page-next" disabled>Sonraki</button>
+            <span id="scan-page-status" aria-live="polite"></span>
+          </div>
+          <p id="scan-page-error" class="hidden" role="alert"></p>
+          <p id="scan-page-compare-note" class="hidden">Karşılaştır yalnız son 200 tarama arasında hâlâ bulunan satırlarda kullanılabilir. Eski raporu İncele ile açabilirsiniz.</p>
+        </section>
+        <section class="panel dependency-report-panel"><div class="panel-head"><div><p class="eyebrow">BAĞIMLILIK GÜVENLİĞİ</p><h2>Kalıcı CVE / OSV bulguları</h2></div><a class="mini-button accent" href="/api/dependency-security/report.json" download>JSON indir</a></div><div id="dependency-report-summary" class="dependency-summary"></div><div id="dependency-report-findings" class="dependency-report-list"></div></section>
+      </section>
+
+      <section class="view" data-view="audit">
+        <div class="page-intro"><div><p class="eyebrow">İZLENEBİLİRLİK</p><h1>İşlem geçmişi</h1><p>Hedef, tarama, manuel test ve laboratuvar adımlarının değiştirilemeyen yerel kaydı.</p></div></div>
+        <section class="panel audit-panel"><div id="audit-list" class="audit-list"></div></section>
+        <section class="panel system-version-panel" id="system-version-panel"><div class="panel-head"><div><p class="eyebrow">SİSTEM</p><h2>Sürüm ve güncelleme</h2></div></div>
+          <dl id="system-version-facts" class="system-version-facts"></dl>
+          <p class="muted">Güncelleme ve geri dönüş yalnız komut satırından yapılır; arayüz güncelleme başlatmaz. Güncelleme öncesi uygulama ve veritabanı yedeklenir, yeni sürüm sağlıklı açılmazsa otomatik geri dönülür.</p>
+          <pre id="system-version-command" class="system-version-command"></pre>
+          <div class="table-wrap"><table class="ops-table"><thead><tr><th>Yedek</th><th>Tarih</th><th>Sürüm</th><th>Neden</th><th>Veritabanı</th><th>Boyut</th></tr></thead><tbody id="system-version-backups"></tbody></table></div>
+          <div id="system-version-backups-empty" class="empty-state"><h3>Yedek yok</h3><p>İlk güncellemede otomatik oluşturulur.</p></div>
+        </section>
+        <section class="panel system-health-panel" id="system-health-panel"><div class="panel-head"><div><p class="eyebrow">SİSTEM</p><h2>Sistem sağlığı</h2></div><button type="button" class="mini-button" id="system-health-refresh">Yeniden denetle</button></div>
+          <p id="system-health-overall" class="system-health-overall"></p>
+          <div class="table-wrap"><table class="ops-table"><thead><tr><th>Denetim</th><th>Durum</th><th>Değer</th><th>Ayrıntı ve öneri</th></tr></thead><tbody id="system-health-checks"></tbody></table></div>
+          <p class="muted">Salt okunur: Sniper hiçbir dosyayı silmez ya da düzeltmez, yalnız öneri verir. Günlük denetimde sorun bulunursa bildirim merkezine uyarı düşer.</p>
+        </section>
+        <section class="panel" id="mcp-scan-approval-panel"><div class="panel-head"><div><p class="eyebrow">MCP KONTROL DÜZLEMİ</p><h2>Hedef yetkisi bekleyen işler</h2></div><button type="button" class="mini-button" id="mcp-scan-approval-refresh">Yenile</button></div>
+          <p class="muted">Hedef önceden kaydedilmiş olmak zorunda değildir. Her işte hedefi ve aracı inceleyin; yalnız yetkiniz varsa kutuyu işaretleyin. Onay, yönetici kimliği, UTC zamanı, normalize hedef ve consent sürümüyle SHA-256 makbuzuna bağlanır.</p>
+          <p id="mcp-scan-approval-status" class="muted" aria-live="polite"></p>
+          <div class="table-wrap"><table class="ops-table"><thead><tr><th>Araç/profil</th><th>Normalize hedef</th><th>İsteyen</th><th>Oluşturulma</th><th>İnsan onayı</th></tr></thead><tbody id="mcp-scan-approval-body"></tbody></table></div>
+        </section>
+      </section>
+
+      <section class="view" data-view="schedules">
+        <div class="page-intro"><div><p class="eyebrow">İŞLETİM</p><h1>Zamanlanmış taramalar</h1><p>Yerel proje taramalarını Sniper içinden belirli aralıklarla çalıştırır. Uzak hedefli araçlar zamanlanamaz; aynı planın önceki işi sürerken yenisi atlanır, servis kapalıyken kaçırılan çalıştırma açılışta bir kez telafi edilir.</p></div></div>
+        <section class="panel ops-panel">
+          <form id="ops-schedule-form" class="form-grid">
+            <label>Plan adı<input name="name" maxlength="80" placeholder="Örn. Gece proje analizi"></label>
+            <label>Tarama türü<select name="scan_type" id="ops-scan-type"></select></label>
+            <label class="full">Yerel proje yolu<input name="project_path" maxlength="1024" placeholder="/home/community-user/proje" required></label>
+            <label>Sıklık<input name="frequency" list="ops-frequency-examples" maxlength="100" value="daily 03:00" required></label>
+            <datalist id="ops-frequency-examples"><option value="hourly"><option value="hourly 30"><option value="daily 03:00"><option value="weekly mon 02:30"><option value="weekly pzt 03:00"><option value="*/15 * * * *"></datalist>
+            <label id="ops-scope-field">Kapsam<select name="scope"><option value="">Kayıtlı varsayılan kapsam</option><option value="all">Tümünü dahil ederek</option></select></label>
+            <label id="ops-base-ref-field" class="hidden">Git tabanı<input name="base_ref" maxlength="120" value="HEAD~1"></label>
+            <label class="full"><input type="checkbox" name="confirm" required> Bu planın yerel projeyi belirtilen sıklıkla taramasını onaylıyorum</label>
+            <div class="full button-row"><button class="button primary" type="submit">Planı kaydet</button><small class="muted">Sıklık: hourly [MM] · daily HH:MM · weekly &lt;gün&gt; HH:MM · 5 alanlı cron</small></div>
+          </form>
+          <form id="ops-timezone-form" class="ops-inline"><label>Saat dilimi<input name="timezone" maxlength="64" value="Europe/Istanbul"></label><label><input type="checkbox" name="confirm" required> Onaylıyorum</label><button class="mini-button" type="submit">Saat dilimini kaydet</button></form>
+        </section>
+        <section class="panel ops-panel"><div class="panel-head"><div><p class="eyebrow">PLANLAR</p><h2>Tanımlı planlar</h2></div><span id="ops-schedule-count" class="muted"></span></div>
+          <div class="table-wrap"><table class="ops-table"><thead><tr><th>Ad</th><th>Proje</th><th>Tür</th><th>Sıklık</th><th>Sonraki</th><th>Son çalıştırma</th><th>Durum</th><th></th></tr></thead><tbody id="ops-schedule-body"></tbody></table></div>
+          <div id="ops-schedule-empty" class="empty-state"><h3>Henüz plan yok</h3><p>Yukarıdaki formla ilk planı ekleyin.</p></div>
+        </section>
+      </section>
+
+      <section class="view" data-view="notifications">
+        <div class="page-intro"><div><p class="eyebrow">İŞLETİM</p><h1>Bildirimler</h1><p>Yeni önemli bulgu, düzelen bulgu ve başarısız tarama olayları. Merkez her zaman kaydeder; masaüstü, e-posta ve yerel webhook isteğe bağlıdır. Webhook yalnız yerel/özel ağ adresine gider.</p></div></div>
+        <section class="panel ops-panel"><div class="panel-head"><div><p class="eyebrow">MERKEZ</p><h2>Son bildirimler</h2></div><div class="button-row"><span id="ops-unread-count" class="muted"></span><button class="mini-button" type="button" id="ops-mark-all">Tümünü okundu işaretle</button></div></div>
+          <div id="ops-notification-list" class="ops-notification-list"></div>
+          <div id="ops-notification-empty" class="empty-state"><h3>Bildirim yok</h3><p>Tarama sonuçları burada görünür.</p></div>
+        </section>
+        <section class="panel ops-panel"><div class="panel-head"><div><p class="eyebrow">AYARLAR</p><h2>Olaylar ve kanallar</h2></div></div>
+          <form id="ops-settings-form" class="form-grid">
+            <fieldset class="full"><legend>Olaylar</legend>
+              <label><input type="checkbox" name="new_findings"> Yeni bulgu — en az <select name="min_severity"><option value="critical">kritik</option><option value="high">yüksek</option><option value="medium">orta</option><option value="low">düşük</option></select></label>
+              <label><input type="checkbox" name="fixed_findings"> Düzelen bulgular</label>
+              <label><input type="checkbox" name="scan_failed"> Başarısız tarama</label>
+              <label><input type="checkbox" name="system_health"> Sniper öz sağlık uyarıları (günlük denetim)</label>
+              <label><input type="checkbox" name="malicious_package"> Kötü amaçlı paket bulundu (kritik, sessiz saatleri deler)</label>
+              <label><input type="checkbox" name="sca_fix_first"> Yeni “Önce düzelt” bağımlılık açıkları</label>
+              <label><input type="checkbox" name="container_critical"> Yeni kritik konteyner açıkları</label>
+              <label><input type="checkbox" name="license_forbidden"> Politika gereği yasak lisans</label>
+              <label><input type="checkbox" name="osv_db_stale"> Çevrimdışı OSV veritabanı 7 günden eski (günde bir)</label>
+              <label><input type="checkbox" name="finding_assigned"> Bulgu atandığında</label>
+              <label><input type="checkbox" name="finding_due"> Son tarih hatırlatması — <input type="number" name="due_days_before" min="0" max="30" value="2" aria-label="Kaç gün önce"> gün önce ve tarih geçince</label>
+            </fieldset>
+            <fieldset class="full"><legend>Masaüstü</legend><label><input type="checkbox" name="desktop"> Masaüstü bildirimi (notify-send) <small id="ops-desktop-note" class="muted"></small></label></fieldset>
+            <fieldset class="full"><legend>E-posta (SMTP)</legend>
+              <label><input type="checkbox" name="smtp"> E-posta gönder</label>
+              <label>Sunucu<input name="smtp_host" maxlength="253" placeholder="127.0.0.1"></label>
+              <label>Port<input name="smtp_port" type="number" min="1" max="65535" value="587"></label>
+              <label>Güvenlik<select name="smtp_security"><option value="starttls">STARTTLS</option><option value="ssl">SSL/TLS</option><option value="none">Yok (yalnız yerel sunucu)</option></select></label>
+              <label>Kullanıcı adı<input name="smtp_username" maxlength="254" autocomplete="off"></label>
+              <label>Parola<input name="smtp_password" type="password" maxlength="1024" autocomplete="new-password" placeholder="değiştirmek için yazın"></label>
+              <label><input type="checkbox" name="smtp_password_clear"> Kayıtlı parolayı sil</label>
+              <label>Gönderen<input name="smtp_from" maxlength="254" placeholder="sniper@ornek.local"></label>
+              <label>Alıcılar (virgülle)<input name="smtp_to" maxlength="1000" placeholder="ben@ornek.local"></label>
+            </fieldset>
+            <fieldset class="full"><legend>Yerel webhook</legend>
+              <label><input type="checkbox" name="webhook"> Webhook'a gönder</label>
+              <label class="full">Adres<input name="webhook_url" maxlength="500" placeholder="http://127.0.0.1:9000/sniper"></label>
+            </fieldset>
+            <fieldset class="full"><legend>Sessiz saatler</legend>
+              <label><input type="checkbox" name="quiet"> Sessiz saatlerde dış kanalları sustur</label>
+              <label>Başlangıç<input name="quiet_start" value="22:00" pattern="[0-2][0-9]:[0-5][0-9]"></label>
+              <label>Bitiş<input name="quiet_end" value="08:00" pattern="[0-2][0-9]:[0-5][0-9]"></label>
+              <label><input type="checkbox" name="quiet_allow_critical"> Kritik olaylar sessiz saatleri deler</label>
+            </fieldset>
+            <label class="full"><input type="checkbox" name="confirm" required> Bildirim ayarlarını değiştirmeyi onaylıyorum</label>
+            <div class="full button-row"><button class="button primary" type="submit">Ayarları kaydet</button><button class="button secondary" type="button" id="ops-send-test">Test bildirimi gönder</button></div>
+          </form>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop hidden" id="engagement-modal" role="dialog" aria-modal="true" aria-labelledby="engagement-modal-title">
+    <div class="modal modal-wide">
+      <button class="modal-close" data-close="engagement-modal" aria-label="Kapat">×</button>
+      <div class="modal-icon shield">⌘</div><p class="eyebrow">YENİ MANUEL DENETİM</p><h2 id="engagement-modal-title">Test dosyasını oluşturun</h2>
+      <p class="modal-copy">Yalnızca hedef ve denetim adı zorunludur. Diğer alanlar raporlama notudur; boş bırakılsa da tam kontrol kataloğu oluşturulur.</p>
+      <form id="engagement-form" class="form-grid">
+        <label class="full">Kayıtlı hedef<select name="target_id" id="engagement-target" required></select></label>
+        <label class="full">Denetim adı<input name="name" maxlength="140" placeholder="Örn. Eylül web uygulaması denetimi" required></label>
+        <label>Yetki / sözleşme referansı (isteğe bağlı)<input name="authorization_ref" maxlength="240" placeholder="Örn. SO-2026-042"></label>
+        <label>Test zaman penceresi (isteğe bağlı)<input name="test_window" maxlength="240" placeholder="Örn. 01–05 Eylül, 22:00–02:00"></label>
+        <label class="full">Kapsam içi (isteğe bağlı)<textarea name="scope_notes" rows="3" maxlength="8000" placeholder="Alan adları, uygulama yolları, roller ve API'ler"></textarea></label>
+        <label class="full">Kapsam dışı (isteğe bağlı)<textarea name="out_of_scope" rows="2" maxlength="5000" placeholder="Üçüncü taraflar, üretim ödeme akışı, sosyal mühendislik…"></textarea></label>
+        <fieldset class="full approval-fieldset"><legend>Özel onaylı güvenli doğrulamalar</legend>
+          <label class="approval-option"><input type="checkbox" name="controlled_lockout"><span><b>Kontrollü hesap kilitlenmesi</b><small>Yalnız sentetik hesap; parola listesi yok.</small></span></label>
+          <label class="approval-option"><input type="checkbox" name="staging_capacity"><span><b>Staging kapasite gözlemi</b><small>Sniper trafik üretmez; sistem sahibinin testi kaydedilir.</small></span></label>
+          <label class="approval-option"><input type="checkbox" name="redacted_data_proof"><span><b>Maskeli veri kanıtı</b><small>Ham veri yok; yalnız hash, adet ve maskeli örnek.</small></span></label>
+        </fieldset>
+        <button class="button primary wide full" type="submit">Manuel denetimi oluştur <span>→</span></button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="lab-modal" role="dialog" aria-modal="true" aria-labelledby="lab-modal-title">
+    <div class="modal modal-wide">
+      <button class="modal-close" data-close="lab-modal" aria-label="Kapat">×</button>
+      <div class="modal-icon shield">◫</div><p class="eyebrow" id="lab-modal-eyebrow">GÜVENLİ LABORATUVAR</p><h2 id="lab-modal-title">Plan oluşturun</h2>
+      <p class="modal-copy" id="lab-modal-copy">Bu kayıt yalnızca yerel planlama ve maskeli kanıt içindir.</p>
+      <form id="lab-form" class="form-grid">
+        <input type="hidden" name="scenario_type" id="lab-scenario-type">
+        <label class="full">Kayıt adı<input name="name" maxlength="160" placeholder="Örn. Eylül staging kapasite planı" required></label>
+        <label>Ortam<select name="environment" id="lab-environment" required><option value="staging">Staging</option><option value="lab">Laboratuvar</option></select></label>
+        <label>Yetki / değişiklik referansı<input name="authorization_ref" maxlength="240" placeholder="SO-2026-088" required></label>
+        <label class="full">Manuel denetim bağlantısı<select name="engagement_id" id="lab-engagement"><option value="">Bağımsız kayıt</option></select></label>
+        <div id="lab-specific-fields" class="full form-grid nested-form"></div>
+        <label class="full">Maskeli not / kanıt özeti<textarea name="evidence_summary" rows="3" maxlength="4000" placeholder="Kişisel veri, parola, erişim anahtarı veya ham günlük eklemeyin."></textarea></label>
+        <label class="consent full"><input type="checkbox" name="plan_ack" required><span>Sniper’ın ağ isteği veya parola denemesi üretmeyeceğini; bu kaydın yalnız planlama ya da maskeli sonuç kaydı olduğunu anlıyorum.</span></label>
+        <button class="button primary wide full" type="submit">Kaydı oluştur <span>→</span></button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="lab-detail-modal" role="dialog" aria-modal="true" aria-labelledby="lab-detail-title">
+    <div class="modal modal-wide">
+      <button class="modal-close" data-close="lab-detail-modal" aria-label="Kapat">×</button>
+      <p class="eyebrow">LABORATUVAR KAYDI</p><h2 id="lab-detail-title">Plan ayrıntısı</h2><div id="lab-detail-content"></div>
+      <form id="lab-update-form" class="form-grid lab-update-form"><label>Durum<select name="status"><option value="planned">Planlandı</option><option value="completed">Tamamlandı</option><option value="cancelled">İptal edildi</option></select></label><label class="full">Maskeli sonuç / kanıt özeti<textarea name="evidence_summary" rows="4" maxlength="4000" placeholder="Ham günlük, kimlik bilgisi veya gerçek veri eklemeyin."></textarea></label><button class="button primary full" type="submit">Kaydı güncelle</button></form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="target-modal" role="dialog" aria-modal="true" aria-labelledby="target-modal-title">
+    <div class="modal">
+      <button class="modal-close" data-close="target-modal" aria-label="Kapat">×</button>
+      <div class="modal-icon">◎</div><p class="eyebrow">YENİ WEB VARLIĞI</p><h2 id="target-modal-title">Hedef ekleyin</h2>
+      <p class="modal-copy">Taramak istediğiniz herkese açık web adresini girin. Sahiplik doğrulama dosyası istenmez.</p>
+      <form id="target-form">
+        <label>Web adresi<span class="input-wrap"><span>⌁</span><input name="url" type="text" inputmode="url" autocomplete="url" placeholder="https://ornek.com" required></span></label>
+        <div class="notice"><span>i</span><p><b>Doğrudan ekleme</b>Yalnızca adresin geçerli olduğu ve herkese açık bir IP'ye yönlendiği teknik olarak kontrol edilir.</p></div>
+        <button class="button primary wide" type="submit">Hedefi ekle <span>→</span></button>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="scan-modal" role="dialog" aria-modal="true" aria-labelledby="scan-modal-title">
+    <div class="modal">
+      <button class="modal-close" data-close="scan-modal" aria-label="Kapat">×</button>
+      <div class="modal-icon shield">✓</div><p class="eyebrow">GÜVENLİ TARAMA</p><h2 id="scan-modal-title">Temel taramayı başlatın</h2>
+      <p class="modal-copy" id="scan-target-label"></p>
+      <div class="scope-list"><div><span>✓</span><p><b>Düşük etkili profil</b><small>Ana sayfa, security.txt ve HTTPS yönlendirmesi</small></p></div><div><span>✓</span><p><b>Katı sınırlar</b><small>En fazla 3 GET isteği; farklı alan adı ve özel ağ yok</small></p></div><div><span>—</span><p><b>Sömürü yapılmaz</b><small>Girdi enjeksiyonu, parola denemesi ve hizmet engelleme yok</small></p></div></div>
+      <button class="button primary wide" id="start-scan-button">Taramayı başlat <span>→</span></button>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="nmap-xml-preview-modal" role="dialog" aria-modal="true" aria-labelledby="nmap-xml-preview-title">
+    <div class="modal modal-wide">
+      <button class="modal-close" data-close="nmap-xml-preview-modal" aria-label="Kapat">×</button>
+      <div class="modal-icon shield">▶</div><p class="eyebrow">NMAP XML ÖNİZLEME</p><h2 id="nmap-xml-preview-title">Kaydedilmiş Nmap raporunu özetle</h2>
+      <p class="modal-copy">Önceden üretilmiş Nmap XML raporunu yerel Sniper sunucusunda özetleyin. Bu işlem Nmap çalıştırmaz, hedef taramaz veya raporu saklamaz. Yalnız toplam sayılar ve rapor özeti gösterilir.</p>
+      <form id="nmap-xml-preview-form" class="form-grid">
+        <label class="full">Nmap XML içeriği<textarea id="nmap-xml-paste" rows="7" placeholder="&lt;nmaprun&gt;...&lt;/nmaprun&gt;"></textarea></label>
+        <label class="full">Veya yerel XML dosyası seçin<input type="file" id="nmap-xml-file" accept=".xml,text/xml,application/xml"></label>
+        <label class="full"><input type="checkbox" id="nmap-xml-link-opt-in"> Bu özeti yetkili bir manuel denetimde kanıt olarak bağla</label>
+        <div id="nmap-xml-link-fields" class="full hidden">
+          <label>Yetkili denetim<select id="nmap-xml-link-engagement"></select></label>
+          <label>Test adımı<select id="nmap-xml-link-control"></select></label>
+          <p class="modal-copy">Yalnız araç kimliği, SHA-256 ve toplu sayılar saklanır. Eşleşme uzman incelemesine düşer; hedef doğrulanmış veya test geçmiş sayılmaz.</p>
+        </div>
+        <button class="button primary wide full" id="nmap-xml-preview-submit" type="submit">Özet oluştur</button>
+      </form>
+      <p id="nmap-xml-preview-error" class="error-message hidden" aria-live="assertive"></p>
+      <section id="nmap-xml-preview-result" class="panel hidden" aria-live="polite">
+        <p id="nmap-xml-link-result" class="hidden">Özet seçili test adımına bağlandı; uzman incelemesi gerekli.</p>
+        <div class="summary-grid">
+          <article><small>Host sayısı</small><b id="nmap-xml-host-count"></b></article>
+          <article><small>Erişilebilir host</small><b id="nmap-xml-up-host-count"></b></article>
+          <article><small>Açık port</small><b id="nmap-xml-open-port-count"></b></article>
+          <article><small>Protokoller</small><b id="nmap-xml-protocol-counts"></b></article>
+          <article><small>Port bantları</small><b id="nmap-xml-port-bands"></b></article>
+          <article><small>Rapor SHA-256</small><code id="nmap-xml-report-sha256"></code></article>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="nmap-modal" role="dialog" aria-modal="true" aria-labelledby="nmap-modal-title">
+    <div class="modal">
+      <button class="modal-close" data-close="nmap-modal" aria-label="Kapat">×</button>
+      <div class="modal-icon shield">✓</div><p class="eyebrow">GÜVENLİ TARAMA</p><h2 id="nmap-modal-title">Nmap TCP Taraması</h2>
+      <p class="modal-copy" id="nmap-target-label">Hedef: <b id="nmap-target-name"></b></p>
+      <p class="modal-copy">Varsayılan tarama 23 TCP portunu kontrol eder. İsterseniz yalnız yetki kapsamına giren en fazla 64 farklı TCP portu seçebilirsiniz; hiçbir zafiyet yararlanılmaz.</p>
+      <label for="nmap-engagement-select" class="form-label">İlgili engagement:</label>
+      <select id="nmap-engagement-select" class="form-select">
+        <option id="nmap-no-engagement" value="" disabled selected>Seçiniz</option>
+      </select>
+      <label for="nmap-ports" class="form-label">Özel TCP portları (isteğe bağlı, virgülle ayırın):</label>
+      <input id="nmap-ports" class="form-input" type="text" inputmode="numeric" autocomplete="off" placeholder="Örn. 80,443,42424 — boşsa varsayılan 23 port">
+      <p id="nmap-ports-error" class="error-message hidden" aria-live="polite"></p>
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="nmap-service-version">
+          <span>Servis ve sürüm tespiti (-sV --version-light)</span>
+        </label>
+      </div>
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="nmap-confirm-authorized">
+          <span>Yetkili olduğumu onaylıyorum</span>
+        </label>
+      </div>
+      <button class="button primary wide" id="nmap-start-button" disabled>Nmap -sT başlat <span>→</span></button>
+      <div id="nmap-result" class="modal-copy" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div class="drawer-backdrop hidden" id="report-drawer"><aside class="drawer" aria-label="Tarama raporu"><div class="drawer-head"><div><p class="eyebrow">DENETİM RAPORU</p><h2 id="drawer-title">Tarama sonucu</h2></div><button class="modal-close" data-close="report-drawer" aria-label="Kapat">×</button></div><div id="drawer-content" class="drawer-content"></div></aside></div>
+
+  <div class="workspace-backdrop hidden" id="pentest-workspace">
+    <section class="workspace" aria-label="Manuel sızma testi çalışma alanı">
+      <header class="workspace-head"><div><p class="eyebrow">MANUEL SIZMA TESTİ</p><h2 id="workspace-title">Denetim</h2><p id="workspace-subtitle"></p></div><div class="workspace-actions"><a id="workspace-report" class="button secondary" target="_blank" rel="noopener">Raporu aç</a><a id="workspace-download" class="button secondary" download>HTML indir</a><a id="workspace-json" class="button secondary" download>JSON</a><a id="workspace-csv" class="button secondary" download>CSV</a><a id="workspace-sarif" class="button secondary" download>SARIF</a><button class="modal-close" data-close="pentest-workspace" aria-label="Kapat">×</button></div></header>
+      <nav class="workspace-tabs"><button class="active" data-workspace-tab="overview">Genel durum</button><button data-workspace-tab="methodology">Metodoloji</button><button data-workspace-tab="findings">Bulgular</button><button data-workspace-tab="scope">Kapsam ve özet</button></nav>
+      <div id="workspace-content" class="workspace-content"></div>
+    </section>
+  </div>
+
+  <div class="modal-backdrop hidden" id="test-modal" role="dialog" aria-modal="true" aria-labelledby="test-modal-title">
+    <div class="modal modal-wide">
+      <button class="modal-close" data-close="test-modal" aria-label="Kapat">×</button>
+      <p class="eyebrow" id="test-control-id">KONTROL</p><h2 id="test-modal-title">Test adımı</h2><p class="modal-copy" id="test-objective"></p><div class="test-tool-hint" id="test-tool-hint"></div>
+      <form id="test-form" class="form-grid"><label class="full">Test sonucu<select name="status"><option value="not_tested">Test edilmedi</option><option value="passed">Geçti</option><option value="failed">Bulgu var</option><option value="needs_review">İnceleme gerekli</option><option value="not_applicable">Uygulanamaz</option></select></label><label class="full">Uzman notu<textarea name="notes" rows="5" maxlength="12000" placeholder="Gözlem, kapsam, kullanılan test hesabı ve sonuç…"></textarea></label><label class="full">Kanıt referansı<textarea name="evidence" rows="4" maxlength="12000" placeholder="İstek numarası, ekran görüntüsü adı, maskeli yanıt veya kayıt hash'i…"></textarea></label><button class="button primary wide full" type="submit">Test kaydını güncelle</button></form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop hidden" id="finding-modal" role="dialog" aria-modal="true" aria-labelledby="finding-modal-title">
+    <div class="modal modal-wide finding-modal-body">
+      <button class="modal-close" data-close="finding-modal" aria-label="Kapat">×</button>
+      <p class="eyebrow">MANUEL BULGU</p><h2 id="finding-modal-title">Yeni bulgu kaydedin</h2>
+      <form id="finding-form" class="form-grid"><label>Önem derecesi<select name="severity"><option value="critical">Kritik</option><option value="high">Yüksek</option><option value="medium" selected>Orta</option><option value="low">Düşük</option><option value="info">Bilgi</option></select></label><label>İyileştirme durumu<select name="status"><option value="open">Açık</option><option value="in_progress">Üzerinde çalışılıyor</option><option value="retest_required">Yeniden test bekliyor</option><option value="resolved">Çözüldü</option><option value="reopened">Yeniden açıldı</option><option value="risk_accepted">Risk kabulü</option></select></label><label class="full">Etkilenen varlık<input name="affected_asset" maxlength="500" placeholder="/api/orders/{id}" required></label><label class="full">Bulgu başlığı<input name="title" maxlength="180" required></label><fieldset class="full risk-classification"><legend>Risk sınıflandırması</legend><div class="form-grid"><label>OWASP kategorisi<input name="owasp_category" maxlength="160" placeholder="A01:2021 Yetkilendirme Hataları"></label><label>CWE<input name="cwe_id" maxlength="24" placeholder="CWE-639"></label><label class="full">CVSS 3.1 temel vektörü<input name="cvss_vector" maxlength="180" placeholder="CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N"><small>Puan kaydederken otomatik hesaplanır.</small></label><label>İyileştirme sorumlusu<input name="remediation_owner" maxlength="180" placeholder="Uygulama ekibi"></label><label>Hedef tarih<input name="due_date" type="date"></label></div></fieldset><label class="full">Açıklama<textarea name="description" rows="4" maxlength="12000" required></textarea></label><label class="full">İş etkisi<textarea name="impact" rows="3" maxlength="8000" required></textarea></label><label class="full">Maskeli teknik kanıt<textarea name="evidence" rows="4" maxlength="12000" placeholder="Gerçek kişisel veri veya sır eklemeyin." required></textarea></label><label class="full">Tekrar üretme adımları<textarea name="reproduction" rows="4" maxlength="12000" required></textarea></label><label class="full">İyileştirme önerisi<textarea name="recommendation" rows="4" maxlength="12000" required></textarea></label><label class="full">Çözüm / yeniden test notu<textarea name="resolution_notes" rows="3" maxlength="12000" placeholder="Yapılan düzeltme, sürüm, yeniden test sonucu veya risk kabul gerekçesi…"></textarea></label><button class="button primary wide full" type="submit">Bulguyu kaydet</button></form>
+    </div>
+  </div>
+
+
+  <div class="modal-backdrop hidden" id="scan-diff-modal" role="dialog" aria-modal="true" aria-labelledby="scan-diff-modal-title">
+    <div class="modal modal-wide">
+      <button class="modal-close" data-close="scan-diff-modal" aria-label="Kapat">×</button>
+      <p class="eyebrow">TARAMA KARŞILAŞTIRMA</p>
+      <h2 id="scan-diff-modal-title">İki taramayı karşılaştır</h2>
+      <div class="scan-diff-selector">
+        <label>Önceki tarama<select id="scan-diff-scan-1"><option value="">Seçiniz…</option></select></label>
+        <label>Sonraki tarama<select id="scan-diff-scan-2"><option value="">Seçiniz…</option></select></label>
+      </div>
+      <p id="scan-diff-notice" class="muted hidden" role="status"></p>
+      <button class="button primary wide full" id="scan-diff-button">Karşılaştırmayı Yükle</button>
+      <div id="scan-diff-result" class="scan-diff-result hidden">
+        <div class="row-actions"><a id="scan-diff-download" class="mini-button accent" href="#" download>JSON indir</a><a id="scan-diff-download-html" class="mini-button accent" href="#" download>HTML indir</a><a id="scan-diff-download-csv" class="mini-button accent" href="#" download>CSV indir</a></div>
+        <div class="diff-summary">
+          <div class="diff-card"><small>Puan Değişimi</small><b id="diff-score-delta">—</b></div>
+          <div class="diff-card"><small>Yeni Bulgular</small><b id="diff-new-count">0</b></div>
+          <div class="diff-card"><small>Giderilmiş</small><b id="diff-resolved-count">0</b></div>
+          <div class="diff-card"><small>Devam Eden</small><b id="diff-persistent-count">0</b></div>
+        </div>
+        <div class="diff-tabs">
+          <button class="diff-tab active" data-tab="new">Yeni</button>
+          <button class="diff-tab" data-tab="resolved">Giderilmiş</button>
+          <button class="diff-tab" data-tab="persistent">Devam Eden</button>
+          <label class="diff-severity-filter">Önem<select id="scan-diff-severity" aria-label="Önem derecesi filtresi">
+            <option value="all">Tümü</option><option value="critical">Kritik</option><option value="high">Yüksek</option>
+            <option value="medium">Orta</option><option value="low">Düşük</option><option value="info">Bilgi</option>
+          </select></label>
+        </div>
+        <div id="diff-findings-container" class="diff-findings">
+        </div>
+      </div>
+    </div>
+  </div>
+
+      <div class="modal-backdrop hidden" id="sarif-preview-modal" role="dialog" aria-modal="true" aria-labelledby="sarif-preview-modal-title">
+        <div class="modal modal-wide">
+          <button class="modal-close" data-close="sarif-preview-modal" aria-label="Kapat">×</button>
+          <div class="modal-icon shield">▶</div><p class="eyebrow">SARIF ÖNİZLEME</p><h2 id="sarif-preview-modal-title">Yerel SARIF rapor özetini göster</h2>
+          <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir.</p>
+          <form id="sarif-preview-form" class="form-grid">
+            <label class="full">SARIF içeriği (JSON yapıştırın)<textarea name="sarif_json" id="sarif-paste" rows="8" placeholder='{"$schema": "https://schemastore.azure.com/schemas/json/sarif-2.1.0.json", ...}'></textarea></label>
+            <label class="full">Veya yerel dosya seçin<input type="file" id="sarif-file" accept=".sarif,.json"></label>
+            <button class="button primary wide full" type="submit">Özet oluştur</button>
+          </form>
+          <p id="sarif-preview-error" class="error-message hidden" aria-live="assertive"></p>
+          <section id="sarif-preview-result" class="panel hidden" aria-live="polite">
+            <div class="form-grid">
+              <article><small>Çalışma sayısı</small><b id="sarif-run-count"></b></article>
+              <article><small>Sonuç sayısı</small><b id="sarif-result-count"></b></article>
+              <article><small>Seçilen araçlar</small><b id="sarif-tool-names"></b></article>
+              <article><small>Düzey dağılımı</small><b id="sarif-levels"></b></article>
+              <article><small>Rapor SHA-256</small><code id="sarif-report-sha256"></code></article>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="modal-backdrop hidden" id="schemathesis-junit-preview-modal" role="dialog" aria-modal="true" aria-labelledby="schemathesis-junit-preview-title">
+        <div class="modal modal-wide">
+          <button class="modal-close" data-close="schemathesis-junit-preview-modal" aria-label="Kapat">×</button>
+          <div class="modal-icon shield">▶</div><p class="eyebrow">JUNIT XML ÖNİZLEME</p><h2 id="schemathesis-junit-preview-title">Kaydedilmiş Schemathesis rapor özeti</h2>
+          <p class="modal-copy">Önceden dışa aktarılmış JUnit XML raporunu yalnız yerel Sniper sunucusunda özetleyin. Şema veya hedef test edilmez; rapor saklanmaz. Testcase sayısı üretilen HTTP istek sayısı değildir. Hata ayrıntıları gösterilmez.</p>
+          <form id="schemathesis-junit-preview-form" class="form-grid">
+            <label class="full">JUnit XML içeriği<textarea id="schemathesis-junit-paste" rows="8" placeholder="&lt;testsuites&gt;...&lt;/testsuites&gt;"></textarea></label>
+            <label class="full">Veya yerel dosya seçin<input id="schemathesis-junit-file" type="file" accept=".xml,text/xml,application/xml"></label>
+            <button class="button primary wide full" type="submit">Özet oluştur</button>
+          </form>
+          <p id="schemathesis-junit-preview-error" class="error-message hidden" aria-live="assertive"></p>
+          <section id="schemathesis-junit-preview-result" class="panel hidden" aria-live="polite">
+            <div class="form-grid">
+              <article><small>Test paketi</small><b id="schemathesis-junit-suite-count"></b></article>
+              <article><small>Testcase</small><b id="schemathesis-junit-testcase-count"></b></article>
+              <article><small>Sonuçlar</small><b id="schemathesis-junit-outcomes"></b></article>
+              <article><small>Rapor SHA-256</small><code id="schemathesis-junit-report-sha256"></code></article>
+            </div>
+            <div class="form-grid" role="group" aria-label="Rapor SHA-256 kopyalama">
+              <button id="schemathesis-junit-copy-sha256" class="button secondary hidden" type="button" hidden disabled aria-describedby="schemathesis-junit-report-sha256 schemathesis-junit-copy-status">Görünen rapor SHA-256 değerini kopyala</button>
+              <output id="schemathesis-junit-copy-status" class="hidden" role="status" aria-live="polite" aria-atomic="true" hidden></output>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="modal-backdrop hidden" id="schemathesis-local-modal" role="dialog" aria-modal="true" aria-labelledby="schemathesis-local-title">
+        <div class="modal modal-wide">
+          <button class="modal-close" data-close="schemathesis-local-modal" aria-label="Kapat">×</button>
+          <div class="modal-icon shield">▶</div><p class="eyebrow">SENTETİK YEREL API TESTİ</p><h2 id="schemathesis-local-title">Schemathesis loopback smoke</h2>
+          <p class="modal-copy">Yalnız DGX üzerindeki yönetici sabitli sentetik 127.0.0.1 fixture ve tek GET /api/ping şeması. Genel localhost veya staging API taraması değildir. Testcase sayısı gerçek HTTP isteği değildir; temiz sonuç güvenlik onayı sayılmaz.</p>
+          <form id="schemathesis-local-form" class="form-grid">
+            <label class="full">Sentetik OpenAPI 3.x JSON şeması<textarea id="schemathesis-local-schema" rows="8" placeholder="{&quot;openapi&quot;:&quot;3.0.3&quot;,...}"></textarea></label>
+            <label class="full"><input id="schemathesis-local-consent" type="checkbox"> DGX üzerindeki yönetici sabitli sentetik loopback fixture'a istek gönderilmesini açıkça onaylıyorum.</label>
+            <button class="button primary wide full" type="submit">Sentetik testi başlat</button>
+          </form>
+          <p id="schemathesis-local-error" class="error-message hidden" aria-live="assertive"></p>
+          <section id="schemathesis-local-result" class="panel hidden" aria-live="polite">
+            <div class="form-grid">
+              <article><small>Test paketi</small><b id="schemathesis-local-suite-count"></b></article>
+              <article><small>Testcase</small><b id="schemathesis-local-testcase-count"></b></article>
+              <article><small>Sonuçlar</small><b id="schemathesis-local-outcomes"></b></article>
+              <article><small>JUnit SHA-256</small><code id="schemathesis-local-report-sha256"></code></article>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="modal-backdrop hidden" id="schemathesis-loopback-modal" role="dialog" aria-modal="true" aria-labelledby="schemathesis-loopback-title">
+        <div class="modal modal-wide">
+          <button class="modal-close" data-close="schemathesis-loopback-modal" aria-label="Kapat">×</button>
+          <div class="modal-icon shield">▶</div><p class="eyebrow">ONAYLI YEREL API TESTİ</p><h2 id="schemathesis-loopback-title">Schemathesis onaylı loopback testi</h2>
+          <p class="modal-copy">Yalnız DGX üzerindeki operatörün izin verdiği 127.0.0.1 portunda, sınırlı GET OpenAPI şeması. Dış alan adı veya IP, yönlendirme ve genel ağ taraması desteklenmez. En fazla 24 gerçek HTTP isteği röle tarafından sınırlandırılır; testcase sayısı istek sayısı değildir.</p>
+          <p id="schemathesis-loopback-availability" class="muted" aria-live="polite"></p>
+          <form id="schemathesis-loopback-form" class="form-grid">
+            <label>Operatörün izin verdiği 127.0.0.1 portu<input id="schemathesis-loopback-port" type="text" inputmode="numeric" pattern="[1-9][0-9]{0,4}" maxlength="5" autocomplete="off" placeholder="49123"></label>
+            <label class="full">Sınırlı GET OpenAPI 3.x JSON şeması<textarea id="schemathesis-loopback-schema" rows="8" placeholder="{&quot;openapi&quot;:&quot;3.0.3&quot;,...}"></textarea></label>
+            <label class="full"><input id="schemathesis-loopback-consent" type="checkbox"> Bu onaylı yerel API portuna sınırlandırılmış GET istekleri gönderilmesini açıkça onaylıyorum.</label>
+            <button class="button primary wide full" type="submit" disabled>Onaylı yerel testi başlat</button>
+          </form>
+          <p id="schemathesis-loopback-error" class="error-message hidden" aria-live="assertive"></p>
+          <section id="schemathesis-loopback-result" class="panel hidden" aria-live="polite">
+            <div class="form-grid">
+              <article><small>Gerçek HTTP isteği</small><b id="schemathesis-loopback-request-count"></b></article>
+              <article><small>Test paketi</small><b id="schemathesis-loopback-suite-count"></b></article>
+              <article><small>Testcase</small><b id="schemathesis-loopback-testcase-count"></b></article>
+              <article><small>Sonuçlar</small><b id="schemathesis-loopback-outcomes"></b></article>
+              <article><small>JUnit SHA-256</small><code id="schemathesis-loopback-report-sha256"></code></article>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="modal-backdrop hidden" id="playwright-json-preview-modal" role="dialog" aria-modal="true" aria-labelledby="playwright-json-preview-title">
+        <div class="modal modal-wide">
+          <button class="modal-close" data-close="playwright-json-preview-modal" aria-label="Kapat">×</button>
+          <div class="modal-icon shield">▶</div><p class="eyebrow">PLAYWRIGHT JSON ÖNİZLEME</p><h2 id="playwright-json-preview-title">Kaydedilmiş Playwright test raporu</h2>
+          <p class="modal-copy">Yalnız önceden oluşturulmuş Playwright JSON reporter dosyasını yerel olarak özetler. Tarayıcı testi başlatmaz, dış hedefe bağlanmaz ve raporu saklamaz. Test sayısı HTTP isteği veya güvenlik açığı sayısı değildir.</p>
+          <form id="playwright-json-preview-form" class="form-grid">
+            <label class="full">Rapor JSON içeriği<textarea id="playwright-json-paste" rows="8" placeholder='{ "config": {}, "suites": [], "errors": [], "stats": {} }'></textarea></label>
+            <label class="full">Veya yerel dosya seçin<input id="playwright-json-file" type="file" accept=".json,application/json"></label>
+            <button class="button primary wide full" type="submit">Özet oluştur</button>
+          </form>
+          <p id="playwright-json-preview-error" class="error-message hidden" aria-live="assertive"></p>
+          <section id="playwright-json-preview-result" class="panel hidden" aria-live="polite"><div class="form-grid">
+            <article><small>Dosya</small><b id="playwright-json-file-count"></b></article>
+            <article><small>Test</small><b id="playwright-json-test-count"></b></article>
+            <article><small>Sonuçlar</small><b id="playwright-json-outcomes"></b></article>
+            <article><small>Rapor SHA-256</small><code id="playwright-json-report-sha256"></code></article>
+          </div></section>
+        </div>
+      </div>
+      <div class="modal-backdrop hidden" id="k6-summary-preview-modal" role="dialog" aria-modal="true" aria-labelledby="k6-summary-preview-title">
+        <div class="modal modal-wide">
+          <button class="modal-close" data-close="k6-summary-preview-modal" aria-label="Kapat">×</button>
+          <div class="modal-icon shield">▶</div><p class="eyebrow">k6 RAPOR ÖNİZLEME</p><h2 id="k6-summary-preview-title">Kaydedilmiş klasik k6 JSON özeti</h2>
+          <p class="modal-copy">Yalnız k6 <code>handleSummary(data)</code> ile kaydedilmiş klasik JSON raporu özetlenir. Yük testi başlatılmaz; rapor saklanmaz. Yeni machine-readable biçimi burada desteklenmez.</p>
+          <form id="k6-summary-preview-form" class="form-grid">
+            <label class="full">Rapor JSON'u<textarea id="k6-summary-paste" rows="8" placeholder='{"root_group":{},"state":{},"metrics":{"http_reqs":{"type":"counter","values":{"count":0}}}}'></textarea></label>
+            <label class="full">Veya yerel dosya seçin<input type="file" id="k6-summary-file" accept=".json,application/json"></label>
+            <button class="button primary wide full" type="submit">Kayıtlı özeti göster</button>
+          </form>
+          <p id="k6-summary-preview-error" class="error-message hidden" aria-live="assertive"></p>
+          <section id="k6-summary-preview-result" class="panel hidden" aria-live="polite">
+            <div class="form-grid">
+              <article><small>HTTP istekleri</small><b id="k6-summary-http-requests"></b></article>
+              <article><small>HTTP gecikmesi p(95), ms</small><b id="k6-summary-p95"></b></article>
+              <article><small>Geçen eşikler</small><b id="k6-summary-threshold-passed"></b></article>
+              <article><small>Başarısız eşikler</small><b id="k6-summary-threshold-failed"></b></article>
+              <article><small>Rapor SHA-256</small><code id="k6-summary-report-sha256"></code></article>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="modal-backdrop hidden" id="k6-machine-summary-preview-modal" role="dialog" aria-modal="true" aria-labelledby="k6-machine-summary-preview-title">
+        <div class="modal modal-wide">
+          <button class="modal-close" data-close="k6-machine-summary-preview-modal" aria-label="Kapat">×</button>
+          <div class="modal-icon shield">▶</div><p class="eyebrow">k6 v1 RAPOR ÖNİZLEME</p><h2 id="k6-machine-summary-preview-title">Kaydedilmiş machine-readable v1 JSON özeti</h2>
+          <p class="modal-copy">Kaydedilmiş k6 machine-readable v1 JSON raporu özetlenir: yayımlanmış şemanın tam camelCase metadata çifti veya k6 1.7.1 tarafından üretilen tam snake_case çifti kabul edilir; karışık/eksik çift reddedilir. k6 CLI çalıştırılmaz, yük testi başlatılmaz ve rapor saklanmaz. v1 şemasında eşik sonuçları yoktur; 0/0 değeri eşiklerin geçtiğini göstermez.</p>
+          <form id="k6-machine-summary-preview-form" class="form-grid">
+            <label class="full">Rapor JSON'u<textarea id="k6-machine-summary-paste" rows="8" placeholder='{"version":"1.0.0","metadata":{"generatedAt":"2025-01-15T10:30:45Z","k6Version":"1.5.0"},"config":{"execution":"local","duration":1},"results":{"metrics":[{"name":"http_reqs","type":"counter","contains":"default","values":{"count":0}}]}}'></textarea></label>
+            <label class="full">Veya yerel dosya seçin<input type="file" id="k6-machine-summary-file" accept=".json,application/json"></label>
+            <button class="button primary wide full" type="submit">Kayıtlı v1 özetini göster</button>
+          </form>
+          <p id="k6-machine-summary-preview-error" class="error-message hidden" aria-live="assertive"></p>
+          <section id="k6-machine-summary-preview-result" class="panel hidden" aria-live="polite">
+            <div class="form-grid">
+              <article><small>HTTP istekleri</small><b id="k6-machine-summary-http-requests"></b></article>
+              <article><small>HTTP gecikmesi p(95), ms</small><b id="k6-machine-summary-p95"></b></article>
+              <article><small>Eşikler: v1 şemasında sonuç yok, geçen sayısı 0</small><b id="k6-machine-summary-threshold-passed"></b></article>
+              <article><small>Eşikler: v1 şemasında sonuç yok, kalan sayısı 0</small><b id="k6-machine-summary-threshold-failed"></b></article>
+              <article><small>Rapor SHA-256</small><code id="k6-machine-summary-report-sha256"></code></article>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="modal-backdrop hidden" id="siem-ecs-preview-modal" role="dialog" aria-modal="true" aria-labelledby="siem-ecs-preview-title">
+        <div class="modal modal-wide">
+          <button class="modal-close" data-close="siem-ecs-preview-modal" aria-label="Kapat">×</button>
+          <div class="modal-icon shield">▶</div><p class="eyebrow">SIEM KAYDEDİLMİŞ KANIT</p><h2 id="siem-ecs-preview-title">ECS JSONL özet önizlemesi</h2>
+          <p class="modal-copy">Yalnız önceden kaydedilmiş, <code>ecs.version</code>, <code>@timestamp</code> ve <code>event.kind</code> içeren (iç içe ya da düz noktalı anahtarlı; aynı alan iki biçimde birden verilemez) ECS uyumlu JSON Lines kanıtının sınırlı özeti. Günlük toplama, SIEM bağlantısı, alarm doğrulaması veya hedef taraması yapmaz; ham olaylar saklanmaz.</p>
+          <form id="siem-ecs-preview-form" class="form-grid">
+            <label class="full">ECS JSONL kanıtı<textarea id="siem-ecs-paste" rows="8" placeholder='{"@timestamp":"2026-10-13T08:00:00Z","ecs":{"version":"8.17.0"},"event":{"kind":"event"}}'></textarea></label>
+            <label class="full">Veya yerel dosya seçin<input id="siem-ecs-file" type="file" accept=".jsonl,.ndjson,text/plain,application/x-ndjson"></label>
+            <button class="button primary wide full" type="submit">Kaydedilmiş kanıtı özetle</button>
+          </form>
+          <p id="siem-ecs-preview-error" class="error-message hidden" aria-live="assertive"></p>
+          <section id="siem-ecs-preview-result" class="panel hidden" aria-live="polite">
+            <div class="form-grid">
+              <article><small>Olay kaydı</small><b id="siem-ecs-record-count"></b></article>
+              <article><small>ECS event.kind dağılımı</small><b id="siem-ecs-kind-counts"></b></article>
+              <article><small>Rapor SHA-256</small><code id="siem-ecs-report-sha256"></code></article>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="modal-backdrop hidden" id="trufflehog-git-history-modal" role="dialog" aria-modal="true" aria-labelledby="trufflehog-git-history-title">
+        <div class="modal modal-wide">
+          <button class="modal-close" data-close="trufflehog-git-history-modal" aria-label="Kapat">×</button>
+          <div class="modal-icon shield">▶</div><p class="eyebrow">YEREL GIT GEÇMİŞİ</p><h2 id="trufflehog-git-history-title">TruffleHog Git geçmişi taraması</h2>
+          <p class="modal-copy">Yalnız bu DGX'teki hizmet kullanıcısının ev dizinindeki Git geçmişini, açık onayla, güncelleme ve sır doğrulaması yapmadan tarar. Uzak depo veya web sitesi taranmaz. Ham sırlar ve dosya yolları sonuçta gösterilmez; bulgular doğrulanmamıştır.</p>
+          <form id="trufflehog-git-history-form" class="form-grid">
+            <label class="full">Yerel proje dizini<input id="trufflehog-git-history-path" name="project_path" type="text" maxlength="1024" placeholder="/home/community-user/project" autocomplete="off" required></label>
+            <label class="full"><input type="checkbox" id="trufflehog-git-history-consent"> Bu DGX'teki yerel proje Git geçmişinin taranmasını onaylıyorum; sır doğrulaması yapılmaz.</label>
+            <button class="button primary wide full" id="trufflehog-git-history-submit" type="submit" disabled>Yerel Git geçmişini tara</button>
+          </form>
+          <p id="trufflehog-git-history-error" class="error-message hidden" aria-live="assertive"></p>
+          <section id="trufflehog-git-history-result" class="panel hidden" aria-live="polite">
+            <div class="form-grid">
+              <article><small>Doğrulanmamış toplam bulgu</small><b id="trufflehog-git-history-total"></b></article>
+              <article><small>Doğrulanmamış kayıt</small><b id="trufflehog-git-history-unverified"></b></article>
+              <article><small>Dedektör sayısı</small><b id="trufflehog-git-history-detectors"></b></article>
+              <article><small>Rapor SHA-256</small><code id="trufflehog-git-history-report-sha256"></code></article>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="modal-backdrop hidden" id="trufflehog-filesystem-modal" role="dialog" aria-modal="true" aria-labelledby="trufflehog-filesystem-title">
+        <div class="modal modal-wide">
+          <button class="modal-close" data-close="trufflehog-filesystem-modal" aria-label="Kapat">×</button>
+          <div class="modal-icon shield">▶</div><p class="eyebrow">YEREL DOSYALAR</p><h2 id="trufflehog-filesystem-title">TruffleHog yerel dosya taraması</h2>
+          <p class="modal-copy">Yalnız bu DGX'teki hizmet kullanıcısının ev dizinindeki yerel dosyaların sınırlı bir kopyasını açık onayla tarar. En fazla 2000 dosya, toplam 25 MB ve dosya başına 1 MB sınırı vardır; sembolik bağlar ve .git geçmişi izlenmez. Uzak depo veya web sitesi taranmaz. Güncelleme ve sır doğrulaması yapılmaz; ham sırlar ve dosya yolları sonuçta gösterilmez.</p>
+          <form id="trufflehog-filesystem-form" class="form-grid">
+            <label class="full">Yerel proje dizini<input id="trufflehog-filesystem-path" name="project_path" type="text" maxlength="1024" placeholder="/home/community-user/project" autocomplete="off" required></label>
+            <label class="full"><input type="checkbox" id="trufflehog-filesystem-consent"> Bu DGX'teki yerel proje dosyalarının taranmasını onaylıyorum; sır doğrulaması yapılmaz.</label>
+            <button class="button primary wide full" id="trufflehog-filesystem-submit" type="submit" disabled>Yerel dosyaları tara</button>
+          </form>
+          <p id="trufflehog-filesystem-error" class="error-message hidden" aria-live="assertive"></p>
+          <section id="trufflehog-filesystem-result" class="panel hidden" aria-live="polite">
+            <div class="form-grid">
+              <article><small>Doğrulanmamış toplam bulgu</small><b id="trufflehog-filesystem-total"></b></article>
+              <article><small>Doğrulanmamış kayıt</small><b id="trufflehog-filesystem-unverified"></b></article>
+              <article><small>Dedektör sayısı</small><b id="trufflehog-filesystem-detectors"></b></article>
+              <article><small>Rapor SHA-256</small><code id="trufflehog-filesystem-report-sha256"></code></article>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="modal-backdrop hidden" id="trufflehog-preview-modal" role="dialog" aria-modal="true" aria-labelledby="trufflehog-preview-modal-title">
+        <div class="modal modal-wide">
+          <button class="modal-close" data-close="trufflehog-preview-modal" aria-label="Kapat">×</button>
+          <div class="modal-icon shield">▶</div><p class="eyebrow">TRUFFLEHOG JSONL ÖNİZLEME</p><h2 id="trufflehog-preview-modal-title">Yerel TruffleHog JSONL rapor özetini göster</h2>
+          <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir.</p>
+          <form id="trufflehog-preview-form" class="form-grid">
+            <label class="full">TruffleHog JSONL içeriği (her satırda bir JSON nesnesi)<textarea name="trufflehog_jsonl" id="trufflehog-paste" rows="8" placeholder='{"DetectorName": "...", "Verified": true}\n{"DetectorName": "...", "Verified": false}'></textarea></label>
+            <label class="full">Veya yerel dosya seçin<input type="file" id="trufflehog-file" accept=".jsonl,.json"></label>
+            <button class="button primary wide full" type="submit">Özet oluştur</button>
+          </form>
+          <p id="trufflehog-preview-error" class="error-message hidden" aria-live="assertive"></p>
+          <section id="trufflehog-preview-result" class="panel hidden" aria-live="polite">
+            <div class="form-grid">
+              <article><small>Format</small><b id="trufflehog-format"></b></article>
+              <article><small>Toplam bulgu</small><b id="trufflehog-total"></b></article>
+              <article><small>Doğrulanmış</small><b id="trufflehog-verified"></b></article>
+              <article><small>Doğrulanmamış</small><b id="trufflehog-unverified"></b></article>
+              <article><small>Tetiklenen dedektör</small><b id="trufflehog-detectors"></b></article>
+            </div>
+          </section>
+        </div>
+      </div>
+<div class="modal-backdrop hidden" id="nuclei-jsonl-preview-modal" role="dialog" aria-modal="true" aria-labelledby="nuclei-jsonl-preview-modal-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="nuclei-jsonl-preview-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">NUCLEİ JSONL ÖNİZLEME</p><h2 id="nuclei-jsonl-preview-modal-title">Yerel Nuclei JSONL rapor özetini göster</h2>
+    <p class="modal-copy">Pasif önizleme saklanmaz. Açıkça onaylanan bir etkinlikte, yalnızca toplu sayılar ve hash’ler depolanır; ham rapor saklanmaz. Durum otomatik geçiş değil, inceleme gerektirir (needs_review).</p>
+    <form id="nuclei-jsonl-preview-form" class="form-grid">
+      <label class="full">
+        <input type="checkbox" id="nuclei-jsonl-link-opt-in" name="link_opt_in">
+        <span>Bu özet raporu yetkili bir denetime kanıt olarak bağla</span>
+      </label>
+      <div id="nuclei-jsonl-link-fields" class="hidden">
+        <label class="full">
+          <small>Denetim</small>
+          <select id="nuclei-jsonl-link-engagement"></select>
+        </label>
+        <label class="full">
+          <small>Test adımı</small>
+          <select id="nuclei-jsonl-link-control"></select>
+        </label>
+        <p id="nuclei-jsonl-link-result" class="hidden" aria-live="polite"></p>
+      </div>
+      <label class="full">Nuclei JSONL içeriği (her satırda bir JSON nesnesi)<textarea name="nuclei_jsonl" id="nuclei-jsonl-paste" rows="8" placeholder='{"template-id":"example-template","type":"http","info":{"severity":"high"}}'></textarea></label>
+      <label class="full">Veya yerel dosya seçin<input type="file" id="nuclei-jsonl-file" accept=".jsonl,.json"></label>
+      <button class="button primary wide full" type="submit">Özet oluştur</button>
+    </form>
+    <p id="nuclei-jsonl-preview-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="nuclei-jsonl-preview-result" class="panel hidden" aria-live="polite">
+      <div class="form-grid">
+        <article><small>Format</small><b id="nuclei-jsonl-format"></b></article>
+        <article><small>Toplam bulgu</small><b id="nuclei-jsonl-record-count"></b></article>
+        <article><small>Şiddet dağılımı</small><b id="nuclei-jsonl-severity-counts"></b></article>
+        <article><small>Benzersiz şablon</small><b id="nuclei-jsonl-unique-template-count"></b></article>
+        <article><small>Rapor SHA-256</small><b id="nuclei-jsonl-report-sha256"></b></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="direct-nmap-scan-modal" role="dialog" aria-modal="true" aria-labelledby="direct-nmap-scan-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="direct-nmap-scan-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">HER ÇALIŞTIRMADA İNSAN ONAYI</p><h2 id="direct-nmap-scan-title">Doğrudan yetkili Nmap taraması</h2>
+    <p class="modal-copy">Kayıtlı hedef veya denetim gerektirmez. Yalnız host/IP ve sabit 23 portlu varsayılan ya da hafif servis profili kabul edilir; özel port, NSE ve ham komut kabul edilmez.</p>
+    <form id="direct-nmap-scan-form" class="form-grid">
+      <label class="full">Host veya IP<input id="direct-nmap-target" type="text" maxlength="253" autocomplete="off" placeholder="example.com veya 192.0.2.10" required></label>
+      <label>Profil<select id="direct-nmap-profile"><option value="default">Varsayılan TCP</option><option value="service-light">Hafif servis/sürüm</option></select></label>
+      <label class="full"><input type="checkbox" id="direct-nmap-confirm-authorized" required> Bu hedef üzerinde bu Nmap çalıştırmasını yapmaya yetkili olduğumu onaylıyorum</label>
+      <button class="button primary wide full" id="direct-nmap-start" type="submit">Nmap taramasını başlat</button>
+    </form>
+    <p id="direct-nmap-status" class="modal-copy" aria-live="polite"></p>
+    <section id="direct-nmap-result" class="panel hidden" aria-live="polite"><div class="form-grid">
+      <article><small>Açık port sayısı</small><b id="direct-nmap-open-count"></b></article>
+      <article><small>Açık portlar</small><b id="direct-nmap-open-ports"></b></article>
+      <article><small>Rapor SHA-256</small><code id="direct-nmap-report-sha256"></code></article>
+      <article><small>Onay zamanı</small><b id="direct-nmap-confirmed-at"></b></article>
+    </div></section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="direct-nuclei-scan-modal" role="dialog" aria-modal="true" aria-labelledby="direct-nuclei-scan-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="direct-nuclei-scan-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">HER ÇALIŞTIRMADA İNSAN ONAYI</p><h2 id="direct-nuclei-scan-title">Doğrudan yetkili Nuclei taraması</h2>
+    <p class="modal-copy">Kayıtlı hedef veya denetim gerektirmez. Yalnız tam HTTP(S) origin kabul edilir; Sniper sabitlenmiş üç HTTP şablonunu 90 saniye ve 1 MB rapor bütçesiyle çalıştırır.</p>
+    <form id="direct-nuclei-scan-form" class="form-grid">
+      <label class="full">HTTP(S) origin<input id="direct-nuclei-origin" type="url" maxlength="2048" autocomplete="off" placeholder="https://example.com" required></label>
+      <label class="full"><input type="checkbox" id="direct-nuclei-confirm-authorized" required> Bu origin üzerinde bu Nuclei çalıştırmasını yapmaya yetkili olduğumu onaylıyorum</label>
+      <button class="button primary wide full" id="direct-nuclei-start" type="submit">Nuclei taramasını başlat</button>
+    </form>
+    <button class="button secondary wide" id="direct-nuclei-cancel" type="button" disabled>Çalışan taramayı durdur</button>
+    <p id="direct-nuclei-status" class="modal-copy" aria-live="polite"></p>
+    <section id="direct-nuclei-result" class="panel hidden" aria-live="polite"><div class="form-grid">
+      <article><small>Bulgu sayısı</small><b id="direct-nuclei-record-count"></b></article>
+      <article><small>Benzersiz şablon</small><b id="direct-nuclei-template-count"></b></article>
+      <article><small>Rapor SHA-256</small><code id="direct-nuclei-report-sha256"></code></article>
+      <article><small>Onay zamanı</small><b id="direct-nuclei-confirmed-at"></b></article>
+    </div></section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="nuclei-http-scan-modal" role="dialog" aria-modal="true" aria-labelledby="nuclei-http-scan-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="nuclei-http-scan-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">YETKİLİ AKTİF TARAMA</p><h2 id="nuclei-http-scan-title">Nuclei HTTP taraması</h2>
+    <p class="modal-copy">Varsayılan seçim, kurulu HTTP kataloğundaki normal yüklenebilen tüm şablonlardır. İsterseniz tam şablon kimlikleriyle daraltın. Tarama yalnız kayıtlı hedef ve etkin, yetkisi belgelenmiş denetim için başlar.</p>
+    <form id="nuclei-http-scan-form" class="form-grid">
+      <label>Hedef<select id="nuclei-http-target" required></select></label>
+      <label>Yetkili denetim<select id="nuclei-http-engagement" required></select></label>
+      <label class="full">İsteğe bağlı şablon ID’leri (boş bırakın: tüm normal HTTP şablonları)
+        <textarea id="nuclei-http-template-ids" rows="3" placeholder="template-id-1, template-id-2"></textarea>
+      </label>
+      <label class="full"><input type="checkbox" id="nuclei-http-include-excluded"> Nuclei’nin normalde hariç tuttuğu HTTP şablonlarını da açıkça dahil et</label>
+      <label class="full"><input type="checkbox" id="nuclei-http-confirm-authorized" required> Hedef ve tarama kapsamı için yetkim olduğunu ve etkin denetimde kayıtlı olduğunu onaylıyorum</label>
+      <button class="button primary wide full" id="nuclei-http-start" type="submit">Taramayı başlat</button>
+    </form>
+    <div class="form-grid">
+      <button class="button secondary full" id="nuclei-http-cancel" type="button" disabled>Çalışan taramayı durdur</button>
+    </div>
+    <p id="nuclei-http-status" class="modal-copy" aria-live="polite"></p>
+    <p id="nuclei-http-elapsed" class="modal-copy hidden" aria-live="polite"></p>
+    <section id="nuclei-http-result" class="panel hidden" aria-live="polite">
+      <div class="form-grid">
+        <article><small>Bulgu sayısı</small><b id="nuclei-http-record-count"></b></article>
+        <article><small>Şiddet dağılımı</small><b id="nuclei-http-severity-counts"></b></article>
+        <article><small>Benzersiz şablon</small><b id="nuclei-http-unique-template-count"></b></article>
+        <article><small>Rapor SHA-256</small><code id="nuclei-http-report-sha256"></code></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="burp-xml-preview-modal" role="dialog" aria-modal="true" aria-labelledby="burp-xml-preview-modal-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="burp-xml-preview-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">BURP SİTE-MAP XML ÖNİZLEME</p><h2 id="burp-xml-preview-modal-title">Yerel Burp Site-map XML rapor özetini göster</h2>
+    <p class="modal-copy">Rapor yerel Sniper sunucusunda özetlenir; ham XML saklanmaz. İsteğe bağlı açık onayla yalnızca toplu sayılar ve bu sayıların özeti denetim/test adımına bağlanır. Özeti oluşturan hash, kaynak XML’in kimliğini veya hedefe ait olduğunu kanıtlamaz. Bu işlem Burp Suite’i çalıştırmaz ve tarama yapmaz.</p>
+    <form id="burp-xml-preview-form" class="form-grid">
+      <label class="full">
+        <input type="checkbox" id="burp-xml-link-opt-in" name="link_opt_in">
+        <span>Bu toplu özeti açıkça seçtiğim yetkili denetime kanıt kaydı olarak bağla</span>
+      </label>
+      <div id="burp-xml-link-fields" class="hidden">
+        <label class="full"><small>Etkin denetim</small><select id="burp-xml-link-engagement"></select></label>
+        <label class="full"><small>Test adımı</small><select id="burp-xml-link-control" disabled><option value="">Önce denetim seçin</option></select></label>
+      </div>
+      <p id="burp-xml-link-availability" class="field-help full" aria-live="polite"></p>
+      <p id="burp-xml-link-result" class="field-help full hidden" aria-live="polite"></p>
+      <label class="full">Site-map XML içeriği (XML yapıştırın)<textarea name="burp_xml" id="burp-xml-paste" rows="8" placeholder="&lt;items&gt;&lt;item&gt;&lt;status&gt;200&lt;/status&gt;&lt;mimetype&gt;HTML&lt;/mimetype&gt;&lt;/item&gt;&lt;/items&gt;"></textarea></label>
+      <label class="full">Veya yerel dosya seçin<input type="file" id="burp-xml-file" accept=".xml"></label>
+      <button class="button primary wide full" type="submit">Özet oluştur</button>
+    </form>
+    <p id="burp-xml-preview-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="burp-xml-preview-result" class="panel hidden" aria-live="polite">
+      <div class="form-grid">
+        <article><small>Format</small><b id="burp-xml-format"></b></article>
+        <article><small>Toplam item</small><b id="burp-xml-item-count"></b></article>
+        <article><small>Durum dağılımı</small><b id="burp-xml-status-counts"></b></article>
+        <article><small>Mime-type dağılımı</small><b id="burp-xml-mimetype-counts"></b></article>
+        <article><small>Toplu özet SHA-256</small><code id="burp-xml-report-sha256"></code></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="testssl-authorized-modal" role="dialog" aria-modal="true" aria-labelledby="testssl-authorized-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="testssl-authorized-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">HER ÇALIŞTIRMADA İNSAN ONAYI</p><h2 id="testssl-authorized-title">Doğrudan yetkili testssl.sh taraması</h2>
+    <p class="modal-copy">Kayıtlı hedef veya denetim gerektirmez. Host/IP bir kez çözülür ve çalışma o IP'ye sabitlenir. Yalnız protocols veya full profili kabul edilir; özel komut ve bayrak kabul edilmez.</p>
+    <form id="testssl-authorized-form" class="form-grid">
+      <label class="full">Host/IP ve port<input id="testssl-authorized-target" type="text" maxlength="320" autocomplete="off" placeholder="example.com:443 veya [2001:db8::1]:443" required></label>
+      <label>Profil<select id="testssl-authorized-profile"><option value="protocols">TLS protokolleri</option><option value="full">Tam TLS denetimi</option></select></label>
+      <label class="full"><input type="checkbox" id="testssl-authorized-consent" required> Bu hedef üzerinde bu testssl.sh çalıştırmasını yapmaya yetkili olduğumu onaylıyorum</label>
+      <button class="button primary wide full" id="testssl-authorized-submit" type="submit" disabled>testssl.sh taramasını başlat</button>
+    </form>
+    <p id="testssl-authorized-status" class="modal-copy" aria-live="polite"></p>
+    <p id="testssl-authorized-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="testssl-authorized-result" class="panel hidden" aria-live="polite"><div class="form-grid">
+      <article><small>Tarama durumu</small><b id="testssl-authorized-complete"></b></article>
+      <article><small>Kayıt sayısı</small><b id="testssl-authorized-record-count"></b></article>
+      <article><small>Önem dağılımı</small><b id="testssl-authorized-severity-counts"></b></article>
+      <article><small>Rapor SHA-256</small><code id="testssl-authorized-report-sha256"></code></article>
+      <article><small>Onay zamanı</small><b id="testssl-authorized-confirmed-at"></b></article>
+    </div></section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="testssl-loopback-full-modal" role="dialog" aria-modal="true" aria-labelledby="testssl-loopback-full-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="testssl-loopback-full-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">YEREL TLS TARAMASI</p><h2 id="testssl-loopback-full-title">testssl.sh tam yerel tarama</h2>
+    <p class="modal-copy">Yalnız bu DGX üzerindeki 127.0.0.1 adresinin seçtiğiniz TLS portunu tarar. Dış site, alan adı veya başka IP kabul edilmez. Tarama işlemi yalnız açık onayla başlar. Ham bulgular kaydedilmez; sonuç sadece toplu sayılar ve rapor SHA-256 içerir. Kısmi sonuç tamamlanmış tarama olarak değerlendirilmemelidir.</p>
+    <form id="testssl-loopback-full-form" class="form-grid">
+      <label class="full">Yerel TLS portu (127.0.0.1)<input id="testssl-loopback-full-port" name="port" type="text" inputmode="numeric" maxlength="5" placeholder="443" autocomplete="off" required></label>
+      <label class="full"><input type="checkbox" id="testssl-loopback-full-consent"> Bu DGX üzerindeki seçtiğim yerel TLS portunda tam testssl.sh taramasını başlatmayı onaylıyorum.</label>
+      <button class="button primary wide full" id="testssl-loopback-full-submit" type="submit" disabled>Yerel TLS taramasını başlat</button>
+    </form>
+    <p id="testssl-loopback-full-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="testssl-loopback-full-result" class="panel hidden" aria-live="polite">
+      <div class="form-grid">
+        <article><small>Tarama durumu</small><b id="testssl-loopback-full-complete"></b></article>
+        <article><small>Kayıt sayısı</small><b id="testssl-loopback-full-record-count"></b></article>
+        <article><small>Önem dağılımı</small><b id="testssl-loopback-full-severity-counts"></b></article>
+        <article><small>Rapor SHA-256</small><code id="testssl-loopback-full-report-sha256"></code></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="testssl-preview-modal" role="dialog" aria-modal="true" aria-labelledby="testssl-preview-modal-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="testssl-preview-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">TESTSSL.SH FLAT JSON ÖNİZLEME</p><h2 id="testssl-preview-modal-title">Yerel testssl.sh flat JSON rapor özetini göster</h2>
+    <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Ham JSON saklanmaz. İsterseniz ayrı açık onayla yalnız toplu özeti etkin, yetkili ve maskeli kanıt onaylı bir manuel denetim test adımına bağlayabilirsiniz. Bu işlem testssl.sh çalıştırmaz ve tarama yapmaz; SHA-256, hedef veya rapor kaynağını kanıtlamaz.</p>
+    <form id="testssl-preview-form" class="form-grid">
+      <label class="full"><input type="checkbox" id="testssl-link-opt-in" name="link_opt_in" disabled> Toplu özeti etkin bir manuel denetimde test adımına bağla (isteğe bağlı, ayrı açık onay)</label>
+      <div id="testssl-link-fields" class="hidden full">
+        <label class="full"><small>Etkin denetim</small><select id="testssl-link-engagement"></select></label>
+        <label class="full"><small>Test adımı</small><select id="testssl-link-control" disabled><option value="">Önce denetim seçin</option></select></label>
+      </div>
+      <p id="testssl-link-availability" class="field-help full" aria-live="polite"></p>
+      <p id="testssl-link-result" class="field-help full hidden" aria-live="polite"></p>
+      <label class="full">testssl.sh flat JSON içeriği (JSON dizisi)<textarea name="testssl_json" id="testssl-paste" rows="8" placeholder='[{"id":"example","ip":"127.0.0.1","port":"443","severity":"HIGH","finding":"example finding"}]'></textarea></label>
+      <label class="full">Veya yerel dosya seçin<input type="file" id="testssl-file" accept=".json"></label>
+      <button class="button primary wide full" type="submit">Özet oluştur</button>
+    </form>
+    <p id="testssl-preview-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="testssl-preview-result" class="panel hidden" aria-live="polite">
+      <div class="form-grid">
+        <article><small>Format</small><b id="testssl-format"></b></article>
+        <article><small>Toplam bulgu</small><b id="testssl-record-count"></b></article>
+        <article><small>Şiddet dağılımı</small><b id="testssl-severity-counts"></b></article>
+        <article><small>Rapor SHA-256</small><b id="testssl-report-sha256"></b></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="gitleaks-filesystem-modal" role="dialog" aria-modal="true" aria-labelledby="gitleaks-filesystem-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="gitleaks-filesystem-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">YEREL DOSYALAR</p><h2 id="gitleaks-filesystem-title">Gitleaks yerel dosya taraması</h2>
+    <p class="modal-copy">Yalnız bu DGX'teki hizmet kullanıcısının ev dizinindeki yerel proje dosyalarının sınırlı bir kopyasını açık onayla tarar. En fazla 2000 dosya, toplam 25 MB ve dosya başına 1 MB sınırı vardır; sembolik bağlar, .git geçmişi ve yerel Gitleaks yapılandırma dosyaları izlenmez. Uzak depo veya web sitesi taranmaz. Ham sırlar ve dosya yolları sonuçta gösterilmez; bulgular uzman doğrulaması gerektirir.</p>
+    <form id="gitleaks-filesystem-form" class="form-grid">
+      <label class="full">Yerel proje dizini<input id="gitleaks-filesystem-path" name="project_path" type="text" maxlength="1024" placeholder="/home/community-user/project" autocomplete="off" required></label>
+      <label class="full"><input type="checkbox" id="gitleaks-filesystem-consent"> Bu DGX'teki yerel proje dosyalarının Gitleaks ile taranmasını onaylıyorum.</label>
+      <button class="button primary wide full" id="gitleaks-filesystem-submit" type="submit" disabled>Yerel dosyaları Gitleaks ile tara</button>
+    </form>
+    <p id="gitleaks-filesystem-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="gitleaks-filesystem-result" class="panel hidden" aria-live="polite">
+      <div class="form-grid">
+        <article><small>Toplam bulgu</small><b id="gitleaks-filesystem-total"></b></article>
+        <article><small>Benzersiz kural</small><b id="gitleaks-filesystem-rules"></b></article>
+        <article><small>Etkilenen dosya</small><b id="gitleaks-filesystem-files"></b></article>
+        <article><small>Rapor SHA-256</small><code id="gitleaks-filesystem-report-sha256"></code></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="gitleaks-preview-modal" role="dialog" aria-modal="true" aria-labelledby="gitleaks-preview-modal-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="gitleaks-preview-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">GITLEAKS NATIVE JSON ÖNİZLEME</p><h2 id="gitleaks-preview-modal-title">Yerel Gitleaks native JSON bulgu özetini göster</h2>
+    <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Ham JSON saklanmaz. İsterseniz ayrı açık onayla yalnız toplu özeti etkin, yetkili ve maskeli kanıt onaylı bir manuel denetim test adımına bağlayabilirsiniz. Bu işlem Gitleaks’i çalıştırmaz ve tarama yapmaz; SHA-256, hedef veya rapor kaynağını kanıtlamaz.</p>
+    <form id="gitleaks-preview-form" class="form-grid">
+      <label class="full"><input type="checkbox" id="gitleaks-link-opt-in" name="link_opt_in" disabled> Toplu özeti etkin bir manuel denetimde test adımına bağla (isteğe bağlı, ayrı açık onay)</label>
+      <div id="gitleaks-link-fields" class="hidden full">
+        <label class="full"><small>Etkin denetim</small><select id="gitleaks-link-engagement"></select></label>
+        <label class="full"><small>Test adımı</small><select id="gitleaks-link-control" disabled><option value="">Önce denetim seçin</option></select></label>
+      </div>
+      <p id="gitleaks-link-availability" class="field-help full" aria-live="polite"></p>
+      <p id="gitleaks-link-result" class="field-help full hidden" aria-live="polite"></p>
+      <label class="full">Gitleaks native JSON içeriği (findings dizisi)<textarea name="gitleaks_json" id="gitleaks-paste" rows="8"></textarea></label>
+      <label class="full">Veya yerel dosya seçin<input type="file" id="gitleaks-file" accept=".json"></label>
+      <button class="button primary wide full" type="submit">Özet oluştur</button>
+    </form>
+    <p id="gitleaks-preview-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="gitleaks-preview-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article><small>Format</small><b id="gitleaks-format"></b></article>
+        <article><small>Toplam bulgu</small><b id="gitleaks-total-findings"></b></article>
+        <article><small>Benzersiz kural</small><b id="gitleaks-rules-triggered"></b></article>
+        <article><small>Etkilenen dosya</small><b id="gitleaks-files-affected"></b></article>
+        <article><small>Rapor SHA-256</small><b id="gitleaks-report-sha256"></b></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="dependabot-preview-modal" role="dialog" aria-modal="true" aria-labelledby="dependabot-preview-modal-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="dependabot-preview-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">DEPENDABOT ALERTS JSON ÖNİZLEME</p><h2 id="dependabot-preview-modal-title">Yerel Dependabot alerts JSON özetini göster</h2>
+    <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem Dependabot’u çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.</p>
+    <form id="dependabot-preview-form" class="form-grid">
+      <label class="full">Dependabot alerts JSON içeriği (alerts dizisi)<textarea name="dependabot_json" id="dependabot-paste" rows="8"></textarea></label>
+      <label class="full">Veya yerel dosya seçin<input type="file" id="dependabot-file" accept=".json"></label>
+      <button class="button primary wide full" type="submit">Özet oluştur</button>
+    </form>
+    <p id="dependabot-preview-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="dependabot-preview-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article><small>Format</small><b id="dependabot-format"></b></article>
+        <article><small>Toplam alert</small><b id="dependabot-alert-count"></b></article>
+        <article><small>Durum dağılımı</small><b id="dependabot-state-counts"></b></article>
+        <article><small>Önem dağılımı</small><b id="dependabot-severity-counts"></b></article>
+        <article><small>Yama sürümü mevcut açık uyarı</small><b id="dependabot-open-patchable-count" aria-label="Yama sürümü mevcut açık uyarı sayısı"></b></article>
+        <article><small>Rapor SHA-256</small><b id="dependabot-report-sha256"></b></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="npm-audit-preview-modal" role="dialog" aria-modal="true" aria-labelledby="npm-audit-preview-modal-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="npm-audit-preview-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">NPM AUDIT V2 JSON ÖNİZLEME</p><h2 id="npm-audit-preview-modal-title">Yerel npm audit v2 JSON özetini göster</h2>
+    <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem npm komutu çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.</p>
+    <form id="npm-audit-preview-form" class="form-grid">
+      <label class="full">npm audit v2 JSON içeriği (auditReportVersion=2 ve vulnerabilities objesi)<textarea name="npm_audit_json" id="npm-audit-paste" rows="8"></textarea></label>
+      <label class="full">Veya yerel dosya seçin<input type="file" id="npm-audit-file" accept=".json"></label>
+      <button class="button primary wide full" type="submit">Özet oluştur</button>
+    </form>
+    <p id="npm-audit-preview-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="npm-audit-preview-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article><small>Format</small><b id="npm-audit-format"></b></article>
+        <article><small>Etkilenen paket sayısı</small><b id="npm-audit-package-count"></b></article>
+        <article><small>Önem dağılımı</small><b id="npm-audit-severity-counts"></b></article>
+        <article><small>Rapor SHA-256</small><b id="npm-audit-report-sha256"></b></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="trivy-preview-modal" role="dialog" aria-modal="true" aria-labelledby="trivy-preview-modal-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="trivy-preview-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">TRIVY NATIVE JSON ÖNİZLEME</p><h2 id="trivy-preview-modal-title">Yerel Trivy native JSON özetini göster</h2>
+    <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Ham JSON saklanmaz. İsterseniz ayrı açık onayla yalnız toplu özeti etkin, yetkili ve maskeli kanıt onaylı bir manuel denetim test adımına bağlayabilirsiniz. Bu işlem Trivy komutu çalıştırmaz ve tarama yapmaz; SHA-256, hedef veya rapor kaynağını kanıtlamaz.</p>
+    <form id="trivy-preview-form" class="form-grid">
+      <label class="full"><input type="checkbox" id="trivy-link-opt-in" name="link_opt_in" disabled> Toplu özeti etkin bir manuel denetimde test adımına bağla (isteğe bağlı, ayrı açık onay)</label>
+      <div id="trivy-link-fields" class="hidden full">
+        <label class="full"><small>Etkin denetim</small><select id="trivy-link-engagement"></select></label>
+        <label class="full"><small>Test adımı</small><select id="trivy-link-control" disabled><option value="">Önce denetim seçin</option></select></label>
+      </div>
+      <p id="trivy-link-availability" class="field-help full" aria-live="polite"></p>
+      <p id="trivy-link-result" class="field-help full hidden" aria-live="polite"></p>
+      <label class="full">Trivy native JSON içeriği (SchemaVersion=2 ve opsiyonel Results dizisi)<textarea name="trivy_json" id="trivy-paste" rows="8"></textarea></label>
+      <label class="full">Veya yerel dosya seçin<input type="file" id="trivy-file" accept=".json"></label>
+      <button class="button primary wide full" type="submit">Özet oluştur</button>
+    </form>
+    <p id="trivy-preview-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="trivy-preview-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article><small>Format</small><b id="trivy-format"></b></article>
+        <article><small>Şema sürümü</small><b id="trivy-schema-version"></b></article>
+        <article><small>Sonuç sayısı</small><b id="trivy-result-count"></b></article>
+        <article><small>Sınıf dağılımı</small><b id="trivy-class-counts"></b></article>
+        <article><small>Kritiklik dağılımı</small><b id="trivy-vuln-counts"></b></article>
+        <article><small>Yapılandırma sorunu kritikliği dağılımı</small><b id="trivy-misconfig-sev-counts"></b></article>
+        <article><small>Tespit sayıları</small><b id="trivy-finding-counts"></b></article>
+        <article><small>Rapor SHA-256</small><b id="trivy-report-sha256"></b></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="zap-preview-modal" role="dialog" aria-modal="true" aria-labelledby="zap-preview-modal-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="zap-preview-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">ZAP TRADITIONAL JSON ÖNİZLEME</p><h2 id="zap-preview-modal-title">Yerel ZAP traditional JSON özetini göster</h2>
+    <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem ZAP çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.</p>
+    <form id="zap-preview-form" class="form-grid">
+      <label class="full">ZAP traditional JSON içeriği (site dizisi içeren nesne)<textarea name="zap_json" id="zap-paste" rows="8"></textarea></label>
+      <label class="full">Veya yerel dosya seçin<input type="file" id="zap-file" accept=".json"></label>
+      <button class="button primary wide full" type="submit">Özet oluştur</button>
+    </form>
+    <p id="zap-preview-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="zap-preview-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article><small>Format</small><b id="zap-format"></b></article>
+        <article><small>Site sayısı</small><b id="zap-site-count"></b></article>
+        <article><small>Uyarı türü sayısı</small><b id="zap-alert-type-count"></b></article>
+        <article><small>Örnek sayısı</small><b id="zap-instance-count"></b></article>
+        <article><small>Risk dağılımı</small><b id="zap-risk-counts"></b></article>
+        <article><small>Rapor SHA-256</small><b id="zap-report-sha256"></b></article>
+      </div>
+    </section>
+    <section class="panel" id="zap-evidence-link-panel">
+      <h3>ZAP özetini manuel denetime bağla</h3>
+      <p class="field-help">İsteğe bağlıdır. Yalnız etkin, yetki referansı ve maskeli kanıt onayı bulunan denetimde seçtiğiniz test adımına toplu sayılar ile rapor SHA-256 kaydedilir. Ham rapor ve bulgu metni saklanmaz. Bu bağ, hedef veya rapor kaynağının doğrulandığı anlamına gelmez; ZAP taraması başlatmaz.</p>
+      <form id="zap-evidence-link-form" class="form-grid">
+        <label class="full">ZAP traditional JSON içeriği<textarea id="zap-evidence-link-paste" rows="6"></textarea></label>
+        <label class="full">Veya yerel dosya seçin<input type="file" id="zap-evidence-link-file" accept=".json"></label>
+        <label class="full">Etkin manuel denetim<select id="zap-evidence-link-engagement" disabled><option value="">Denetimler yükleniyor</option></select></label>
+        <label class="full">Test adımı<select id="zap-evidence-link-control" disabled><option value="">Önce denetim seçin</option></select></label>
+        <label class="full"><input type="checkbox" id="zap-evidence-link-consent"> Bu raporun toplu özetini seçilen test adımına bağlamayı açıkça onaylıyorum.</label>
+        <button class="button secondary wide full" id="zap-evidence-link-submit" type="submit" disabled>Toplu kanıtı bağla</button>
+      </form>
+      <p id="zap-evidence-link-error" class="error-message hidden" aria-live="assertive"></p>
+      <p id="zap-evidence-link-result" class="field-help hidden" aria-live="polite"></p>
+    </section>
+    <section class="panel">
+      <h3>Sniper için yerel ZAP pasif kontrolü</h3>
+      <p class="field-help">Yalnız bu Sniper sunucusunun 127.0.0.1 üzerindeki /api/health adresine tek GET gönderilir. Örümcek, aktif saldırı ve dış hedef seçimi yoktur. Ham ZAP raporu geçici dizinde işlenir; veritabanına kaydedilmez veya arayüzde gösterilmez.</p>
+      <form id="zap-self-passive-form" class="form-grid">
+        <label class="full"><input type="checkbox" id="zap-self-confirm"> Bu yerel pasif kontrolü çalıştırmayı onaylıyorum.</label>
+        <button class="button secondary wide full" id="zap-self-run-button" type="submit">Yerel pasif kontrolü çalıştır</button>
+      </form>
+      <p id="zap-self-error" class="error-message hidden" aria-live="assertive"></p>
+      <div id="zap-self-result" class="hidden" aria-live="polite">
+        <p>Pasif ZAP kontrolü tamamlandı.</p>
+        <div class="summary-grid">
+          <article><small>Uyarı türü</small><b id="zap-self-alert-types"></b></article>
+          <article><small>Örnek</small><b id="zap-self-instances"></b></article>
+          <article><small>Risk dağılımı</small><b id="zap-self-risks"></b></article>
+          <article><small>Rapor SHA-256</small><b id="zap-self-sha256"></b></article>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="zap-authorized-modal" role="dialog" aria-modal="true" aria-labelledby="zap-authorized-modal-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="zap-authorized-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">ZAP İNSAN ONAYLI HEDEF</p><h2 id="zap-authorized-modal-title">Yetkili HTTP(S) hedefini tara</h2>
+    <p class="modal-copy">Hedefi serbestçe girin. Kayıtlı hedef, denetim veya allowlist gerekmez. Kutuyu işaretlediğinizde bu hedefi tarama yetkisine sahip olduğunuzu her çalıştırma için beyan edersiniz. Plan aynı köken ve seçilen yol alt ağacıyla, sabit süre/istek bütçeleriyle çalışır.</p>
+    <p id="zap-authorized-readiness" class="field-help" aria-live="polite"></p>
+    <form id="zap-authorized-form" class="form-grid">
+      <label class="full">HTTP(S) hedefi<input id="zap-authorized-target" type="url" maxlength="2048" placeholder="https://uygulama.example/test" autocomplete="off" required></label>
+      <label class="full"><input type="checkbox" id="zap-authorized-consent"> Bu hedef üzerinde güvenlik taraması çalıştırma yetkisine sahip olduğumu onaylıyorum.</label>
+      <button class="button primary wide full" id="zap-authorized-submit" type="submit" disabled>Yetkili ZAP taramasını başlat</button>
+    </form>
+    <p id="zap-authorized-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="zap-authorized-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article><small>Normalize hedef</small><b id="zap-authorized-result-target"></b></article>
+        <article><small>Onaylayan</small><b id="zap-authorized-result-actor"></b></article>
+        <article><small>Onay zamanı (UTC)</small><b id="zap-authorized-result-time"></b></article>
+        <article><small>Uyarı türü</small><b id="zap-authorized-alert-types"></b></article>
+        <article><small>Örnek sayısı</small><b id="zap-authorized-instances"></b></article>
+        <article><small>Risk dağılımı</small><b id="zap-authorized-risks"></b></article>
+        <article><small>Rapor SHA-256</small><b id="zap-authorized-report-sha256"></b></article>
+        <article><small>Çalıştırma kimliği</small><b id="zap-authorized-run-id"></b></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="zap-target-active-modal" role="dialog" aria-modal="true" aria-labelledby="zap-target-active-modal-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="zap-target-active-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">ZAP HEDİF AKTİF TARAMA</p><h2 id="zap-target-active-modal-title">Yerel ZAP aktif tarama başlat</h2>
+    <p class="modal-copy">Seçilen hedef ve eşleşen denetim için ZAP aktif taraması başlatmak üzere onayları alın. Bu işlem hemen başlatılmaz; iki aşamalı onay gerektirir. Veri alınamazsa veya uygun denetim yoksa buton devre dışı kalır.</p>
+    <div id="zap-target-active-choices" class="form-grid hidden">
+      <label class="full"><span>Seçilen hedef</span><select id="zap-target-active-target"></select></label>
+      <label class="full"><span>Seçilen denetim</span><select id="zap-target-active-engagement"></select></label>
+      <label class="full"><span>Seçilen hedef</span><b id="zap-target-active-target-url"></b></label>
+      <label class="full"><span>Seçilen denetim</span><b id="zap-target-active-engagement-name"></b></label>
+      <label class="full"><span>Denetim durumu</span><b id="zap-target-active-engagement-status"></b></label>
+      <label class="full"><span>Yetki referansı</span><b id="zap-target-active-auth-ref"></b></label>
+      <label class="full"><span>Kapsam notları</span><b id="zap-target-active-scope"></b></label>
+      <label class="full"><span>Dışlamalar</span><b id="zap-target-active-out-of-scope"></b></label>
+      <label class="full"><span>Test penceresi</span><b id="zap-target-active-window"></b></label>
+    </div>
+    <p id="zap-target-active-error" class="error-message hidden" aria-live="assertive"></p>
+    <form id="zap-target-active-form" class="form-grid hidden">
+      <label class="full"><input type="checkbox" id="zap-target-active-consent-1"> Bu hedef için ZAP aktif taramasını başlatmayı onaylıyorum.</label>
+      <label class="full"><input type="checkbox" id="zap-target-active-consent-2"> Pencere ve dışlamaları kontrol ettim; geçerli ve izin verilen.</label>
+      <button class="button primary wide full" id="zap-target-active-submit" type="submit" disabled>ZAP aktif taramasını başlat</button>
+    </form>
+    <section id="zap-target-active-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article><small>Format</small><b id="zap-target-active-format"></b></article>
+        <article><small>Profil</small><b id="zap-target-active-profile"></b></article>
+        <article><small>Site sayısı</small><b id="zap-target-active-site-count"></b></article>
+        <article><small>Uyarı türü sayısı</small><b id="zap-target-active-alert-type-count"></b></article>
+        <article><small>Örnek sayısı</small><b id="zap-target-active-instance-count"></b></article>
+        <article><small>Risk dağılımı</small><b id="zap-target-active-risk-counts"></b></article>
+        <article><small>Rapor SHA-256</small><b id="zap-target-active-report-sha256"></b></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="zap-target-spider-modal" role="dialog" aria-modal="true" aria-labelledby="zap-target-spider-modal-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="zap-target-spider-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">ZAP İZİNLİ BAĞLANTI KEŞFİ</p><h2 id="zap-target-spider-modal-title">ZAP site bağlantı keşfini başlat</h2>
+    <p class="modal-copy">Bu işlem yalnız izinli genel HTTP(S) kök hedefin bağlantılarını geleneksel ZAP spider ile keşfeder; aktif saldırı taraması değildir. Denetimde kayıtlı dışlanan yollar ve UTC test penceresi uygulanır. Açılışta tarama başlamaz; iki ayrı onay gerekir.</p>
+    <div id="zap-target-spider-choices" class="form-grid hidden">
+      <label class="full"><span>Seçilen hedef</span><select id="zap-target-spider-target"></select></label>
+      <label class="full"><span>Seçilen denetim</span><select id="zap-target-spider-engagement"></select></label>
+      <label class="full"><span>Seçilen hedef</span><b id="zap-target-spider-target-url"></b></label>
+      <label class="full"><span>Seçilen denetim</span><b id="zap-target-spider-engagement-name"></b></label>
+      <label class="full"><span>Denetim durumu</span><b id="zap-target-spider-engagement-status"></b></label>
+      <label class="full"><span>Yetki referansı</span><b id="zap-target-spider-auth-ref"></b></label>
+      <label class="full"><span>Kapsam notları</span><b id="zap-target-spider-scope"></b></label>
+      <label class="full"><span>Dışlamalar</span><b id="zap-target-spider-out-of-scope"></b></label>
+      <label class="full"><span>Test penceresi</span><b id="zap-target-spider-window"></b></label>
+    </div>
+    <p id="zap-target-spider-error" class="error-message hidden" aria-live="assertive"></p>
+    <form id="zap-target-spider-form" class="form-grid hidden">
+      <label class="full"><input type="checkbox" id="zap-target-spider-consent-1"> Bu hedefin bağlantılarında ZAP spider taraması yapılmasını açıkça onaylıyorum.</label>
+      <label class="full"><input type="checkbox" id="zap-target-spider-consent-2"> Kök hedefi, yetkiyi, test penceresini ve dışlanan yolları kontrol ettim.</label>
+      <button class="button primary wide full" id="zap-target-spider-submit" type="submit" disabled>ZAP bağlantı keşfini başlat</button>
+    </form>
+    <section id="zap-target-spider-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article><small>Format</small><b id="zap-target-spider-format"></b></article>
+        <article><small>Profil</small><b id="zap-target-spider-profile"></b></article>
+        <article><small>Site sayısı</small><b id="zap-target-spider-site-count"></b></article>
+        <article><small>Uyarı türü sayısı</small><b id="zap-target-spider-alert-type-count"></b></article>
+        <article><small>Örnek sayısı</small><b id="zap-target-spider-instance-count"></b></article>
+        <article><small>Risk dağılımı</small><b id="zap-target-spider-risk-counts"></b></article>
+        <article><small>Rapor SHA-256</small><b id="zap-target-spider-report-sha256"></b></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="ssllabs-authorized-modal" role="dialog" aria-modal="true" aria-labelledby="ssllabs-authorized-modal-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="ssllabs-authorized-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">DOĞRUDAN YETKİLİ SSL LABS</p><h2 id="ssllabs-authorized-modal-title">Public TLS hedefini SSL Labs ile değerlendir</h2>
+    <p class="modal-copy">Yalnız açık gönderimden sonra sabit Qualys SSL Labs API kökenine sınırlı bir değerlendirme isteği yapılır. Sonuç yayımlanmaz; kalıcı hız sınırı, sınırlı sorgulama ve kayıtlı kurum e-postası denetimleri uygulanır.</p>
+    <form id="ssllabs-authorized-form" class="form-grid">
+      <label class="full">Public DNS hedefi<input id="ssllabs-authorized-target" name="target" maxlength="253" placeholder="example.com" required></label>
+      <label class="full"><input type="checkbox" id="ssllabs-authorized-confirm" required> Bu hedefte değerlendirme yapmaya yetkili olduğumu ve hedef adının Qualys SSL Labs üçüncü taraf hizmetine gönderileceğini onaylıyorum.</label>
+      <button class="button primary wide full" id="ssllabs-authorized-submit" type="submit" disabled>SSL Labs değerlendirmesini başlat</button>
+    </form>
+    <p id="ssllabs-authorized-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="ssllabs-authorized-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article><small>Değerlendirme durumu</small><b id="ssllabs-authorized-status"></b></article>
+        <article><small>Endpoint sayısı</small><b id="ssllabs-authorized-endpoint-count"></b></article>
+        <article><small>Onay zamanı</small><b id="ssllabs-authorized-confirmed-at"></b></article>
+        <article><small>Rapor SHA-256</small><b id="ssllabs-authorized-report-sha256"></b></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="ssllabs-preview-modal" role="dialog" aria-modal="true" aria-labelledby="ssllabs-preview-modal-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="ssllabs-preview-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">SSL LABS HOST JSON ÖNİZLEME</p><h2 id="ssllabs-preview-modal-title">Yerel SSL Labs Host JSON özetini göster</h2>
+    <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem Qualys API çağrısı yapmaz, tarama yapmaz ve JSON içeriğini saklamaz.</p>
+    <form id="ssllabs-preview-form" class="form-grid">
+      <label class="full">SSL Labs Host JSON içeriği (status ve endpoints içeren nesne)<textarea name="ssllabs_json" id="ssllabs-paste" rows="8"></textarea></label>
+      <label class="full">Veya yerel dosya seçin<input type="file" id="ssllabs-file" accept=".json"></label>
+      <button class="button primary wide full" type="submit">Özet oluştur</button>
+    </form>
+    <p id="ssllabs-preview-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="ssllabs-preview-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article><small>Format</small><b id="ssllabs-format"></b></article>
+        <article><small>Değerlendirme durumu</small><b id="ssllabs-status"></b></article>
+        <article><small>Endpoint sayısı</small><b id="ssllabs-endpoint-count"></b></article>
+        <article><small>Grade dağılımı</small><b id="ssllabs-grade-counts"></b></article>
+        <article><small>Rapor SHA-256</small><b id="ssllabs-report-sha256"></b></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="openssl-loopback-modal" role="dialog" aria-modal="true" aria-labelledby="openssl-loopback-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="openssl-loopback-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">YEREL TLS KANITI</p><h2 id="openssl-loopback-title">127.0.0.1 sertifikasını doğrula</h2>
+    <p class="modal-copy">Yalnız DGX hizmetinin bulunduğu makinedeki 127.0.0.1:PORT adresine açık onayla bir TLS bağlantısı kurulur. Sunucuda önceden yapılandırılmış sabit CA ve OpenSSL ikili dosyası gerekir. Zincir, IP kimliği ve geçerlilik kontrol edilir. Dış hedef, tarama, sertifika veya ham çıktı gösterimi yoktur.</p>
+    <form id="openssl-loopback-form" class="form-grid">
+      <label class="full">DGX üzerindeki yerel TLS portu<input id="openssl-loopback-target" placeholder="127.0.0.1:443" maxlength="21" required></label>
+      <label class="full"><input id="openssl-loopback-consent" type="checkbox" required> Bu yerel TLS eşine tek bağlantıyı onaylıyorum</label>
+      <button id="openssl-loopback-submit" class="button primary wide full" type="submit" disabled>Doğrulamayı başlat</button>
+    </form>
+    <p id="openssl-loopback-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="openssl-loopback-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article><small>Güven ve kimlik</small><b id="openssl-loopback-validity"></b></article>
+        <article><small>Başlangıç (UTC)</small><b id="openssl-loopback-before"></b></article>
+        <article><small>Bitiş (UTC)</small><b id="openssl-loopback-after"></b></article>
+        <article><small>Kalan gün</small><b id="openssl-loopback-days"></b></article>
+        <article><small>Özet SHA-256</small><b id="openssl-loopback-sha"></b></article>
+      </div>
+      <p>Doğrulanamadı sonucu, zincirin veya IP kimliğinin neden başarısız olduğunu ve sertifikanın geçerliliğini ayrı ayrı kanıtlamaz.</p>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="openssl-authorized-modal" role="dialog" aria-modal="true" aria-labelledby="openssl-authorized-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="openssl-authorized-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">YETKİLİ TLS KANITI</p><h2 id="openssl-authorized-title">HTTPS sertifikasını doğrula</h2>
+    <p class="modal-copy">Bu akış yalnız açıkça test etmeye yetkili olduğunuz tek HTTPS hedefine bir TLS bağlantısı kurar. Hedef önceden kaydedilmiş olmak zorunda değildir. Şema, URL, süre ve çıktı sınırları sunucuda doğrulanır; işlem hedef ve aktörle denetim zincirine kaydedilir.</p>
+    <form id="openssl-authorized-form" class="form-grid">
+      <label class="full">Yetkili HTTPS hedefi<input id="openssl-authorized-target" type="url" placeholder="https://api.example.com:443" maxlength="512" autocomplete="off" required></label>
+      <label class="full"><input id="openssl-authorized-consent" type="checkbox" required> Bu hedefi test etmeye yetkili olduğumu ve tek TLS bağlantısını onayladığımı beyan ediyorum</label>
+      <button id="openssl-authorized-submit" class="button primary wide full" type="submit" disabled>Yetkili doğrulamayı başlat</button>
+    </form>
+    <p id="openssl-authorized-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="openssl-authorized-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article><small>Normalize hedef</small><b id="openssl-authorized-normalized"></b></article>
+        <article><small>Güven ve kimlik</small><b id="openssl-authorized-validity"></b></article>
+        <article><small>Başlangıç (UTC)</small><b id="openssl-authorized-before"></b></article>
+        <article><small>Bitiş (UTC)</small><b id="openssl-authorized-after"></b></article>
+        <article><small>Kalan gün</small><b id="openssl-authorized-days"></b></article>
+        <article><small>Özet SHA-256</small><b id="openssl-authorized-sha"></b></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="openssl-x509-preview-modal" role="dialog" aria-modal="true" aria-labelledby="openssl-x509-preview-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="openssl-x509-preview-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">OPENSSL SERTİFİKA KANITI</p><h2 id="openssl-x509-preview-title">Kaydedilmiş sertifika geçerliliğini incele</h2>
+    <p class="modal-copy">Yerel bir sertifika dosyası için <code>openssl x509 -in certificate.pem -noout -dates -fingerprint -sha256</code> çıktısını yapıştırın. Sniper yalnız üç satırlık kayıt özetini işler; hedefe bağlanmaz, OpenSSL komutu çalıştırmaz veya raporu saklamaz.</p>
+    <form id="openssl-x509-preview-form" class="form-grid">
+      <label class="full">OpenSSL x509 çıktısı<textarea id="openssl-x509-paste" rows="5" maxlength="4096" required></textarea></label>
+      <button class="button primary wide full" type="submit">Geçerliliği göster</button>
+    </form>
+    <p id="openssl-x509-preview-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="openssl-x509-preview-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article><small>Durum</small><b id="openssl-x509-validity"></b></article>
+        <article><small>Başlangıç (UTC)</small><b id="openssl-x509-before"></b></article>
+        <article><small>Bitiş (UTC)</small><b id="openssl-x509-after"></b></article>
+        <article><small>Kalan gün</small><b id="openssl-x509-days"></b></article>
+        <article><small>Rapor SHA-256</small><b id="openssl-x509-sha"></b></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="semgrep-local-modal" role="dialog" aria-modal="true" aria-labelledby="semgrep-local-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="semgrep-local-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">YEREL KAYNAK KOD</p><h2 id="semgrep-local-title">Semgrep / Opengrep yerel proje taraması</h2>
+    <p class="modal-copy">Bu DGX üzerindeki kullanıcı ev dizininde seçtiğiniz projeyi açık onaydan sonra tarar. Motor, SHA-256 ile sabitlenmiş Opengrep (Sniper'ın kendi kural paketi: Python, JS/TS, Go, Java için enjeksiyon, yol aşımı, SSRF, güvensiz seri çözme, zayıf kripto, sabit sır, XSS) ya da operatörün sabitlediği Semgrep'tir; doğrulanamayan ikili çalıştırılmaz. Ağ hedefi taranmaz. Sonuçta bulgu sayısı, önem dağılımı, rapor özeti ve en çok 200 bulgu (kural, CWE, proje içi göreli dosya:satır, açıklama) gösterilir; ham kod gösterilmez ve hiçbir sonuç saklanmaz. Bulgular uzman doğrulaması gerektirir.</p>
+    <form id="semgrep-local-form" class="form-grid">
+      <label class="full">DGX üzerindeki yerel proje dizini<input id="semgrep-local-path" name="project_path" type="text" maxlength="1024" placeholder="/home/community-user/project" autocomplete="off" required></label>
+      <label class="full"><input type="checkbox" id="semgrep-local-consent"> Bu yerel projenin Semgrep ile taranmasını onaylıyorum.</label>
+      <button class="button primary wide full" id="semgrep-local-submit" type="submit" disabled>Yerel kodu tara</button>
+    </form>
+    <p id="semgrep-local-error" class="error-message hidden" role="alert"></p>
+    <section id="semgrep-local-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article><small>Bulgu sayısı</small><b id="semgrep-local-count"></b></article>
+        <article><small>Önem dağılımı</small><b id="semgrep-local-severity"></b></article>
+        <article><small>Rapor SHA-256</small><code id="semgrep-local-hash"></code></article>
+        <article><small>Motor</small><b id="semgrep-local-engine"></b></article>
+      </div>
+      <div class="responsive-table"><table><thead><tr><th>Önem</th><th>Kural / CWE</th><th>Dosya:satır</th><th>Açıklama</th></tr></thead><tbody id="semgrep-local-findings"></tbody></table></div>
+    </section>
+    <section class="panel" id="semgrep-evidence-panel">
+      <h3>Yerel Semgrep sonucunu manuel denetime bağla</h3>
+      <p class="field-help">Ayrı ve isteğe bağlı bir yerel taramadır. Yalnız etkin, yazılı yetkili ve maskeli kanıt onaylı manuel denetimin seçilen test adımına toplu sayılar ile rapor SHA-256 kaydedilir. Projenin denetim kapsamındaki hedefe ait olduğunu siz doğrulamalısınız. Kaynak kodu, proje yolu, dosya adı, bulgu metni ve ham rapor saklanmaz. Sonuçlar uzman incelemesi bekler; boş sonuç testi otomatik başarılı yapmaz.</p>
+      <form id="semgrep-evidence-form" class="form-grid">
+        <label class="full">DGX üzerindeki yerel proje dizini<input id="semgrep-evidence-path" name="project_path" type="text" maxlength="1024" placeholder="/home/community-user/project" autocomplete="off" required></label>
+        <label class="full">Etkin manuel denetim<select id="semgrep-evidence-engagement" disabled><option value="">Denetimler yükleniyor</option></select></label>
+        <label class="full">Test adımı<select id="semgrep-evidence-control" disabled><option value="">Önce denetim seçin</option></select></label>
+        <label class="full"><input type="checkbox" id="semgrep-evidence-confirm-local"> Seçtiğim yerel projenin Semgrep ile şimdi taranmasını onaylıyorum.</label>
+        <label class="full"><input type="checkbox" id="semgrep-evidence-confirm-link"> Bu proje ile denetim hedefinin kapsam bağını doğruladım; toplu sonucu seçilen test adımına bağlamayı ayrıca onaylıyorum.</label>
+        <button class="button secondary wide full" id="semgrep-evidence-submit" type="submit" disabled>Yerel kodu tara ve toplu kanıtı bağla</button>
+      </form>
+      <p id="semgrep-evidence-error" class="error-message hidden" role="alert"></p>
+      <section id="semgrep-evidence-result" class="panel hidden" aria-live="polite">
+        <p id="semgrep-evidence-message" class="field-help"></p>
+        <div class="summary-grid">
+          <article><small>Bulgu sayısı</small><b id="semgrep-evidence-count"></b></article>
+          <article><small>Önem dağılımı</small><b id="semgrep-evidence-severity"></b></article>
+          <article><small>Rapor SHA-256</small><code id="semgrep-evidence-hash"></code></article>
+        </div>
+      </section>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="semgrep-preview-modal" role="dialog" aria-modal="true" aria-labelledby="semgrep-preview-modal-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="semgrep-preview-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">SEMGREP CLI --JSON ÖNİZLEME</p><h2 id="semgrep-preview-modal-title">Yerel Semgrep CLI --json özetini göster</h2>
+    <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem Semgrep çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.</p>
+    <form id="semgrep-preview-form" class="form-grid">
+      <label class="full">Semgrep CLI --json içeriği (results, errors, paths içeren nesne)<textarea name="semgrep_json" id="semgrep-paste" rows="8"></textarea></label>
+      <label class="full">Veya yerel dosya seçin<input type="file" id="semgrep-file" accept=".json"></label>
+      <button class="button primary wide full" type="submit">Özet oluştur</button>
+    </form>
+    <p id="semgrep-preview-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="semgrep-preview-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article><small>Format</small><b id="semgrep-format"></b></article>
+        <article><small>Bulgu sayısı</small><b id="semgrep-result-count"></b></article>
+        <article><small>Severity dağılımı</small><b id="semgrep-severity-counts"></b></article>
+        <article><small>Rapor SHA-256</small><b id="semgrep-report-sha256"></b></article>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="semgrep-trivy-compare-modal" role="dialog" aria-modal="true" aria-labelledby="semgrep-trivy-compare-modal-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="semgrep-trivy-compare-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">SEMGREP / TRIVY KARŞILAŞTIRMA</p><h2 id="semgrep-trivy-compare-modal-title">Yerel Semgrep ve Trivy raporlarını karşılaştır</h2>
+    <p class="modal-copy">İki raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetlerini önizleyin. Raporlar saklanmaz, sadece özetler gösterilir. Bu işlem tarama yapmaz ve JSON içeriğini saklamaz.</p>
+    <form id="semgrep-trivy-compare-form" class="form-grid">
+      <div class="form-section">
+        <h3>Semgrep CLI --json</h3>
+        <label class="full">Semgrep CLI --json içeriği<textarea id="compare-semgrep-paste" rows="4"></textarea></label>
+        <label class="full">Veya yerel dosya seçin<input type="file" id="compare-semgrep-file" accept=".json"></label>
+      </div>
+      <div class="form-section">
+        <h3>Trivy native JSON</h3>
+        <label class="full">Trivy native JSON içeriği<textarea id="compare-trivy-paste" rows="4"></textarea></label>
+        <label class="full">Veya yerel dosya seçin<input type="file" id="compare-trivy-file" accept=".json"></label>
+      </div>
+      <button class="button primary wide full" type="submit">Özetleri oluştur</button>
+    </form>
+    <p id="semgrep-trivy-compare-error" class="error-message hidden" aria-live="assertive"></p>
+    <section id="semgrep-trivy-compare-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article id="compare-semgrep-card" class="card hidden">
+          <h4>Semgrep özet</h4>
+          <div class="summary-grid">
+            <article><small>Format</small><b id="compare-semgrep-format"></b></article>
+            <article><small>Bulgu sayısı</small><b id="compare-semgrep-result-count"></b></article>
+            <article><small>Severity dağılımı</small><b id="compare-semgrep-severity-counts"></b></article>
+          </div>
+        </article>
+        <article id="compare-trivy-card" class="card hidden">
+          <h4>Trivy özet</h4>
+          <div class="summary-grid">
+            <article><small>Format</small><b id="compare-trivy-format"></b></article>
+            <article><small>Şema sürümü</small><b id="compare-trivy-schema-version"></b></article>
+            <article><small>Sonuç sayısı</small><b id="compare-trivy-result-count"></b></article>
+            <article><small>Sınıf dağılımı</small><b id="compare-trivy-class-counts"></b></article>
+            <article><small>Kritiklik dağılımı</small><b id="compare-trivy-vuln-counts"></b></article>
+            <article><small>Yapılandırma sorunu kritikliği dağılımı</small><b id="compare-trivy-misconfig-sev-counts" aria-label="Yapılandırma sorunu kritikliği dağılımı"></b></article>
+            <article><small>Tespit sayıları</small><b id="compare-trivy-finding-counts"></b></article>
+            <article><small>Rapor SHA-256</small><b id="compare-trivy-report-sha256" aria-label="Rapor SHA-256"></b></article>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+</div>
+<div id="toast-region" class="toast-region" role="status" aria-live="polite" aria-atomic="false"></div>
+</body>
+</html>

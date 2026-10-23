@@ -1,0 +1,37 @@
+# Sniper CI güvenlik kapısı — GitHub Actions ÖRNEĞİ (yayınlanmadı; .github/workflows/ altına kopyalayın).
+# Tamamen çevrimdışı: Sniper ve yerel OSV veritabanı kendi barındırılan çalıştırıcıda önceden kurulu/kopyalı.
+# Sniper dış ağa çıkmaz; yalnız depo kodunu ve SNIPER_OSV_DB_ROOT altındaki imzalı OSV arşivlerini okur.
+name: sniper-gate
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  security-events: write   # SARIF yüklemek için
+jobs:
+  sniper:
+    runs-on: [self-hosted, sniper]
+    env:
+      SNIPER_APP: ${{ vars.SNIPER_APP || '/opt/sniper/app' }}
+      SNIPER_OSV_DB_ROOT: ${{ vars.SNIPER_OSV_DB_ROOT || '/opt/sniper/osv-db' }}
+      SNIPER_DATA_DIR: ${{ runner.temp }}/sniper-data      # geçici; --store verilmezse analiz kaydedilmez
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # --baseline-ref için taban commit yerelde olmalı
+      - name: Sniper kapısı
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          ARGS=""
+          if [ -n "$BASE" ]; then ARGS="--baseline-ref $BASE"; fi
+          python3 "$SNIPER_APP/cli_reports.py" ci "$GITHUB_WORKSPACE" $ARGS \
+            --sarif sniper.sarif --json sniper-gate.json
+          # Çıkış kodu: 0 geçti · 1 politika ihlali · 2 yapılandırma hatası · 3 analiz hatası.
+          # Markdown özeti $GITHUB_STEP_SUMMARY dosyasına kendiliğinden eklenir.
+      - name: SARIF yükle
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: sniper.sarif
+          category: sniper

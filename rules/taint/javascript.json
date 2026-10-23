@@ -1,0 +1,560 @@
+{
+  "format": "sniper-taint-models-v1",
+  "language": "javascript",
+  "description": "JavaScript/TypeScript (AST motoru) için veri tabanlı hedef, arındırıcı ve yayıcı modelleri. Log/SQL/komut/eval/HTML/RegExp hedefleri ile NoSQL işleç enjeksiyonu, prototip kirletme, LDAP araması ve oturum yazımı taint_js_ast.py içindedir; Node standart kütüphanesi yayıcıları javascript-node.json'dadır.",
+  "sinks": [
+    {
+      "kind": "path",
+      "names": [
+        "fs.readFile",
+        "fs.readFileSync",
+        "fs.createReadStream",
+        "fs.writeFile",
+        "fs.writeFileSync",
+        "fs.appendFile",
+        "fs.appendFileSync",
+        "fs.createWriteStream",
+        "fs.unlink",
+        "fs.unlinkSync",
+        "fs.rm",
+        "fs.rmSync",
+        "fs.rmdir",
+        "fs.readdir",
+        "fs.readdirSync",
+        "fs.open",
+        "fs.openSync",
+        "fs.promises.readFile",
+        "fs.promises.writeFile",
+        "fs.promises.unlink",
+        "fs.promises.rm",
+        "fsPromises.readFile",
+        "fsPromises.writeFile",
+        "readFile",
+        "readFileSync",
+        "writeFile",
+        "writeFileSync",
+        "createReadStream",
+        "fse.readFile",
+        "fse.remove",
+        "fse.readJson",
+        "fse.outputFile"
+      ],
+      "args": [
+        0
+      ]
+    },
+    {
+      "kind": "path",
+      "names": [
+        "res.sendFile",
+        "res.download",
+        "response.sendFile",
+        "response.download",
+        "reply.sendFile"
+      ],
+      "args": [
+        0
+      ],
+      "unless_object_key": {
+        "index": 1,
+        "keys": [
+          "root"
+        ]
+      }
+    },
+    {
+      "kind": "ssrf",
+      "names": [
+        "fetch",
+        "axios",
+        "axios.get",
+        "axios.post",
+        "axios.put",
+        "axios.patch",
+        "axios.delete",
+        "axios.head",
+        "axios.request",
+        "got",
+        "got.get",
+        "got.post",
+        "needle",
+        "needle.get",
+        "needle.post",
+        "request",
+        "request.get",
+        "request.post",
+        "superagent.get",
+        "superagent.post",
+        "http.get",
+        "http.request",
+        "https.get",
+        "https.request",
+        "undici.request",
+        "undici.fetch",
+        "ky",
+        "ky.get",
+        "ky.post",
+        "axios.options",
+        "got.put",
+        "got.patch",
+        "got.delete",
+        "got.head",
+        "got.stream",
+        "needle.put",
+        "needle.patch",
+        "needle.delete",
+        "needle.head",
+        "needle.request",
+        "request.put",
+        "request.patch",
+        "request.del",
+        "request.delete",
+        "request.head",
+        "request.options",
+        "superagent.put",
+        "superagent.patch",
+        "superagent.delete",
+        "superagent.del",
+        "superagent.head",
+        "phin",
+        "node-fetch",
+        "bent",
+        "undici.stream",
+        "undici.pipeline",
+        "NextResponse.rewrite"
+      ],
+      "args": [
+        0
+      ],
+      "object_keys": [
+        "url",
+        "uri",
+        "baseURL",
+        "host",
+        "hostname"
+      ]
+    },
+    {
+      "kind": "redirect",
+      "names": [
+        "res.redirect",
+        "response.redirect",
+        "reply.redirect",
+        "ctx.redirect",
+        "NextResponse.redirect",
+        "location.assign",
+        "location.replace",
+        "window.location.assign",
+        "window.location.replace",
+        "window.open"
+      ],
+      "args": [
+        0,
+        1
+      ],
+      "last_arg": true
+    },
+    {
+      "kind": "deserialize",
+      "names": [
+        "serialize.unserialize",
+        "unserialize",
+        "nodeSerialize.unserialize",
+        "node-serialize.unserialize",
+        "serialize-to-js.deserialize",
+        "funcster.deepDeserialize",
+        "cryo.parse"
+      ],
+      "args": [
+        0
+      ]
+    },
+    {
+      "kind": "command",
+      "names": [
+        "child_process.spawn",
+        "spawn",
+        "cp.spawn",
+        "child_process.spawnSync",
+        "spawnSync",
+        "child_process.execFile",
+        "execFile"
+      ],
+      "args": [
+        0
+      ],
+      "required_object_key": {
+        "index": -1,
+        "key": "shell",
+        "values": [
+          "true"
+        ]
+      }
+    },
+    {
+      "kind": "command",
+      "names": [
+        "shelljs.exec",
+        "shell.exec",
+        "execa.command",
+        "execaCommand",
+        "execa.commandSync"
+      ],
+      "args": [
+        0
+      ]
+    },
+    {
+      "kind": "eval",
+      "names": [
+        "vm.runInNewContext",
+        "vm.runInThisContext",
+        "vm.runInContext",
+        "vm.compileFunction",
+        "vm.Script",
+        "new vm.Script",
+        "Script",
+        "mathjs.eval",
+        "math.eval",
+        "safeEval",
+        "static-eval",
+        "notevil"
+      ],
+      "args": [
+        0
+      ]
+    },
+    {
+      "kind": "html",
+      "names": [
+        "res.write",
+        "response.write"
+      ],
+      "args": [
+        0
+      ],
+      "html_literal": true
+    },
+    {
+      "kind": "html",
+      "names": [
+        "res.send",
+        "response.send",
+        "res.end",
+        "ctx.body",
+        "reply.send",
+        "h.response"
+      ],
+      "args": [
+        0
+      ],
+      "html_literal": true
+    },
+    {
+      "kind": "sql",
+      "names": [
+        "sequelize.query",
+        "knex.raw",
+        "db.raw",
+        "$queryRawUnsafe",
+        "$executeRawUnsafe",
+        "prisma.$queryRawUnsafe",
+        "prisma.$executeRawUnsafe",
+        "pool.query",
+        "client.query",
+        "connection.query",
+        "db.query",
+        "db.exec",
+        "db.run",
+        "db.all",
+        "db.get",
+        "db.each",
+        "conn.query",
+        "mysql.query"
+      ],
+      "args": [
+        0
+      ],
+      "object_keys": [
+        "sql",
+        "text",
+        "query"
+      ]
+    },
+    {
+      "kind": "eval",
+      "names": [
+        "ejs.render",
+        "ejs.compile",
+        "pug.render",
+        "pug.compile",
+        "jade.render",
+        "jade.compile",
+        "handlebars.compile",
+        "Handlebars.compile",
+        "handlebars.precompile",
+        "nunjucks.renderString",
+        "_.template",
+        "lodash.template",
+        "doT.template",
+        "dot.template",
+        "doT.compile",
+        "dot.compile",
+        "underscore.template",
+        "Twig.twig",
+        "swig.render",
+        "swig.compile",
+        "eta.renderString",
+        "squirrelly.render"
+      ],
+      "args": [
+        0
+      ]
+    },
+    {
+      "kind": "eval",
+      "names": [
+        "new vm.Script",
+        "new Script",
+        "vm.Script"
+      ],
+      "args": [
+        0
+      ]
+    },
+    {
+      "kind": "xpath",
+      "names": [
+        "xpath.select",
+        "xpath.select1",
+        "xpath.evaluate",
+        "xpath.parse",
+        "document.evaluate",
+        "xpath.useNamespaces",
+        "xmldom-xpath.select"
+      ],
+      "args": [
+        0
+      ]
+    },
+    {
+      "kind": "xxe",
+      "names": [
+        "libxmljs.parseXml",
+        "libxmljs.parseXmlString",
+        "libxmljs2.parseXml",
+        "libxmljs2.parseXmlString",
+        "libxml.parseXml",
+        "libxml.parseXmlString"
+      ],
+      "args": [
+        0
+      ],
+      "required_object_key": {
+        "index": 1,
+        "key": "noent",
+        "values": [
+          "true"
+        ]
+      }
+    },
+    {
+      "kind": "xxe",
+      "names": [
+        "libxmljs.parseXml",
+        "libxmljs.parseXmlString",
+        "libxmljs2.parseXml",
+        "libxmljs2.parseXmlString",
+        "libxml.parseXml",
+        "libxml.parseXmlString"
+      ],
+      "args": [
+        0
+      ],
+      "required_object_key": {
+        "index": 1,
+        "key": "dtdload",
+        "values": [
+          "true"
+        ]
+      }
+    },
+    {
+      "kind": "cookie",
+      "names": [
+        "res.cookie",
+        "response.cookie",
+        "reply.setCookie",
+        "ctx.cookies.set",
+        "cookies.set",
+        "res.setCookie"
+      ],
+      "args": [
+        1
+      ]
+    },
+    {
+      "kind": "ldap",
+      "names": [
+        "ldapjs.parseFilter",
+        "ldap.parseFilter",
+        "parseFilter"
+      ],
+      "args": [
+        0
+      ]
+    }
+  ],
+  "sanitizers": [
+    {
+      "names": [
+        "path.basename",
+        "basename",
+        "sanitize-filename",
+        "sanitizeFilename",
+        "sanitize"
+      ],
+      "kinds": [
+        "path"
+      ]
+    },
+    {
+      "names": [
+        "DOMPurify.sanitize",
+        "purify.sanitize",
+        "sanitizeHtml",
+        "sanitize-html",
+        "xss",
+        "filterXSS",
+        "escapeHtml",
+        "escape-html",
+        "he.encode",
+        "he.escape",
+        "validator.escape",
+        "_.escape",
+        "lodash.escape",
+        "encodeHTML",
+        "htmlEscape"
+      ],
+      "kinds": [
+        "html",
+        "log"
+      ]
+    },
+    {
+      "names": [
+        "validator.isURL",
+        "validator.isEmail",
+        "validator.isUUID",
+        "validator.isInt",
+        "validator.isNumeric",
+        "validator.isAlphanumeric"
+      ],
+      "kinds": [
+        "log",
+        "sql",
+        "command",
+        "html",
+        "regex",
+        "path",
+        "ssrf",
+        "redirect"
+      ]
+    },
+    {
+      "names": [
+        "mysql.escape",
+        "mysql.format",
+        "connection.escape",
+        "pool.escape",
+        "SqlString.escape",
+        "sqlstring.escape",
+        "pgFormat",
+        "format.literal"
+      ],
+      "kinds": [
+        "sql"
+      ]
+    },
+    {
+      "names": [
+        "shellescape",
+        "shell-quote.quote",
+        "shellQuote.quote",
+        "quote"
+      ],
+      "kinds": [
+        "command"
+      ]
+    },
+    {
+      "names": [
+        "escapeRegExp",
+        "_.escapeRegExp",
+        "lodash.escapeRegExp",
+        "escapeStringRegexp"
+      ],
+      "kinds": [
+        "regex"
+      ]
+    },
+    {
+      "names": [
+        "ldapEscape.filter",
+        "ldapEscape.dn",
+        "ldap-escape.filter",
+        "ldap-escape.dn",
+        "escapeLDAPFilter",
+        "ldapjs.escapeFilter",
+        "escapeFilter",
+        "escapeDN"
+      ],
+      "kinds": [
+        "ldap"
+      ]
+    },
+    {
+      "names": [
+        "xpath-escape",
+        "escapeXPath",
+        "xpathEscape"
+      ],
+      "kinds": [
+        "xpath"
+      ]
+    },
+    {
+      "names": [
+        "fileType.fromBuffer",
+        "fileType.fromFile",
+        "fileType.fromStream",
+        "FileType.fromBuffer",
+        "FileType.fromFile",
+        "file-type.fromBuffer",
+        "file-type.fromFile",
+        "file-type.fileTypeFromBuffer",
+        "fileTypeFromBuffer",
+        "fileTypeFromFile",
+        "fileTypeFromStream"
+      ],
+      "kinds": [
+        "command",
+        "cookie",
+        "deserialize",
+        "eval",
+        "html",
+        "ldap",
+        "log",
+        "path",
+        "redirect",
+        "regex",
+        "session",
+        "sql",
+        "ssrf",
+        "xpath",
+        "xxe"
+      ]
+    }
+  ],
+  "propagators": []
+}

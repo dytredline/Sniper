@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "fail_on": {"default": "high", "iac": "critical", "sca": "critical", "license": null, "api": null},
+  "new_only": true,
+  "license_denied": true,
+  "sla_breach": false,
+  "sca_fix_first": true,
+  "iac_fix_first": false,
+  "require_osv": true,
+  "exceptions": [
+    {"id": "GHSA-xxxx-xxxx-xxxx", "reason": "Etkilenen işlev kullanılmıyor; 2026 Q4 yükseltme planında", "expires": "2026-12-31"},
+    {"id": "CWE-79", "path": "legacy/*", "reason": "Eski modül kaldırılıyor (JIRA-123)", "expires": "2026-11-30"}
+  ]
+}

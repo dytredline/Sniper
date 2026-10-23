@@ -1,0 +1,28 @@
+/* Arayüz girişi, hesap ve kullanıcı yönetimi (auth.js / login.js) */
+.auth-login-page { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.auth-login-card { width: min(380px, 100%); background: #fff; border: 1px solid var(--line); padding: 26px 24px; display: grid; gap: 12px; }
+.auth-login-card h1 { margin: 0; font-size: 20px; }
+.auth-login-card form { display: grid; gap: 12px; }
+.auth-login-card label, .auth-dialog label { display: grid; gap: 6px; font-size: 11px; font-weight: 700; color: var(--ink-2, #344); }
+.auth-login-card input, .auth-dialog input, .auth-dialog select { padding: 10px; border: 1px solid var(--line); background: var(--wash); color: var(--ink); font-size: 12px; min-width: 0; }
+.auth-message { min-height: 18px; margin: 0; font-size: 12px; }
+.auth-message[data-kind="error"] { color: #b42318; }
+.auth-message[data-kind="info"] { color: var(--green); }
+.auth-hint { margin: 0; color: var(--muted, #687); font-size: 10px; line-height: 1.5; }
+.hidden { display: none !important; }
+.auth-user-box { display: grid; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.15); font-size: 11px; }
+.auth-user-box .auth-user-name { font-weight: 700; }
+.auth-user-box .button-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.auth-dialog { width: min(720px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; border: 1px solid var(--line); padding: 0; }
+.auth-dialog::backdrop { background: rgba(10, 25, 20, .45); }
+.auth-dialog-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.auth-dialog-head h2 { margin: 0; font-size: 15px; }
+.auth-dialog-body { display: grid; gap: 18px; padding: 16px 18px 20px; }
+.auth-section { display: grid; gap: 10px; }
+.auth-section h3 { margin: 0; font-size: 12px; }
+.auth-section form { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; align-items: end; }
+.auth-code { font-family: ui-monospace, monospace; font-size: 11px; word-break: break-all; background: var(--wash); padding: 8px; border: 1px solid var(--line); }
+.auth-users { width: 100%; border-collapse: collapse; font-size: 11px; }
+.auth-users th, .auth-users td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.auth-users td .button-row { display: flex; flex-wrap: wrap; gap: 4px; }
+@media (max-width: 760px) { .auth-users th:nth-child(4), .auth-users td:nth-child(4) { display: none; } }
