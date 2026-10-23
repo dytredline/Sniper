@@ -74,6 +74,20 @@ def _validate_limit(value: int, *, name: str, upper: int) -> int:
     return value
 
 
+def _validated_component(value: str) -> str:
+    """Return one separator-free path component through a recognized sanitizer."""
+    component = os.path.basename(value)
+    if (
+        component != value
+        or component in ("", ".", "..")
+        or "\x00" in component
+        or "\\" in component
+        or len(os.fsencode(component)) > 255
+    ):
+        raise ProjectTreeError("Proje yolu geçersiz bir bileşen içeriyor.")
+    return component
+
+
 def _join(directory: PurePosixPath, name: str) -> PurePosixPath:
     return PurePosixPath(name) if directory == PurePosixPath(".") else directory / name
 
@@ -91,9 +105,10 @@ class ProjectTree:
         if len(os.fsencode(raw)) > MAX_RELATIVE_PATH_BYTES or not raw.startswith("/"):
             raise ProjectTreeError("Proje kökü mutlak bir metin yolu olmalı.")
         if raw != "/":
-            components = raw.split("/")[1:]
-            if not components or any(part in ("", ".", "..") for part in components):
+            raw_components = raw.split("/")[1:]
+            if not raw_components:
                 raise ProjectTreeError("Proje kökü normalleştirilmiş mutlak bir yol olmalı.")
+            components = [_validated_component(part) for part in raw_components]
         else:
             components = []
         self.root = Path(raw)
@@ -155,9 +170,7 @@ class ProjectTree:
             raise ProjectTreeError("Göreli proje yolu geçersiz.")
         if len(os.fsencode(raw)) > MAX_RELATIVE_PATH_BYTES:
             raise ProjectTreeError("Göreli proje yolu çok uzun.")
-        parts = tuple(raw.split("/"))
-        if any(part in ("", ".", "..") or len(os.fsencode(part)) > 255 for part in parts):
-            raise ProjectTreeError("Göreli proje yolu geçersiz bir bileşen içeriyor.")
+        parts = tuple(_validated_component(part) for part in raw.split("/"))
         return parts
 
     def _duplicate_root(self) -> int:

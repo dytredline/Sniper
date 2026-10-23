@@ -25,6 +25,9 @@ class TrivyImageArchiveInvalidInput(ValueError):
     pass
 
 
+_STAGED_ARCHIVE_NAME = "image.tar"
+
+
 def run_local_trivy_image_archive_vulnerability(
     project_path: str, archive_name: str
 ) -> dict[str, Any]:
@@ -151,7 +154,8 @@ def run_local_trivy_image_archive_vulnerability(
             input_dir.mkdir(parents=True, exist_ok=True)
 
             # Only descriptor-validated bytes enter the private staging area.
-            (input_dir / archive_name).write_bytes(archive_data)
+            staged_archive = input_dir / _STAGED_ARCHIVE_NAME
+            staged_archive.write_bytes(archive_data)
 
             # Prepare output report file
             report_file = snapshot_root / "report.json"
@@ -160,7 +164,7 @@ def run_local_trivy_image_archive_vulnerability(
             cmd = [
                 str(trivy_path),
                 "image",
-                "--input", str(input_dir / archive_name),
+                "--input", str(staged_archive),
                 "--scanners", "vuln",
                 "--offline-scan",
                 "--skip-db-update",

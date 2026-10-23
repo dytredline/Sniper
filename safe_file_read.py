@@ -20,6 +20,20 @@ from pathlib import Path
 _CHUNK_BYTES = 65536
 
 
+def _validated_component(value: str) -> str:
+    """Return one normalized component; reject traversal and alternate separators."""
+    component = os.path.basename(value)
+    if (
+        component != value
+        or component in ("", ".", "..")
+        or "\x00" in component
+        or "\\" in component
+        or len(os.fsencode(component)) > 255
+    ):
+        raise ValueError("invalid path component")
+    return component
+
+
 def _open_regular_candidate(path: str | os.PathLike[str]) -> int:
     """Open a file without following any pathname component.
 
@@ -28,10 +42,10 @@ def _open_regular_candidate(path: str | os.PathLike[str]) -> int:
     symlink replacement cannot redirect the read outside the selected tree.
     """
     raw = os.fspath(path)
-    if not isinstance(raw, str) or not raw or "\x00" in raw:
+    if not isinstance(raw, str) or not raw or "\x00" in raw or "\\" in raw:
         raise ValueError("invalid path")
     absolute = raw.startswith("/")
-    parts = [part for part in raw.split("/") if part not in ("", ".")]
+    parts = [_validated_component(part) for part in raw.split("/") if part not in ("", ".")]
     if not parts:
         raise ValueError("file path required")
     directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
