@@ -258,7 +258,8 @@ class PipfileLockSbomTests(unittest.TestCase):
         target = self.lockfile
 
         def swapping_open(path, flags, *args, **kwargs):
-            if Path(path) == target and not target.is_symlink():
+            descriptor_relative = path == target.name and kwargs.get("dir_fd") is not None
+            if (Path(path) == target or descriptor_relative) and not target.is_symlink():
                 target.unlink()
                 target.symlink_to(outside)
             return real_open(path, flags, *args, **kwargs)

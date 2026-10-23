@@ -65,35 +65,35 @@ function setup(toolId, route, action, runtime = "precheck_passed") {
 
 test("report-only card opens its existing import preview without a scan", () => {
   const ui = setup("dependabot", "/api/tool-reports/dependabot/summary", "report_only", "not_applicable");
-  assert.match(ui.card, /Rapor önizlemesini aç/);
+  assert.match(ui.card, /Uyarı özeti/);
   assert.ok(ui.click());
   assert.deepEqual(ui.clicks, ["open:open-dependabot-alerts-preview"]);
 });
 
 test("CodeQL report-only card opens SARIF preview without starting analysis", () => {
   const ui = setup("codeql", "/api/tool-reports/sarif/summary", "report_only", "not_applicable");
-  assert.match(ui.card, /Rapor önizlemesini aç/);
+  assert.match(ui.card, /Raporu aç/);
   assert.ok(ui.click());
   assert.deepEqual(ui.clicks, ["open:open-sarif-preview"]);
 });
 
 test("OSV-Scanner report-only card opens SARIF preview without starting analysis", () => {
   const ui = setup("osv-scanner", "/api/tool-reports/sarif/summary", "report_only", "not_applicable");
-  assert.match(ui.card, /Rapor önizlemesini aç/);
+  assert.match(ui.card, /Raporu aç/);
   assert.ok(ui.click());
   assert.deepEqual(ui.clicks, ["open:open-sarif-preview"]);
 });
 
 test("Schemathesis report-only card opens JUnit preview without starting API tests", () => {
   const ui = setup("schemathesis", "/api/tool-reports/schemathesis-junit/summary", "report_only", "not_applicable");
-  assert.match(ui.card, /Rapor önizlemesini aç/);
+  assert.match(ui.card, /Raporu aç/);
   assert.ok(ui.click());
   assert.deepEqual(ui.clicks, ["open:open-schemathesis-junit-preview"]);
 });
 
 test("SIEM saved evidence card opens local preview without log transport", () => {
   const ui = setup("siem-review", "/api/tool-reports/siem-ecs-ndjson/summary", "report_only", "not_applicable");
-  assert.match(ui.card, /Rapor önizlemesini aç/);
+  assert.match(ui.card, /Raporu aç/);
   assert.ok(ui.click());
   assert.deepEqual(ui.clicks, ["open:open-siem-ecs-preview"]);
 });

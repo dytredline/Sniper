@@ -13,6 +13,7 @@ import tempfile
 from pathlib import Path
 
 from project_analyzer import validate_project_path
+from project_tree import ProjectTree, ProjectTreeError
 from tool_report_trivy import parse_trivy_native_json_summary
 
 
@@ -50,31 +51,21 @@ def _trusted_binary() -> Path:
 
 
 def _read_dockerfile(project_root: Path) -> bytes:
-    path = project_root / "Dockerfile"
     try:
-        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
-    except OSError as exc:
-        raise ValueError("project_path normal bir Dockerfile içermeli.") from exc
-    try:
-        info = os.fstat(fd)
-        if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_DOCKERFILE_BYTES:
-            raise ValueError("Dockerfile en fazla 1 MB büyüklüğünde normal bir dosya olmalı.")
-        data = bytearray()
-        while len(data) <= MAX_DOCKERFILE_BYTES:
-            chunk = os.read(fd, min(65536, MAX_DOCKERFILE_BYTES + 1 - len(data)))
-            if not chunk:
-                break
-            data.extend(chunk)
-        if len(data) > MAX_DOCKERFILE_BYTES or len(data) != info.st_size:
-            raise ValueError("Dockerfile değişti veya boyut sınırını aştı.")
-        after = os.fstat(fd)
-        if (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns) != (
-            info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns
-        ):
-            raise ValueError("Dockerfile hazırlama sırasında değişti.")
-        return bytes(data)
-    finally:
-        os.close(fd)
+        with ProjectTree(project_root) as tree:
+            walker = tree.walk(reject_unsafe=False)
+            try:
+                entry = next(walker)
+            finally:
+                walker.close()
+            source = next((item for item in entry.files if item.path.as_posix() == "Dockerfile"), None)
+            if source is None:
+                raise ValueError("project_path normal bir Dockerfile içermeli.")
+            if source.size > MAX_DOCKERFILE_BYTES:
+                raise ValueError("Dockerfile en fazla 1 MB büyüklüğünde normal bir dosya olmalı.")
+            return tree.read_bytes(source, MAX_DOCKERFILE_BYTES, allow_empty=True)
+    except ProjectTreeError as exc:
+        raise ValueError("Dockerfile değişti veya boyut sınırını aştı.") from exc
 
 def _read_terraform_file(project_root: Path, terraform_file: str) -> bytes:
     if not isinstance(terraform_file, str) or not terraform_file.strip():
@@ -87,31 +78,21 @@ def _read_terraform_file(project_root: Path, terraform_file: str) -> bytes:
         raise ValueError("terraform_file gizli dosya olmamalı")
     if not terraform_file.endswith(".tf"):
         raise ValueError("terraform_file .tf uzantılı olmalı")
-    path = project_root / terraform_file
     try:
-        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
-    except OSError as exc:
-        raise ValueError("terraform_file, project_path altında normal bir dosya olmalı") from exc
-    try:
-        info = os.fstat(fd)
-        if not stat.S_ISREG(info.st_mode) or info.st_size == 0 or info.st_size > MAX_TERRAFORM_FILE_BYTES:
-            raise ValueError("terraform_file en fazla 1 MB büyüklüğünde, boş olmayan normal bir dosya olmalı")
-        data = bytearray()
-        while len(data) <= MAX_TERRAFORM_FILE_BYTES:
-            chunk = os.read(fd, min(65536, MAX_TERRAFORM_FILE_BYTES + 1 - len(data)))
-            if not chunk:
-                break
-            data.extend(chunk)
-        if len(data) > MAX_TERRAFORM_FILE_BYTES or len(data) != info.st_size:
-            raise ValueError("terraform_file değişti veya boyut sınırını aştı")
-        after = os.fstat(fd)
-        if (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns) != (
-            info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns
-        ):
-            raise ValueError("terraform_file hazırlama sırasında değişti")
-        return bytes(data)
-    finally:
-        os.close(fd)
+        with ProjectTree(project_root) as tree:
+            walker = tree.walk(reject_unsafe=False)
+            try:
+                entry = next(walker)
+            finally:
+                walker.close()
+            source = next((item for item in entry.files if item.path.as_posix() == terraform_file), None)
+            if source is None:
+                raise ValueError("terraform_file, project_path altında normal bir dosya olmalı")
+            if source.size == 0 or source.size > MAX_TERRAFORM_FILE_BYTES:
+                raise ValueError("terraform_file en fazla 1 MB büyüklüğünde, boş olmayan normal bir dosya olmalı")
+            return tree.read_bytes(source, MAX_TERRAFORM_FILE_BYTES)
+    except ProjectTreeError as exc:
+        raise ValueError("terraform_file değişti veya boyut sınırını aştı") from exc
 
 
 

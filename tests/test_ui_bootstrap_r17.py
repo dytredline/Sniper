@@ -53,7 +53,7 @@ class BundleTests(unittest.TestCase):
             '<!doctype html><head>\n'
             '  <link rel="stylesheet" href="/s1.css?v=3">\n'
             '  <script src="/a.js?v=1" defer></script>\n'
-            '  <script src="/app.js?v=29" defer></script>\n'
+            '  <script src="/app.js?v=32" defer></script>\n'
             '  <script type="module" src="/m.js?v=1"></script>\n'
             '  <script src="/static/b.js?v=2" defer></script>\n'
             '  <script src="/c.js" defer></script>\n'

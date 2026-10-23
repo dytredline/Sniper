@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
+import stat
 from typing import Any
 
 import legacy_basis
 from project_analyzer import ProjectRejected, validate_project_path
+from project_tree import ProjectTree, ProjectTreeError
 from scanner import calculate_score
 
 
@@ -297,29 +300,52 @@ def _assign_trust_boundary(finding: dict[str, str]) -> str:
     return "TB-02"
 
 
-def _discover_project_signals(root: Path) -> list[str]:
-    signals: list[str] = []
+def _is_directory_chain(tree: ProjectTree, *parts: str) -> bool:
+    directory_fd = os.dup(tree.fileno())
     try:
-        if (root / ".github" / "workflows").is_dir():
-            signals.append("github_actions")
-        for name in ("Dockerfile", "docker-compose.yml", "docker-compose.yaml", "Containerfile"):
-            if (root / name).is_file():
-                signals.append("container_runtime")
-                break
-        for name in ("openapi.json", "openapi.yaml", "openapi.yml", "swagger.json", "swagger.yaml", "schema.graphql"):
-            if (root / name).is_file():
-                signals.append("api_contract")
-                break
-        for name in ("AndroidManifest.xml", "Info.plist", "Podfile.lock", "Package.resolved", "pubspec.yaml"):
-            if (root / name).is_file():
-                signals.append("mobile_surface")
-                break
-        for name in ("requirements.txt", "pyproject.toml", "package.json", "Cargo.toml", "go.mod", "pom.xml"):
-            if (root / name).is_file():
-                signals.append("package_manifest")
-                break
+        for part in parts:
+            next_fd = os.open(
+                part,
+                os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+                dir_fd=directory_fd,
+            )
+            os.close(directory_fd)
+            directory_fd = next_fd
+        return True
     except OSError:
-        pass
+        return False
+    finally:
+        os.close(directory_fd)
+
+
+def _is_regular_root_file(tree: ProjectTree, name: str) -> bool:
+    try:
+        info = os.stat(name, dir_fd=tree.fileno(), follow_symlinks=False)
+    except OSError:
+        return False
+    return stat.S_ISREG(info.st_mode)
+
+
+def _discover_project_signals(tree: ProjectTree) -> list[str]:
+    signals: list[str] = []
+    if _is_directory_chain(tree, ".github", "workflows"):
+        signals.append("github_actions")
+    for name in ("Dockerfile", "docker-compose.yml", "docker-compose.yaml", "Containerfile"):
+        if _is_regular_root_file(tree, name):
+            signals.append("container_runtime")
+            break
+    for name in ("openapi.json", "openapi.yaml", "openapi.yml", "swagger.json", "swagger.yaml", "schema.graphql"):
+        if _is_regular_root_file(tree, name):
+            signals.append("api_contract")
+            break
+    for name in ("AndroidManifest.xml", "Info.plist", "Podfile.lock", "Package.resolved", "pubspec.yaml"):
+        if _is_regular_root_file(tree, name):
+            signals.append("mobile_surface")
+            break
+    for name in ("requirements.txt", "pyproject.toml", "package.json", "Cargo.toml", "go.mod", "pom.xml"):
+        if _is_regular_root_file(tree, name):
+            signals.append("package_manifest")
+            break
     return signals
 
 
@@ -365,7 +391,11 @@ def generate_threat_model(
     project_signals: list[str] = []
     if project_path is not None:
         root = validate_project_path(project_path, allowed_roots)
-        project_signals = _discover_project_signals(root)
+        try:
+            with ProjectTree(root) as project_tree:
+                project_signals = _discover_project_signals(project_tree)
+        except ProjectTreeError as exc:
+            raise ProjectRejected("Proje ağacı güvenli biçimde okunamadı.") from exc
 
     if store is not None:
         if scan is None and scan_id:

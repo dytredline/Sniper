@@ -43,6 +43,7 @@ import zipfile
 
 import os_versions
 import osv_db_refresh
+from project_tree import ProjectFile, ProjectTree, ProjectTreeError
 
 FORMAT = "sniper-container-scan/1"
 CATEGORY = "container_os"
@@ -422,13 +423,7 @@ def _platform_variant() -> str | None:
 
 
 def _open_regular_nofollow(path: Path, *, max_bytes: int | None = None) -> Any:
-    """Open an absolute/relative local path without following any component.
-
-    ``validate_image_path`` establishes policy containment, while this helper
-    establishes that the inode used afterwards is still the same kind of local
-    object.  Walking from ``/`` with directory descriptors also rejects an
-    intermediate directory swapped for a symlink after validation.
-    """
+    """Open one local regular file without following any pathname component."""
     absolute = Path(os.path.abspath(os.fspath(path)))
     parts = absolute.parts
     if len(parts) < 2:
@@ -456,9 +451,15 @@ def _open_regular_nofollow(path: Path, *, max_bytes: int | None = None) -> Any:
 
 def _read_regular_nofollow(path: Path, max_bytes: int) -> bytes:
     with _open_regular_nofollow(path, max_bytes=max_bytes) as handle:
+        before = os.fstat(handle.fileno())
         data = handle.read(max_bytes + 1)
+        after = os.fstat(handle.fileno())
     if len(data) > max_bytes:
         raise OSError("regular file grew beyond read budget")
+    if ((before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns)
+            != (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns)
+            or len(data) != before.st_size):
+        raise OSError("regular file changed while it was read")
     return data
 
 
@@ -466,24 +467,50 @@ class _Source:
     """Arşiv (tar) ya da dizin içinden dosya okuma soyutlaması."""
 
     def __init__(self, path: Path) -> None:
-        self.path = path
+        self.path = Path(os.path.abspath(os.fspath(path)))
         self.tar: tarfile.TarFile | None = None
         self._archive_stream: Any | None = None
+        self._archive_identity: tuple[int, int, int, int, int] | None = None
+        self.tree: ProjectTree | None = None
         self.index: dict[str, tarfile.TarInfo] = {}
+        self.records: dict[str, ProjectFile] = {}
         self.plain_rootfs = False
+        self.rootfs_directory = False
         try:
-            path_info = os.lstat(path)
-        except OSError as exc:
-            raise ContainerScanError("İmaj yolu okunamadı.") from exc
-        if stat.S_ISREG(path_info.st_mode):
+            self._archive_stream = _open_regular_nofollow(self.path)
+            info = os.fstat(self._archive_stream.fileno())
+            self._archive_identity = (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+        except OSError:
             try:
-                self._archive_stream = _open_regular_nofollow(path)
-                self.tar = tarfile.open(fileobj=self._archive_stream, mode="r:*")
-            except (tarfile.TarError, OSError) as exc:
-                if self._archive_stream is not None:
-                    self._archive_stream.close()
-                    self._archive_stream = None
-                raise ContainerScanError("İmaj dosyası tar arşivi olarak okunamadı.") from exc
+                self.tree = ProjectTree(str(self.path)).open()
+                walker = self.tree.walk(max_entries=MAX_ROOTFS_ENTRIES + MAX_OCI_DESCRIPTORS,
+                                        reject_unsafe=False)
+                first = next(walker)
+                root_names = {record.name for record in first.files}
+                layout = "oci-layout" in root_names or "manifest.json" in root_names
+                if not layout:
+                    walker.close()
+                    self.rootfs_directory = True
+                    return
+                for entry in (first,):
+                    for record in entry.files:
+                        self.records[record.path.as_posix()] = record
+                for entry in walker:
+                    for record in entry.files:
+                        self.records[record.path.as_posix()] = record
+            except (ProjectTreeError, StopIteration) as exc:
+                if self.tree is not None:
+                    self.tree.close()
+                    self.tree = None
+                raise ContainerScanError("İmaj yolu okunamadı veya güvenli bir dosya/dizin değil.") from exc
+            return
+        try:
+            self.tar = tarfile.open(fileobj=self._archive_stream, mode="r:*")
+        except (tarfile.TarError, OSError) as exc:
+            self._archive_stream.close()
+            self._archive_stream = None
+            raise ContainerScanError("İmaj dosyası tar arşivi olarak okunamadı.") from exc
+        try:
             count = 0
             for member in self.tar:
                 count += 1
@@ -494,14 +521,14 @@ class _Source:
                 name = _normalize_member(member.name)
                 if name and member.isreg():
                     self.index[name] = member
-        elif not stat.S_ISDIR(path_info.st_mode):
-            raise ContainerScanError("İmaj yolu sonradan değişti veya desteklenmeyen bir dosya türü.")
+        except (tarfile.TarError, OSError) as exc:
+            self.close()
+            raise ContainerScanError("İmaj dosyası tar arşivi olarak okunamadı.") from exc
 
     def exists(self, name: str) -> bool:
         if self.tar is not None:
             return name in self.index
-        target = self.path / name
-        return target.is_file() and not target.is_symlink()
+        return name in self.records
 
     def open(self, name: str) -> Any:
         if self.tar is not None:
@@ -510,16 +537,12 @@ class _Source:
             if handle is None:
                 raise ContainerScanError("İmaj arşivinde beklenen girdi yok.")
             return handle
-        target = self.path / name
-        try:  # ara dizinler sembolik bağla düzen dışına çıkamaz
-            if self.path.resolve() not in target.resolve(strict=True).parents:
-                raise ContainerScanError("İmaj düzenindeki dosya dizin dışını gösteriyor.")
-        except OSError as exc:
-            raise ContainerScanError("İmaj düzeninde beklenen dosya okunamadı.") from exc
-        flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
+        record = self.records.get(name)
+        if self.tree is None or record is None:
+            raise ContainerScanError("İmaj düzeninde beklenen dosya okunamadı.")
         try:
-            fd = os.open(target, flags)
-        except OSError as exc:
+            fd, _expected = self.tree._open_file(record)  # type: ignore[attr-defined]
+        except ProjectTreeError as exc:
             raise ContainerScanError("İmaj düzeninde beklenen dosya okunamadı.") from exc
         return os.fdopen(fd, "rb")
 
@@ -550,8 +573,17 @@ class _Source:
             self.tar.close()
             self.tar = None
         if self._archive_stream is not None:
+            info = os.fstat(self._archive_stream.fileno())
+            current = (info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
             self._archive_stream.close()
             self._archive_stream = None
+            if self._archive_identity is not None and current != self._archive_identity:
+                self._archive_identity = None
+                raise ContainerScanError("İmaj arşivi tarama sırasında değişti.")
+            self._archive_identity = None
+        if self.tree is not None:
+            self.tree.close()
+            self.tree = None
 
     def reopen_archive(self) -> Any:
         """Return a stream pinned to the archive inode opened by ``__init__``."""
@@ -756,109 +788,122 @@ def _docker_layers(source: _Source) -> tuple[list[tuple[str, dict[str, Any] | No
     return names, meta
 
 
-def _walk_rootfs(root: Path, vfs: VirtualFS) -> None:
-    """Açılmış rootfs: sembolik bağ izlenmeden gezilir; aynı aygıtta kalınır."""
-    root_resolved = root.resolve(strict=True)
-    root_dev = root_resolved.stat().st_dev
-    stack = [""]
+def _walk_rootfs(source: _Source, vfs: VirtualFS) -> None:
+    """Walk a rootfs from its pinned root descriptor; never reopen the user pathname."""
+    if source.tree is None:
+        raise ContainerScanError("Rootfs dizini güvenli biçimde açılamadı.")
+    root_dev = os.fstat(source.tree.fileno()).st_dev
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+    stack: list[tuple[str, int]] = [("", os.dup(source.tree.fileno()))]
+    regulars: dict[str, ProjectFile] = {}
     entries = 0
-    while stack:
-        rel = stack.pop()
-        directory = root / rel if rel else root
+
+    def retain(path: str, kind: str, record: ProjectFile) -> None:
+        limit = MAX_JAR_BYTES if kind == "jar" else MAX_INTERESTING_BYTES
+        if record.size > limit or vfs.retained + record.size > MAX_RETAINED_BYTES:
+            vfs.skipped["large_metadata"] += 1
+            return
         try:
-            with os.scandir(directory) as iterator:
-                children = list(iterator)
-        except OSError:
-            vfs.skipped["unreadable_dir"] += 1
-            continue
-        for entry in children:
-            entries += 1
-            if entries > MAX_ROOTFS_ENTRIES:
-                vfs.warnings.append("Rootfs girdi bütçesi aşıldı; tarama kısmi.")
-                return
-            path = f"{rel}/{entry.name}" if rel else entry.name
-            if not rel and entry.name in ("proc", "sys", "dev", "run"):
-                continue
+            data = source.tree.read_bytes(record, limit, allow_empty=True)
+        except ProjectTreeError as exc:
+            raise ContainerScanError("Rootfs girdisi yürüyüşten sonra değişti.") from exc
+        vfs.bytes_read += len(data)
+        vfs._store(path, kind, data)
+
+    try:
+        while stack:
+            rel, directory_fd = stack.pop()
             try:
-                info = entry.stat(follow_symlinks=False)
-            except OSError:
-                continue
-            if stat.S_ISLNK(info.st_mode):
                 try:
-                    vfs.links[path] = os.readlink(entry.path)
-                except OSError:
-                    continue
-                kind = _interesting(path)
-                if not kind:
-                    continue
-                try:
-                    resolved = Path(entry.path).resolve(strict=True)
-                except (OSError, RuntimeError):
-                    vfs.skipped["unreadable_symlink"] += 1
-                    continue
-                if root_resolved not in resolved.parents:
-                    vfs.skipped["unsafe_symlink"] += 1
-                    continue
-                limit = MAX_JAR_BYTES if kind == "jar" else MAX_INTERESTING_BYTES
-                flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
-                try:
-                    fd = os.open(resolved, flags)
-                    with os.fdopen(fd, "rb") as handle:
-                        target_info = os.fstat(handle.fileno())
-                        if not stat.S_ISREG(target_info.st_mode) or target_info.st_dev != root_dev or \
-                                target_info.st_size > limit or \
-                                vfs.retained + target_info.st_size > MAX_RETAINED_BYTES:
-                            vfs.skipped["large_metadata"] += 1
+                    with os.scandir(directory_fd) as iterator:
+                        children = sorted(iterator, key=lambda entry: entry.name)
+                except OSError as exc:
+                    raise ContainerScanError("Rootfs dizini tarama sırasında değişti veya okunamadı.") from exc
+                for entry in children:
+                    entries += 1
+                    if entries > MAX_ROOTFS_ENTRIES:
+                        vfs.warnings.append("Rootfs girdi bütçesi aşıldı; tarama kısmi.")
+                        vfs.members = entries
+                        return
+                    if (not isinstance(entry.name, str) or entry.name in ("", ".", "..")
+                            or "/" in entry.name or "\x00" in entry.name):
+                        vfs.skipped["unsafe_name"] += 1
+                        continue
+                    path = f"{rel}/{entry.name}" if rel else entry.name
+                    if not rel and entry.name in ("proc", "sys", "dev", "run"):
+                        continue
+                    try:
+                        info = entry.stat(follow_symlinks=False)
+                    except OSError as exc:
+                        raise ContainerScanError("Rootfs girdisi tarama sırasında değişti.") from exc
+                    if stat.S_ISLNK(info.st_mode):
+                        if len(vfs.links) >= MAX_SYMLINKS:
+                            vfs.skipped["symlink_budget"] += 1
                             continue
-                        data = handle.read(limit + 1)
-                except OSError:
-                    vfs.skipped["unreadable_symlink"] += 1
-                    continue
-                if len(data) <= limit:
-                    vfs.bytes_read += len(data)
-                    vfs._store(path, kind, data)
-                continue
-            if stat.S_ISDIR(info.st_mode):
-                if info.st_dev == root_dev:
-                    stack.append(path)
-                continue
-            if not stat.S_ISREG(info.st_mode):
-                continue
-            kind = _interesting(path)
-            if not kind:
-                continue
-            limit = MAX_JAR_BYTES if kind == "jar" else MAX_INTERESTING_BYTES
-            if info.st_size > limit or vfs.retained + info.st_size > MAX_RETAINED_BYTES:
-                vfs.skipped["large_metadata"] += 1
-                continue
-            flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
-            try:
-                fd = os.open(entry.path, flags)
-                with os.fdopen(fd, "rb") as handle:
-                    data = handle.read(limit + 1)
-            except OSError:
-                continue
-            if len(data) <= limit:
-                vfs.bytes_read += len(data)
-                vfs._store(path, kind, data)
+                        try:
+                            vfs.links[path] = os.readlink(entry.name, dir_fd=directory_fd)
+                        except OSError as exc:
+                            raise ContainerScanError("Rootfs sembolik bağı tarama sırasında değişti.") from exc
+                        continue
+                    if stat.S_ISDIR(info.st_mode):
+                        if info.st_dev != root_dev:
+                            continue
+                        child_fd: int | None = None
+                        try:
+                            child_fd = os.open(entry.name, directory_flags, dir_fd=directory_fd)
+                            opened_info = os.fstat(child_fd)
+                        except OSError as exc:
+                            if child_fd is not None:
+                                os.close(child_fd)
+                            raise ContainerScanError("Rootfs alt dizini tarama sırasında değişti.") from exc
+                        if (not stat.S_ISDIR(opened_info.st_mode)
+                                or (opened_info.st_dev, opened_info.st_ino) != (info.st_dev, info.st_ino)):
+                            os.close(child_fd)
+                            raise ContainerScanError("Rootfs alt dizini yürüyüşten sonra değişti.")
+                        stack.append((path, child_fd))
+                        continue
+                    if not stat.S_ISREG(info.st_mode) or info.st_dev != root_dev:
+                        continue
+                    record = ProjectFile(PurePosixPath(path), info.st_size, info.st_dev, info.st_ino,
+                                         info.st_mtime_ns, info.st_ctime_ns)
+                    regulars[path] = record
+                    kind = _interesting(path)
+                    if kind:
+                        retain(path, kind, record)
+            finally:
+                os.close(directory_fd)
+    finally:
+        for _rel, directory_fd in stack:
+            os.close(directory_fd)
+
+    # Interesting symlink names (commonly /etc/os-release) inherit verified target bytes.
+    for path in sorted(vfs.links):
+        if path in vfs.files:
+            continue
+        kind = _interesting(path)
+        target = vfs.resolve(path) if kind else None
+        record = regulars.get(target or "")
+        if kind and record is not None:
+            retain(path, kind, record)
+        elif kind:
+            vfs.skipped["unreadable_symlink"] += 1
     vfs.members = entries
 
 
-def load_image(path: Path) -> tuple[VirtualFS, dict[str, Any]]:
+def load_image(path: Path | _Source) -> tuple[VirtualFS, dict[str, Any]]:
     """İmaj/rootfs'i sanal dosya sistemine yükler. Dönüş: (vfs, imaj meta verisi)."""
     vfs = VirtualFS()
-    if path.is_dir() and not (path / "oci-layout").is_file() and not (path / "manifest.json").is_file():
-        _walk_rootfs(path, vfs)
-        return vfs, {"format": "rootfs-dir", "layers": 0, "tags": []}
-    source = _Source(path)
+    source = path if isinstance(path, _Source) else _Source(path)
     try:
+        if source.rootfs_directory:
+            _walk_rootfs(source, vfs)
+            return vfs, {"format": "rootfs-dir", "layers": 0, "tags": []}
         if not source.plain_rootfs and source.exists("oci-layout") and source.exists("index.json"):
             layers, meta = _oci_layers(source)
         elif not source.plain_rootfs and source.exists("manifest.json"):
             layers, meta = _docker_layers(source)
         elif source.tar is not None:  # tek katmanlı rootfs tar'ı (docker export)
             handle = source.reopen_archive()
-            source.close()
             with handle:
                 try:
                     layer = _open_layer_stream(handle)
@@ -887,8 +932,7 @@ def load_image(path: Path) -> tuple[VirtualFS, dict[str, Any]]:
         meta["layers"] = len(layers)
         return vfs, meta
     finally:
-        if getattr(source, "tar", None) is not None:
-            source.close()
+        source.close()
 
 
 # ---------------------------------------------------------------------------
@@ -1545,22 +1589,34 @@ def _finding(source: str, version: str, binaries: list[dict[str, Any]], vuln: di
 # ---------------------------------------------------------------------------
 # Ana giriş
 # ---------------------------------------------------------------------------
-def validate_image_path(value: str, allowed_roots: tuple[Path, ...] | None = None) -> Path:
+def _allowed_input_path(value: str, allowed_roots: tuple[Path, ...] | None = None) -> Path:
     import project_analyzer
 
     if not isinstance(value, str) or not value.strip() or len(value) > 1024:
         raise ContainerScanError("Geçerli bir yerel imaj dosyası ya da rootfs dizini girin.")
-    candidate = Path(os.path.expandvars(os.path.expanduser(value.strip())))
-    try:
-        resolved = candidate.resolve(strict=True)
-    except (OSError, RuntimeError, ValueError) as exc:
-        raise ContainerScanError("İmaj yolu bulunamadı veya okunamıyor.") from exc
-    if not (resolved.is_file() or resolved.is_dir()):
-        raise ContainerScanError("İmaj yolu bir dosya ya da dizin olmalı.")
+    expanded = os.path.expandvars(os.path.expanduser(value.strip()))
+    if "\x00" in expanded:
+        raise ContainerScanError("İmaj yolu bulunamadı veya okunamıyor.")
+    candidate = Path(os.path.normpath(os.path.abspath(expanded)))
     roots = allowed_roots if allowed_roots is not None else project_analyzer._allowed_roots()
-    if not any(resolved != root and root in resolved.parents for root in roots):
+    normalized_roots = [Path(os.path.normpath(os.path.abspath(os.fspath(root)))) for root in roots]
+    if not any(candidate != root and str(candidate).startswith(str(root) + os.sep) for root in normalized_roots):
         raise ContainerScanError("İmaj yalnızca kullanıcı dizini veya bağlı yerel disk içinde olabilir.")
-    return resolved
+    return candidate
+
+
+def validate_image_path(value: str, allowed_roots: tuple[Path, ...] | None = None) -> Path:
+    """Validate containment and type through a no-follow descriptor, without returning that descriptor."""
+    candidate = _allowed_input_path(value, allowed_roots)
+    try:
+        with _open_regular_nofollow(candidate):
+            return candidate
+    except OSError:
+        try:
+            with ProjectTree(str(candidate)):
+                return candidate
+        except ProjectTreeError as exc:
+            raise ContainerScanError("İmaj yolu bulunamadı veya güvenli bir dosya/dizin değil.") from exc
 
 
 def _dockerfile_instructions(text: str) -> list[tuple[str, str]]:
@@ -2093,10 +2149,7 @@ def link_final_stage_packages(dockerfile: str, packages: list[dict[str, Any]]) -
 
 
 def _read_dockerfile(value: str, allowed_roots: tuple[Path, ...] | None) -> tuple[Path, str]:
-    raw = Path(os.path.expandvars(os.path.expanduser(value)))
-    if raw.is_symlink():
-        raise ContainerScanError("Dockerfile sembolik bağ olamaz.")
-    path = validate_image_path(value, allowed_roots)
+    path = _allowed_input_path(value, allowed_roots)
     try:
         data = _read_regular_nofollow(path, 1_000_000)
         return path, data.decode("utf-8")
@@ -2112,8 +2165,8 @@ def scan_image(path_value: str, *, osv_root: Path | None = None, ignore_unfixed:
                allowed_roots: tuple[Path, ...] | None = None, dockerfile_path: str | None = None) -> dict[str, Any]:
     """İmajı tarar; sonuç proje analizi biçimindedir (``audit_kind: container``), bulgu takibi ve portföye girer."""
     started = time.monotonic()
-    image_path = validate_image_path(path_value, allowed_roots)
-    vfs, meta = load_image(image_path)
+    image_path = _allowed_input_path(path_value, allowed_roots)
+    vfs, meta = load_image(_Source(image_path))
     release = parse_os_release(vfs.read(OS_RELEASE[0]) or vfs.read(OS_RELEASE[1]))
     ecosystem, package_type_or_note = os_ecosystem(release)
     warnings = list(vfs.warnings)

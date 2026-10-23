@@ -9,7 +9,7 @@ ENGINE_FILES = (
     "engine_identity.py", "project_analyzer.py", "secret_intelligence_auditor.py", "scan_scope.py",
     "c_build.py", "eval_metrics.py", "quality_gate.py", "ground_truth_review.py", "finding_tracking.py",
     "api_spec_routes.py", "authz_routes.py", "monorepo.py", "project_progress.py", "threat_model.py",
-    "safe_file_read.py", "finding_limits.py", "legacy_basis.py", "scanner.py", "semgrep_active.py",
+    "safe_file_read.py", "project_tree.py", "finding_limits.py", "legacy_basis.py", "scanner.py", "semgrep_active.py",
     "os_versions.py", "storage.py", "taint_js_bridge.cjs", "vendor/babel-parser/index.js",
 )
 ENGINE_FILE_GLOBS = (

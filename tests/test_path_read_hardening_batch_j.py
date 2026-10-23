@@ -49,7 +49,7 @@ class PathReadHardeningBatchJTests(unittest.TestCase):
 
                     def racing_open(path, flags, *args, **kwargs):
                         nonlocal swapped
-                        if Path(path) == victim and not swapped:
+                        if not swapped and (Path(path) == victim or path == "manifest.json"):
                             swapped = True
                             victim.unlink()
                             victim.symlink_to(secret)
@@ -69,13 +69,24 @@ class PathReadHardeningBatchJTests(unittest.TestCase):
             victim.write_text("openapi: 3.0.0\ninfo: {title: local, version: '1'}\npaths: {}\n", encoding="utf-8")
             external = base / "external.yaml"
             external.write_text("openapi: 3.0.0\ninfo: {title: external, version: '1'}\npaths: {}\n", encoding="utf-8")
+            real_read = openapi_contract_auditor.ProjectTree.read_text
+            swapped = False
 
-            with mock.patch.object(Path, "is_file", self._swap_when_checked(victim, external)):
-                report = openapi_contract_auditor.audit_project_api_contracts(
-                    str(project), allowed_roots=(base,)
-                )
+            def racing_read(tree, project_file, *args, **kwargs):
+                nonlocal swapped
+                if project_file.path.as_posix() == "openapi.yaml" and not swapped:
+                    swapped = True
+                    victim.unlink()
+                    victim.symlink_to(external)
+                return real_read(tree, project_file, *args, **kwargs)
 
-        self.assertEqual(report["contracts_audited"], 0)
+            with mock.patch.object(openapi_contract_auditor.ProjectTree, "read_text", new=racing_read):
+                with self.assertRaises(openapi_contract_auditor.ProjectRejected):
+                    openapi_contract_auditor.audit_project_api_contracts(
+                        str(project), allowed_roots=(base,)
+                    )
+
+        self.assertTrue(swapped, "test must replace the selected contract before descriptor-relative open")
 
     def test_k8s_total_budget_uses_bytes_actually_read_after_growth(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -83,7 +94,7 @@ class PathReadHardeningBatchJTests(unittest.TestCase):
             (root / "manifest.yaml").write_text("x", encoding="utf-8")
             grown = "apiVersion: v1\nkind: Pod\n"
             with mock.patch.object(iac_k8s_project, "MAX_TOTAL_BYTES", 5), \
-                    mock.patch.object(iac_k8s_project, "read_bytes_bounded", return_value=grown.encode()):
+                    mock.patch.object(iac_k8s_project.ProjectTree, "read_bytes", return_value=grown.encode()):
                 result = iac_k8s_project.scan_tree(root, set())
 
         self.assertFalse(result.analysis_complete)
@@ -95,7 +106,7 @@ class PathReadHardeningBatchJTests(unittest.TestCase):
             (root / "main.tf").write_text("x", encoding="utf-8")
             grown = 'resource "x" "y" {}\n'
             with mock.patch.object(iac_tf_project, "MAX_TF_TOTAL_BYTES", 5), \
-                    mock.patch.object(iac_tf_project, "read_bytes_bounded", return_value=grown.encode()):
+                    mock.patch.object(iac_tf_project.ProjectTree, "read_bytes", return_value=grown.encode()):
                 result = iac_tf_project.scan_tree(root, set())
 
         self.assertFalse(result.analysis_complete)
@@ -107,7 +118,7 @@ class PathReadHardeningBatchJTests(unittest.TestCase):
             (root / "a.tf").write_bytes(b"x")
             (root / "b.tf").write_bytes(b"x")
             with mock.patch.object(iac_tf_project, "MAX_TF_FILES", 1), \
-                    mock.patch.object(iac_tf_project, "read_bytes_bounded", return_value=b"\xff"):
+                    mock.patch.object(iac_tf_project.ProjectTree, "read_bytes", return_value=b"\xff"):
                 result = iac_tf_project.scan_tree(root, set())
 
         self.assertFalse(result.analysis_complete)

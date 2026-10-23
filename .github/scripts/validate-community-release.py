@@ -63,9 +63,9 @@ REQUIRED_TEXT = {
     ),
     "VALIDATION.md": (
         "Sniper Community validation evidence",
-        "2,714 tests, 0 failures, 0 errors",
+        "2,785 tests, 0 failures, 0 errors",
         "158 passed",
-        "412 passed, 0 failed",
+        "426 passed, 0 failed",
         "not a security certification",
         "No step in this validation snapshot scans an external website",
     ),

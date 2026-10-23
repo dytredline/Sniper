@@ -11,10 +11,12 @@ from pathlib import Path
 from typing import Any
 
 from project_analyzer import validate_project_path, ProjectRejected
+from project_tree import ProjectTreeError
 
 
 from trivy_vuln_active import (
     TrivyVulnUnavailable, TrivyVulnBusy, TrivyVulnExecutionError, TrivyVulnInvalidInput,
+    _read_root_project_file,
 )
 
 
@@ -131,66 +133,30 @@ def run_local_trivy_npm_vulnerability(project_path: str) -> dict[str, Any]:
             input_dir = snapshot_root / "input"
             input_dir.mkdir(parents=True, exist_ok=True)
 
-            # Stage only root-level package-lock.json
-            req_file = src_root / "package-lock.json"
-            if not req_file.parent.resolve() == src_root.resolve():
-                raise TrivyVulnInvalidInput("Kök düzeydeki package-lock.json doğrudan proje kökünde bulunmalı.")
-            if not req_file.exists():
-                raise TrivyVulnInvalidInput("Kök düzeydeki package-lock.json mevcut olmalı.")
-            if req_file.is_symlink():
-                raise TrivyVulnInvalidInput("Kök düzeydeki package-lock.json sembolik bağ olmamalı.")
-            if not req_file.is_file():
-                raise TrivyVulnInvalidInput("Kök düzeydeki package-lock.json normal bir dosya olmalı.")
-
-            # Enforce bounded scan: per-file <= 5,000,000 bytes
             try:
-                st_req = os.lstat(req_file)
-            except OSError as e:
-                raise TrivyVulnInvalidInput("package-lock.json bilgisi alınamadı") from e
-            if not stat.S_ISREG(st_req.st_mode):
-                raise TrivyVulnInvalidInput("package-lock.json normal bir dosya olmalı.")
-            if st_req.st_size > 5_000_000:
-                raise TrivyVulnInvalidInput("package-lock.json 5.000.000 baytı aşıyor.")
-
-            # Copy with O_NOFOLLOW and fstat validation
-            fd = None
+                data = _read_root_project_file(
+                    src_root,
+                    "package-lock.json",
+                    5_000_000,
+                    allow_empty=True,
+                )
+            except ProjectTreeError as exc:
+                raise TrivyVulnInvalidInput(
+                    "Kök düzeydeki package-lock.json en fazla 5.000.000 baytlık normal bir dosya olmalı."
+                ) from exc
             try:
-                fd = os.open(req_file, os.O_RDONLY | os.O_NOFOLLOW)
-                try:
-                    st2 = os.fstat(fd)
-                    if not stat.S_ISREG(st2.st_mode):
-                        raise TrivyVulnInvalidInput("package-lock.json lstat sonrasında değişti")
-                    if st2.st_size != st_req.st_size:
-                        raise TrivyVulnInvalidInput("package-lock.json boyutu lstat sonrasında değişti")
-                    data = bytearray()
-                    remaining = st_req.st_size
-                    while remaining > 0:
-                        chunk = os.read(fd, min(65536, remaining))
-                        if not chunk:
-                            break
-                        data.extend(chunk)
-                        remaining -= len(chunk)
-                    if len(data) != st_req.st_size:
-                        raise TrivyVulnInvalidInput("package-lock.json okuması eksik kaldı")
-                    try:
-                        lock_data = json.loads(bytes(data))
-                    except (ValueError, UnicodeDecodeError) as exc:
-                        raise TrivyVulnInvalidInput("package-lock.json geçerli JSON içermeli") from exc
-                    if not isinstance(lock_data, dict) or type(lock_data.get("lockfileVersion")) is not int or lock_data["lockfileVersion"] not in (1, 2, 3):
-                        raise TrivyVulnInvalidInput("package-lock.json npm kilit dosyası sürüm 1, 2 veya 3 olmalı")
-                    if not isinstance(lock_data.get("packages"), dict) and not isinstance(lock_data.get("dependencies"), dict):
-                        raise TrivyVulnInvalidInput("package-lock.json packages veya dependencies içermeli")
-                    dest = input_dir / "package-lock.json"
-                    dest.write_bytes(bytes(data))
-                finally:
-                    if fd is not None:
-                        os.close(fd)
-                        fd = None
-            except OSError as e:
-                if fd is not None:
-                    os.close(fd)
-                    fd = None
-                raise TrivyVulnInvalidInput("package-lock.json okunamadı") from e
+                lock_data = json.loads(data)
+            except (ValueError, UnicodeDecodeError) as exc:
+                raise TrivyVulnInvalidInput("package-lock.json geçerli JSON içermeli") from exc
+            if (
+                not isinstance(lock_data, dict)
+                or type(lock_data.get("lockfileVersion")) is not int
+                or lock_data["lockfileVersion"] not in (1, 2, 3)
+            ):
+                raise TrivyVulnInvalidInput("package-lock.json npm kilit dosyası sürüm 1, 2 veya 3 olmalı")
+            if not isinstance(lock_data.get("packages"), dict) and not isinstance(lock_data.get("dependencies"), dict):
+                raise TrivyVulnInvalidInput("package-lock.json packages veya dependencies içermeli")
+            (input_dir / "package-lock.json").write_bytes(data)
 
             # Prepare output report file
             report_file = snapshot_root / "report.json"

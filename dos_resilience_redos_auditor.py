@@ -8,14 +8,13 @@ Ağ erişimi, alt süreç veya veritabanı yazımı yoktur.
 from __future__ import annotations
 
 import bisect
-import os
 from pathlib import Path
 import re
 import unicodedata
 from typing import Any
 
 from project_analyzer import SKIP_DIRS, validate_project_path
-from safe_file_read import read_text_bounded
+from project_tree import ProjectTree
 import taint_flow
 from scanner import _finding, calculate_score as _scanner_calculate_score
 from finding_limits import INLINE_FINDING_LIMIT, PROJECT_FINDING_LIMIT, cap_findings, summarize_finding_groups, project_scan_scope
@@ -1928,35 +1927,25 @@ def audit_dos_resilience_project(
     allowed_roots: tuple[Path, ...] | None = None,
 ) -> dict[str, Any]:
     root = validate_project_path(project_path, allowed_roots=allowed_roots)
-    taint_flow.activate_project_js_handlers(root, SKIP_DIRS)
     findings: list[dict[str, Any]] = []
     scanned_files = 0
 
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            name
-            for name in directories
-            if name.casefold() not in SKIP_DIRS and not (Path(current) / name).is_symlink()
-        )
-        for name in sorted(files):
+    with ProjectTree(root) as tree:
+        taint_flow.activate_project_js_handlers(root, SKIP_DIRS, project_tree=tree)
+        for project_file in tree.iter_files(skip_dirs=SKIP_DIRS, reject_unsafe=False):
             if scanned_files >= MAX_PROJECT_FILES:
                 break
-            file_path = Path(current) / name
-            if file_path.is_symlink():
+            if project_file.path.suffix.lower() not in DOS_EXTENSIONS:
                 continue
-            if file_path.suffix.lower() not in DOS_EXTENSIONS:
+            if project_file.size == 0 or project_file.size > MAX_INLINE_BYTES:
                 continue
-            content = read_text_bounded(file_path, MAX_INLINE_BYTES)
-            if content is None:
-                continue
+            content = tree.read_text(project_file, MAX_INLINE_BYTES, errors="replace")
             if not content.strip():
                 continue
-            rel_name = file_path.relative_to(root).as_posix()
+            rel_name = project_file.path.as_posix()
             scanned_files += 1
             file_report = audit_dos_resilience_inline(content, filename=rel_name)
             findings.extend(file_report["findings"])
-        if scanned_files >= MAX_PROJECT_FILES:
-            break
 
     score, grade = calculate_score(findings)
     finding_groups = summarize_finding_groups(findings)

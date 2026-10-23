@@ -6,13 +6,12 @@ sshd_config, systemd *.service, sysctl, sudoers ve crontab.
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path, PurePosixPath
 import re
 from typing import Any, Callable
 
 from project_analyzer import SKIP_DIRS, validate_project_path
-from safe_file_read import read_text_bounded
+from project_tree import ProjectTree
 from scanner import _finding, calculate_score as _scanner_calculate_score
 from finding_limits import INLINE_FINDING_LIMIT, PROJECT_FINDING_LIMIT, cap_findings, summarize_finding_groups, project_scan_scope
 
@@ -1288,29 +1287,18 @@ def audit_host_config_project(
     scanned_files = 0
     walked_files = 0
     type_counts: dict[str, int] = {}
-    stop = False
-
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            name
-            for name in directories
-            if name.casefold() not in SKIP_DIRS and not (Path(current) / name).is_symlink()
-        )
-        for name in sorted(files):
+    with ProjectTree(root) as tree:
+        for project_file in tree.iter_files(skip_dirs=SKIP_DIRS, reject_unsafe=False):
             if scanned_files >= MAX_PROJECT_FILES or walked_files >= MAX_WALKED_FILES:
-                stop = True
                 break
             walked_files += 1
-            file_path = Path(current) / name
-            if file_path.is_symlink():
-                continue
-            rel_name = file_path.relative_to(root).as_posix()
+            rel_name = project_file.path.as_posix()
             by_name = _detect_by_filename(rel_name)
             if by_name == "unknown" and not _heuristics_allowed(rel_name):
                 continue
-            content = read_text_bounded(file_path, MAX_INLINE_BYTES)
-            if content is None:
+            if project_file.size == 0 or project_file.size > MAX_INLINE_BYTES:
                 continue
+            content = tree.read_text(project_file, MAX_INLINE_BYTES, errors="replace")
             if not content.strip():
                 continue
             config_type = by_name if by_name != "unknown" else detect_config_type(rel_name, content)
@@ -1320,8 +1308,6 @@ def audit_host_config_project(
             type_counts[config_type] = type_counts.get(config_type, 0) + 1
             file_report = audit_host_config_inline(content, filename=rel_name, config_type=config_type)
             findings.extend(file_report["findings"])
-        if stop:
-            break
 
     detected = sorted(type_counts)
     controls = [

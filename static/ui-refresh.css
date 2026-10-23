@@ -272,20 +272,73 @@ td { font-size: 12px; padding: 17px 18px; }
 .tool-card-grid { gap: 16px; padding: 20px; border: 0; grid-template-columns: repeat(3,minmax(0,1fr)); }
 .tool-card {
   padding: 20px; min-width: 0; border: 1px solid #e0eaeb !important; border-radius: 14px; background: #fff;
-  transition: transform .25s var(--ui-ease),box-shadow .25s,border-color .25s;
+  transition: box-shadow .25s,border-color .25s,background-color .25s;
 }
-.tool-card:hover { border-color: #8dcbb6 !important; transform: translateY(-4px); box-shadow: 0 12px 24px #1645350d; }
+.tool-card:hover { border-color: #8dcbb6 !important; background: #fdfefd; box-shadow: 0 12px 24px #1645350d; }
 .tool-card h3 { font: 650 19px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; letter-spacing: -.025em; }
 .tool-card p { font-size: 12px; line-height: 1.75; }
+.tool-card > p { flex: 0 0 auto; }
+.tool-card > small { margin-top: auto; padding-top: 14px; }
 .tool-card-head span, .tool-card-head b { font-size: 10px; }
 .tool-card-head b { border-radius: 5px; }
 .tool-formats span, .tool-tags span, .coverage-chip { border-radius: 5px; font-size: 9px; max-width: 100%; overflow-wrap: anywhere; }
 .tool-card > small, .tool-card a { font-size: 10px; line-height: 1.65; }
-.tool-card-actions .button { font-size: 11px; min-height: 39px; justify-content: flex-start; }
-.tooling-summary article, .project-audit-summary article, .dependency-summary article, .lab-detail-summary > div, .lab-calculation > div {
-  border-radius: 13px; min-width: 0; transition: border-color .25s,transform .25s,box-shadow .25s;
+.tool-capabilities { display: grid; gap: 8px; margin-top: 13px; }
+.tool-capability {
+  display: grid; grid-template-columns: minmax(0,1fr); align-items: start; gap: 9px;
+  padding: 10px 11px; border: 1px solid #e5eeee; border-radius: 9px; background: #f9fbfb;
 }
-.tooling-summary article:hover, .project-audit-summary article:hover, .dependency-summary article:hover { border-color: #94cbb9; transform: translateY(-3px); box-shadow: 0 7px 18px #113f2c0a; }
+.tool-capability > div:first-child { min-width: 0; }
+.tool-capability b, .tool-capability small { display: block; overflow-wrap: anywhere; }
+.tool-capability b { color: var(--ink-2); font-size: 10px; line-height: 1.55; font-weight: 650; }
+.tool-capability small { margin-top: 2px; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.tool-capability .tool-card-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 6px; margin-top: 0; }
+.tool-card-actions .button { font-size: 11px; min-height: 39px; justify-content: flex-start; }
+.tool-card .button { transition: box-shadow .22s,background .22s,border-color .22s,color .22s; }
+.tool-card .button:hover:not(:disabled), .tool-card .button:active:not(:disabled) { transform: none; }
+.view[data-view="tooling"] .button { transition: box-shadow .22s,background .22s,border-color .22s,color .22s; }
+.view[data-view="tooling"] .button:hover:not(:disabled), .view[data-view="tooling"] .button:active:not(:disabled) { transform: none; }
+.view[data-view="tooling"] .mini-button {
+  transform: none; transition: box-shadow .22s,background .22s,border-color .22s,color .22s;
+}
+.view[data-view="tooling"] .mini-button:hover:not(:disabled), .view[data-view="tooling"] .mini-button:active:not(:disabled) { transform: none; }
+.view[data-view="tooling"] :is(.button,.mini-button) {
+  isolation: isolate; overflow: visible; top: 0; transform: none;
+  background: transparent; border-color: transparent; box-shadow: none;
+  transition: top .18s steps(2,end),color .22s;
+  --tool-surface-bg: #fff; --tool-surface-hover-bg: #f0faf6;
+  --tool-surface-border: #d7e3e4; --tool-surface-hover-border: #7fc6b0;
+  --tool-surface-shadow: 0 1px 2px #124b3a08; --tool-surface-hover-shadow: 0 7px 15px #124b3a20;
+}
+.view[data-view="tooling"] .button.primary {
+  --tool-surface-bg: linear-gradient(135deg,#118764,#076a53); --tool-surface-hover-bg: linear-gradient(135deg,#139b72,#087c60);
+  --tool-surface-border: #0b7659; --tool-surface-hover-border: #0b7659;
+  --tool-surface-shadow: 0 4px 9px #077b5420; --tool-surface-hover-shadow: 0 8px 18px #087b5438;
+}
+.view[data-view="tooling"] .mini-button.accent {
+  --tool-surface-bg: #ecfaf3; --tool-surface-hover-bg: #e3f7ed;
+  --tool-surface-border: #b6e1ce; --tool-surface-hover-border: #72c5a7;
+}
+.view[data-view="tooling"] :is(.button,.mini-button):hover:not(:disabled),
+.view[data-view="tooling"] :is(.button,.mini-button):active:not(:disabled) {
+  top: -2px; background: transparent; border-color: transparent; box-shadow: none; transform: none;
+}
+.view[data-view="tooling"] :is(.button,.mini-button)::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; border-radius: inherit;
+  background: var(--tool-surface-bg); border: 1px solid var(--tool-surface-border); box-shadow: var(--tool-surface-shadow);
+  transform: none; transition: background .22s ease,border-color .22s ease,box-shadow .22s ease;
+}
+.view[data-view="tooling"] :is(.button,.mini-button):hover:not(:disabled)::after {
+  background: var(--tool-surface-hover-bg); border-color: var(--tool-surface-hover-border); box-shadow: var(--tool-surface-hover-shadow);
+}
+.view[data-view="tooling"] :is(.button,.mini-button):active:not(:disabled) { top: 1px; }
+.view[data-view="tooling"] :is(.button,.mini-button):active:not(:disabled)::after { box-shadow: none; }
+.view[data-view="tooling"] .button-row { display: flex; align-items: stretch; }
+.view[data-view="tooling"] .button-row > :is(.button,.mini-button) { min-height: 42px; align-self: stretch; }
+.tooling-summary article, .project-audit-summary article, .dependency-summary article, .lab-detail-summary > div, .lab-calculation > div {
+  border-radius: 13px; min-width: 0; transition: border-color .25s,box-shadow .25s,background-color .25s;
+}
+.tooling-summary article:hover, .project-audit-summary article:hover, .dependency-summary article:hover { border-color: #94cbb9; background: #fdfefd; box-shadow: 0 7px 18px #113f2c0a; }
 .tooling-summary small, .project-audit-summary small { font-size: 9px; }
 .tooling-summary span, .project-audit-summary span { font-size: 11px; }
 .tooling-summary b, .project-audit-summary b { font-family: inherit; font-weight: 650; }
@@ -302,14 +355,31 @@ td { font-size: 12px; padding: 17px 18px; }
 .ui-tool-launcher summary:hover { background: #f5fbf8; }
 .ui-tool-actions { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,220px),1fr)); gap: 10px; padding: 0 20px 20px; }
 .ui-tool-actions .button { width: 100%; min-width: 0; min-height: 52px; justify-content: flex-start; text-align: left; font-size: 11px; }
-.project-audit-launcher { grid-template-columns: 1fr; gap: 24px; padding: 26px; }
+.project-audit-launcher { grid-template-columns: minmax(250px,.8fr) minmax(0,1.7fr); gap: 28px; padding: 26px; align-items: end; }
+.project-audit-launcher > div { grid-template-columns: 48px minmax(0,1fr); align-self: center; }
 .project-audit-launcher small { font-size: 12px; line-height: 1.7; }
 .project-audit-launcher b { font-size: 15px; }
-.project-audit-launcher form#project-audit-form { grid-template-columns: minmax(140px,1fr) minmax(140px,.65fr) auto; }
-.project-audit-launcher form#project-audit-form:has(.changed-base:not(.hidden)) { grid-template-columns: minmax(130px,1fr) minmax(130px,.7fr) minmax(130px,.7fr) auto; }
+.project-audit-launcher form#project-audit-form { grid-template-columns: minmax(240px,1.5fr) minmax(170px,.7fr) max-content; }
+.project-audit-launcher form#project-audit-form:has(.changed-base:not(.hidden)) { grid-template-columns: minmax(220px,1.4fr) minmax(155px,.65fr) minmax(170px,.75fr) max-content; }
 .project-audit-launcher :is(input,select), .dependency-actions :is(input,select) { width: 100%; min-height: 42px; font-size: 12px; }
+.project-audit-launcher input[type="checkbox"] {
+  width: 17px; min-width: 17px; height: 17px; min-height: 17px; padding: 0; margin: 0; flex: 0 0 17px;
+}
 .project-audit-launcher label { font-size: 11px; min-width: 0; }
-.project-audit-icon { border-radius: 12px; }
+.container-scan-launcher form.container-scan-form { grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); gap: 14px 10px; }
+.container-scan-launcher .check { min-height: 42px; align-self: end; line-height: 1.45; }
+.container-scan-launcher form.container-scan-form > .button { width: 100%; align-self: end; }
+.project-audit-icon {
+  width: 48px; height: 48px; border: 1px solid #1ba47b; border-radius: 13px;
+  color: #ecfff8; background: linear-gradient(145deg,#11956d,#087256);
+  box-shadow: 0 7px 18px #08795c20, inset 0 1px #ffffff26;
+}
+.project-audit-icon .ui-symbol { width: 25px; height: 25px; stroke-width: 1.8; }
+[data-view="projects"] .empty-icon {
+  border: 1px solid #d4ebe1; color: #0b7c5d; background: linear-gradient(145deg,#e5f7ef,#f4fbf7);
+  box-shadow: inset 0 1px #fff, 0 5px 14px #0d6e5108;
+}
+[data-view="projects"] .empty-icon .ui-symbol { width: 25px; height: 25px; stroke-width: 1.75; }
 .project-audit-row { width: 100%; grid-template-columns: 46px minmax(0,1fr) 80px 115px 18px; }
 .project-audit-row > span { min-width: 0; overflow-wrap: anywhere; }
 .project-audit-row > span b { font-size: 12px; }
@@ -347,6 +417,16 @@ pre { max-width: 100%; overflow-x: auto; }
 .modal :is(p,small) { line-height: 1.7; }
 .modal textarea { resize: vertical; }
 .modal :is(.button-row,.modal-actions) { flex-wrap: wrap; }
+
+/* Temel tarama penceresinde başlık, hedef ve kapsam satırları kesintisiz akar. */
+#scan-modal .modal-icon { margin-bottom: 16px; }
+#scan-modal .eyebrow { margin-bottom: 8px; }
+#scan-target-label { min-height: 0; margin: 8px 0 14px; }
+#scan-modal .scope-list { margin: 0 0 18px; }
+#scan-modal .scope-list > div { align-items: flex-start; }
+#scan-modal .scope-list > div > span { flex: 0 0 22px; width: 22px; height: 22px; }
+#scan-modal .scope-list p { min-width: 0; }
+
 .modal.ui-window { padding-top: 84px; }
 .ui-window .ui-window-control {
   position: absolute; top: 18px; left: 24px; right: auto; z-index: 3;
@@ -389,8 +469,8 @@ pre { max-width: 100%; overflow-x: auto; }
 .toast { border-radius: 12px; line-height: 1.6; }
 
 /* Kompozit animasyonlar: metin ve form düzenini hareket ettirmez. */
-@keyframes ui-view-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes ui-card-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ui-view-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ui-card-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ui-ambient { from { transform: translate(-8%,0) scale(.95); opacity: .65; } to { transform: translate(5%,5%) scale(1.1); opacity: 1; } }
 @keyframes ui-status-glow { 0%,100% { box-shadow: 0 0 0 4px #27c38514; } 50% { box-shadow: 0 0 0 7px #27c38509; } }
 .view.active :is(.metric,.panel,.ui-quick-link,.lab-scenario,.tool-card,.engagement-card,.ui-tool-launcher,.tooling-summary article,.project-audit-summary article,.dependency-summary article,.workspace-section) { animation: ui-card-in .45s var(--ui-ease) backwards; }
@@ -445,6 +525,7 @@ pre { max-width: 100%; overflow-x: auto; }
   .metric-top { font-size: 8px; }
   .metric strong { font-size: 30px; }
   .tooling-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .project-audit-launcher { grid-template-columns: 1fr; }
   .page-intro > .button { display: inline-flex; flex: 0 0 auto; }
 }
 @media (max-width:640px) {
@@ -492,6 +573,7 @@ pre { max-width: 100%; overflow-x: auto; }
   .tooling-summary, .project-audit-summary { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .project-audit-launcher { padding: 20px; }
   .project-audit-launcher form#project-audit-form, .project-audit-launcher form#project-audit-form:has(.changed-base:not(.hidden)) { grid-template-columns: 1fr; }
+  .container-scan-launcher form.container-scan-form, .bulk-scan-launcher form.bulk-scan-form { grid-template-columns: 1fr; }
   .project-audit-row { grid-template-columns: 36px minmax(0,1fr) 18px; gap: 10px; padding: 15px; }
   .project-audit-row > span:nth-child(3), .project-audit-row > span:nth-child(4) { display: none; }
   .dependency-actions, .dependency-actions form, .dependency-actions form:last-child { grid-template-columns: 1fr; }

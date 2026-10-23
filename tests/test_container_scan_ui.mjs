@@ -25,7 +25,10 @@ function node(tag) {
 }
 
 function load(extra = {}) {
-  const document = { createElement: (tag) => node(tag) };  // addEventListener yok → otomatik bağlama atlanır
+  const document = {
+    createElement: (tag) => node(tag),
+    createElementNS: (_namespace, tag) => node(tag),
+  };  // addEventListener yok → otomatik bağlama atlanır
   const window = { ...extra };
   vm.runInNewContext(source, { window, globalThis: window, document, String, Number, Object, JSON, Error, Promise, encodeURIComponent });
   return window;
@@ -89,6 +92,10 @@ test('başlatıcı paneli form alanları ve durum satırıyla kurulur', () => {
   const win = load();
   const panel = win.SniperContainerScan.buildPanel();
   assert.equal(panel.attrs.id, 'container-scan-launcher');
+  const icon = panel.children[0].children[0];
+  assert.equal(icon.textContent, '');
+  assert.equal(icon.children[0]?.tag, 'svg');
+  assert.equal(icon.children[0]?.children[0]?.attrs.href, '/static/ui-icons.svg#container');
   const form = panel.children.find(c => c.tag === 'form');
   const imagePath = findByAttr(form, 'input', 'name', 'image_path');
   const dockerfilePath = findByAttr(form, 'input', 'name', 'dockerfile_path');

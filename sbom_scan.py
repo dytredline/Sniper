@@ -11,12 +11,13 @@ from __future__ import annotations
 
 import collections
 import hashlib
+import os
 import time
 from pathlib import Path
 from typing import Any
 
+from project_tree import ProjectTree, ProjectTreeError
 import sbom_formats
-from safe_file_read import read_bytes_bounded
 
 FORMAT = "sniper-sbom-scan-v1"
 CATEGORY = "sbom_component"
@@ -37,27 +38,35 @@ def _utc_now() -> str:
 
 def validate_sbom_path(value: str, allowed_roots: tuple[Path, ...] | None = None) -> Path:
     """Yerel SBOM dosyası: normal dosya, sembolik bağ değil, izinli kökler altında (proje analizi kuralı)."""
-    import os
-
     import project_analyzer
 
     if not isinstance(value, str) or not value.strip() or len(value) > 1024:
         raise SbomScanError("Geçerli bir yerel SBOM dosyası yolu girin.")
-    candidate = Path(os.path.expandvars(os.path.expanduser(value.strip())))
-    if candidate.is_symlink():
-        raise SbomScanError("SBOM yolu sembolik bağ olamaz.")
-    try:
-        resolved = candidate.resolve(strict=True)
-    except (OSError, RuntimeError, ValueError) as exc:
-        raise SbomScanError("SBOM dosyası bulunamadı veya okunamıyor.") from exc
-    if not resolved.is_file():
-        raise SbomScanError("SBOM yolu normal bir dosya olmalı.")
+    candidate = Path(os.path.abspath(os.path.expandvars(os.path.expanduser(value.strip()))))
     roots = allowed_roots if allowed_roots is not None else project_analyzer._allowed_roots()
-    if not any(resolved != root and Path(root).resolve() in resolved.parents for root in roots):
+    normalized_roots = tuple(Path(os.path.abspath(os.fspath(root))) for root in roots)
+    if not any(candidate != root and root in candidate.parents for root in normalized_roots):
         raise SbomScanError("SBOM yalnız izin verilen yerel dizinlerden okunabilir.")
-    if resolved.stat().st_size > sbom_formats.MAX_SBOM_BYTES:
-        raise SbomScanError("SBOM dosyası boyut sınırını aşıyor.")
-    return resolved
+    _read_sbom_file(candidate)
+    return candidate
+
+
+def _read_sbom_file(path: Path) -> bytes:
+    try:
+        with ProjectTree(path.parent) as tree:
+            walker = tree.walk(reject_unsafe=False)
+            try:
+                entry = next(walker)
+            finally:
+                walker.close()
+            source = next((item for item in entry.files if item.name == path.name), None)
+            if source is None:
+                raise SbomScanError("SBOM yolu normal bir dosya olmalı.")
+            if source.size > sbom_formats.MAX_SBOM_BYTES:
+                raise SbomScanError("SBOM dosyası boyut sınırını aşıyor.")
+            return tree.read_bytes(source, sbom_formats.MAX_SBOM_BYTES)
+    except ProjectTreeError as exc:
+        raise SbomScanError("SBOM dosyası bulunamadı veya okunamıyor.") from exc
 
 
 def _purl_parts(purl: str) -> dict[str, str] | None:
@@ -179,9 +188,7 @@ def scan_sbom(path_value: str, *, osv_root: Path | None = None,
 
     started = time.monotonic()
     path = validate_sbom_path(path_value, allowed_roots)
-    data = read_bytes_bounded(path, sbom_formats.MAX_SBOM_BYTES)
-    if data is None:
-        raise SbomScanError("SBOM dosyası okunamadı.")
+    data = _read_sbom_file(path)
     try:
         parsed = sbom_formats.parse_sbom_bytes(data, path.name)
     except sbom_formats.SbomError as exc:

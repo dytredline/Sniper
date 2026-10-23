@@ -108,6 +108,15 @@ class FixVerificationTests(unittest.TestCase):
     def verify(self, index):
         return fv.verify_finding_fix(self.audit, index, allowed_roots=(self.base,), work_root=str(self.work))
 
+    def test_copy_context_accepts_descriptor_backed_file_iteration(self):
+        with tempfile.TemporaryDirectory(dir=self.work) as temp:
+            destination = Path(temp) / "copy"
+            destination.mkdir()
+            result = fv._copy_context(self.root, destination, fv.scan_scope.current())
+            self.assertEqual(result, {"files": 2, "bytes": len(APP.encode()) + len(OTHER.encode()), "limited": False})
+            self.assertEqual((destination / "app.py").read_text(), APP)
+            self.assertEqual((destination / "other.py").read_text(), OTHER)
+
     def test_sql_command_xss_fixes_are_verified(self):
         for kind in ("sql", "command", "html"):
             with self.subTest(kind=kind):

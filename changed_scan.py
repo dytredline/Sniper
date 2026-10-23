@@ -16,13 +16,13 @@ import os
 from pathlib import Path
 import re
 import shutil
-import stat
 import subprocess
 import tempfile
 from typing import Any, Iterable
 
 import project_analyzer
 from project_analyzer import ProjectRejected
+from project_tree import ProjectFile, ProjectTree, ProjectTreeError
 import scan_scope
 from scanner import utc_now
 
@@ -64,17 +64,34 @@ def _git_env() -> dict[str, str]:
     }
 
 
-def _git(cwd: Path, *args: str, stdin: bytes | None = None) -> bytes:
+def _git(
+    cwd: Path,
+    *args: str,
+    stdin: bytes | None = None,
+    project_tree: ProjectTree | None = None,
+) -> bytes:
+    pass_fds: tuple[int, ...] = ()
+    git_cwd = str(cwd)
+    if project_tree is not None:
+        descriptor = project_tree.fileno()
+        git_cwd = f"/proc/self/fd/{descriptor}"
+        pass_fds = (descriptor,)
     command = [
         _git_binary(),
         # Komut satırı ayarları depo yapılandırmasını geçersiz kılar: kanca/fsmonitor/ağ yok.
         "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false", "-c", "core.hooksPath=/dev/null",
         "-c", "protocol.allow=never", "-c", "core.quotePath=false",
-        "-C", str(cwd), *args,
+        "-C", git_cwd, *args,
     ]
     try:
         completed = subprocess.run(
-            command, input=stdin, capture_output=True, timeout=GIT_TIMEOUT_SECONDS, env=_git_env(), check=False,
+            command,
+            input=stdin,
+            capture_output=True,
+            timeout=GIT_TIMEOUT_SECONDS,
+            env=_git_env(),
+            check=False,
+            pass_fds=pass_fds,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ChangedScanError("git komutu çalıştırılamadı veya süre aşıldı.") from exc
@@ -94,34 +111,55 @@ class BaseTree:
     commit: str
     object_format: str
     blobs: dict[str, tuple[str, int]]  # proje köküne göre yol → (blob, boyut)
+    project_tree: ProjectTree | None = None
 
 
-def resolve_base(project_root: Path, base_ref: str) -> BaseTree:
+def resolve_base(project_root: Path, base_ref: str, *, project_tree: ProjectTree | None = None) -> BaseTree:
     """Projenin bulunduğu depoyu ve ``base_ref`` commit'ini çöz; taban ağacın proje altındaki blob'larını listele."""
     if not base_ref or base_ref.startswith("-") or ".." in base_ref:
         raise ChangedScanError("Geçersiz taban başvurusu.")
-    top = _git(project_root, "rev-parse", "--show-toplevel").decode("utf-8", "replace").strip()
-    if not top:
-        raise ChangedScanError("Proje bir git deposu içinde değil.")
-    repo_root = Path(top).resolve()
+    prefix = _git(
+        project_root,
+        "rev-parse",
+        "--show-prefix",
+        project_tree=project_tree,
+    ).decode("utf-8", "replace").strip()
+    prefix = prefix.rstrip("/") + "/" if prefix else ""
     try:
-        prefix = project_root.resolve().relative_to(repo_root).as_posix()
-    except ValueError as exc:
-        raise ChangedScanError("Proje dizini depo kökü altında değil.") from exc
-    prefix = "" if prefix == "." else prefix.rstrip("/") + "/"
-    try:
-        object_format = _git(repo_root, "rev-parse", "--show-object-format").decode().strip() or "sha1"
+        object_format = _git(
+            project_root,
+            "rev-parse",
+            "--show-object-format",
+            project_tree=project_tree,
+        ).decode().strip() or "sha1"
     except ChangedScanError:
         object_format = "sha1"
     if object_format not in {"sha1", "sha256"}:
         raise ChangedScanError("Desteklenmeyen git nesne biçimi.")
     try:
-        commit = _git(repo_root, "rev-parse", "--verify", "--quiet", "--end-of-options", f"{base_ref}^{{commit}}").decode().strip()
+        commit = _git(
+            project_root,
+            "rev-parse",
+            "--verify",
+            "--quiet",
+            "--end-of-options",
+            f"{base_ref}^{{commit}}",
+            project_tree=project_tree,
+        ).decode().strip()
     except ChangedScanError:
         commit = ""
     if not _SHA_RE.fullmatch(commit):
         raise ChangedScanError(f"Taban başvurusu çözülemedi: {base_ref}")
-    listing = _git(repo_root, "ls-tree", "-r", "-z", "-l", "--full-tree", commit)
+    listing = _git(
+        project_root,
+        "ls-tree",
+        "-r",
+        "-z",
+        "-l",
+        "--full-tree",
+        commit,
+        project_tree=project_tree,
+    )
     blobs: dict[str, tuple[str, int]] = {}
     for entry in listing.split(b"\0"):
         if not entry:
@@ -141,7 +179,7 @@ def resolve_base(project_root: Path, base_ref: str) -> BaseTree:
         except ValueError:
             continue
         blobs[rel] = (parts[2].decode(), size)
-    return BaseTree(repo_root, prefix, commit, object_format, blobs)
+    return BaseTree(project_root, prefix, commit, object_format, blobs, project_tree)
 
 
 def _safe_relpath(rel: str) -> bool:
@@ -150,53 +188,14 @@ def _safe_relpath(rel: str) -> bool:
     return all(part not in ("", ".", "..", ".git") for part in rel.split("/"))
 
 
-def _open_worktree_file(root: Path, rel: str) -> int | None:
-    """Open a regular worktree file without following any path component.
-
-    ``_walk_worktree`` deliberately yields names rather than open descriptors.  A
-    hostile working tree can replace a yielded file or one of its parent
-    directories before the consumer reads it.  Walking from a pinned root
-    directory descriptor closes that check/use gap.
-    """
-    if not _safe_relpath(rel):
-        return None
-    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
-    file_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
-    try:
-        directory_fd = os.open(root, directory_flags)
-    except (OSError, TypeError, ValueError):
-        return None
-    try:
-        parts = rel.split("/")
-        for part in parts[:-1]:
-            try:
-                child_fd = os.open(part, directory_flags, dir_fd=directory_fd)
-            except OSError:
-                return None
-            os.close(directory_fd)
-            directory_fd = child_fd
-        try:
-            fd = os.open(parts[-1], file_flags, dir_fd=directory_fd)
-        except OSError:
-            return None
-        try:
-            if not stat.S_ISREG(os.fstat(fd).st_mode):
-                os.close(fd)
-                return None
-        except OSError:
-            os.close(fd)
-            return None
-        return fd
-    finally:
-        os.close(directory_fd)
-
-
 def _read_worktree_bytes(
     root: Path,
     rel: str,
     max_bytes: int,
     *,
     truncate: bool = False,
+    project_tree: ProjectTree | None = None,
+    observed: ProjectFile | None = None,
 ) -> tuple[bytes, int] | None:
     """Read from one verified descriptor, returning ``(data, fstat_size)``.
 
@@ -205,40 +204,59 @@ def _read_worktree_bytes(
     """
     if max_bytes < 0:
         return None
-    fd = _open_worktree_file(root, rel)
-    if fd is None:
-        return None
+    if project_tree is None:
+        try:
+            with ProjectTree(root) as opened_tree:
+                return _read_worktree_bytes(
+                    root,
+                    rel,
+                    max_bytes,
+                    truncate=truncate,
+                    project_tree=opened_tree,
+                    observed=observed,
+                )
+        except ProjectTreeError:
+            return None
     try:
-        info = os.fstat(fd)
-        if not truncate and info.st_size > max_bytes:
-            return None
-        limit = max_bytes if truncate else max_bytes + 1
-        chunks: list[bytes] = []
-        total = 0
-        while total < limit:
-            try:
-                chunk = os.read(fd, min(65536, limit - total))
-            except OSError:
-                return None
-            if not chunk:
-                break
-            chunks.append(chunk)
-            total += len(chunk)
-        if not truncate and total > max_bytes:
-            return None
-        return b"".join(chunks), info.st_size
-    finally:
-        os.close(fd)
+        selected: str | ProjectFile = observed if observed is not None else rel
+        data = project_tree.read_bytes(selected, max_bytes, allow_empty=True, truncate=truncate)
+        return data, observed.size if observed is not None else len(data)
+    except ProjectTreeError:
+        return None
 
 
-def _read_worktree_text(root: Path, rel: str, max_bytes: int, *, truncate: bool = False) -> str | None:
-    result = _read_worktree_bytes(root, rel, max_bytes, truncate=truncate)
+def _read_worktree_text(
+    root: Path,
+    rel: str,
+    max_bytes: int,
+    *,
+    truncate: bool = False,
+    project_tree: ProjectTree | None = None,
+    observed: ProjectFile | None = None,
+) -> str | None:
+    result = _read_worktree_bytes(
+        root,
+        rel,
+        max_bytes,
+        truncate=truncate,
+        project_tree=project_tree,
+        observed=observed,
+    )
     return None if result is None else result[0].decode("utf-8", errors="replace")
 
 
 def _ignored_paths(base: BaseTree) -> tuple[set[str], tuple[str, ...]]:
     """Çalışma ağacında .gitignore ile yok sayılan izlenmeyen dosya/dizinler (proje köküne göre)."""
-    raw = _git(base.repo_root, "ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z")
+    raw = _git(
+        base.repo_root,
+        "ls-files",
+        "--others",
+        "--ignored",
+        "--exclude-standard",
+        "--directory",
+        "-z",
+        project_tree=base.project_tree,
+    )
     files: set[str] = set()
     dirs: list[str] = []
     for item in raw.split(b"\0"):
@@ -262,7 +280,13 @@ def read_blobs(base: BaseTree, shas: Iterable[str]) -> dict[str, bytes]:
     wanted = sorted(set(shas))
     if not wanted:
         return {}
-    out = _git(base.repo_root, "cat-file", "--batch", stdin=("\n".join(wanted) + "\n").encode())
+    out = _git(
+        base.repo_root,
+        "cat-file",
+        "--batch",
+        stdin=("\n".join(wanted) + "\n").encode(),
+        project_tree=base.project_tree,
+    )
     blobs: dict[str, bytes] = {}
     pos = 0
     while pos < len(out):
@@ -302,26 +326,48 @@ class ChangeSet:
         return self.added | self.modified
 
 
-def _walk_worktree(root: Path, skip_dirs: frozenset[str]) -> Iterable[str]:
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            name for name in directories
-            if name != ".git" and name.casefold() not in skip_dirs and not (Path(current) / name).is_symlink()
-        )
-        for name in sorted(files):
-            path = Path(current) / name
-            if path.is_symlink() or not path.is_file():
-                continue
-            yield path.relative_to(root).as_posix()
+def _walk_worktree(
+    root: Path,
+    skip_dirs: frozenset[str],
+    *,
+    project_tree: ProjectTree | None = None,
+) -> Iterable[ProjectFile]:
+    if project_tree is None:
+        try:
+            with ProjectTree(root) as opened_tree:
+                yield from _walk_worktree(root, skip_dirs, project_tree=opened_tree)
+        except ProjectTreeError:
+            return
+        return
+    yield from project_tree.iter_files(
+        skip_dirs=frozenset({*skip_dirs, ".git"}),
+        max_entries=min(10_000_000, max(100_000, project_analyzer.MAX_FILES * 100)),
+        reject_unsafe=False,
+    )
 
 
-def compute_changes(project_root: Path, base: BaseTree, scope: scan_scope.ScanScope) -> ChangeSet:
+def compute_changes(
+    project_root: Path,
+    base: BaseTree,
+    scope: scan_scope.ScanScope,
+    *,
+    project_tree: ProjectTree | None = None,
+) -> ChangeSet:
+    if project_tree is None:
+        try:
+            with ProjectTree(project_root) as opened_tree:
+                return compute_changes(project_root, base, scope, project_tree=opened_tree)
+        except ProjectTreeError as exc:
+            raise ChangedScanError("Çalışma ağacı doğrulamadan sonra değişti.") from exc
     ignored_files, ignored_dirs = _ignored_paths(base)
     skip_dirs = scope.skip_dirs
     current: dict[str, str] = {}
     added: set[str] = set()
     modified: set[str] = set()
-    for rel in _walk_worktree(project_root, skip_dirs):
+    observed_paths: set[str] = set()
+    for observed in _walk_worktree(project_root, skip_dirs, project_tree=project_tree):
+        rel = observed.path.as_posix()
+        observed_paths.add(rel)
         tracked = base.blobs.get(rel)
         if tracked is None and (rel in ignored_files or any(rel.startswith(d) for d in ignored_dirs)):
             continue
@@ -329,6 +375,8 @@ def compute_changes(project_root: Path, base: BaseTree, scope: scan_scope.ScanSc
             project_root,
             rel,
             max(scope.max_file_bytes, project_analyzer.MAX_FILE_BYTES),
+            project_tree=project_tree,
+            observed=observed,
         )
         if opened is None:
             continue
@@ -345,7 +393,7 @@ def compute_changes(project_root: Path, base: BaseTree, scope: scan_scope.ScanSc
     present = set(current) | modified
     deleted = {
         rel for rel in base.blobs
-        if rel not in present and not (project_root / rel).exists()
+        if rel not in present and rel not in observed_paths
         and not any(part.casefold() in skip_dirs for part in rel.split("/")[:-1])
     }
     # İçeriği aynı kalan yeniden adlandırmalar değişiklik sayılmaz.
@@ -429,11 +477,28 @@ def _js_imports(rel: str, text: str, files: set[str]) -> set[str]:
     return found
 
 
-def import_context(project_root: Path, changed: set[str], scope: scan_scope.ScanScope) -> frozenset[str] | None:
+def import_context(
+    project_root: Path,
+    changed: set[str],
+    scope: scan_scope.ScanScope,
+    *,
+    project_tree: ProjectTree | None = None,
+) -> frozenset[str] | None:
     """Değişen kaynak dosyalar + ileri (en çok FORWARD_DEPTH adım) içe aktardıkları + onları (geçişli) içe
     aktaranlar. Bağlam projenin büyük kısmını kapsıyorsa ``None`` (tüm proje)."""
-    sources = [rel for rel in _walk_worktree(project_root, scope.skip_dirs)
-               if rel.endswith(PY_SUFFIX) or rel.endswith(JS_SUFFIXES)]
+    if project_tree is None:
+        try:
+            with ProjectTree(project_root) as opened_tree:
+                return import_context(project_root, changed, scope, project_tree=opened_tree)
+        except ProjectTreeError:
+            return frozenset()
+    observed_sources = [
+        observed
+        for observed in _walk_worktree(project_root, scope.skip_dirs, project_tree=project_tree)
+        if observed.path.suffix.lower() == PY_SUFFIX or observed.path.as_posix().endswith(JS_SUFFIXES)
+    ]
+    sources = [observed.path.as_posix() for observed in observed_sources]
+    observed_by_path = {observed.path.as_posix(): observed for observed in observed_sources}
     files = set(sources)
     by_module: dict[str, set[str]] = {}
     for rel in sources:
@@ -442,7 +507,14 @@ def import_context(project_root: Path, changed: set[str], scope: scan_scope.Scan
                 by_module.setdefault(name, set()).add(rel)
     forward: dict[str, set[str]] = {}
     for rel in sources:
-        text = _read_worktree_text(project_root, rel, 4_000_000, truncate=True)
+        text = _read_worktree_text(
+            project_root,
+            rel,
+            4_000_000,
+            truncate=True,
+            project_tree=project_tree,
+            observed=observed_by_path[rel],
+        )
         if text is None:
             continue
         text = text[:1_000_000]
@@ -485,16 +557,32 @@ def _line_text(lines: list[str], line: Any) -> str:
     return ""
 
 
-def context_fingerprints(findings: list[dict[str, Any]], root: Path) -> list[str]:
+def context_fingerprints(
+    findings: list[dict[str, Any]],
+    root: Path,
+    *,
+    project_tree: ProjectTree | None = None,
+) -> list[str]:
     """Kural + kategori + dosya + başlık + bulgu satırının normalize metni (+ aynı anahtarlı sıra numarası).
 
     Satır numarası kullanılmaz; kod satırı yalnız özetlenir (rapora kopyalanmaz)."""
+    if project_tree is None:
+        try:
+            with ProjectTree(root) as opened_tree:
+                return context_fingerprints(findings, root, project_tree=opened_tree)
+        except ProjectTreeError:
+            return ["" for _finding in findings]
     cache: dict[str, list[str]] = {}
     keys: list[str] = []
     for finding in findings:
         rel = str(finding.get("file") or "")
         if rel and rel not in cache:
-            text = _read_worktree_text(root, rel, scan_scope.HARD_MAX_FILE_BYTES)
+            text = _read_worktree_text(
+                root,
+                rel,
+                scan_scope.HARD_MAX_FILE_BYTES,
+                project_tree=project_tree,
+            )
             cache[rel] = text.splitlines() if text is not None else []
         text = _line_text(cache.get(rel, []), finding.get("line"))
         rule = str(finding.get("reference") or finding.get("cwe") or "")
@@ -585,8 +673,30 @@ def analyze_changed(
     root = project_analyzer.validate_project_path(value, allowed_roots)
     if scope.base_ref.startswith("prj_"):
         raise ChangedScanError("Analiz kimliğiyle karşılaştırma yalnız API/CLI üzerinden yapılır (analyze_against_audit).")
-    base = resolve_base(root, scope.base_ref)
-    changes = compute_changes(root, base, scope)
+    try:
+        with ProjectTree(root) as project_tree:
+            return _analyze_changed_pinned(
+                root,
+                project_tree,
+                allowed_roots=allowed_roots,
+                max_files=max_files,
+                scope=scope,
+            )
+    except ProjectTreeError as exc:
+        raise ChangedScanError("Proje ağacı doğrulamadan sonra değişti.") from exc
+
+
+def _analyze_changed_pinned(
+    root: Path,
+    project_tree: ProjectTree,
+    *,
+    allowed_roots: tuple[Path, ...] | None,
+    max_files: int | None,
+    scope: scan_scope.ScanScope,
+) -> dict[str, Any]:
+    """Run one changed scan while every worktree read shares one pinned root."""
+    base = resolve_base(root, scope.base_ref, project_tree=project_tree)
+    changes = compute_changes(root, base, scope, project_tree=project_tree)
     changed = changes.changed
     summary: dict[str, Any] = {
         "mode": "git",
@@ -601,7 +711,7 @@ def analyze_changed(
         "new_findings": 0,
         "fixed": [],
     }
-    context = import_context(root, changed, scope)
+    context = import_context(root, changed, scope, project_tree=project_tree)
     summary["context_files"] = len(context) if context is not None else "tüm proje"
     narrowed = dataclasses.replace(scope, only_paths=frozenset(changed), context_paths=context)
     if not changed:
@@ -618,7 +728,7 @@ def analyze_changed(
         return result
 
     findings = result.get("findings") or []
-    current_fps = context_fingerprints(findings, root)
+    current_fps = context_fingerprints(findings, root, project_tree=project_tree)
 
     # Taban sürüm: değişen dosyaların eski hâllerini (tüm proje bağlamıyla) geçici dizinde analiz et.
     base_paths = frozenset(changes.modified & set(base.blobs))
@@ -654,7 +764,12 @@ def analyze_changed(
             new_count += 1
         if rel not in line_cache:
             old = old_blobs.get(base.blobs[rel][0]) if rel in changes.modified and rel in base.blobs else None
-            text = _read_worktree_text(root, rel, scan_scope.HARD_MAX_FILE_BYTES) or ""
+            text = _read_worktree_text(
+                root,
+                rel,
+                scan_scope.HARD_MAX_FILE_BYTES,
+                project_tree=project_tree,
+            ) or ""
             line_cache[rel] = changed_lines(old, text) if rel in changes.modified else None
         lines = line_cache[rel]
         finding["in_changed_lines"] = lines is None or int(finding.get("line") or 0) in lines

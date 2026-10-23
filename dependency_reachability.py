@@ -18,16 +18,16 @@ Erişilemeyen bulgular gizlenmez; önemleri en çok bir derece düşürülür ve
 from __future__ import annotations
 
 import ast
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path, PurePosixPath
 import posixpath
 import re
-import stat
 import zipfile
-from typing import Any, Iterable
+from typing import Any, Iterable, Iterator
 
-from safe_file_read import read_bytes_bounded, read_text_bounded
+from project_tree import ProjectTree, ProjectTreeError
 
 VERDICT_LABELS = {
     "reachable": "Erişilebilir: açıklı fonksiyon kodda kullanılıyor",
@@ -37,6 +37,18 @@ VERDICT_LABELS = {
 }
 SEVERITY_ORDER = ["info", "low", "medium", "high", "critical"]
 _VERDICT_RANK = {"reachable": 0, "unknown": 1, "imported_not_called": 2, "not_imported": 3}
+
+
+@contextmanager
+def _borrow_project_tree(root: Path, project_tree: ProjectTree | None) -> Iterator[ProjectTree]:
+    """Use an independently owned descriptor view for one project read pass."""
+    if project_tree is not None and Path(root) != project_tree.root:
+        raise ValueError("Proje ağacı kökü istenen proje ile eşleşmiyor.")
+    tree = project_tree.duplicate() if project_tree is not None else ProjectTree(root).open()
+    try:
+        yield tree
+    finally:
+        tree.close()
 
 # Danışmaya özgü olmayan, yaygın paketlerin bilinen açıklı/tehlikeli fonksiyonları (düşük güven; önemi düşürmez).
 CURATED_SYMBOLS: dict[str, tuple[str, ...]] = {
@@ -134,53 +146,6 @@ _RS_SUFFIXES = {".rs"}
 _JVM_SUFFIXES = {".java", ".kt", ".kts", ".scala", ".groovy"}
 _DOTNET_SUFFIXES = {".cs", ".cshtml", ".razor", ".vb", ".fs", ".fsx"}
 _MAX_FILE_BYTES = 1_000_000
-
-
-def _read_bytes_path_nofollow(path: Path, max_bytes: int, *, allow_empty: bool = False) -> bytes | None:
-    """Read a regular file without following a symlink in any path component."""
-    if max_bytes < 0:
-        return None
-    absolute = Path(os.path.abspath(os.fspath(path)))
-    parts = absolute.parts
-    if len(parts) < 2:
-        return None
-    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
-    file_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
-    directory_fd = -1
-    fd = -1
-    try:
-        directory_fd = os.open(parts[0], directory_flags)
-        for part in parts[1:-1]:
-            child_fd = os.open(part, directory_flags, dir_fd=directory_fd)
-            os.close(directory_fd)
-            directory_fd = child_fd
-        fd = os.open(parts[-1], file_flags, dir_fd=directory_fd)
-        info = os.fstat(fd)
-        if not stat.S_ISREG(info.st_mode) or info.st_size > max_bytes:
-            return None
-        chunks: list[bytes] = []
-        total = 0
-        while total <= max_bytes:
-            chunk = os.read(fd, min(65_536, max_bytes + 1 - total))
-            if not chunk:
-                break
-            chunks.append(chunk)
-            total += len(chunk)
-        if total > max_bytes or (total == 0 and not allow_empty):
-            return None
-        return b"".join(chunks)
-    except (OSError, TypeError, ValueError):
-        return None
-    finally:
-        if fd >= 0:
-            os.close(fd)
-        if directory_fd >= 0:
-            os.close(directory_fd)
-
-
-def _read_text_path_nofollow(path: Path, max_bytes: int, *, allow_empty: bool = False) -> str | None:
-    raw = _read_bytes_path_nofollow(path, max_bytes, allow_empty=allow_empty)
-    return None if raw is None else raw.decode("utf-8", errors="replace")
 
 
 _MAX_FILES = 20_000
@@ -2427,7 +2392,12 @@ def _direct_from_manifest(lowered: str, text: str) -> set[str]:
     return names
 
 
-def cargo_dependency_aliases(root: Path, skip_dirs: Iterable[str]) -> dict[str, set[str]]:
+def cargo_dependency_aliases(
+    root: Path,
+    skip_dirs: Iterable[str],
+    *,
+    project_tree: ProjectTree | None = None,
+) -> dict[str, set[str]]:
     """Map real Cargo package names to unambiguous local crate aliases.
 
     Cargo's dependency key is the name used by Rust source, while an inline
@@ -2437,26 +2407,21 @@ def cargo_dependency_aliases(root: Path, skip_dirs: Iterable[str]) -> dict[str, 
     skip = {str(name).casefold() for name in skip_dirs}
     alias_owners: dict[str, set[str]] = {}
     seen = 0
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            name for name in directories
-            if name.casefold() not in skip and not (Path(current) / name).is_symlink()
-        )
-        for filename in sorted(files):
-            if filename.casefold() != "cargo.toml":
+    with _borrow_project_tree(root, project_tree) as tree:
+        for project_file in tree.iter_files(skip_dirs=skip, reject_unsafe=False):
+            if project_file.name.casefold() != "cargo.toml":
                 continue
-            path = Path(current) / filename
             seen += 1
             if seen > 200:
                 break
             try:
-                text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
-                if text is None:
+                if project_file.size > 2_000_000:
                     continue
+                text = tree.read_text(project_file, 2_000_000, errors="replace", allow_empty=True)
                 import tomllib
 
                 data = tomllib.loads(text)
-            except (OSError, ValueError, UnicodeError):
+            except (tomllib.TOMLDecodeError, UnicodeError, TypeError):
                 continue
             if not isinstance(data, dict):
                 continue
@@ -2473,8 +2438,6 @@ def cargo_dependency_aliases(root: Path, skip_dirs: Iterable[str]) -> dict[str, 
                     actual_name = package.casefold()
                     if source_name != actual_name.replace("-", "_"):
                         alias_owners.setdefault(source_name, set()).add(actual_name)
-        if seen > 200:
-            break
     aliases: dict[str, set[str]] = {}
     for source_name, owners in alias_owners.items():
         if len(owners) == 1:
@@ -2482,29 +2445,29 @@ def cargo_dependency_aliases(root: Path, skip_dirs: Iterable[str]) -> dict[str, 
     return aliases
 
 
-def npm_dependency_aliases(root: Path, skip_dirs: Iterable[str]) -> dict[str, set[str]]:
+def npm_dependency_aliases(
+    root: Path,
+    skip_dirs: Iterable[str],
+    *,
+    project_tree: ProjectTree | None = None,
+) -> dict[str, set[str]]:
     """Map npm alias targets to unambiguous local dependency keys."""
     skip = {str(name).casefold() for name in skip_dirs}
     alias_owners: dict[str, set[str]] = {}
     seen = 0
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            name for name in directories
-            if name.casefold() not in skip and not (Path(current) / name).is_symlink()
-        )
-        for filename in sorted(files):
-            if filename.casefold() != "package.json":
+    with _borrow_project_tree(root, project_tree) as tree:
+        for project_file in tree.iter_files(skip_dirs=skip, reject_unsafe=False):
+            if project_file.name.casefold() != "package.json":
                 continue
-            path = Path(current) / filename
             seen += 1
             if seen > 200:
                 break
             try:
-                text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
-                if text is None:
+                if project_file.size > 2_000_000:
                     continue
+                text = tree.read_text(project_file, 2_000_000, errors="replace", allow_empty=True)
                 data = json.loads(text)
-            except (OSError, ValueError, UnicodeError):
+            except (json.JSONDecodeError, UnicodeError, TypeError):
                 continue
             if not isinstance(data, dict):
                 continue
@@ -2517,8 +2480,6 @@ def npm_dependency_aliases(root: Path, skip_dirs: Iterable[str]) -> dict[str, se
                     target = _npm_alias_target(value)
                     if target and alias and alias != target:
                         alias_owners.setdefault(alias, set()).add(target)
-        if seen > 200:
-            break
     aliases: dict[str, set[str]] = {}
     for alias, owners in alias_owners.items():
         if len(owners) == 1:
@@ -2526,22 +2487,36 @@ def npm_dependency_aliases(root: Path, skip_dirs: Iterable[str]) -> dict[str, se
     return aliases
 
 
-def bundler_autorequired(root: Path) -> dict[str, dict[str, Any]]:
+def bundler_autorequired(
+    root: Path,
+    *,
+    project_tree: ProjectTree | None = None,
+) -> dict[str, dict[str, Any]]:
     """Rails/Bundler: ``Bundler.require`` varsa Gemfile'daki ``require: false`` olmayan gem'ler açılışta yüklenir.
 
     Döner: gem adı (küçük harf) → Gemfile konumu. ``Bundler.require`` bulunamazsa boş (kanıt yok)."""
-    gemfile = root / "Gemfile"
-    gemfile_text = read_text_bounded(gemfile, 2_000_000, allow_empty=True)
-    if gemfile_text is None:
-        return {}
-    boot_files = [root / "config" / "application.rb", root / "config" / "boot.rb", root / "config.ru",
-                  root / "app.rb", root / "config" / "environment.rb"]
-    bundler_boot = False
-    for boot_file in boot_files:
-        boot_text = read_text_bounded(boot_file, _MAX_FILE_BYTES, allow_empty=True)
-        if boot_text is not None and "Bundler.require" in boot_text:
-            bundler_boot = True
-            break
+    wanted = {
+        "Gemfile", "config/application.rb", "config/boot.rb", "config.ru", "app.rb", "config/environment.rb"
+    }
+    with _borrow_project_tree(root, project_tree) as tree:
+        observed = {
+            item.path.as_posix(): item
+            for item in tree.iter_files(reject_unsafe=False)
+            if item.path.as_posix() in wanted
+        }
+        gemfile = observed.get("Gemfile")
+        if gemfile is None or gemfile.size > 2_000_000:
+            return {}
+        gemfile_text = tree.read_text(gemfile, 2_000_000, errors="replace", allow_empty=True)
+        bundler_boot = False
+        for name in ("config/application.rb", "config/boot.rb", "config.ru", "app.rb", "config/environment.rb"):
+            boot_file = observed.get(name)
+            if boot_file is None or boot_file.size > _MAX_FILE_BYTES:
+                continue
+            boot_text = tree.read_text(boot_file, _MAX_FILE_BYTES, errors="replace", allow_empty=True)
+            if "Bundler.require" in boot_text:
+                bundler_boot = True
+                break
     if not bundler_boot:
         return {}
     out: dict[str, dict[str, Any]] = {}
@@ -2552,17 +2527,27 @@ def bundler_autorequired(root: Path) -> dict[str, dict[str, Any]]:
     return out
 
 
-def composer_namespaces(root: Path) -> dict[str, set[str]]:
+def composer_namespaces(
+    root: Path,
+    *,
+    project_tree: ProjectTree | None = None,
+) -> dict[str, set[str]]:
     """composer.lock paketlerinin autoload (psr-4/psr-0) ad alanları: paket → {"guzzlehttp\\psr7"} (küçük harf)."""
     out: dict[str, set[str]] = {}
-    lock = root / "composer.lock"
-    try:
-        lock_text = read_text_bounded(lock, 20_000_000, allow_empty=True)
-        if lock_text is None:
+    with _borrow_project_tree(root, project_tree) as tree:
+        walk = tree.walk(reject_unsafe=False)
+        try:
+            root_entry = next(walk)
+        finally:
+            walk.close()
+        lock = next((item for item in root_entry.files if item.name == "composer.lock"), None)
+        if lock is None or lock.size > 20_000_000:
             return {}
-        data = json.loads(lock_text)
-    except (OSError, ValueError):
-        return {}
+        try:
+            lock_text = tree.read_text(lock, 20_000_000, errors="replace", allow_empty=True)
+            data = json.loads(lock_text)
+        except (json.JSONDecodeError, TypeError):
+            return {}
     for key in ("packages", "packages-dev"):
         for package in data.get(key) or []:
             if not isinstance(package, dict) or not isinstance(package.get("name"), str):
@@ -2580,35 +2565,50 @@ def composer_namespaces(root: Path) -> dict[str, set[str]]:
     return out
 
 
-def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
+def direct_dependencies(
+    root: Path,
+    skip_dirs: Iterable[str],
+    *,
+    project_tree: ProjectTree | None = None,
+) -> set[str]:
     """Bildirim dosyalarında doğrudan listelenen paketler (küçük harf). Kilit dosyaları (dolaylı) okunmaz."""
     names: set[str] = set()
     skip = {d.casefold() for d in skip_dirs}
     seen = 0
-    root_resolved = root.resolve()
-    requirement_files: set[Path] = set()
+    requirement_files: set[str] = set()
     requirement_bytes = 0
     script_files = 0
     script_bytes = 0
+    tree: ProjectTree
+    files_by_path: dict[str, Any]
 
-    def requirement_tree(path: Path, depth: int = 0) -> set[str]:
+    def project_text(observed: Any, max_bytes: int) -> str | None:
+        if observed.size > max_bytes:
+            return None
+        return tree.read_text(observed, max_bytes, errors="replace", allow_empty=True)
+
+    def project_bytes(observed: Any, max_bytes: int) -> bytes | None:
+        if observed.size > max_bytes:
+            return None
+        return tree.read_bytes(observed, max_bytes, allow_empty=True)
+
+    def requirement_tree(path: PurePosixPath, depth: int = 0) -> set[str]:
         nonlocal requirement_bytes
         found: set[str] = set()
-        if depth > 8 or len(requirement_files) >= 100 or path.is_symlink():
+        if depth > 8 or len(requirement_files) >= 100:
             return found
-        try:
-            resolved = path.resolve(strict=True)
-            resolved.relative_to(root_resolved)
-            if resolved in requirement_files:
-                return found
-            raw = _read_bytes_path_nofollow(resolved, 1_000_000, allow_empty=True)
-            if raw is None or requirement_bytes + len(raw) > 8_000_000:
-                return found
-            size = len(raw)
-            text = raw.decode("utf-8", errors="replace")
-        except (OSError, ValueError):
+        normalized = posixpath.normpath(path.as_posix())
+        if normalized in ("", ".", "..") or normalized.startswith("../") or normalized.startswith("/"):
             return found
-        requirement_files.add(resolved)
+        if normalized in requirement_files:
+            return found
+        observed = files_by_path.get(normalized)
+        if observed is None or observed.size > 1_000_000 or requirement_bytes + observed.size > 8_000_000:
+            return found
+        raw = tree.read_bytes(observed, 1_000_000, allow_empty=True)
+        size = len(raw)
+        text = raw.decode("utf-8", errors="replace")
+        requirement_files.add(normalized)
         requirement_bytes += size
         specs: list[str] = []
         for raw_line in text.splitlines():
@@ -2619,11 +2619,11 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
             if include:
                 relative = include.group(1).strip("'\"")
                 if relative and not Path(relative).is_absolute():
-                    found.update(requirement_tree(resolved.parent / relative, depth + 1))
+                    found.update(requirement_tree(PurePosixPath(normalized).parent / relative, depth + 1))
                 continue
             if not line.startswith(("-", "[")):
                 specs.append(line)
-        if resolved.suffix.casefold() == ".txt" and len(specs) >= 10 and all("==" in spec for spec in specs):
+        if PurePosixPath(normalized).suffix.casefold() == ".txt" and len(specs) >= 10 and all("==" in spec for spec in specs):
             return found  # pip freeze output is an inventory, not a direct declaration.
         for spec in specs:
             match = _REQ_NAME_RE.match(spec)
@@ -2631,17 +2631,18 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                 found.add(match.group(1).casefold().replace("_", "-"))
         return found
 
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = [d for d in directories if d.casefold() not in skip and not (Path(current) / d).is_symlink()]
-        for name in files:
-            lowered = name.casefold()
-            path = Path(current) / name
+    with _borrow_project_tree(root, project_tree) as tree:
+        project_files = list(tree.iter_files(skip_dirs=skip, reject_unsafe=False))
+        files_by_path = {item.path.as_posix(): item for item in project_files}
+        for project_file in project_files:
+            lowered = project_file.name.casefold()
+            path = project_file.path
             try:
                 if lowered == "package.json":
                     seen += 1
-                    text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
-                    if text is None:
+                    if project_file.size > 2_000_000:
                         continue
+                    text = tree.read_text(project_file, 2_000_000, errors="replace", allow_empty=True)
                     data = json.loads(text)
                     for key in ("dependencies", "devDependencies", "optionalDependencies", "peerDependencies"):
                         if isinstance(data.get(key), dict):
@@ -2650,14 +2651,14 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                                 for alias, value in data[key].items()
                             )
                 elif lowered.startswith("requirements") and lowered.endswith((".txt", ".in")) \
-                        or lowered.endswith((".txt", ".in")) and Path(current).name.casefold() == "requirements":
+                        or lowered.endswith((".txt", ".in")) and path.parent.name.casefold() == "requirements":
                     seen += 1
                     names.update(requirement_tree(path))
                 elif lowered == "pipfile":
                     import tomllib
 
                     seen += 1
-                    text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
+                    text = project_text(project_file, 2_000_000)
                     if text is None:
                         continue
                     data = tomllib.loads(text)
@@ -2676,7 +2677,7 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                     seen += 1
                     parser = configparser.ConfigParser(interpolation=None)
                     try:
-                        text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
+                        text = project_text(project_file, 2_000_000)
                         if text is None:
                             continue
                         parser.read_string(text)
@@ -2719,7 +2720,7 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                     seen += 1
                     parser = configparser.ConfigParser(interpolation=None)
                     try:
-                        text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
+                        text = project_text(project_file, 2_000_000)
                         if text is None:
                             continue
                         parser.read_string(text)
@@ -2742,13 +2743,13 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                                 names.add(match.group(1).casefold().replace("_", "-"))
                 elif lowered == "setup.py":
                     seen += 1
-                    text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
+                    text = project_text(project_file, 2_000_000)
                     if text is None:
                         continue
                     names.update(_setup_py_direct(text))
                 elif lowered == "noxfile.py":
                     seen += 1
-                    text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
+                    text = project_text(project_file, 2_000_000)
                     if text is None:
                         continue
                     nox_names, includes = _noxfile_direct(text)
@@ -2762,7 +2763,7 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
 
                     seen += 1
                     try:
-                        text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
+                        text = project_text(project_file, 2_000_000)
                         if text is None:
                             continue
                         data = yaml.safe_load(text)
@@ -2797,7 +2798,7 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                     import tomllib
 
                     seen += 1
-                    text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
+                    text = project_text(project_file, 2_000_000)
                     if text is None:
                         continue
                     data = tomllib.loads(text)
@@ -2870,7 +2871,7 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                                 for specs in list(extras.values())[:1_000]:
                                     add_specs(specs)
                 elif path.suffix.casefold() == ".py" and script_files < 1_000 and script_bytes < 8_000_000:
-                    raw = _read_bytes_path_nofollow(path, 1_000_000, allow_empty=True)
+                    raw = project_bytes(project_file, 1_000_000)
                     if raw is not None and script_bytes + len(raw) <= 8_000_000:
                         size = len(raw)
                         script_files += 1
@@ -2881,7 +2882,7 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                             names.update(_pep723_direct(text))
                 elif lowered == "go.mod":
                     seen += 1
-                    text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
+                    text = project_text(project_file, 2_000_000)
                     if text is None:
                         continue
                     for line in text.splitlines():
@@ -2890,10 +2891,12 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                             names.add(match.group(1).casefold())
                 elif lowered in _MORE_DIRECT_MANIFESTS or lowered.endswith((".csproj", ".fsproj", ".vbproj")):
                     seen += 1
-                    text = _read_text_path_nofollow(path, 2_000_000, allow_empty=True)
+                    text = project_text(project_file, 2_000_000)
                     if text is None:
                         continue
                     names.update(_direct_from_manifest(lowered, text))
+            except ProjectTreeError:
+                raise
             except (OSError, ValueError, UnicodeError):
                 continue
             if seen > 200:
@@ -2922,8 +2925,14 @@ def _mention_patterns(packages: Iterable[str]) -> list[tuple[str, re.Pattern[str
     return patterns
 
 
-def build_usage_index(root: Path, skip_dirs: Iterable[str], *, packages_hint: set[str] | None = None,
-                      packages: Iterable[str] = ()) -> UsageIndex:
+def build_usage_index(
+    root: Path,
+    skip_dirs: Iterable[str],
+    *,
+    packages_hint: set[str] | None = None,
+    packages: Iterable[str] = (),
+    project_tree: ProjectTree | None = None,
+) -> UsageIndex:
     """Proje kaynağını tarayıp içe aktarılan paketlerin üye kullanımlarını dizinle (yalnız okuma)."""
     index = UsageIndex()
     mention_patterns = _mention_patterns(packages)
@@ -2931,21 +2940,19 @@ def build_usage_index(root: Path, skip_dirs: Iterable[str], *, packages_hint: se
     js_files: dict[str, str] = {}
     seen = 0
     hints = {h.casefold() for h in (packages_hint or set())}
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(d for d in directories if d.casefold() not in skip and not (Path(current) / d).is_symlink())
-        for name in sorted(files):
-            path = Path(current) / name
-            suffix = path.suffix.casefold()
+    with _borrow_project_tree(root, project_tree) as tree:
+        for project_file in tree.iter_files(skip_dirs=skip, reject_unsafe=False):
+            suffix = project_file.path.suffix.casefold()
             code = suffix in _PY_SUFFIXES | _JS_SUFFIXES | _GO_SUFFIXES | _RS_SUFFIXES | _JVM_SUFFIXES | _DOTNET_SUFFIXES
-            if (not code and suffix not in _MENTION_SUFFIXES) or path.is_symlink() or name.casefold() in _DECLARATION_FILES:
+            if (not code and suffix not in _MENTION_SUFFIXES) or project_file.name.casefold() in _DECLARATION_FILES:
                 continue
             seen += 1
             if seen > _MAX_FILES:
                 break
-            text = read_text_bounded(path, _MAX_FILE_BYTES, allow_empty=True)
-            if text is None:
+            if project_file.size > _MAX_FILE_BYTES:
                 continue
-            relpath = path.relative_to(root).as_posix()
+            text = tree.read_text(project_file, _MAX_FILE_BYTES, errors="replace", allow_empty=True)
+            relpath = project_file.path.as_posix()
             if mention_patterns:
                 lowered_text = text.casefold()
                 for package, pattern in mention_patterns:
@@ -3286,7 +3293,13 @@ NPM_TOOL_FILES: dict[str, str] = {
 }
 
 
-def jvm_config_mentions(root: Path, tokens: dict[str, set[str]], skip_dirs: Iterable[str]) -> dict[str, dict[str, Any]]:
+def jvm_config_mentions(
+    root: Path,
+    tokens: dict[str, set[str]],
+    skip_dirs: Iterable[str],
+    *,
+    project_tree: ProjectTree | None = None,
+) -> dict[str, dict[str, Any]]:
     """Maven paketleri için içe aktarma dışı kullanım: yapılandırma/kaynak metninde JDBC adresi ya da sürücü/paket
     sınıf adı (ör. ``spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver``). İçe aktarma satırları hariç.
 
@@ -3296,23 +3309,21 @@ def jvm_config_mentions(root: Path, tokens: dict[str, set[str]], skip_dirs: Iter
         return found
     skip = {d.casefold() for d in skip_dirs}
     seen = 0
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(d for d in directories if d.casefold() not in skip and not (Path(current) / d).is_symlink())
-        for name in sorted(files):
-            path = Path(current) / name
-            if path.suffix.casefold() not in _JVM_CONFIG_SUFFIXES or name.casefold() == "pom.xml" or path.is_symlink():
+    with _borrow_project_tree(root, project_tree) as tree:
+        for project_file in tree.iter_files(skip_dirs=skip, reject_unsafe=False):
+            if project_file.path.suffix.casefold() not in _JVM_CONFIG_SUFFIXES or project_file.name.casefold() == "pom.xml":
                 continue
             seen += 1
             if seen > _MAX_FILES or len(found) == len(tokens):
                 return found
-            raw_text = read_text_bounded(path, _MAX_FILE_BYTES, allow_empty=True)
-            if raw_text is None:
+            if project_file.size > _MAX_FILE_BYTES:
                 continue
+            raw_text = tree.read_text(project_file, _MAX_FILE_BYTES, errors="replace", allow_empty=True)
             text = raw_text.casefold()
             pending = {pkg: toks for pkg, toks in tokens.items() if pkg not in found and any(t in text for t in toks)}
             if not pending:
                 continue
-            rel = path.relative_to(root).as_posix()
+            rel = project_file.path.as_posix()
             for line_no, line in enumerate(text.splitlines(), start=1):
                 stripped = line.strip()
                 if stripped.startswith(("import ", "package ", "//", "*", "/*", "#", "<!--")):
@@ -3326,34 +3337,48 @@ def jvm_config_mentions(root: Path, tokens: dict[str, set[str]], skip_dirs: Iter
     return found
 
 
-def npm_tool_mentions(root: Path, packages: Iterable[str]) -> dict[str, dict[str, Any]]:
+def npm_tool_mentions(
+    root: Path,
+    packages: Iterable[str],
+    *,
+    project_tree: ProjectTree | None = None,
+) -> dict[str, dict[str, Any]]:
     """npm paketleri için betik/araç kullanımı: package.json ``scripts`` içindeki komut adları ve bilinen araç
     yapılandırma dosyaları (Gruntfile.js → grunt). Kökteki package.json ile sınırlı."""
     wanted = {p.casefold() for p in packages}
     found: dict[str, dict[str, Any]] = {}
-    manifest = root / "package.json"
     try:
-        text = read_text_bounded(manifest, 2_000_000, allow_empty=True)
-        if text is not None:
-            scripts = json.loads(text).get("scripts")
-            if isinstance(scripts, dict):
-                lines = text.splitlines()
-                for key, command in scripts.items():
-                    if not isinstance(command, str):
-                        continue
-                    words = set(re.findall(r"(?<![\w@/.-])(@?[a-z0-9][a-z0-9._/-]*)", command.casefold()))
-                    for word in words:
-                        cand = word.split("node_modules/")[-1]
-                        head = cand.split("/bin/")[0]
-                        names = {cand, head, head.removesuffix("-cli"), cand.rsplit("/", 1)[-1]}
-                        for pkg in wanted & names:
-                            line_no = next((i for i, ln in enumerate(lines, start=1) if f'"{key}"' in ln), 0)
-                            found.setdefault(pkg, {"file": "package.json", "line": line_no, "via": "script"})
-        present = {entry.name.casefold(): entry.name for entry in root.iterdir() if entry.is_file() and not entry.is_symlink()}
-        for name, pkg in NPM_TOOL_FILES.items():
-            if pkg in wanted and pkg not in found and name in present:
-                found[pkg] = {"file": present[name], "line": 1, "via": "tool_config"}
-    except (OSError, ValueError):
+        with _borrow_project_tree(root, project_tree) as tree:
+            walk = tree.walk(reject_unsafe=False)
+            try:
+                root_entry = next(walk)
+            finally:
+                walk.close()
+            present = {entry.name.casefold(): entry for entry in root_entry.files}
+            manifest = present.get("package.json")
+            text = None
+            if manifest is not None and manifest.size <= 2_000_000:
+                text = tree.read_text(manifest, 2_000_000, errors="replace", allow_empty=True)
+            if text is not None:
+                scripts = json.loads(text).get("scripts")
+                if isinstance(scripts, dict):
+                    lines = text.splitlines()
+                    for key, command in scripts.items():
+                        if not isinstance(command, str):
+                            continue
+                        words = set(re.findall(r"(?<![\w@/.-])(@?[a-z0-9][a-z0-9._/-]*)", command.casefold()))
+                        for word in words:
+                            cand = word.split("node_modules/")[-1]
+                            head = cand.split("/bin/")[0]
+                            names = {cand, head, head.removesuffix("-cli"), cand.rsplit("/", 1)[-1]}
+                            for pkg in wanted & names:
+                                line_no = next((i for i, ln in enumerate(lines, start=1) if f'"{key}"' in ln), 0)
+                                found.setdefault(pkg, {"file": "package.json", "line": line_no, "via": "script"})
+            for name, pkg in NPM_TOOL_FILES.items():
+                entry = present.get(name)
+                if pkg in wanted and pkg not in found and entry is not None:
+                    found[pkg] = {"file": entry.name, "line": 1, "via": "tool_config"}
+    except (json.JSONDecodeError, TypeError):
         return found
     return found
 
@@ -3365,7 +3390,13 @@ _CLI_SKIP_NAMES = {"requirements.txt", "requirements.in", "pipfile", "pipfile.lo
                    "package.json", "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "gemfile", "gemfile.lock"}
 
 
-def cli_tool_mentions(root: Path, packages: Iterable[str], skip_dirs: Iterable[str]) -> dict[str, dict[str, Any]]:
+def cli_tool_mentions(
+    root: Path,
+    packages: Iterable[str],
+    skip_dirs: Iterable[str],
+    *,
+    project_tree: ProjectTree | None = None,
+) -> dict[str, dict[str, Any]]:
     """Komut satırı aracı olarak kullanım: Procfile/Dockerfile/kabuk betikleri/CI ve compose YAML'larında paket adı bir
     komut sözcüğü olarak geçiyor mu (gunicorn, celery, black…)? Bildirim/kilit dosyaları hariç; 4 karakterden kısa
     adlar aranmaz. Döner: paket → {"file", "line", "via": "script"}."""
@@ -3377,23 +3408,21 @@ def cli_tool_mentions(root: Path, packages: Iterable[str], skip_dirs: Iterable[s
     found: dict[str, dict[str, Any]] = {}
     skip = {d.casefold() for d in skip_dirs}
     seen = 0
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(d for d in directories if d.casefold() not in skip and not (Path(current) / d).is_symlink())
-        for name in sorted(files):
-            low = name.casefold()
-            path = Path(current) / name
-            if low in _CLI_SKIP_NAMES or path.is_symlink():
+    with _borrow_project_tree(root, project_tree) as tree:
+        for project_file in tree.iter_files(skip_dirs=skip, reject_unsafe=False):
+            low = project_file.name.casefold()
+            if low in _CLI_SKIP_NAMES:
                 continue
             if not (low in _CLI_FILE_NAMES or low.startswith("dockerfile") or Path(low).suffix in _CLI_SUFFIXES):
                 continue
             seen += 1
             if seen > 2000 or len(found) == len(names):
                 return found
-            text = read_text_bounded(path, _MAX_FILE_BYTES, allow_empty=True)
-            if text is None:
+            if project_file.size > _MAX_FILE_BYTES:
                 continue
+            text = tree.read_text(project_file, _MAX_FILE_BYTES, errors="replace", allow_empty=True)
             lines = text.casefold().splitlines()
-            rel = path.relative_to(root).as_posix()
+            rel = project_file.path.as_posix()
             for line_no, line in enumerate(lines, start=1):
                 if line.lstrip().startswith("#"):
                     continue

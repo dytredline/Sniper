@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import hashlib
+import io
 import os
 from pathlib import Path
 import re
 import stat
-from typing import Any
+from typing import Any, Iterator
 import zipfile
 
 from project_analyzer import ProjectRejected, _allowed_roots, validate_project_path
-from safe_file_read import read_text_bounded
+from project_tree import ProjectTree, ProjectTreeError
 from scanner import calculate_score
 from finding_limits import INLINE_FINDING_LIMIT, PROJECT_FINDING_LIMIT, cap_findings, summarize_finding_groups, project_scan_scope
 
@@ -111,6 +113,16 @@ MOBILE_CONFIG_FILENAMES: set[str] = {
     "package.json",
     "podfile",
 }
+
+
+@contextmanager
+def _opened_project_tree(root: Path) -> Iterator[ProjectTree]:
+    try:
+        with ProjectTree(str(root)) as tree:
+            yield tree
+    except ProjectTreeError as exc:
+        raise ProjectRejected("Proje ağacı güvenli biçimde okunamadı.") from exc
+
 
 MAX_PACKAGE_BYTES = 100 * 1024 * 1024
 MAX_ARCHIVE_ENTRIES = 10_000
@@ -926,27 +938,20 @@ def audit_mobile_project(
 
     skip_dirs = {".git", "node_modules", "build", "dist", ".gradle", ".dart_tool", "pods", "deriveddata", "__pycache__"}
 
-    for current, dirs, files in os.walk(root, followlinks=False):
-        dirs[:] = [
-            d for d in sorted(dirs)
-            if d.lower() not in skip_dirs and not (Path(current) / d).is_symlink()
-        ]
-        for fname in sorted(files):
-            fpath = Path(current) / fname
-            if fpath.is_symlink():
-                continue
+    with _opened_project_tree(root) as tree:
+        for project_file in tree.iter_files(skip_dirs=skip_dirs, reject_unsafe=False):
+            fname = project_file.name
             lower_name = fname.lower()
-            ext = fpath.suffix.lower()
+            ext = project_file.path.suffix.lower()
             if lower_name not in MOBILE_CONFIG_FILENAMES and ext not in MOBILE_SOURCE_EXTENSIONS:
                 continue
 
-            # Tek tanımlayıcı üzerinden doğrula/oku: FIFO/aygıt atlanır, boyut sınırı korunur.
-            text = read_text_bounded(fpath, 1_000_000, errors="ignore", allow_empty=True)
-            if text is None:
+            if project_file.size > 1_000_000:
                 continue
+            text = tree.read_text(project_file, 1_000_000, errors="ignore", allow_empty=True)
 
             scanned_files += 1
-            rel_path = str(fpath.relative_to(root))
+            rel_path = project_file.path.as_posix()
 
             if lower_name == "privacyinfo.xcprivacy":
                 has_privacy_manifest = True
@@ -1055,44 +1060,33 @@ def audit_mobile_package_archive(
     if not isinstance(package_path, str) or not package_path.strip():
         raise ProjectRejected("Geçerli bir mobil paket (.apk, .aab, .ipa) dosya yolu girin.")
     raw = package_path.strip()
-    candidate = Path(os.path.expandvars(os.path.expanduser(raw)))
-    if candidate.is_symlink():
-        raise ProjectRejected("Sembolik bağlantı (symlink) paket dosyaları güvenlik nedeniyle reddedildi.")
-    try:
-        resolved = candidate.resolve(strict=True)
-    except (OSError, RuntimeError, ValueError) as exc:
-        raise ProjectRejected("Mobil paket dosyası bulunamadı veya okunamıyor.") from exc
+    resolved = Path(os.path.abspath(os.path.expandvars(os.path.expanduser(raw))))
 
     roots = allowed_roots if allowed_roots is not None else _allowed_roots()
-    if not any(resolved != root and root in resolved.parents for root in roots):
+    normalized_roots = tuple(Path(os.path.abspath(os.fspath(root))) for root in roots)
+    if not any(resolved != root and root in resolved.parents for root in normalized_roots):
         raise ProjectRejected("Mobil paket yalnızca kullanıcı dizini veya izinli yerel çalışma alanı içinde olabilir.")
 
-    # stat() ile ZipFile(open) arasında dosyanın FIFO'ya çevrilmesine karşı tek
-    # tanımlayıcı: O_NONBLOCK ile açılır, fstat ile doğrulanır, ZipFile aynı fd'yi okur.
+    ext = resolved.suffix.lower()
+    if ext not in {".apk", ".aab", ".ipa"}:
+        raise ProjectRejected("Yalnızca .apk, .aab ve .ipa uzantılı mobil paketler desteklenir.")
     try:
-        package_fd = os.open(
-            resolved,
-            os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0),
-        )
-    except OSError as exc:
+        with ProjectTree(resolved.parent) as tree:
+            walker = tree.walk(reject_unsafe=False)
+            try:
+                entry = next(walker)
+            finally:
+                walker.close()
+            package_entry = next((item for item in entry.files if item.name == resolved.name), None)
+            if package_entry is None:
+                raise ProjectRejected("Yalnızca standart dosya (.apk, .aab, .ipa) analiz edilebilir.")
+            if package_entry.size > MAX_PACKAGE_BYTES:
+                raise ProjectRejected("Mobil paket boyutu 100 MB sınırını aşıyor.")
+            package_data = tree.read_bytes(package_entry, MAX_PACKAGE_BYTES, allow_empty=True)
+    except ProjectTreeError as exc:
         raise ProjectRejected("Mobil paket bilgisi okunamadı.") from exc
-    package_file = os.fdopen(package_fd, "rb")
-    try:
-        try:
-            st = os.fstat(package_file.fileno())
-        except OSError as exc:
-            raise ProjectRejected("Mobil paket bilgisi okunamadı.") from exc
-        if not stat.S_ISREG(st.st_mode):
-            raise ProjectRejected("Yalnızca standart dosya (.apk, .aab, .ipa) analiz edilebilir.")
-        if st.st_size > MAX_PACKAGE_BYTES:
-            raise ProjectRejected("Mobil paket boyutu 100 MB sınırını aşıyor.")
-
-        ext = resolved.suffix.lower()
-        if ext not in {".apk", ".aab", ".ipa"}:
-            raise ProjectRejected("Yalnızca .apk, .aab ve .ipa uzantılı mobil paketler desteklenir.")
-    except BaseException:
-        package_file.close()
-        raise
+    package_file = io.BytesIO(package_data)
+    package_size = len(package_data)
     package_type = ext.lstrip(".")
 
     findings: list[dict[str, Any]] = []
@@ -1200,7 +1194,7 @@ def audit_mobile_package_archive(
         "masvs_summary": _build_masvs_summary(findings),
         "mobile_top10_summary": _build_top10_summary(findings),
         "archive_metadata": {
-            "size_bytes": st.st_size,
+            "size_bytes": package_size,
             "dex_count": len(dex_files),
             "native_lib_count": len(native_libs),
             "native_libs": native_libs[:25],

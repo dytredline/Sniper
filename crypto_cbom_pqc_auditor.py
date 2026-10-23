@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 import re
-import stat
 from typing import Any
 
-from project_analyzer import MAX_FILES, MAX_FILE_BYTES, MAX_TOTAL_BYTES, SKIP_DIRS, validate_project_path
+from project_analyzer import MAX_FILES, MAX_FILE_BYTES, MAX_TOTAL_BYTES, ProjectRejected, SKIP_DIRS, validate_project_path
+from project_tree import ProjectTree, ProjectTreeError
 from scanner import calculate_score, utc_now
 from finding_limits import INLINE_FINDING_LIMIT, PROJECT_FINDING_LIMIT, cap_findings, summarize_finding_groups, project_scan_scope
 
@@ -389,50 +388,36 @@ def audit_crypto_pqc_project(
     d_total = 0
     p_total = 0
 
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            name for name in directories
-            if name.casefold() not in SKIP_DIRS and not (Path(current) / name).is_symlink()
-        )
-        for name in sorted(files):
-            path = Path(current) / name
-            if path.is_symlink():
-                continue
-            if path.suffix.casefold() not in CRYPTO_SCAN_EXTENSIONS:
-                continue
-            try:
-                fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
-            except OSError:
-                continue
-            try:
-                st = os.fstat(fd)
-                if not stat.S_ISREG(st.st_mode) or st.st_size > MAX_FILE_BYTES:
-                    os.close(fd)
-                    continue
-                if scanned_files + 1 > MAX_FILES or total_bytes + st.st_size > MAX_TOTAL_BYTES:
-                    os.close(fd)
-                    break
-                with os.fdopen(fd, "rb") as handle:
-                    raw = handle.read(MAX_FILE_BYTES + 1)
-            except OSError:
-                continue
-            if len(raw) > MAX_FILE_BYTES or b"\x00" in raw[:4096]:
-                continue
-            text = raw.decode("utf-8", errors="ignore")
-            scanned_files += 1
-            total_bytes += len(raw)
-            rel_file = str(path.relative_to(root))
+    try:
+        with ProjectTree(str(root)) as tree:
+            for directory in tree.walk(skip_dirs=tuple(SKIP_DIRS), reject_unsafe=False):
+                for project_file in directory.files:
+                    if project_file.path.suffix.casefold() not in CRYPTO_SCAN_EXTENSIONS:
+                        continue
+                    if project_file.size > MAX_FILE_BYTES:
+                        continue
+                    if scanned_files + 1 > MAX_FILES or total_bytes + project_file.size > MAX_TOTAL_BYTES:
+                        break
+                    raw = tree.read_bytes(project_file, MAX_FILE_BYTES, allow_empty=True)
+                    if b"\x00" in raw[:4096]:
+                        continue
+                    text = raw.decode("utf-8", errors="ignore")
+                    scanned_files += 1
+                    total_bytes += len(raw)
+                    rel_file = project_file.path.as_posix()
 
-            q_c, d_c, p_c = _scan_text_for_crypto(
-                text,
-                rel_file,
-                findings,
-                seen_finding_keys,
-                cbom_assets,
-            )
-            q_total += q_c
-            d_total += d_c
-            p_total += p_c
+                    q_c, d_c, p_c = _scan_text_for_crypto(
+                        text,
+                        rel_file,
+                        findings,
+                        seen_finding_keys,
+                        cbom_assets,
+                    )
+                    q_total += q_c
+                    d_total += d_c
+                    p_total += p_c
+    except ProjectTreeError as exc:
+        raise ProjectRejected("Proje ağacı güvenli biçimde okunamadı.") from exc
 
     score, grade, counts = calculate_score(findings)
     pqc_score = _compute_pqc_readiness_score(q_total, d_total, p_total)

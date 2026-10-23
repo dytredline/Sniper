@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
+from pathlib import PurePosixPath
 import re
 from typing import Any
 
 from project_analyzer import SKIP_DIRS, validate_project_path
-from safe_file_read import read_text_bounded
+from project_tree import ProjectFile, ProjectTree
 from scanner import _finding, calculate_score as _scanner_calculate_score
 from finding_limits import INLINE_FINDING_LIMIT, PROJECT_FINDING_LIMIT, cap_findings, summarize_finding_groups, project_scan_scope
 
@@ -1041,9 +1041,11 @@ def audit_service_worker_inline(
 # --- Public API: project scan -----------------------------------------------
 
 
-def _read_bounded(file_path: Path) -> str | None:
-    content = read_text_bounded(file_path, MAX_INLINE_BYTES)
-    if content is None or not content.strip():
+def _read_bounded(tree: ProjectTree, project_file: ProjectFile) -> str | None:
+    if project_file.size == 0 or project_file.size > MAX_INLINE_BYTES:
+        return None
+    content = tree.read_text(project_file, MAX_INLINE_BYTES, errors="replace")
+    if not content.strip():
         return None
     return content
 
@@ -1055,81 +1057,78 @@ def audit_extension_pwa_project(
     allowed_roots: tuple[Path, ...] | None = None,
 ) -> dict[str, Any]:
     root = validate_project_path(project_path, allowed_roots=allowed_roots)
-    manifest_paths: list[Path] = []
-    script_paths: list[Path] = []
+    manifest_paths: list[ProjectFile] = []
+    script_paths: list[ProjectFile] = []
 
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            name
-            for name in directories
-            if name.casefold() not in SKIP_DIRS and not (Path(current) / name).is_symlink()
-        )
-        for name in sorted(files):
+    with ProjectTree(root) as tree:
+        for project_file in tree.iter_files(skip_dirs=SKIP_DIRS, reject_unsafe=False):
             if len(manifest_paths) + len(script_paths) >= MAX_COLLECTED_PATHS:
-                break
-            file_path = Path(current) / name
-            if file_path.is_symlink():
                 continue
-            if name.casefold() == "manifest.json":
-                manifest_paths.append(file_path)
-            elif file_path.suffix.lower() in SCRIPT_EXTENSIONS:
-                script_paths.append(file_path)
+            if any(part.casefold() in SKIP_DIRS for part in project_file.path.parts[:-1]):
+                continue
+            if project_file.name.casefold() == "manifest.json":
+                manifest_paths.append(project_file)
+            elif project_file.path.suffix.lower() in SCRIPT_EXTENSIONS:
+                script_paths.append(project_file)
 
-    findings: list[dict[str, Any]] = []
-    scanned_files = 0
-    extension_manifest_count = 0
-    extension_script_count = 0
-    service_worker_count = 0
-    extension_dirs: list[Path] = []
+        findings: list[dict[str, Any]] = []
+        scanned_files = 0
+        extension_manifest_count = 0
+        extension_script_count = 0
+        service_worker_count = 0
+        extension_dirs: list[PurePosixPath] = []
 
-    for file_path in manifest_paths:
-        if scanned_files >= MAX_PROJECT_FILES:
-            break
-        content = _read_bounded(file_path)
-        if content is None:
-            continue
-        scanned_files += 1
-        # PWA web app manifests share the file name but lack manifest_version.
-        manifest_data = _parse_manifest_json_object(content)
-        if "manifest_version" not in manifest_data:
-            if EXTENSION_MANIFEST_HINT_KEYS.intersection(manifest_data):
-                raise ValueError("manifest_version yalnızca 2 veya 3 tamsayısı olmalıdır.")
-            continue
-        rel_name = str(file_path.relative_to(root))
-        report = audit_extension_manifest_inline(content, filename=rel_name)
-        extension_manifest_count += 1
-        extension_dirs.append(file_path.parent)
-        findings.extend(report["findings"])
+        for project_file in manifest_paths:
+            if scanned_files >= MAX_PROJECT_FILES:
+                break
+            content = _read_bounded(tree, project_file)
+            if content is None:
+                continue
+            scanned_files += 1
+            # PWA web app manifests share the file name but lack manifest_version.
+            manifest_data = _parse_manifest_json_object(content)
+            if "manifest_version" not in manifest_data:
+                if EXTENSION_MANIFEST_HINT_KEYS.intersection(manifest_data):
+                    raise ValueError("manifest_version yalnızca 2 veya 3 tamsayısı olmalıdır.")
+                continue
+            rel_name = project_file.path.as_posix()
+            report = audit_extension_manifest_inline(content, filename=rel_name)
+            extension_manifest_count += 1
+            extension_dirs.append(project_file.path.parent)
+            findings.extend(report["findings"])
 
-    for file_path in script_paths:
-        if scanned_files >= MAX_PROJECT_FILES:
-            break
-        in_extension = any(base == file_path.parent or base in file_path.parents for base in extension_dirs)
-        named_worker = _is_service_worker_name(file_path.name)
-        content = _read_bounded(file_path)
-        if content is None:
-            continue
-        scanned_files += 1
-        is_worker = named_worker or bool(SW_CONTENT_RE.search(content))
-        if not (in_extension or is_worker):
-            continue
-        rel_name = str(file_path.relative_to(root))
-        if in_extension:
-            try:
-                report = audit_extension_script_inline(content, filename=rel_name)
-            except ValueError:
-                report = None
-            if report is not None:
-                extension_script_count += 1
-                findings.extend(report["findings"])
-        if is_worker:
-            try:
-                report = audit_service_worker_inline(content, filename=rel_name)
-            except ValueError:
-                report = None
-            if report is not None:
-                service_worker_count += 1
-                findings.extend(report["findings"])
+        for project_file in script_paths:
+            if scanned_files >= MAX_PROJECT_FILES:
+                break
+            in_extension = any(
+                base == project_file.path.parent or base in project_file.path.parents
+                for base in extension_dirs
+            )
+            named_worker = _is_service_worker_name(project_file.name)
+            content = _read_bounded(tree, project_file)
+            if content is None:
+                continue
+            scanned_files += 1
+            is_worker = named_worker or bool(SW_CONTENT_RE.search(content))
+            if not (in_extension or is_worker):
+                continue
+            rel_name = project_file.path.as_posix()
+            if in_extension:
+                try:
+                    report = audit_extension_script_inline(content, filename=rel_name)
+                except ValueError:
+                    report = None
+                if report is not None:
+                    extension_script_count += 1
+                    findings.extend(report["findings"])
+            if is_worker:
+                try:
+                    report = audit_service_worker_inline(content, filename=rel_name)
+                except ValueError:
+                    report = None
+                if report is not None:
+                    service_worker_count += 1
+                    findings.extend(report["findings"])
 
     score, grade = calculate_score(findings)
     finding_groups = summarize_finding_groups(findings)

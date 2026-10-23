@@ -16,6 +16,7 @@ import time
 from typing import Any
 
 from project_analyzer import validate_project_path
+from project_tree import ProjectTree, ProjectTreeError
 from tool_report_trufflehog import parse_trufflehog_json_summary
 from tool_pins import open_pinned
 from verified_exec import VerificationError, VerifiedExecutable
@@ -67,40 +68,104 @@ def _safe_child_env(root: Path, template: Path) -> dict[str, str]:
     }
 
 
-def _required_git_dir(root: Path) -> Path:
-    git_dir = root / ".git"
+_DIR_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+_FILE_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC
+
+
+def _entry_stat(directory_fd: int, name: str) -> os.stat_result | None:
     try:
-        st = os.lstat(git_dir)
-        if not stat.S_ISDIR(st.st_mode):
-            raise GitHistoryInvalid("Normal bir yerel .git dizini gerekli.")
-        for rel in ("HEAD", "index"):
-            f = git_dir / rel
-            if not stat.S_ISREG(os.lstat(f).st_mode):
+        return os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise GitHistoryInvalid("Git meta verisi güvenli biçimde incelenemedi.") from exc
+
+
+def _open_directory_at(directory_fd: int, name: str, expected: os.stat_result | None = None) -> int:
+    try:
+        child_fd = os.open(name, _DIR_FLAGS, dir_fd=directory_fd)
+        opened = os.fstat(child_fd)
+        if not stat.S_ISDIR(opened.st_mode) or (
+            expected is not None
+            and (
+                opened.st_dev,
+                opened.st_ino,
+                opened.st_mtime_ns,
+                opened.st_ctime_ns,
+            ) != (
+                expected.st_dev,
+                expected.st_ino,
+                expected.st_mtime_ns,
+                expected.st_ctime_ns,
+            )
+        ):
+            os.close(child_fd)
+            raise GitHistoryInvalid("Git dizini hazırlama sırasında değişti.")
+        return child_fd
+    except GitHistoryInvalid:
+        raise
+    except OSError as exc:
+        raise GitHistoryInvalid("Git meta verisi güvenli biçimde açılamadı.") from exc
+
+
+def _relative_entry_stat(directory_fd: int, parts: tuple[str, ...]) -> os.stat_result | None:
+    current_fd = os.dup(directory_fd)
+    try:
+        for part in parts[:-1]:
+            expected = _entry_stat(current_fd, part)
+            if expected is None:
+                return None
+            if not stat.S_ISDIR(expected.st_mode):
+                raise GitHistoryInvalid("Git meta verisi güvensiz bir girdi içeriyor.")
+            next_fd = _open_directory_at(current_fd, part, expected)
+            os.close(current_fd)
+            current_fd = next_fd
+        return _entry_stat(current_fd, parts[-1])
+    finally:
+        os.close(current_fd)
+
+
+def _required_git_tree(root: Path) -> ProjectTree:
+    tree = ProjectTree(root / ".git")
+    try:
+        tree.open()
+        root_fd = tree.fileno()
+        for name in ("HEAD", "index"):
+            info = _entry_stat(root_fd, name)
+            if info is None or not stat.S_ISREG(info.st_mode):
                 raise GitHistoryInvalid("Gerekli Git meta verisi normal bir dosya değil.")
-        for rel in ("objects", "refs"):
-            d = git_dir / rel
-            if not stat.S_ISDIR(os.lstat(d).st_mode):
+        for name in ("objects", "refs"):
+            info = _entry_stat(root_fd, name)
+            if info is None or not stat.S_ISDIR(info.st_mode):
                 raise GitHistoryInvalid("Gerekli Git meta verisi bir dizin değil.")
-        if os.path.lexists(git_dir / "commondir") or os.path.lexists(git_dir / "objects/info/alternates"):
+        if _entry_stat(root_fd, "commondir") is not None or _relative_entry_stat(
+            root_fd, ("objects", "info", "alternates")
+        ) is not None:
             raise GitHistoryInvalid("Harici Git meta verisi desteklenmiyor.")
-        packed = git_dir / "packed-refs"
-        if os.path.lexists(packed) and not stat.S_ISREG(os.lstat(packed).st_mode):
+        packed = _entry_stat(root_fd, "packed-refs")
+        if packed is not None and not stat.S_ISREG(packed.st_mode):
             raise GitHistoryInvalid("Paketlenmiş Git başvuruları normal dosya olmalı.")
-    except (OSError, ValueError) as exc:
+        return tree
+    except (ProjectTreeError, GitHistoryInvalid) as exc:
+        tree.close()
         if isinstance(exc, GitHistoryInvalid):
             raise
         raise GitHistoryInvalid("Normal bir yerel Git çalışma ağacı gerekli.") from exc
-    return git_dir
 
 
-def _check_head(git_dir: Path) -> None:
+def _required_git_dir(root: Path) -> ProjectTree:
+    """Compatibility entry point shared with the Gitleaks history runner.
+
+    The historical name is retained, but the returned object is now an open,
+    descriptor-pinned view rather than a pathname that could be reopened.
+    """
+    return _required_git_tree(root)
+
+
+def _check_head(git_tree: ProjectTree) -> None:
     try:
-        fd = os.open(git_dir / "HEAD", os.O_RDONLY | os.O_NOFOLLOW)
-        try:
-            raw = os.read(fd, 257)
-        finally:
-            os.close(fd)
-    except OSError as exc:
+        raw = git_tree.read_bytes("HEAD", 257, allow_empty=True)
+    except ProjectTreeError as exc:
         raise GitHistoryInvalid("Git HEAD güvenli biçimde okunamadı.") from exc
     line = raw.rstrip(b"\n")
     if len(raw) > 256 or raw.count(b"\n") > 1 or not (
@@ -114,19 +179,37 @@ def _check_head(git_dir: Path) -> None:
         raise GitHistoryInvalid("Güvensiz Git HEAD meta verisi.")
 
 
-def _copy_regular(src: Path, dest: Path, budget: dict[str, int]) -> None:
+def _copy_regular_at(
+    source_parent_fd: int,
+    name: str,
+    dest: Path,
+    budget: dict[str, int],
+    expected: os.stat_result | None = None,
+) -> None:
     try:
-        before = os.lstat(src)
+        before = expected or os.stat(name, dir_fd=source_parent_fd, follow_symlinks=False)
         if not stat.S_ISREG(before.st_mode):
             raise GitHistoryInvalid("Git meta verisi normal olmayan bir girdi içeriyor.")
         if before.st_size > MAX_FILE_BYTES or budget["bytes"] + before.st_size > MAX_TOTAL_BYTES:
             raise GitHistoryInvalid("Git meta verisi bayt sınırını aşıyor.")
         if budget["files"] >= MAX_FILES:
             raise GitHistoryInvalid("Git meta verisi dosya sınırını aşıyor.")
-        source_fd = os.open(src, os.O_RDONLY | os.O_NOFOLLOW)
+        source_fd = os.open(name, _FILE_FLAGS, dir_fd=source_parent_fd)
         try:
             opened = os.fstat(source_fd)
-            if (opened.st_dev, opened.st_ino, opened.st_size) != (before.st_dev, before.st_ino, before.st_size) or not stat.S_ISREG(opened.st_mode):
+            if (
+                opened.st_dev,
+                opened.st_ino,
+                opened.st_size,
+                opened.st_mtime_ns,
+                opened.st_ctime_ns,
+            ) != (
+                before.st_dev,
+                before.st_ino,
+                before.st_size,
+                before.st_mtime_ns,
+                before.st_ctime_ns,
+            ) or not stat.S_ISREG(opened.st_mode):
                 raise GitHistoryInvalid("Git meta verisi hazırlama sırasında değişti.")
             dest.parent.mkdir(parents=True, exist_ok=True)
             target_fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
@@ -160,48 +243,67 @@ def _copy_regular(src: Path, dest: Path, budget: dict[str, int]) -> None:
     budget["bytes"] += before.st_size
 
 
-def _copy_tree(src: Path, dest: Path, budget: dict[str, int], depth: int = 0) -> None:
+def _copy_tree_at(
+    source_parent_fd: int,
+    name: str,
+    dest: Path,
+    budget: dict[str, int],
+    depth: int = 0,
+    logical_prefix: str = "",
+) -> None:
     if depth > 32:
         raise GitHistoryInvalid("Git meta verisi çok derin iç içe.")
     try:
-        directory_fd = os.open(src, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        before = os.stat(name, dir_fd=source_parent_fd, follow_symlinks=False)
+        if not stat.S_ISDIR(before.st_mode):
+            raise GitHistoryInvalid("Git meta verisi güvensiz bir girdi içeriyor.")
+        directory_fd = _open_directory_at(source_parent_fd, name, before)
         try:
-            # Resolve each child below an open directory handle, not a mutable path.
-            pinned = Path(f"/proc/self/fd/{directory_fd}")
             with os.scandir(directory_fd) as entries:
                 for entry in entries:
+                    if entry.name in ("", ".", "..") or "/" in entry.name or "\x00" in entry.name:
+                        raise GitHistoryInvalid("Git meta verisi geçersiz bir girdi içeriyor.")
                     budget["entries"] += 1
                     if budget["entries"] > MAX_ENTRIES:
                         raise GitHistoryInvalid("Git meta verisi çok fazla girdi içeriyor.")
                     st = entry.stat(follow_symlinks=False)
                     target = dest / entry.name
-                    source = pinned / entry.name
+                    logical = f"{logical_prefix}/{entry.name}" if logical_prefix else entry.name
+                    if logical == "objects/info/alternates":
+                        raise GitHistoryInvalid("Harici Git meta verisi desteklenmiyor.")
                     if stat.S_ISDIR(st.st_mode):
                         target.mkdir(mode=0o700, parents=True, exist_ok=True)
-                        _copy_tree(source, target, budget, depth + 1)
+                        _copy_tree_at(directory_fd, entry.name, target, budget, depth + 1, logical)
                     elif stat.S_ISREG(st.st_mode):
-                        _copy_regular(source, target, budget)
+                        _copy_regular_at(directory_fd, entry.name, target, budget, st)
                     else:
                         raise GitHistoryInvalid("Git meta verisi güvensiz bir girdi içeriyor.")
+            after = os.fstat(directory_fd)
+            if (after.st_dev, after.st_ino, after.st_mtime_ns, after.st_ctime_ns) != (
+                before.st_dev, before.st_ino, before.st_mtime_ns, before.st_ctime_ns
+            ):
+                raise GitHistoryInvalid("Git dizini hazırlama sırasında değişti.")
         finally:
             os.close(directory_fd)
     except OSError as exc:
         raise GitHistoryInvalid("Git meta verisi listelenemedi.") from exc
 
 
-def _stage(root: Path, git_dir: Path, git_bin: Path) -> tuple[Path, tempfile.TemporaryDirectory[str], dict[str, str]]:
+def _stage_pinned(
+    git_tree: ProjectTree,
+    git_bin: Path,
+) -> tuple[Path, tempfile.TemporaryDirectory[str], dict[str, str]]:
     temporary = tempfile.TemporaryDirectory(prefix="sniper_git_history_")
-    git_fd: int | None = None
+    source_tree: ProjectTree | None = None
     try:
-        before_dir = os.lstat(git_dir)
-        git_fd = os.open(git_dir, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
-        opened_dir = os.fstat(git_fd)
-        if (opened_dir.st_dev, opened_dir.st_ino) != (before_dir.st_dev, before_dir.st_ino):
-            raise GitHistoryInvalid("Git dizini hazırlama sırasında değişti.")
-        pinned_git = Path(f"/proc/self/fd/{git_fd}")
-        if os.path.lexists(pinned_git / "commondir") or os.path.lexists(pinned_git / "objects/info/alternates"):
+        source_tree = git_tree.duplicate()
+        root_fd = source_tree.fileno()
+        before_dir = os.fstat(root_fd)
+        if _entry_stat(root_fd, "commondir") is not None or _relative_entry_stat(
+            root_fd, ("objects", "info", "alternates")
+        ) is not None:
             raise GitHistoryInvalid("Harici Git meta verisi desteklenmiyor.")
-        _check_head(pinned_git)
+        _check_head(source_tree)
         parent = Path(temporary.name)
         staged_root = parent / "repository"
         template = parent / "empty_template"
@@ -219,23 +321,50 @@ def _stage(root: Path, git_dir: Path, git_bin: Path) -> tuple[Path, tempfile.Tem
             raise GitHistoryExecution("Güvenli Git hazırlığı başarısız oldu.")
         dest_git = staged_root / ".git"
         budget = {"entries": 0, "files": 0, "bytes": 0}
-        _copy_regular(pinned_git / "HEAD", dest_git / "HEAD", budget)
-        _copy_regular(pinned_git / "index", dest_git / "index", budget)
-        packed = pinned_git / "packed-refs"
-        if os.path.lexists(packed):
-            _copy_regular(packed, dest_git / "packed-refs", budget)
+        _copy_regular_at(root_fd, "HEAD", dest_git / "HEAD", budget)
+        _copy_regular_at(root_fd, "index", dest_git / "index", budget)
+        packed = _entry_stat(root_fd, "packed-refs")
+        if packed is not None:
+            _copy_regular_at(root_fd, "packed-refs", dest_git / "packed-refs", budget, packed)
         for name in ("refs", "objects"):
-            _copy_tree(pinned_git / name, dest_git / name, budget)
+            _copy_tree_at(root_fd, name, dest_git / name, budget, logical_prefix=name)
         if os.path.lexists(dest_git / "objects/info/alternates") or os.path.lexists(dest_git / "commondir"):
             raise GitHistoryInvalid("Harici Git meta verisi desteklenmiyor.")
-        os.close(git_fd)
-        git_fd = None
+        after_dir = os.fstat(root_fd)
+        if (after_dir.st_dev, after_dir.st_ino, after_dir.st_mtime_ns, after_dir.st_ctime_ns) != (
+            before_dir.st_dev, before_dir.st_ino, before_dir.st_mtime_ns, before_dir.st_ctime_ns
+        ):
+            raise GitHistoryInvalid("Git dizini hazırlama sırasında değişti.")
+        source_tree.close()
+        source_tree = None
         return staged_root, temporary, env
     except BaseException:
-        if git_fd is not None:
-            os.close(git_fd)
+        if source_tree is not None:
+            source_tree.close()
         temporary.cleanup()
         raise
+
+
+def _stage(
+    git_tree_or_root: ProjectTree | Path,
+    git_tree_or_bin: ProjectTree | Path,
+    git_bin: Path | None = None,
+) -> tuple[Path, tempfile.TemporaryDirectory[str], dict[str, str]]:
+    """Stage pinned metadata; accept the former three-argument Gitleaks call.
+
+    In compatibility form ``(root, git_tree, git_bin)``, ``root`` is ignored
+    and the transferred tree handle is always closed here.
+    """
+    if git_bin is None:
+        if not isinstance(git_tree_or_root, ProjectTree):
+            raise GitHistoryInvalid("Git meta verisi sabit bir dizin tanımlayıcısı gerektiriyor.")
+        return _stage_pinned(git_tree_or_root, Path(git_tree_or_bin))
+    if not isinstance(git_tree_or_bin, ProjectTree):
+        raise GitHistoryInvalid("Git meta verisi sabit bir dizin tanımlayıcısı gerektiriyor.")
+    try:
+        return _stage_pinned(git_tree_or_bin, git_bin)
+    finally:
+        git_tree_or_bin.close()
 
 
 def _kill_group(process: subprocess.Popen[bytes]) -> None:
@@ -312,20 +441,23 @@ def _summarize(raw: bytes) -> dict[str, Any]:
 
 def run_local_trufflehog_git_history(project_path: str) -> dict[str, Any]:
     root = validate_project_path(project_path, allowed_roots=(Path.home().resolve(),))
-    git_dir = _required_git_dir(root)
-    _check_head(git_dir)
-    binary_value = os.environ.get("SNIPER_TRUFFLEHOG_BINARY")
-    if not binary_value or not _regular_executable(Path(binary_value)):
-        raise GitHistoryUnavailable("TruffleHog ikilisi kullanılamıyor.")
+    git_tree = _required_git_tree(root)
     try:
-        trufflehog = open_pinned("trufflehog", binary_value)
-    except VerificationError as exc:
-        raise GitHistoryUnavailable(str(exc)) from exc
-    with trufflehog:
-        return _run_verified(root, git_dir, trufflehog)
+        _check_head(git_tree)
+        binary_value = os.environ.get("SNIPER_TRUFFLEHOG_BINARY")
+        if not binary_value or not _regular_executable(Path(binary_value)):
+            raise GitHistoryUnavailable("TruffleHog ikilisi kullanılamıyor.")
+        try:
+            trufflehog = open_pinned("trufflehog", binary_value)
+        except VerificationError as exc:
+            raise GitHistoryUnavailable(str(exc)) from exc
+        with trufflehog:
+            return _run_verified(git_tree, trufflehog)
+    finally:
+        git_tree.close()
 
 
-def _run_verified(root: Path, git_dir: Path, trufflehog: VerifiedExecutable) -> dict[str, Any]:
+def _run_verified(git_tree: ProjectTree, trufflehog: VerifiedExecutable) -> dict[str, Any]:
     git_bin = Path("/usr/bin/git")
     if not _regular_executable(git_bin):
         raise GitHistoryUnavailable("Git ikilisi kullanılamıyor.")
@@ -346,7 +478,7 @@ def _run_verified(root: Path, git_dir: Path, trufflehog: VerifiedExecutable) -> 
             fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise GitHistoryBusy("TruffleHog meşgul.") from exc
-        staged_root, temporary, env = _stage(root, git_dir, git_bin)
+        staged_root, temporary, env = _stage(git_tree, git_bin)
         try:
             argv = [
                 trufflehog.argv0, "git", staged_root.as_uri(),

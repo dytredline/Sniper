@@ -5,17 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#0c2028">
-  <title>Sniper 2.0 — Yerel güvenlik stüdyosu</title>
+  <title>Sniper — Yerel güvenlik stüdyosu</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/app.css?v=16">
   <link rel="stylesheet" href="/auth.css?v=1">
-  <link rel="stylesheet" href="/static/ui-refresh.css?v=4">
+  <link rel="stylesheet" href="/static/ui-refresh.css?v=15">
   <script src="/auth.js?v=1" defer></script>
   <script src="/boot_prefetch.js?v=1" defer></script>
   <script src="/i18n.js?v=1" defer></script>
   <script src="/job_queue.js?v=2" defer></script>
   <script src="/project_jobs.js?v=1" defer></script>
-  <script src="/app.js?v=29" defer></script>
+  <script src="/app.js?v=32" defer></script>
   <script src="/openssl_loopback_active.js?v=1" defer></script>
   <script src="/openssl_authorized_active.js?v=1" defer></script>
   <script type="module" src="/openssl_batch_preview.js?v=1"></script>
@@ -63,10 +63,10 @@
   <script src="/mcp_scan_approval.js?v=2" defer></script>
   <script src="/data_retention.js?v=1" defer></script>
   <script src="/vex.js?v=1" defer></script>
-  <script src="/container_scan.js?v=2" defer></script>
+  <script src="/container_scan.js?v=3" defer></script>
   <script src="/osv_offline.js?v=1" defer></script>
   <script src="/sbom_tools.js?v=1" defer></script>
-  <script src="/bulk_scan.js?v=1" defer></script>
+  <script src="/bulk_scan.js?v=2" defer></script>
   <script src="/static/ui-shell.js?v=1" defer></script>
   <link rel="stylesheet" href="/portfolio.css?v=1"><script src="/portfolio.js?v=1" defer></script>
 </head>
@@ -78,7 +78,7 @@
       <button class="sidebar-close" type="button" aria-label="Menüyü kapat"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#close"></use></svg></span></button>
       <a class="brand" href="#dashboard" data-nav="dashboard" aria-label="Sniper ana sayfa">
         <span class="brand-mark" aria-hidden="true"><span class="ui-icon"><svg><use href="/static/ui-icons.svg#shield"></use></svg></span></span>
-        <span><strong>SNIPER 2.0</strong><small>YEREL GÜVENLİK STÜDYOSU</small></span>
+        <span><strong>SNIPER 1.0</strong><small>YEREL GÜVENLİK STÜDYOSU</small></span>
       </a>
 
       <nav class="nav-list">
@@ -169,9 +169,9 @@
           </section>
         </section>
         <section class="view" data-view="projects">
-        <div class="page-intro"><div><p class="eyebrow">SNIPER 2.0 · YEREL KAYNAK KOD</p><h1>Uygulama güvenliği analizi</h1><p>Ürettiğiniz uygulamanın gerçek kaynaklarını kriptografi, sorgu güvenliği, SSRF, QR, bağımlılık, günlükleme, sır ve port yüzeyi açısından inceleyin.</p></div></div>
+        <div class="page-intro"><div><p class="eyebrow">SNIPER 1.0 · YEREL KAYNAK KOD</p><h1>Uygulama güvenliği analizi</h1><p>Ürettiğiniz uygulamanın gerçek kaynaklarını kriptografi, sorgu güvenliği, SSRF, QR, bağımlılık, günlükleme, sır ve port yüzeyi açısından inceleyin.</p></div></div>
         <section class="panel project-audit-launcher">
-          <div><span class="project-audit-icon">&lt;/&gt;</span><p><b>Proje klasörünü yerelde incele</b><small>Kaynak kod yerel makinenin dışına çıkmaz. Sır değerleri ve kaynak satırları rapora kopyalanmaz; yalnız kural, dosya ve satır numarası saklanır.</small></p></div>
+          <div><span class="project-audit-icon" aria-hidden="true"><svg class="ui-symbol"><use href="/static/ui-icons.svg#folder-code"></use></svg></span><p><b>Proje klasörünü yerelde incele</b><small>Kaynak kod yerel makinenin dışına çıkmaz. Sır değerleri ve kaynak satırları rapora kopyalanmaz; yalnız kural, dosya ve satır numarası saklanır.</small></p></div>
           <form id="project-audit-form"><label>Yerel proje yolu<input name="project_path" id="project-path" value="~/projects/my-app" maxlength="1024" autocomplete="off" required></label><label>Mod<select name="scan_mode" id="project-scan-mode"><option value="saved">Kayıtlı kapsam</option><option value="all">Tümünü dahil ederek</option><option value="skipped">Yalnız atlananlar</option><option value="changed">Yalnız değişenler (git)</option></select></label><label class="changed-base hidden" id="changed-base-label">Taban (git ya da prj_…)<input name="base_ref" id="changed-base-ref" value="HEAD" maxlength="200" autocomplete="off" spellcheck="false" title="HEAD = kaydedilmemiş değişiklikler; HEAD~1, origin/main ya da analiz kimliği (prj_…)"></label><button class="button primary" type="submit">Analizi başlat</button></form>
         </section>
         <details class="panel scan-scope" id="scan-scope-panel">
@@ -197,7 +197,7 @@
         </details>
         <div id="project-audit-summary" class="project-audit-summary"></div>
         <section id="project-audit-detail" class="panel project-audit-detail hidden"></section>
-        <section class="panel project-audit-history"><div class="panel-head"><div><p class="eyebrow">SORGULANABİLİR YEREL KAYIT</p><h2>Proje analizleri</h2></div><div class="button-row"><span id="project-audit-count" class="muted"></span><button class="mini-button" type="button" data-action="open-project-audit-diff">Analizleri karşılaştır</button></div></div><div id="project-audit-list" class="project-audit-list"></div><div id="project-audit-empty" class="empty-state"><div class="empty-icon">&lt;/&gt;</div><h3>Henüz uygulama analizi yok</h3><p>İlk proje klasörünü incelettiğinizde doğrulanabilir bulgular burada saklanır.</p></div></section>
+        <section class="panel project-audit-history"><div class="panel-head"><div><p class="eyebrow">SORGULANABİLİR YEREL KAYIT</p><h2>Proje analizleri</h2></div><div class="button-row"><span id="project-audit-count" class="muted"></span><button class="mini-button" type="button" data-action="open-project-audit-diff">Analizleri karşılaştır</button></div></div><div id="project-audit-list" class="project-audit-list"></div><div id="project-audit-empty" class="empty-state"><div class="empty-icon" aria-hidden="true"><svg class="ui-symbol"><use href="/static/ui-icons.svg#code"></use></svg></div><h3>Henüz uygulama analizi yok</h3><p>İlk proje klasörünü incelettiğinizde doğrulanabilir bulgular burada saklanır.</p></div></section>
         <section class="panel eval-dashboard" id="eval-dashboard"><div class="panel-head"><div><p class="eyebrow">GÜVEN VE ÖLÇÜM</p><h2>Doğruluk panosu</h2></div><div class="button-row"><button class="mini-button" type="button" id="eval-dashboard-refresh">Yenile</button></div></div><div id="eval-dashboard-body" class="eval-dashboard-body"></div></section>
         <section class="panel dependency-panel">
           <div class="panel-head"><div><p class="eyebrow">PAKET A · YEREL TEDARİK ZİNCİRİ</p><h2>SBOM ve bağımlılık açıkları</h2></div><a class="mini-button" href="/api/dependency-security/report.json" download>JSON raporu indir</a></div>
@@ -223,7 +223,7 @@
           <div id="dependency-summary" class="dependency-summary"></div>
           <div id="dependency-sources" class="dependency-sources"></div>
           <div class="responsive-table"><table><thead><tr><th>Açık</th><th>Paket / sürüm</th><th>Önem</th><th>Düzeltme</th><th>Kaynak</th><th>Durum</th></tr></thead><tbody id="dependency-findings"></tbody></table></div>
-          <div id="dependency-empty" class="empty-state"><div class="empty-icon">◇</div><h3>Henüz bağımlılık bulgusu yok</h3><p>SBOM üretin veya daha önce oluşturulmuş güvenilir Trivy/OSV JSON raporunu yerelden içe aktarın.</p></div>
+          <div id="dependency-empty" class="empty-state"><div class="empty-icon" aria-hidden="true"><svg class="ui-symbol"><use href="/static/ui-icons.svg#package"></use></svg></div><h3>Henüz bağımlılık bulgusu yok</h3><p>SBOM üretin veya daha önce oluşturulmuş güvenilir Trivy/OSV JSON raporunu yerelden içe aktarın.</p></div>
         </section>
       </section>
 

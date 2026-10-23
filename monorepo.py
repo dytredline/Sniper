@@ -16,12 +16,12 @@ izlemeden, varsayılan atlanan dizinlere (node_modules, vendor, .git …) girmed
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 import re
 import tomllib
 from typing import Any, Iterable
 
+from project_tree import ProjectFile, ProjectTree, ProjectTreeError
 import scan_scope
 from safe_file_read import read_text_bounded
 
@@ -39,8 +39,14 @@ DEPENDENCY_MANIFESTS = frozenset({
 })
 
 
-def _read(path: Path) -> str | None:
+def _read(path: Path, *, project_tree: ProjectTree | None = None) -> str | None:
     """Kök altındaki düzenli dosyayı sınırlı oku (sembolik bağ yok)."""
+    if project_tree is not None:
+        try:
+            relative = Path(path).relative_to(project_tree.root).as_posix()
+            return project_tree.read_text(relative, MAX_READ)
+        except (ProjectTreeError, ValueError):
+            return None
     return read_text_bounded(path, MAX_READ)
 
 
@@ -82,22 +88,39 @@ def _pattern_regex(pattern: str) -> re.Pattern[str]:
 class _Tree:
     """Kök altındaki dizinlerin (göreli, POSIX) sınırlı listesi; desen genişletme için bir kez yürünür."""
 
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, project_tree: ProjectTree) -> None:
         self.root = root
         self.dirs: list[str] = []
+        self.files: dict[str, ProjectFile] = {}
         skip = scan_scope.DEFAULT_SKIP_DIRS
-        for current, directories, _files in os.walk(root, followlinks=False):
-            rel = Path(current).relative_to(root)
-            depth = len(rel.parts)
-            kept = []
-            for name in sorted(directories):
-                if name.casefold() in skip or name.startswith(".") or (Path(current) / name).is_symlink():
+        try:
+            for walked in project_tree.walk(
+                skip_dirs=skip,
+                max_entries=min(10_000_000, MAX_SCAN_DIRS * 20),
+                reject_unsafe=False,
+            ):
+                directory_parts = () if walked.directory.as_posix() == "." else walked.directory.parts
+                hidden_parent = any(part.startswith(".") for part in directory_parts)
+                if not hidden_parent and len(directory_parts) <= MAX_DEPTH:
+                    for observed in walked.files:
+                        self.files[observed.path.as_posix()] = observed
+                if hidden_parent or len(directory_parts) >= MAX_DEPTH:
                     continue
-                kept.append(name)
-                self.dirs.append((rel / name).as_posix())
-            directories[:] = kept if depth + 1 < MAX_DEPTH else []
-            if len(self.dirs) >= MAX_SCAN_DIRS:
-                break
+                for directory in walked.directories:
+                    if directory.name.startswith("."):
+                        continue
+                    self.dirs.append(directory.as_posix())
+                    if len(self.dirs) >= MAX_SCAN_DIRS:
+                        return
+        except ProjectTreeError:
+            # Kısmi, descriptor-sabitli envanter dışarıdaki pathname'e geri dönmez.
+            return
+
+    def has_dir(self, relative: str) -> bool:
+        return relative in self.dirs
+
+    def has_file(self, relative: str) -> bool:
+        return relative in self.files
 
     def expand(self, patterns: Iterable[str], marker: str | None = None) -> list[str]:
         include: list[re.Pattern[str]] = []
@@ -113,14 +136,15 @@ class _Tree:
         found = []
         for rel in self.dirs:
             if any(p.match(rel) for p in include) and not any(p.match(rel) for p in exclude):
-                if marker is None or (self.root / rel / marker).is_file():
+                marker_rel = f"{rel}/{marker}" if marker else ""
+                if marker is None or self.has_file(marker_rel):
                     found.append(rel)
         return found
 
 
-def _npm_patterns(root: Path) -> list[str]:
+def _npm_patterns(root: Path, project_tree: ProjectTree) -> list[str]:
     patterns: list[str] = []
-    text = _read(root / "package.json")
+    text = _read(root / "package.json", project_tree=project_tree)
     if text:
         try:
             data = json.loads(text)
@@ -131,7 +155,8 @@ def _npm_patterns(root: Path) -> list[str]:
             workspaces = workspaces.get("packages")
         if isinstance(workspaces, list):
             patterns += [w for w in workspaces if isinstance(w, str)]
-    text = _read(root / "pnpm-workspace.yaml") or _read(root / "pnpm-workspace.yml")
+    text = _read(root / "pnpm-workspace.yaml", project_tree=project_tree) or \
+        _read(root / "pnpm-workspace.yml", project_tree=project_tree)
     if text:
         in_packages = False
         for line in text.splitlines():
@@ -144,7 +169,7 @@ def _npm_patterns(root: Path) -> list[str]:
                     patterns.append(m.group(1).strip())
                 elif line.strip() and not line.startswith((" ", "\t", "-")):
                     in_packages = False
-    text = _read(root / "lerna.json")
+    text = _read(root / "lerna.json", project_tree=project_tree)
     if text:
         try:
             data = json.loads(text)
@@ -155,8 +180,8 @@ def _npm_patterns(root: Path) -> list[str]:
     return patterns
 
 
-def _go_work(root: Path) -> list[str]:
-    text = _read(root / "go.work")
+def _go_work(root: Path, project_tree: ProjectTree) -> list[str]:
+    text = _read(root / "go.work", project_tree=project_tree)
     if not text:
         return []
     text = re.sub(r"//[^\n]*", "", text)
@@ -167,8 +192,8 @@ def _go_work(root: Path) -> list[str]:
     return [u for u in (_clean_rel(u) for u in uses) if u]
 
 
-def _cargo(root: Path) -> tuple[list[str], list[str]]:
-    text = _read(root / "Cargo.toml")
+def _cargo(root: Path, project_tree: ProjectTree) -> tuple[list[str], list[str]]:
+    text = _read(root / "Cargo.toml", project_tree=project_tree)
     if not text:
         return [], []
     try:
@@ -182,16 +207,17 @@ def _cargo(root: Path) -> tuple[list[str], list[str]]:
     return members, exclude
 
 
-def _maven(root: Path) -> list[str]:
-    text = _read(root / "pom.xml")
+def _maven(root: Path, project_tree: ProjectTree) -> list[str]:
+    text = _read(root / "pom.xml", project_tree=project_tree)
     if not text:
         return []
     text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
     return [m for m in (_clean_rel(x) for x in re.findall(r"<module>\s*([^<]+?)\s*</module>", text)) if m]
 
 
-def _gradle(root: Path) -> list[str]:
-    text = _read(root / "settings.gradle") or _read(root / "settings.gradle.kts")
+def _gradle(root: Path, project_tree: ProjectTree) -> list[str]:
+    text = _read(root / "settings.gradle", project_tree=project_tree) or \
+        _read(root / "settings.gradle.kts", project_tree=project_tree)
     if not text:
         return []
     text = re.sub(r"//[^\n]*", "", text)
@@ -204,14 +230,18 @@ def _gradle(root: Path) -> list[str]:
     return found
 
 
-def _dotnet(root: Path) -> list[tuple[str, str]]:
+def _dotnet(root: Path, project_tree: ProjectTree, tree: _Tree) -> list[tuple[str, str]]:
     found: list[tuple[str, str]] = []
-    try:
-        solutions = sorted(p for p in root.iterdir() if p.suffix.casefold() == ".sln" and p.is_file() and not p.is_symlink())
-    except OSError:
-        return []
-    for sln in solutions[:5]:
-        text = _read(sln) or ""
+    solutions = sorted(
+        (observed for relative, observed in tree.files.items()
+         if "/" not in relative and observed.name.casefold().endswith(".sln")),
+        key=lambda observed: observed.path.as_posix(),
+    )
+    for observed in solutions[:5]:
+        try:
+            text = project_tree.read_text(observed, MAX_READ)
+        except ProjectTreeError:
+            text = ""
         for name, project in re.findall(r'^Project\("[^"]*"\)\s*=\s*"([^"]+)"\s*,\s*"([^"]+\.(?:cs|fs|vb)proj)"', text, re.M):
             rel = _clean_rel(project)
             if rel and "/" in rel:
@@ -219,7 +249,7 @@ def _dotnet(root: Path) -> list[tuple[str, str]]:
     return found
 
 
-def detect(root: Path, manifests: Iterable[str] = ()) -> dict[str, Any] | None:
+def _detect(root: Path, manifests: Iterable[str], project_tree: ProjectTree) -> dict[str, Any] | None:
     """Alt projeleri bul: [{path, kind, name}] (en çok MAX_SUBPROJECTS). Bulunamazsa None."""
     root = Path(root)
     tree: _Tree | None = None
@@ -227,7 +257,7 @@ def detect(root: Path, manifests: Iterable[str] = ()) -> dict[str, Any] | None:
     def get_tree() -> _Tree:
         nonlocal tree
         if tree is None:
-            tree = _Tree(root)
+            tree = _Tree(root, project_tree)
         return tree
 
     found: dict[str, dict[str, str]] = {}
@@ -236,11 +266,7 @@ def detect(root: Path, manifests: Iterable[str] = ()) -> dict[str, Any] | None:
     def add(rel: str, kind: str, name: str = "") -> None:
         if rel in found or len(found) >= MAX_SUBPROJECTS:
             return
-        path = root / rel
-        try:
-            if path.is_symlink() or not path.is_dir() or not path.resolve().is_relative_to(root.resolve()):
-                return
-        except OSError:
+        if not get_tree().has_dir(rel):
             return
         if any(part.casefold() in scan_scope.DEFAULT_SKIP_DIRS for part in Path(rel).parts):
             return
@@ -248,23 +274,23 @@ def detect(root: Path, manifests: Iterable[str] = ()) -> dict[str, Any] | None:
         if kind not in kinds:
             kinds.append(kind)
 
-    npm = _npm_patterns(root)
+    npm = _npm_patterns(root, project_tree)
     if npm:
         for rel in get_tree().expand(npm, "package.json"):
             add(rel, "npm")
-    for rel in _go_work(root):
+    for rel in _go_work(root, project_tree):
         add(rel, "go")
-    members, exclude = _cargo(root)
+    members, exclude = _cargo(root, project_tree)
     if members:
         excluded = set(get_tree().expand(exclude)) if exclude else set()
         for rel in get_tree().expand(members, "Cargo.toml"):
             if rel not in excluded:
                 add(rel, "cargo")
-    for rel in _maven(root):
+    for rel in _maven(root, project_tree):
         add(rel, "maven")
-    for rel in _gradle(root):
+    for rel in _gradle(root, project_tree):
         add(rel, "gradle")
-    for rel, name in _dotnet(root):
+    for rel, name in _dotnet(root, project_tree, get_tree()):
         add(rel, "dotnet", name)
     declared = bool(found)
     if not declared:
@@ -287,6 +313,16 @@ def detect(root: Path, manifests: Iterable[str] = ()) -> dict[str, Any] | None:
     if not found:
         return None
     return {"declared": declared, "kinds": kinds, "subprojects": sorted(found.values(), key=lambda s: s["path"])}
+
+
+def detect(root: Path, manifests: Iterable[str] = ()) -> dict[str, Any] | None:
+    """Alt projeleri bul: pathname yeniden açmadan tek sabit proje descriptor'ü kullanır."""
+    root = Path(root).absolute()
+    try:
+        with ProjectTree(root) as project_tree:
+            return _detect(root, manifests, project_tree)
+    except ProjectTreeError:
+        return None
 
 
 def _owner(rel_file: str, prefixes: list[str]) -> str:
