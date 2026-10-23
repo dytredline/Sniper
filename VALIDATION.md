@@ -27,10 +27,10 @@ tree.
 
 | Gate | Observed result |
 | --- | --- |
-| Community metadata/release-surface validation | PASS — 27 required release files checked |
+| Community metadata/release-surface validation | PASS — 28 required release files checked |
 | Assembled source validation | PASS — deterministic source builder completed; assembled tree passed the release-tree scan |
 | Python unittest launcher | 2,787 tests, 0 failures, 0 errors |
-| Python pytest modules | 163 passed |
+| Python pytest modules | 167 passed |
 | JavaScript/Node tests | 426 passed, 0 failed |
 | Changed-file Python compilation and JavaScript syntax | PASS |
 | Docker Compose configuration | PASS in GitHub Actions |

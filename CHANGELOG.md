@@ -9,7 +9,7 @@ Community releases.
 - Added the stdio MCP interface with expiring, single-use, human-confirmed MCP action plans.
 - Added the loopback web interface and manual command-line entrypoints.
 - Added deterministic Community source assembly with SHA-256 manifests and fail-closed release validation.
-- Added a rootless, SHA-256-locked installer for the supported local third-party tool profile.
+- Added a one-command rootless setup plus a SHA-256-locked installer for the supported local third-party tool profile.
 - Added CodeQL, pinned GitHub Actions, dependency locks, Compose validation, and container-image CI.
 - Published the Community source under Apache-2.0 while keeping private delivery implementation outside this
   repository.

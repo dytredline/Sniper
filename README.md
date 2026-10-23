@@ -31,21 +31,25 @@ human review.
 ## Source-checkout setup
 
 Python 3.12 is the tested interpreter. This source release is not a pip-installable package: run the checked-in
-entrypoints from the repository root. Install the pinned runtime dependency in an isolated environment, then verify
-the real MCP entrypoint:
+entrypoints from the repository root. The rootless setup command creates `.venv`, installs the exact-version runtime
+dependencies and the locked local tool profile, then verifies the real MCP and project-audit help entrypoints without
+starting Sniper or a scanner:
 
 ```bash
-python3 -m venv .venv
-. .venv/bin/activate
-python3 -m pip install -r requirements-runtime.lock
-python3 scripts/sniper-mcp --help
+python3 scripts/setup-community --accept-third-party-licenses
 ```
 
-The final command is intentionally side-effect free: it prints the actual stdio MCP options and does not open a
-database or start a scan.
+The flag confirms that you reviewed the third-party licenses recorded in `COMMUNITY-TOOLS.lock.json`; setup never
+accepts them implicitly. Use `--wheelhouse` and `--tool-cache-dir` for prepared offline inputs. Setup does not open a
+database, start the web service, or run a scan.
 
-Install the supported rootless local tool profile with locked upstream artifacts after reviewing its third-party
-licenses:
+After setup, the MCP help entrypoint remains directly available as:
+
+```bash
+.venv/bin/python scripts/sniper-mcp --help
+```
+
+To manage only the supported local tools inside an existing Python environment, use:
 
 ```bash
 python3 scripts/install-community-tools --profile local --accept-third-party-licenses

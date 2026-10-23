@@ -10,6 +10,11 @@ On Linux ARM64 or x86-64, install the rootless local profile from the repository
 python3 scripts/install-community-tools --profile local --accept-third-party-licenses
 ```
 
+For a new checkout, `python3 scripts/setup-community --accept-third-party-licenses` also creates `.venv`, installs
+`requirements-runtime.lock`, invokes this tool installer, and verifies the two documented command-line entrypoints.
+It does not start the server or execute a scanner. Prepared offline Python wheels and tool artifacts can be supplied
+with `--wheelhouse` and `--tool-cache-dir`.
+
 The command downloads only artifacts listed in `COMMUNITY-TOOLS.lock.json`, verifies each complete artifact before
 extracting its declared executable, and never executes a scanner. It installs into the ignored `runtimes/` directory;
 Sniper discovers the files, records their hashes, and still requires the normal local-input or target-authorization

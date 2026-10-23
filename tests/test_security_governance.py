@@ -38,6 +38,7 @@ class SecurityGovernanceTests(unittest.TestCase):
             ".github/dependabot.yml",
             "docs/COMMUNITY-TOOLS.md",
             "scripts/install-community-tools",
+            "scripts/setup-community",
         }
 
         self.assertEqual(expected - set(validator.REQUIRED_FILES), set())
