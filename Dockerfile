@@ -43,9 +43,9 @@ COPY taint_js_bridge.cjs ./
 
 # Create the data directory and give ownership to the non‑root user
 # Denetim anahtarı ve çapaları veritabanı biriminden ayrı, kalıcı bir birimde durur.
-RUN mkdir -p /var/lib/sniper /var/lib/sniper-integrity /var/lib/sniper-secrets \
+RUN mkdir -p /app/projects /var/lib/sniper /var/lib/sniper-integrity /var/lib/sniper-secrets \
     && chown -R sniper:sniper /app /var/lib/sniper /var/lib/sniper-integrity /var/lib/sniper-secrets \
-    && chmod 0700 /var/lib/sniper /var/lib/sniper-integrity /var/lib/sniper-secrets \
+    && chmod 0700 /app/projects /var/lib/sniper /var/lib/sniper-integrity /var/lib/sniper-secrets \
     && chmod 0700 /app/plugins/user && chmod 0600 /app/plugins/user/*.py
 
 USER sniper

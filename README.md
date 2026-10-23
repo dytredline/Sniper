@@ -107,11 +107,12 @@ human review.
 
 ## Source-checkout setup
 
-Python 3.12 is the tested interpreter. The complete native Community v1 setup and its five locked optional engines
-are supported on Linux ARM64 and Linux x86-64. Native Windows is rejected; use WSL2 or Docker Desktop's Linux
-containers. macOS has an experimental, core-only source setup, while the five-engine native profile remains
-unsupported. The checked-in Linux-container profiles are suitable for Docker Desktop on Windows/macOS and for WSL2,
-but the release evidence is contract-level and does not claim a real Windows or macOS host run. This source release
+On macOS Apple Silicon, the five-engine Community profile is verified with Docker Desktop; use the checked
+`deploy-community-tools` command below to build, start, and verify it. Python 3.12 is the tested interpreter for
+source-checkout use. The complete native Community v1 setup and its five locked optional engines are supported on
+Linux ARM64 and Linux x86-64. Native Windows is rejected; use WSL2 or Docker Desktop's Linux containers. The native
+macOS source setup remains experimental and core-only; Windows/WSL2 remains contract-tested rather than
+real-host-tested. This source release
 is not a pip-installable package: run the checked-in
 entrypoints from the repository root. The rootless setup command creates `.venv`, installs the exact-version runtime
 dependencies and the locked local tool profile, then verifies the real MCP and project-audit help entrypoints without
@@ -140,6 +141,9 @@ python3 scripts/build-community-tools-image --accept-third-party-licenses
 ```
 
 Neither build command starts a scanner. See [deployment and platform support](DEPLOYMENT.md) for exact limits.
+For a checked macOS start that builds, launches, and verifies all five local engine prechecks, run
+`./scripts/deploy-community-tools --accept-third-party-licenses`; to copy one Mac source project into its persistent
+Docker volume, run `./scripts/import-community-project /absolute/path/to/project --name project-name`.
 
 After setup, the MCP help entrypoint remains directly available as:
 

@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -702,10 +703,24 @@ if __name__ == "__main__":
     unittest.main()
 
 
+@unittest.skipUnless(sys.platform.startswith("linux"), "systemd launch payload is Linux-only")
 class JoernSystemdLaunchTests(unittest.TestCase):
+    def setUp(self):
+        # The systemd orchestration tests simulate the service and execute the
+        # payload locally.  Container Python lives outside /usr/bin; its exact
+        # package path is not part of the behavior under test here.
+        patcher = mock.patch.multiple(
+            joern_active,
+            SYSTEM_PYTHON=Path(sys.executable),
+            _trusted_system_python=lambda: sys.executable,
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_launch_mode_detects_service(self):
         import joern_active
-        with mock.patch.dict(os.environ, {"INVOCATION_ID": "x", "SNIPER_JOERN_LAUNCH": "auto"}):
+        with mock.patch.object(joern_active, "SYSTEMD_RUN", Path(sys.executable)), \
+                mock.patch.dict(os.environ, {"INVOCATION_ID": "x", "SNIPER_JOERN_LAUNCH": "auto"}):
             self.assertEqual(joern_active.launch_mode(), "systemd-run")
         with mock.patch.dict(os.environ, {"SNIPER_JOERN_LAUNCH": "direct", "INVOCATION_ID": "x"}):
             self.assertEqual(joern_active.launch_mode(), "direct")
