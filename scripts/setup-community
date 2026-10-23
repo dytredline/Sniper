@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a rootless Sniper Community environment and install the locked local tool profile."""
+"""Create a Sniper Community environment; optionally install the Linux-only locked tool profile."""
 
 from __future__ import annotations
 
@@ -21,6 +21,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--wheelhouse", type=Path)
     parser.add_argument("--tool-cache-dir", type=Path)
     parser.add_argument(
+        "--core-only",
+        action="store_true",
+        help="install portable core dependencies and verify entrypoints without optional Linux tool binaries",
+    )
+    parser.add_argument(
         "--accept-third-party-licenses",
         action="store_true",
         help="confirm review and acceptance of licenses in COMMUNITY-TOOLS.lock.json",
@@ -33,6 +38,7 @@ def main(argv: list[str] | None = None) -> int:
             cache_dir=args.tool_cache_dir,
             wheelhouse=args.wheelhouse,
             accept_third_party_licenses=args.accept_third_party_licenses,
+            core_only=args.core_only,
         )
     except SetupError as exc:
         print(f"community setup: FAIL ({exc})", file=sys.stderr)

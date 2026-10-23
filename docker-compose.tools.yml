@@ -1,0 +1,7 @@
+services:
+  sniper:
+    build:
+      target: community-tools
+      args:
+        SNIPER_ACCEPT_THIRD_PARTY_LICENSES: ${SNIPER_ACCEPT_THIRD_PARTY_LICENSES:?Set SNIPER_ACCEPT_THIRD_PARTY_LICENSES=1 after reviewing COMMUNITY-TOOLS.lock.json licenses}
+    image: sniper-community-tools:local
