@@ -302,3 +302,27 @@ S	Ekle	추가
 S	Oluştur	만들기
 S	Güncelle	업데이트
 S	Uygula	적용
+S	Sniper — Yerel güvenlik stüdyosu	Sniper — 로컬 보안 스튜디오
+S	Sniper ana sayfa	Sniper 홈
+S	YEREL GÜVENLİK STÜDYOSU	로컬 보안 스튜디오
+S	Sniper, düşük etkili kontroller yapar. DoS trafiği veya parola listesi çalıştırmaz.	Sniper는 영향이 적은 검사를 수행하며 DoS 트래픽이나 비밀번호 목록을 실행하지 않습니다.
+S	BAĞIMSIZ GÜVENLİK GÖRÜNÜMÜ	독립적인 보안 보기
+S	Riskleri erken görün,	위험을 조기에 파악하고,
+S	kontrol sizde kalsın.	통제권을 유지하세요.
+S	Eklediğiniz web varlıklarında temel güvenlik kontrollerini tek merkezden yönetin ve iyileştirmeleri ölçün.	추가한 웹 자산의 기본 보안 검사를 한곳에서 관리하고 개선 효과를 측정하세요.
+S	Hızlı erişim	빠른 접근
+S	En fazla 3 GET isteği, sömürü yok, parola denemesi yok.	GET 요청은 최대 3회이며, 익스플로잇이나 비밀번호 시도는 하지 않습니다.
+S	KAPSAM YÖNETİMİ	범위 관리
+S	Web adresini ekleyin; alan adı sahiplik dosyası veya ayrı doğrulama adımı gerekmez.	웹 주소를 추가하세요. 도메인 소유권 파일이나 별도 확인 단계는 필요하지 않습니다.
+S	＋ Yeni hedef	＋ 새 대상
+S	Alan adı ara…	도메인 검색…
+S	Web varlığı	웹 자산
+S	Son puan	최근 점수
+S	İlk hedefinizi ekleyin	첫 번째 대상을 추가하세요
+S	Web adresini kaydettikten sonra güvenli temel taramayı doğrudan başlatabilirsiniz.	웹 주소를 저장하면 안전한 기본 스캔을 바로 시작할 수 있습니다.
+S	Yeni hedef ekle	새 대상 추가
+S	Sniper — Giriş	Sniper — 로그인
+S	Doğrulama kodu (6 hane)	인증 코드(6자리)
+S	ya da kurtarma kodu	또는 복구 코드
+S	Hesabınızı kaybettiyseniz yönetici, sunucuda	계정에 접근할 수 없는 경우 관리자가 서버에서
+S	ile sıfırlayabilir.	명령으로 재설정할 수 있습니다.
