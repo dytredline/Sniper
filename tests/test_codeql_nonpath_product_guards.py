@@ -35,7 +35,7 @@ class CodeQLNonPathProductGuardTests(unittest.TestCase):
         handler.log_request = lambda *_args: None
         return handler
 
-    def test_changed_scan_project_path_stays_one_argv_element(self) -> None:
+    def test_changed_scan_project_path_is_process_cwd_not_argv(self) -> None:
         hostile_root = Path("/tmp/repo;touch${IFS}CODEQL_SENTINEL\n--upload-pack=evil")
         completed = subprocess.CompletedProcess([], 0, stdout=b"/tmp/repo\n", stderr=b"")
 
@@ -45,8 +45,10 @@ class CodeQLNonPathProductGuardTests(unittest.TestCase):
 
         command = runner.call_args.args[0]
         kwargs = runner.call_args.kwargs
-        self.assertEqual(command[command.index("-C") + 1], str(hostile_root))
+        self.assertNotIn("-C", command)
+        self.assertNotIn(str(hostile_root), command)
         self.assertEqual(command[-2:], ["rev-parse", "--show-toplevel"])
+        self.assertEqual(kwargs["cwd"], str(hostile_root))
         self.assertIs(kwargs.get("shell", False), False)
         self.assertEqual(kwargs["env"]["GIT_CONFIG_GLOBAL"], "/dev/null")
         self.assertEqual(kwargs["env"]["GIT_CONFIG_NOSYSTEM"], "1")
@@ -72,7 +74,7 @@ class CodeQLNonPathProductGuardTests(unittest.TestCase):
             via_unit.assert_not_called()
             direct.assert_not_called()
 
-    def test_trivy_archive_metacharacters_are_literal_argv_data(self) -> None:
+    def test_trivy_archive_metacharacters_are_not_propagated_to_argv(self) -> None:
         with tempfile.TemporaryDirectory(dir=Path.home()) as temp:
             root = Path(temp)
             project = root / "project"
@@ -119,7 +121,8 @@ class CodeQLNonPathProductGuardTests(unittest.TestCase):
             self.assertFalse(sentinel.exists())
             argv = json.loads(argv_capture.read_text(encoding="utf-8"))
             input_value = argv[argv.index("--input") + 1]
-            self.assertEqual(Path(input_value).name, archive_name)
+            self.assertEqual(Path(input_value).name, "image.tar")
+            self.assertNotIn(archive_name, input_value)
             self.assertEqual(argv.count(input_value), 1)
 
     def test_nested_entity_bombs_are_rejected_by_every_xml_entry_path(self) -> None:
@@ -162,11 +165,15 @@ class CodeQLNonPathProductGuardTests(unittest.TestCase):
                 parser(payload)
 
     def test_secret_cli_never_emits_or_stores_the_raw_secret(self) -> None:
-        secret = "sk-proj-ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijk"
+        # Generate a deterministic credential-shaped fixture at runtime instead
+        # of retaining a plaintext token-shaped value in the source tree.
+        synthetic_value = "sk-proj-" + hashlib.sha256(b"sniper-secret-cli-fixture").hexdigest()
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             source = root / "application.env"
-            source.write_text(f"OPENAI_API_KEY={secret}\n", encoding="utf-8")
+            descriptor = os.open(source, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            with os.fdopen(descriptor, "w", encoding="utf-8") as source_file:
+                source_file.write(f"FIXTURE={synthetic_value}\n")
             report = root / "secret-report.md"
             stdout = io.StringIO()
 
@@ -179,11 +186,17 @@ class CodeQLNonPathProductGuardTests(unittest.TestCase):
             )
 
             self.assertEqual(result["finding_count"], 1)
-            self.assertNotIn(secret, json.dumps(result, ensure_ascii=False))
-            self.assertNotIn(secret, stdout.getvalue())
-            self.assertNotIn(secret, report.read_text(encoding="utf-8"))
-            self.assertEqual(result["findings"][0]["masked_preview"], secret[:4] + "…" + secret[-2:])
-            self.assertEqual(result["findings"][0]["fingerprint_sha256"], hashlib.sha256(secret.encode()).hexdigest())
+            self.assertNotIn(synthetic_value, json.dumps(result, ensure_ascii=False))
+            self.assertNotIn(synthetic_value, stdout.getvalue())
+            self.assertNotIn(synthetic_value, report.read_text(encoding="utf-8"))
+            self.assertEqual(
+                result["findings"][0]["masked_preview"],
+                synthetic_value[:4] + "…" + synthetic_value[-2:],
+            )
+            self.assertEqual(
+                result["findings"][0]["fingerprint_sha256"],
+                hashlib.sha256(synthetic_value.encode()).hexdigest(),
+            )
 
     def test_common_response_header_gate_rejects_multiline_variants_for_alerted_sinks(self) -> None:
         # #484: the portfolio format allowlist rejects the tainted filename source

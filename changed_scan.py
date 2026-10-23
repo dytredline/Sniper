@@ -81,16 +81,18 @@ def _git(
         # Komut satırı ayarları depo yapılandırmasını geçersiz kılar: kanca/fsmonitor/ağ yok.
         "-c", "core.fsmonitor=false", "-c", "core.untrackedCache=false", "-c", "core.hooksPath=/dev/null",
         "-c", "protocol.allow=never", "-c", "core.quotePath=false",
-        "-C", git_cwd, *args,
+        *args,
     ]
     try:
         completed = subprocess.run(
             command,
+            cwd=git_cwd,
             input=stdin,
             capture_output=True,
             timeout=GIT_TIMEOUT_SECONDS,
             env=_git_env(),
             check=False,
+            shell=False,
             pass_fds=pass_fds,
         )
     except (OSError, subprocess.TimeoutExpired) as exc:

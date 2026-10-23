@@ -141,6 +141,14 @@ class ReadTextBoundedTests(unittest.TestCase):
         self.assertTrue(swapped, "test must replace the intermediate directory at open time")
         self.assertIsNone(result)
 
+    def test_parent_traversal_component_is_rejected_before_open(self) -> None:
+        selected = self.root / "selected"
+        selected.mkdir()
+        outside = self.root / "outside.txt"
+        outside.write_text("outside-sentinel", encoding="utf-8")
+
+        self.assertIsNone(read_text_bounded(selected / ".." / "outside.txt", 100))
+
     def test_fifo_returns_none_without_blocking(self) -> None:
         fifo = self.root / "pipe.txt"
         os.mkfifo(fifo)
