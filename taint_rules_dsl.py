@@ -40,7 +40,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from typing import Any
+from typing import Any, Callable
 
 import taint_models
 
@@ -55,7 +55,6 @@ MAX_NAMES_PER_ENTRY = 100
 TRY_TIMEOUT_SECONDS = 30
 MAX_TRY_CODE_BYTES = 200_000
 _NAME_RE = re.compile(r"[a-z0-9][a-z0-9_-]{0,63}\Z")
-_CALL_RE = re.compile(r"(?:\*\.)?[A-Za-z_$][\w$]*(?:\(\))?(?:\.[A-Za-z_$][\w$]*(?:\(\))?)*\Z")
 _CWE_RE = re.compile(r"CWE-\d{1,5}\Z")
 _TOP_KEYS = {"format", "name", "language", "description", "sources", "sinks", "sanitizers", "propagators"}
 
@@ -95,7 +94,35 @@ def parse_rule_text(text: str) -> dict[str, Any]:
     return data
 
 
-def _string_list(value: Any, label: str, *, pattern: re.Pattern[str] | None = None, limit: int = MAX_NAMES_PER_ENTRY) -> list[str]:
+def _name_segment(value: str, *, calls: bool) -> bool:
+    if calls and value.endswith("()"):
+        value = value[:-2]
+    if not value or "(" in value or ")" in value:
+        return False
+    if not (value[0] in "_$" or value[0].isascii() and value[0].isalpha()):
+        return False
+    return all(character in "_$" or character.isalnum() for character in value[1:])
+
+
+def _call_name(value: str) -> bool:
+    if value.startswith("*."):
+        value = value[2:]
+    return bool(value) and all(_name_segment(segment, calls=True) for segment in value.split("."))
+
+
+def _propagator_name(value: str) -> bool:
+    if value.endswith(".*"):
+        value = value[:-2]
+    return bool(value) and all(_name_segment(segment, calls=False) for segment in value.split("."))
+
+
+def _keyword_name(value: str) -> bool:
+    return bool(value) and (value[0] == "_" or value[0].isascii() and value[0].isalpha()) \
+        and all(character == "_" or character.isalnum() for character in value[1:])
+
+
+def _string_list(value: Any, label: str, *, validator: Callable[[str], bool] | None = None,
+                 limit: int = MAX_NAMES_PER_ENTRY) -> list[str]:
     if isinstance(value, str):
         value = [value]
     if not isinstance(value, list) or not value:
@@ -107,7 +134,7 @@ def _string_list(value: Any, label: str, *, pattern: re.Pattern[str] | None = No
         if not isinstance(item, str) or not item.strip() or len(item) > 200:
             raise RuleError(f"{label} içinde geçersiz öğe.")
         item = item.strip()
-        if pattern is not None and not pattern.fullmatch(item):
+        if validator is not None and not validator(item):
             raise RuleError(f"{label}: geçersiz çağrı adı {item!r} (ör. modul.fonksiyon veya *.metot).")
         out.append(item)
     return out
@@ -147,9 +174,9 @@ def validate_rule(data: dict[str, Any]) -> dict[str, Any]:
             raise RuleError("sources.label 'request', 'pii' veya 'stored' olmalı.")
         item: dict[str, Any] = {"label": label}
         if raw.get("calls") is not None:
-            item["calls"] = _string_list(raw["calls"], "sources.calls", pattern=_CALL_RE)
+            item["calls"] = _string_list(raw["calls"], "sources.calls", validator=_call_name)
         if raw.get("attributes") is not None:
-            item["attributes"] = _string_list(raw["attributes"], "sources.attributes", pattern=_CALL_RE)
+            item["attributes"] = _string_list(raw["attributes"], "sources.attributes", validator=_call_name)
         if "calls" not in item and "attributes" not in item:
             raise RuleError("sources öğesinde calls veya attributes gerekli.")
         rule["sources"].append(item)
@@ -164,9 +191,9 @@ def validate_rule(data: dict[str, Any]) -> dict[str, Any]:
         args = raw.get("args", [0] if not raw.get("receiver") and not raw.get("keywords") else [])
         if not isinstance(args, list) or not all(isinstance(i, int) and not isinstance(i, bool) and 0 <= i < 16 for i in args):
             raise RuleError("sinks.args 0-15 arası tamsayı listesi olmalı.")
-        item = {"kind": kind, "calls": _string_list(raw.get("calls"), "sinks.calls", pattern=_CALL_RE), "args": args}
+        item = {"kind": kind, "calls": _string_list(raw.get("calls"), "sinks.calls", validator=_call_name), "args": args}
         if raw.get("keywords") is not None:
-            item["keywords"] = _string_list(raw["keywords"], "sinks.keywords", pattern=re.compile(r"[A-Za-z_]\w*\Z"))
+            item["keywords"] = _string_list(raw["keywords"], "sinks.keywords", validator=_keyword_name)
         if raw.get("receiver") is not None:
             if not isinstance(raw["receiver"], bool):
                 raise RuleError("sinks.receiver true/false olmalı.")
@@ -195,11 +222,11 @@ def validate_rule(data: dict[str, Any]) -> dict[str, Any]:
         unknown = set(kinds) - taint_models.KNOWN_KINDS
         if unknown:
             raise RuleError(f"sanitizers.kinds bilinmeyen tür: {', '.join(sorted(unknown))}.")
-        rule["sanitizers"].append({"calls": _string_list(raw.get("calls"), "sanitizers.calls", pattern=_CALL_RE), "kinds": kinds})
+        rule["sanitizers"].append({"calls": _string_list(raw.get("calls"), "sanitizers.calls", validator=_call_name), "kinds": kinds})
         entries += 1
     propagators = data.get("propagators") or []
     if propagators:
-        rule["propagators"] = _string_list(propagators, "propagators", pattern=re.compile(r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*(?:\.\*)?\Z"),
+        rule["propagators"] = _string_list(propagators, "propagators", validator=_propagator_name,
                                            limit=MAX_ENTRIES_PER_RULE)
         entries += len(rule["propagators"])
     if entries == 0:

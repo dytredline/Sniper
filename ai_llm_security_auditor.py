@@ -92,6 +92,16 @@ _SECRET_REDACT_RE = re.compile(
     r"hf_[A-Za-z0-9]{8,}|r8_[A-Za-z0-9]{8,}|gsk_[A-Za-z0-9]{8,})\b"
 )
 
+_ASCII_LOWER = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
+_SYSTEM_PROMPT_NAMES = ("system_prompt", "systemprompt")
+_LLM_OUTPUT_ASSIGNMENT_MARKERS = (
+    "response.choices",
+    "chat.completions.create",
+    "messages.create",
+    "generate_content",
+    ".invoke(",
+)
+
 
 def calculate_score(findings: list[dict[str, Any]]) -> tuple[int, str]:
     score, grade, _counts = _scanner_calculate_score(findings)
@@ -162,6 +172,153 @@ def _make_llm_finding(
 
 def _line_number_for_offset(content: str, offset: int) -> int:
     return content.count("\n", 0, max(0, offset)) + 1
+
+
+def _system_prompt_exposure_offset(source_line: str) -> int | None:
+    """Find a client-visible system-prompt marker with bounded forward scans.
+
+    This intentionally replaces a regex whose ``localStorage.setItem(...)``
+    branch combined overlapping unbounded repetitions. A missing closing token
+    then caused quadratic backtracking on attacker-controlled project text.
+    """
+    lowered = source_line.translate(_ASCII_LOWER)
+    candidates: list[int] = []
+
+    # Public frontend environment variable names. The variable tail is the
+    # same ASCII identifier alphabet previously accepted by ``[A-Z0-9_]*``.
+    for prefix in ("next_public_", "vite_", "react_app_"):
+        cursor = 0
+        while True:
+            start = lowered.find(prefix, cursor)
+            if start < 0:
+                break
+            tail_start = start + len(prefix)
+            tail_end = tail_start
+            while tail_end < len(lowered) and (
+                "a" <= lowered[tail_end] <= "z"
+                or "0" <= lowered[tail_end] <= "9"
+                or lowered[tail_end] == "_"
+            ):
+                tail_end += 1
+            if lowered.find("system_prompt", tail_start, tail_end) >= 0:
+                candidates.append(start)
+                break
+            cursor = max(tail_end, tail_start)
+
+    def _prompt_name_at(offset: int) -> bool:
+        return any(lowered.startswith(name, offset) for name in _SYSTEM_PROMPT_NAMES)
+
+    # ``export const`` and ``window.`` forms have only bounded literal checks
+    # plus a single whitespace pass.
+    cursor = 0
+    while True:
+        start = lowered.find("export", cursor)
+        if start < 0:
+            break
+        offset = start + len("export")
+        if offset < len(lowered) and lowered[offset].isspace():
+            while offset < len(lowered) and lowered[offset].isspace():
+                offset += 1
+            if lowered.startswith("const", offset):
+                offset += len("const")
+                while offset < len(lowered) and lowered[offset].isspace():
+                    offset += 1
+                if _prompt_name_at(offset):
+                    candidates.append(start)
+                    break
+        cursor = start + len("export")
+
+    cursor = 0
+    while True:
+        start = lowered.find("window.", cursor)
+        if start < 0:
+            break
+        offset = start + len("window.")
+        while offset < len(lowered) and lowered[offset].isspace():
+            offset += 1
+        if _prompt_name_at(offset):
+            candidates.append(start)
+            break
+        cursor = start + len("window.")
+
+    # Examine each non-overlapping call segment once. If a call is unterminated,
+    # the remainder is inspected once and the scan ends.
+    cursor = 0
+    local_storage = "localstorage.setitem("
+    while True:
+        start = lowered.find(local_storage, cursor)
+        if start < 0:
+            break
+        content_start = start + len(local_storage)
+        close = lowered.find(")", content_start)
+        content_end = len(lowered) if close < 0 else close
+        if any(lowered.find(name, content_start, content_end) >= 0 for name in _SYSTEM_PROMPT_NAMES):
+            candidates.append(start)
+            break
+        if close < 0:
+            break
+        cursor = close + 1
+
+    # Quoted direct assignment: SYSTEM_PROMPT = "at least eight characters".
+    cursor = 0
+    assignment_name = "system_prompt"
+    while True:
+        start = lowered.find(assignment_name, cursor)
+        if start < 0:
+            break
+        previous = source_line[start - 1] if start else ""
+        offset = start + len(assignment_name)
+        while offset < len(source_line) and source_line[offset].isspace():
+            offset += 1
+        if (not previous or not (previous == "_" or previous.isalnum())) \
+                and offset < len(source_line) and source_line[offset] in ":=":
+            offset += 1
+            while offset < len(source_line) and source_line[offset].isspace():
+                offset += 1
+            if offset < len(source_line) and source_line[offset] in "\"'":
+                value_start = offset + 1
+                value_end = value_start
+                while value_end < len(source_line) and source_line[value_end] not in "\"'":
+                    value_end += 1
+                if value_end < len(source_line) and value_end - value_start >= 8:
+                    candidates.append(start)
+                    break
+        cursor = start + len(assignment_name)
+
+    return min(candidates) if candidates else None
+
+
+def _system_prompt_exposure_lines(lines: list[str]):
+    """Yield at most one exposure offset per source line."""
+    for line_no, source_line in enumerate(lines, 1):
+        offset = _system_prompt_exposure_offset(source_line)
+        if offset is not None and "#" not in source_line[:offset]:
+            yield line_no, offset
+
+
+def _assigned_llm_output_name(source_line: str) -> str | None:
+    """Return the assignment target when an LLM-result marker follows it."""
+    positions = [source_line.find(marker) for marker in _LLM_OUTPUT_ASSIGNMENT_MARKERS]
+    positions = [position for position in positions if position >= 0]
+    if not positions:
+        return None
+    prefix = source_line[: min(positions)]
+    cursor = 0
+    while True:
+        equals = prefix.find("=", cursor)
+        if equals < 0:
+            return None
+        end = equals
+        while end > 0 and prefix[end - 1].isspace():
+            end -= 1
+        start = end
+        while start > 0 and (prefix[start - 1] == "_" or prefix[start - 1].isalnum()):
+            start -= 1
+        name = prefix[start:end]
+        if name and (name[0] == "_" or name[0].isascii() and name[0].isalpha()) \
+                and all(character == "_" or character.isascii() and character.isalnum() for character in name):
+            return name
+        cursor = equals + 1
 
 
 def _extract_call_block(content: str, start_idx: int, max_chars: int = 1200) -> str:
@@ -292,14 +449,8 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                 )
             )
 
-    sys_prompt_exposure_re = re.compile(
-        r"(?im)^[^\n#]*(?:(?:NEXT_PUBLIC_|VITE_|REACT_APP_)[A-Z0-9_]*SYSTEM_PROMPT|"
-        r"(?:export\s+const|window\.|localStorage\.setItem\([^)]*)\s*(?:SYSTEM_PROMPT|systemPrompt)|"
-        r"\bSYSTEM_PROMPT\s*[:=]\s*[\"'][^\"']{8,}[\"'])"
-    )
-    for match in sys_prompt_exposure_re.finditer(raw_content):
-        line_no = _line_number_for_offset(raw_content, match.start())
-        snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else match.group(0)
+    for line_no, match in _system_prompt_exposure_lines(lines):
+        snippet = lines[line_no - 1]
         is_frontend_context = (
             ext in FRONTEND_EXTENSIONS
             or any(prefix in snippet for prefix in ("NEXT_PUBLIC_", "VITE_", "REACT_APP_", "window.", "export const"))
@@ -396,12 +547,10 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
         "generated_code",
         "generated_sql",
     }
-    for assign_match in re.finditer(
-        r"\b([A-Za-z_][A-Za-z0-9_]*)\s*=\s*[^\n]*(?:response\.choices|chat\.completions\.create|"
-        r"messages\.create|generate_content|\.invoke\()",
-        raw_content,
-    ):
-        llm_output_vars.add(assign_match.group(1))
+    for source_line in lines:
+        assigned_name = _assigned_llm_output_name(source_line)
+        if assigned_name is not None:
+            llm_output_vars.add(assigned_name)
 
     var_union = "|".join(re.escape(v) for v in sorted(llm_output_vars))
     llm_expr = rf"(?:response\.choices[^\n,)]*|(?:{var_union})(?:\.[A-Za-z0-9_\[\].]+)?)"

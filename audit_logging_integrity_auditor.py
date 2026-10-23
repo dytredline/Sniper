@@ -126,18 +126,11 @@ LOG_CALL_RE = re.compile(
 
 PY_ROUTE_VERB_RE = re.compile(r"^\s*@[\w.]+\.(post|put|patch|delete)\s*\(", re.IGNORECASE)
 PY_ROUTE_GENERIC_RE = re.compile(r"^\s*@[\w.]+\.(?:route|api_route|add_url_rule)\s*\(", re.IGNORECASE)
-PY_METHODS_RE = re.compile(
-    r"""methods\s*=\s*[\[\(\{][^\]\)\}]*['"](POST|PUT|PATCH|DELETE)['"]""",
-    re.IGNORECASE,
-)
 PY_DEF_RE = re.compile(r"^(\s*)(?:async\s+)?def\s+(\w+)\s*\(")
 PY_DECORATOR_RE = re.compile(r"^\s*@")
 DJANGO_DELETE_RE = re.compile(r"^\s*(?:async\s+)?def\s+delete\s*\(\s*self\b")
 PATH_LITERAL_RE = re.compile(r"""\(\s*[rRbBuU]?['"`]([^'"`]*)['"`]""")
 
-JS_ROUTE_RE = re.compile(
-    r"""(?<![\w])(?:app|router|server|routes?|[A-Za-z_]\w*Router)\.(post|put|patch|delete)\s*\(\s*['"`]([^'"`]*)['"`]"""
-)
 SPRING_ROUTE_RE = re.compile(
     r"^\s*@(?:(?:Post|Put|Delete|Patch)Mapping\b|RequestMapping\s*\([^)]*RequestMethod\.(?:POST|PUT|DELETE|PATCH))"
 )
@@ -148,7 +141,6 @@ AUTH_FUNC_RE = re.compile(
     r"|\bfunction\s+(?P<js>(?:log_?in|authenticate|sign_?in)\w*)\s*\("
     r"|\b(?:const|let|var)\s+(?P<jsv>(?:log_?in|authenticate|sign_?in)\w*)\s*=\s*(?:async\s*)?(?:function\b|\()"
     r"|\bfunc\s+(?:\([^)]*\)\s*)?(?P<go>(?:log_?in|authenticate|sign_?in)\w*)\s*\("
-    r"|^\s*(?:public|private|protected)\s+[\w<>\[\],?\s]*?\s(?P<java>(?:log_?in|authenticate|sign_?in)\w*)\s*\([^;]*$"
     r"|^\s*(?:async\s+)?(?P<method>(?:log_?in|authenticate|sign_?in)\w*)\s*\([^)]*\)\s*\{",
     re.IGNORECASE,
 )
@@ -234,6 +226,143 @@ def _indent_of(text: str) -> int:
     return len(text) - len(text.lstrip())
 
 
+def _single_line_python_body(code: str) -> str | None:
+    """Return text after a top-level signature colon using one forward pass."""
+    depth = 0
+    saw_open = False
+    quote = ""
+    escaped = False
+    for index, character in enumerate(code):
+        if quote:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == quote:
+                quote = ""
+            continue
+        if character in {"'", '"'}:
+            quote = character
+        elif character in "([{":
+            depth += 1
+            saw_open = True
+        elif character in ")]}" and depth:
+            depth -= 1
+        elif character == ":" and saw_open and depth == 0:
+            body = code[index + 1:].lstrip()
+            return body or None
+    return None
+
+
+def _has_mutating_python_methods(block: str) -> bool:
+    """Parse decorator ``methods=`` lists without scanning suffixes repeatedly."""
+    folded = block.casefold()
+    cursor = 0
+    while True:
+        marker = folded.find("methods", cursor)
+        if marker < 0:
+            return False
+        position = marker + len("methods")
+        while position < len(block) and block[position].isspace():
+            position += 1
+        if position >= len(block) or block[position] != "=":
+            cursor = marker + len("methods")
+            continue
+        position += 1
+        while position < len(block) and block[position].isspace():
+            position += 1
+        if position >= len(block) or block[position] not in "[({":
+            cursor = marker + len("methods")
+            continue
+        end = position + 1
+        while end < len(block) and block[end] not in "])}":
+            end += 1
+        values = folded[position + 1:end]
+        for method in ("post", "put", "patch", "delete"):
+            if any(left + method + right in values for left in ("'", '"') for right in ("'", '"')):
+                return True
+        if end >= len(block):
+            return False
+        cursor = end + 1
+
+
+def _javascript_mutation_route(line: str) -> tuple[str, str, int] | None:
+    """Return ``(method, path, match_end)`` for the first JS mutation route."""
+    cursor = 0
+    while True:
+        dot = line.find(".", cursor)
+        if dot < 0:
+            return None
+        start = dot
+        while start > 0 and (line[start - 1] == "_" or line[start - 1].isalnum()):
+            start -= 1
+        receiver = line[start:dot]
+        valid_receiver = receiver in {"app", "router", "server", "route", "routes"} or (
+            bool(receiver)
+            and (receiver[0] == "_" or receiver[0].isascii() and receiver[0].isalpha())
+            and receiver.endswith("Router")
+            and all(character == "_" or character.isalnum() for character in receiver)
+        )
+        if not valid_receiver:
+            cursor = dot + 1
+            continue
+        method = next((name for name in ("post", "put", "patch", "delete") if line.startswith(name, dot + 1)), None)
+        if method is None:
+            cursor = dot + 1
+            continue
+        position = dot + 1 + len(method)
+        while position < len(line) and line[position].isspace():
+            position += 1
+        if position >= len(line) or line[position] != "(":
+            cursor = dot + 1
+            continue
+        position += 1
+        while position < len(line) and line[position].isspace():
+            position += 1
+        if position >= len(line) or line[position] not in "'\"`":
+            cursor = dot + 1
+            continue
+        path_start = position + 1
+        path_end = path_start
+        while path_end < len(line) and line[path_end] not in "'\"`":
+            path_end += 1
+        if path_end >= len(line):
+            return None
+        return method, line[path_start:path_end], path_end + 1
+
+
+def _java_auth_function_name(line: str) -> str | None:
+    """Extract a Java auth-method name without a whitespace-ambiguous regex."""
+    stripped = line.lstrip()
+    modifier = next(
+        (value for value in ("public", "private", "protected") if stripped.startswith(value) and
+         len(stripped) > len(value) and stripped[len(value)].isspace()),
+        None,
+    )
+    if modifier is None or ";" in stripped:
+        return None
+    opening = stripped.find("(", len(modifier))
+    if opening < 0:
+        return None
+    end = opening
+    while end > 0 and stripped[end - 1].isspace():
+        end -= 1
+    start = end
+    while start > 0 and (stripped[start - 1] == "_" or stripped[start - 1].isalnum()):
+        start -= 1
+    name = stripped[start:end]
+    prefix = stripped[len(modifier):start]
+    if not prefix or not prefix[-1].isspace() or not prefix.strip():
+        return None
+    folded = name.casefold()
+    prefixes = ("login", "log_in", "authenticate", "signin", "sign_in")
+    if not any(folded.startswith(prefix) for prefix in prefixes):
+        return None
+    if not all(character == "_" or character.isalnum() for character in name):
+        return None
+    return name
+
+
 def _python_body(lines: list[str], def_idx: int, max_lines: int = FUNCTION_WINDOW_LINES) -> str:
     """Return the body of a Python function (indentation based, capped)."""
     indent = _indent_of(lines[def_idx])
@@ -244,9 +373,9 @@ def _python_body(lines: list[str], def_idx: int, max_lines: int = FUNCTION_WINDO
             sig_end = j
             break
         if j == def_idx:
-            single = re.search(r"\)\s*(?:->\s*[^:]+)?:\s*(\S.*)$", code)
-            if single:
-                return single.group(1)
+            single = _single_line_python_body(code)
+            if single is not None:
+                return single
     if sig_end is None:
         return ""
     body: list[str] = []
@@ -348,7 +477,7 @@ def _detect_mutation_routes(lines: list[str], is_python: bool) -> list[dict[str,
                 if def_idx is None or def_idx in processed_defs:
                     continue
                 block = "\n".join(lines[idx:def_idx + 1])
-                if not (verb or PY_METHODS_RE.search(block)):
+                if not (verb or _has_mutating_python_methods(block)):
                     continue
                 processed_defs.add(def_idx)
                 def_match = PY_DEF_RE.match(lines[def_idx])
@@ -386,10 +515,10 @@ def _detect_mutation_routes(lines: list[str], is_python: bool) -> list[dict[str,
                 )
             continue
 
-        js_match = JS_ROUTE_RE.search(line)
+        js_match = _javascript_mutation_route(line)
         if js_match and not stripped.startswith("@"):
-            path = js_match.group(2)
-            rest = line[js_match.end():]
+            _method, path, match_end = js_match
+            rest = line[match_end:]
             reference_only = "{" not in line and stripped.rstrip(";").endswith(")")
             if reference_only:
                 body, opened = "", False
@@ -828,13 +957,15 @@ def audit_logging_inline(
         if not stripped or _is_comment(stripped) or idx in covered_defs:
             continue
         match = AUTH_FUNC_RE.search(line)
-        if not match:
+        java_name = _java_auth_function_name(line)
+        if not match and java_name is None:
             continue
-        name = next((value for value in match.groupdict().values() if value), "")
+        name = java_name or next((value for value in match.groupdict().values() if value), "")
         if not name or AUTH_FUNC_EXCLUDE_RE.search(name):
             continue
-        if is_python or match.group("py"):
-            if not match.group("py"):
+        is_python_match = bool(match and match.group("py"))
+        if is_python or is_python_match:
+            if not is_python_match:
                 continue
             body = _python_body(lines, idx)
             if not body.strip():

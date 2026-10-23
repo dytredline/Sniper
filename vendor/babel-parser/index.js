@@ -4397,8 +4397,42 @@ function hasNewLine(input, start, end) {
   }
   return false;
 }
-const skipWhiteSpace = /(?:\s|\/\/.*|\/\*[^]*?\*\/)*/g;
-const skipWhiteSpaceInLine = /(?:[^\S\n\r\u2028\u2029]|\/\/.*|\/\*.*?\*\/)*/g;
+function skipSpaceAndComments(input, pos, inLine) {
+  const length = input.length;
+  while (pos < length) {
+    const ch = input.charCodeAt(pos);
+    if (isWhitespace(ch) || !inLine && isNewLine(ch)) {
+      pos++;
+      continue;
+    }
+    if (ch !== 47) break;
+    const next = input.charCodeAt(pos + 1);
+    if (next === 47) {
+      pos += 2;
+      while (pos < length && !isNewLine(input.charCodeAt(pos))) pos++;
+      continue;
+    }
+    if (next === 42) {
+      const commentStart = pos;
+      pos += 2;
+      let closed = false;
+      while (pos < length) {
+        const commentCh = input.charCodeAt(pos);
+        if (inLine && isNewLine(commentCh)) return commentStart;
+        if (commentCh === 42 && input.charCodeAt(pos + 1) === 47) {
+          pos += 2;
+          closed = true;
+          break;
+        }
+        pos++;
+      }
+      if (!closed) return commentStart;
+      continue;
+    }
+    break;
+  }
+  return pos;
+}
 function isWhitespace(code) {
   switch (code) {
     case 0x0009:
@@ -5755,8 +5789,7 @@ class Tokenizer extends CommentsParser {
     return this.nextTokenStartSince(this.state.pos);
   }
   nextTokenStartSince(pos) {
-    skipWhiteSpace.lastIndex = pos;
-    return skipWhiteSpace.test(this.input) ? skipWhiteSpace.lastIndex : pos;
+    return skipSpaceAndComments(this.input, pos, false);
   }
   lookaheadCharCode() {
     return this.lookaheadCharCodeSince(this.state.pos);
@@ -5768,8 +5801,7 @@ class Tokenizer extends CommentsParser {
     return this.nextTokenInLineStartSince(this.state.pos);
   }
   nextTokenInLineStartSince(pos) {
-    skipWhiteSpaceInLine.lastIndex = pos;
-    return skipWhiteSpaceInLine.test(this.input) ? skipWhiteSpaceInLine.lastIndex : pos;
+    return skipSpaceAndComments(this.input, pos, true);
   }
   lookaheadInLineCharCode() {
     return this.input.charCodeAt(this.nextTokenInLineStart());

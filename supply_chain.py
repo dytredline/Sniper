@@ -20,6 +20,8 @@ from pathlib import Path
 from typing import Any, Iterable
 from urllib.parse import urlsplit
 
+from safe_file_read import read_text_bounded
+
 CATEGORY = "supply_chain"
 MAX_LOCK_BYTES = 64 * 1024 * 1024
 MAX_PACKAGE_JSON_BYTES = 512 * 1024
@@ -69,9 +71,10 @@ def _finding(severity: str, title: str, file: str, evidence: str, recommendation
 
 def _read_json(path: Path, limit: int) -> Any:
     try:
-        if path.is_symlink() or not path.is_file() or path.stat().st_size > limit:
+        text = read_text_bounded(path, limit)
+        if text is None:
             return None
-        return json.loads(path.read_text(encoding="utf-8", errors="replace"))
+        return json.loads(text)
     except (OSError, ValueError, RecursionError):
         return None
 
@@ -187,11 +190,9 @@ def _hook_file_text(package_dir: Path, command: str) -> str:
     target = (package_dir / match.group(1)).resolve()
     try:
         target.relative_to(package_dir.resolve())
-        if target.is_symlink() or not target.is_file() or target.stat().st_size > MAX_HOOK_FILE_BYTES:
-            return ""
-        return target.read_text(encoding="utf-8", errors="replace")
     except (OSError, ValueError):
         return ""
+    return read_text_bounded(target, MAX_HOOK_FILE_BYTES) or ""
 
 
 def _find_files(root: Path, filename: str, skip_dirs: Iterable[str] = (), *, max_depth: int = 6,
@@ -324,13 +325,13 @@ def dependency_confusion_findings(root: Path) -> list[dict[str, Any]]:
             if isinstance(root_manifest.get(field), dict):
                 direct.update(str(n) for n in root_manifest[field])
     for req in sorted(root.glob("requirements*.txt"))[:10]:
-        try:
-            for line in req.read_text(encoding="utf-8", errors="replace").splitlines()[:5000]:
-                match = re.match(r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)", line)
-                if match and not line.lstrip().startswith(("#", "-")):
-                    direct.add(match.group(1))
-        except OSError:
+        text = read_text_bounded(req, MAX_LOCK_BYTES)
+        if text is None:
             continue
+        for line in text.splitlines()[:5000]:
+            match = re.match(r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)", line)
+            if match and not line.lstrip().startswith(("#", "-")):
+                direct.add(match.group(1))
     internal = sorted(n for n in direct if looks_internal(n, prefix))
     if internal:
         out.append(_finding(

@@ -15,15 +15,14 @@ import re
 DICTIONARY_PATH = Path(__file__).resolve().parent / "static" / "i18n-en.tsv"
 SUPPORTED = frozenset({"tr", "en"})
 SEPARATORS = (": ", " · ", " — ", " → ", " | ", "; ")
-_BULLET = re.compile(r"^([•·—–\-*]\s+|\[[A-Za-z_]+\]\s+)(.+)$", re.S)  # 22. tur: küçük harfli [critical] önekleri de
-_SENTENCE = re.compile(r"(?<=[.!?])\s+(?=[A-ZÇĞİÖŞÜ0-9\"“(])")
 _MONTHS = {"oca": "Jan", "şub": "Feb", "mar": "Mar", "nis": "Apr", "may": "May", "haz": "Jun",
            "tem": "Jul", "ağu": "Aug", "eyl": "Sep", "eki": "Oct", "kas": "Nov", "ara": "Dec"}
 _DATE = re.compile(r"^(\d{1,2})[ .](Oca|Şub|Mar|Nis|May|Haz|Tem|Ağu|Eyl|Eki|Kas|Ara)[a-zçğıöşü]*\.?[ ](\d{4})(.*)$", re.I)
 _SKIP_BLOCK = re.compile(r"(<(script|style|code|pre)\b[^>]*>.*?</\2\s*>)", re.S | re.I)
-_TAG_OR_TEXT = re.compile(r"(<[^>]*>)")
 _ATTR = re.compile(r'(\s(?:title|aria-label|alt|placeholder)=")([^"]*)(")')
 _HTML_LANG = re.compile(r'(<html\b[^>]*\blang=")tr(")', re.I)
+_SENTENCE_START = frozenset('ABCDEFGHIJKLMNOPQRSTUVWXYZÇĞİÖŞÜ0123456789"“(')
+_BULLET_MARKS = frozenset("•·—–-*")
 
 
 def normalize_lang(value: str | None) -> str:
@@ -33,6 +32,43 @@ def normalize_lang(value: str | None) -> str:
 
 def _normalize(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
+
+
+def _bullet_parts(text: str) -> tuple[str, str] | None:
+    """Split a supported bullet prefix from non-empty body text."""
+    content = 0
+    if text[:1] in _BULLET_MARKS:
+        content = 1
+    elif text.startswith("["):
+        closing = text.find("]", 1)
+        label = text[1:closing] if closing >= 0 else ""
+        if label and all(char == "_" or "A" <= char <= "Z" or "a" <= char <= "z" for char in label):
+            content = closing + 1
+    if not content or content >= len(text) or not text[content].isspace():
+        return None
+    while content < len(text) and text[content].isspace():
+        content += 1
+    return (text[:content], text[content:]) if content < len(text) else None
+
+
+def _markup_pieces(text: str) -> list[str]:
+    """Split ``<...>`` tags and text in one forward pass."""
+    pieces: list[str] = []
+    cursor = 0
+    while cursor < len(text):
+        opening = text.find("<", cursor)
+        if opening < 0:
+            break
+        closing = text.find(">", opening + 1)
+        if closing < 0:
+            break
+        if opening > cursor:
+            pieces.append(text[cursor:opening])
+        pieces.append(text[opening:closing + 1])
+        cursor = closing + 1
+    if cursor < len(text):
+        pieces.append(text[cursor:])
+    return pieces
 
 
 class Translator:
@@ -68,9 +104,14 @@ class Translator:
         hit = self.strings.get(core)
         if hit is not None:
             return hit
-        m = re.match(r"^(.*?)(\s*(?:[:…—–]|\.\.\.))$", core, re.S)
-        if m and m.group(1) and m.group(1) in self.strings:
-            return self.strings[m.group(1)] + m.group(2)
+        punctuation = "..." if core.endswith("...") else core[-1:] if core.endswith((":", "…", "—", "–")) else ""
+        if punctuation:
+            split = len(core) - len(punctuation)
+            while split and core[split - 1].isspace():
+                split -= 1
+            prefix = core[:split]
+            if prefix and prefix in self.strings:
+                return self.strings[prefix] + core[split:]
         return None
 
     def pattern(self, core: str, depth: int) -> str | None:
@@ -92,7 +133,21 @@ class Translator:
         return None
 
     def sentences(self, core: str) -> str | None:
-        parts = _SENTENCE.split(core)
+        parts: list[str] = []
+        start = 0
+        index = 0
+        while index < len(core):
+            if not core[index].isspace():
+                index += 1
+                continue
+            end = index + 1
+            while end < len(core) and core[end].isspace():
+                end += 1
+            if index and core[index - 1] in ".!?" and end < len(core) and core[end] in _SENTENCE_START:
+                parts.append(core[start:index])
+                start = end
+            index = end
+        parts.append(core[start:])
         if len(parts) < 2:
             return None
         out, i, changed = [], 0, 0
@@ -144,11 +199,12 @@ class Translator:
         if hit is None:
             hit = self.pattern(core, depth)
         if hit is None:
-            b = _BULLET.match(core)
-            if b:
-                inner = self.core(b.group(2), depth)
+            bullet = _bullet_parts(core)
+            if bullet:
+                prefix, body = bullet
+                inner = self.core(body, depth)
                 if inner is not None:
-                    hit = b.group(1) + inner
+                    hit = prefix + inner
         if hit is None:
             d = _DATE.match(core)
             if d and d.group(2).lower() in _MONTHS:
@@ -225,7 +281,7 @@ def translator() -> Translator:
 
 def _translate_markup(chunk: str, tr: Translator) -> str:
     out = []
-    for piece in _TAG_OR_TEXT.split(chunk):
+    for piece in _markup_pieces(chunk):
         if not piece:
             continue
         if piece.startswith("<"):

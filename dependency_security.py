@@ -17,7 +17,7 @@ from typing import Any
 
 from project_analyzer import ProjectRejected, validate_project_path
 
-from safe_file_read import read_bytes_bounded
+from safe_file_read import read_bytes_bounded, read_text_bounded
 
 
 MAX_REPORT_BYTES = 8_000_000
@@ -3040,11 +3040,8 @@ def analyze_vulnerability_reachability(
             ext = fpath.suffix.casefold()
             if ext not in _REACHABILITY_SOURCE_EXTENSIONS:
                 continue
-            try:
-                if fpath.stat().st_size > 1_000_000:
-                    continue
-                content = fpath.read_text(encoding="utf-8", errors="ignore")
-            except OSError:
+            content = read_text_bounded(fpath, 1_000_000, errors="ignore", allow_empty=True)
+            if content is None:
                 continue
             scanned_files_count += 1
             seen_suffixes.add(ext)

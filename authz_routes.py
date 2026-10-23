@@ -106,6 +106,23 @@ _JS_LOOKUP_METHODS = frozenset({
     "destroy", "update", "remove", "get", "query", "execute", "run", "all", "findUnique", "findFirst", "where", "getById",
 })
 _JS_ID_SOURCES = ("params", "query", "body")
+_DATABASE_RECEIVER_SUFFIXES = (
+    "db", "model", "repo", "collection", "knex", "sql", "pool", "conn", "client", "prisma", "schema",
+)
+
+
+def _is_database_receiver(receiver: str) -> bool:
+    """Equivalent to the former suffix regex, without repeated suffix backtracking."""
+    if receiver.casefold().endswith(_DATABASE_RECEIVER_SUFFIXES):
+        return True
+    # The previous IGNORECASE ``[A-Z]\w*$`` branch accepted any suffix that
+    # starts with an ASCII letter and otherwise contains only word characters.
+    for character in reversed(receiver):
+        if character != "_" and not character.isalnum():
+            break
+        if character.isascii() and character.isalpha():
+            return True
+    return False
 
 
 @dataclass
@@ -980,7 +997,7 @@ def _js_idor(toks, a: int, b: int, path: str, body: str) -> dict[str, Any] | Non
                         uses_id = True
             if uses_id and toks[j + 1].value in {"get", "all", "run", "query", "execute", "where", "update", "remove", "find"}:
                 # Genel adlı yöntemler: yalnız veritabanı benzeri alıcıda.
-                if not re.search(r"(?i)(db|model|repo|collection|knex|sql|pool|conn|client|prisma|schema|[A-Z]\w*)$", receiver):
+                if not _is_database_receiver(receiver):
                     continue
             if uses_id:
                 return {"line": toks[j + 1].line, "lookup": f"{receiver}.{toks[j + 1].value}"}

@@ -36,11 +36,45 @@ _ADMIN_PATH_RE = re.compile(r"(?i)(^|/)(admin|manage|management|internal|debug|c
 _PARAM_SEG_RE = re.compile(
     r"^(\{[^}]*\}|:[A-Za-z_][\w]*\??(\(.*\))?|<[^>]+>|\(\?P<[^>]+>.*\)|\(.*\)|\*+|\[[^\]]+\])$"
 )
+_PY_DEF_LINE_RE = re.compile(r"(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\(")
 
 
 # ---------------------------------------------------------------------------
 # Sözleşme bulma ve ayrıştırma
 # ---------------------------------------------------------------------------
+def _replace_braced_segments(value: str, replacement: str = "x") -> str:
+    """Replace non-overlapping ``{...}`` segments in one forward pass."""
+    parts: list[str] = []
+    cursor = 0
+    while True:
+        start = value.find("{", cursor)
+        if start < 0:
+            parts.append(value[cursor:])
+            break
+        end = value.find("}", start + 1)
+        if end < 0:
+            parts.append(value[cursor:])
+            break
+        parts.extend((value[cursor:start], replacement))
+        cursor = end + 1
+    return "".join(parts)
+
+
+def _braced_values(value: str):
+    """Yield non-empty values from non-overlapping ``{...}`` segments."""
+    cursor = 0
+    while True:
+        start = value.find("{", cursor)
+        if start < 0:
+            return
+        end = value.find("}", start + 1)
+        if end < 0:
+            return
+        if end > start + 1:
+            yield value[start + 1:end]
+        cursor = end + 1
+
+
 def looks_like_spec(relpath: str, text: str) -> bool:
     """Hızlı ön süzgeç: JSON/YAML dosyasında üst düzey ``openapi: 3.x`` / ``swagger: "2.0"`` anahtarı."""
     if not relpath.lower().endswith(SPEC_SUFFIXES) or not text or len(text) > MAX_SPEC_BYTES:
@@ -71,7 +105,7 @@ def _load(relpath: str, text: str) -> dict[str, Any] | None:
 
 def _url_path(url: str) -> str:
     url = str(url or "").strip()
-    url = re.sub(r"\{[^}]*\}", "x", url) if "://" in url else url
+    url = _replace_braced_segments(url) if "://" in url else url
     m = re.match(r"^[a-zA-Z][\w+.-]*://[^/]*(/.*)?$", url)
     if m:
         url = m.group(1) or ""
@@ -138,7 +172,7 @@ def parse_spec(relpath: str, text: str) -> dict[str, Any] | None:
                       if isinstance(p, dict)]
             declared = {str(p.get("name")) for p in params if p.get("in") == "path"}
             loc = f"{str(method).upper()} {path}"
-            for name in re.findall(r"\{([^}]+)\}", path):
+            for name in _braced_values(path):
                 if name not in declared and not any("$ref" in p for p in params):
                     param_gaps.append(f"{loc}: yol parametresi '{name}' tanımlanmamış")
             for p in params:
@@ -215,6 +249,30 @@ def _method_ok(route_methods: Iterable[str], method: str, framework: str) -> boo
     return not methods or "ALL" in methods or method in methods or (framework == "django" and method in {"GET", "POST", "HEAD"})
 
 
+def _python_class_name(source_line: str) -> str | None:
+    """Return a Python class name using one forward pass over a stripped line."""
+    if not source_line.startswith("class"):
+        return None
+    cursor = len("class")
+    if cursor >= len(source_line) or not source_line[cursor].isspace():
+        return None
+    while cursor < len(source_line) and source_line[cursor].isspace():
+        cursor += 1
+    if cursor >= len(source_line) or not (
+        source_line[cursor] == "_" or source_line[cursor].isascii() and source_line[cursor].isalpha()
+    ):
+        return None
+    start = cursor
+    cursor += 1
+    while cursor < len(source_line) and (
+        source_line[cursor] == "_" or source_line[cursor].isalnum()
+    ):
+        cursor += 1
+    if source_line.find(":", cursor) < 0:
+        return None
+    return source_line[start:cursor]
+
+
 def _function_index(sources: Iterable[tuple]) -> tuple[set[str], set[str]]:
     """Sözleşme güdümlü çatılar için işlev dizini: (nitelikli 'modül.işlev', çıplak ad)."""
     qualified: set[str] = set()
@@ -225,14 +283,30 @@ def _function_index(sources: Iterable[tuple]) -> tuple[set[str], set[str]]:
             module = rel[:-3].replace("/", ".")
             if module.endswith(".__init__"):
                 module = module[: -len(".__init__")]
-            for name in re.findall(r"(?m)^(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\(", text):
-                bare.add(name)
-                parts = module.split(".")
-                for i in range(len(parts)):  # paket kökü bilinmiyor: her önek kırpımı
-                    qualified.add(".".join(parts[i:] + [name]))
-            for cls, body in re.findall(r"(?m)^class\s+([A-Za-z_]\w*)[^\n]*:\n((?:[ \t]+[^\n]*\n|\n)*)", text):
-                for name in re.findall(r"(?m)^[ \t]+(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\(", body):
-                    qualified.add(f"{cls}.{name}")
+            current_class: str | None = None
+            for source_line in text.splitlines():
+                stripped = source_line.lstrip(" \t")
+                if not stripped:
+                    continue
+                indented = len(stripped) != len(source_line)
+                if not indented:
+                    current_class = None
+                    class_name = _python_class_name(stripped)
+                    if class_name is not None:
+                        current_class = class_name
+                        continue
+                    function_match = _PY_DEF_LINE_RE.match(stripped)
+                    if function_match is None:
+                        continue
+                    name = function_match.group(1)
+                    bare.add(name)
+                    parts = module.split(".")
+                    for i in range(len(parts)):  # paket kökü bilinmiyor: her önek kırpımı
+                        qualified.add(".".join(parts[i:] + [name]))
+                elif current_class is not None:
+                    function_match = _PY_DEF_LINE_RE.match(stripped)
+                    if function_match is not None:
+                        qualified.add(f"{current_class}.{function_match.group(1)}")
         else:
             for name in re.findall(r"(?:function\s+([A-Za-z_$][\w$]*)|(?:exports|module\.exports)\.([A-Za-z_$][\w$]*)\s*=)", text):
                 bare.add(name[0] or name[1])

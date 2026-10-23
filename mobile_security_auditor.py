@@ -421,6 +421,91 @@ def _build_top10_summary(findings: list[dict[str, Any]]) -> list[dict[str, Any]]
     ]
 
 
+_DATA_TAG_START = re.compile(r"<data\b", re.IGNORECASE)
+_CERTIFICATES_TAG_START = re.compile(r"<certificates\b", re.IGNORECASE)
+_ANDROID_SCHEME_ATTR = re.compile(r"android:scheme", re.IGNORECASE)
+_SRC_ATTR = re.compile(r"src", re.IGNORECASE)
+
+
+def _xml_start_tags(content: str, start_pattern: re.Pattern[str], *,
+                    require_space: bool = False,
+                    allow_unterminated: bool = False) -> list[tuple[int, int, str]]:
+    """Collect bounded XML-like start tags without rescanning suffixes."""
+    out: list[tuple[int, int, str]] = []
+    consumed = 0
+    for match in start_pattern.finditer(content):
+        if match.start() < consumed:
+            continue
+        if require_space and (match.end() >= len(content) or not content[match.end()].isspace()):
+            continue
+        closing = content.find(">", match.end())
+        if closing < 0:
+            if allow_unterminated:
+                out.append((match.start(), len(content), content[match.start():]))
+            break
+        consumed = closing + 1
+        out.append((match.start(), consumed, content[match.start():consumed]))
+    return out
+
+
+def _xml_attribute_values(tag: str, pattern: re.Pattern[str]) -> list[str]:
+    """Return quoted attribute values using one forward delimiter scan."""
+    cursor = 0
+    values: list[str] = []
+    while cursor < len(tag):
+        match = pattern.search(tag, cursor)
+        if match is None:
+            break
+        index = match.end()
+        while index < len(tag) and tag[index].isspace():
+            index += 1
+        if index >= len(tag) or tag[index] != "=":
+            cursor = match.end()
+            continue
+        index += 1
+        while index < len(tag) and tag[index].isspace():
+            index += 1
+        if index >= len(tag) or tag[index] not in "\"'":
+            cursor = match.end()
+            continue
+        quote = tag[index]
+        end = tag.find(quote, index + 1)
+        if end < 0:
+            cursor = match.end()
+            continue
+        values.append(tag[index + 1:end])
+        cursor = end + 1
+    return values
+
+
+def _xml_attribute(tag: str, pattern: re.Pattern[str]) -> str | None:
+    values = _xml_attribute_values(tag, pattern)
+    return next((value for value in reversed(values) if value), None)
+
+
+def _gradle_false_setting(content: str, name: str) -> bool:
+    """Recognize ``name false`` and ``name = false`` in linear time."""
+    cursor = 0
+    while cursor < len(content):
+        found = content.find(name, cursor)
+        if found < 0:
+            return False
+        index = found + len(name)
+        whitespace_start = index
+        while index < len(content) and content[index].isspace():
+            index += 1
+        separated = index > whitespace_start
+        if index < len(content) and content[index] == "=":
+            separated = True
+            index += 1
+            while index < len(content) and content[index].isspace():
+                index += 1
+        if separated and content.startswith("false", index):
+            return True
+        cursor = found + len(name)
+    return False
+
+
 def _audit_manifest_or_config_text(
     content: str,
     *,
@@ -530,8 +615,11 @@ def _audit_manifest_or_config_text(
                         file_path=rel_path,
                     )
                 )
-        for scheme_match in re.finditer(r"<data\b[^>]*android:scheme\s*=\s*[\"']([^\"']+)[\"'][^>]*>", content, re.IGNORECASE):
-            scheme_val = scheme_match.group(1).lower()
+        for tag_start, tag_end, tag in _xml_start_tags(content, _DATA_TAG_START):
+            scheme = _xml_attribute(tag, _ANDROID_SCHEME_ATTR)
+            if not scheme:
+                continue
+            scheme_val = scheme.lower()
             if scheme_val not in {"http", "https"}:
                 findings.append(
                     _mobile_finding(
@@ -547,7 +635,7 @@ def _audit_manifest_or_config_text(
                     )
                 )
             else:
-                surrounding = content[max(0, scheme_match.start() - 300) : scheme_match.end() + 200]
+                surrounding = content[max(0, tag_start - 300):tag_end + 200]
                 if "BROWSABLE" in surrounding and "autoVerify=\"true\"" not in surrounding and "autoVerify='true'" not in surrounding:
                     findings.append(
                         _mobile_finding(
@@ -557,7 +645,7 @@ def _audit_manifest_or_config_text(
                             m_top10="M4",
                             title="HTTPS Deep Link tanımında android:autoVerify='true' eksik",
                             description="BROWSABLE intent-filter tanımlanmış ancak alan adı sahipliğini doğrulayan autoVerify='true' bulunmuyor.",
-                            evidence=scheme_match.group(0)[:160],
+                            evidence=tag[:160],
                             recommendation="intent-filter etiketine android:autoVerify='true' ekleyin ve /.well-known/assetlinks.json dosyasını yayımlayın.",
                             file_path=rel_path,
                         )
@@ -579,7 +667,13 @@ def _audit_manifest_or_config_text(
                     file_path=rel_path,
                 )
             )
-        if re.search(r"<certificates\s+[^>]*src\s*=\s*[\"']user[\"']", content, re.IGNORECASE):
+        trusts_user_certificates = any(
+            any(value.casefold() == "user" for value in _xml_attribute_values(tag, _SRC_ATTR))
+            for _start, _end, tag in _xml_start_tags(
+                content, _CERTIFICATES_TAG_START, require_space=True, allow_unterminated=True
+            )
+        )
+        if trusts_user_certificates:
             findings.append(
                 _mobile_finding(
                     rule_id="SNIPER-MOB-NSC-02",
@@ -669,7 +763,7 @@ def _audit_manifest_or_config_text(
 
     elif lower_name in {"build.gradle", "build.gradle.kts"}:
         platform = "android"
-        if re.search(r"minifyEnabled\s*(?:=|\s)\s*false", content):
+        if _gradle_false_setting(content, "minifyEnabled"):
             findings.append(
                 _mobile_finding(
                     rule_id="SNIPER-MOB-GRD-01",

@@ -42,6 +42,149 @@ def _line_number_for_offset(content: str, offset: int) -> int:
     return content.count("\n", 0, max(0, offset)) + 1
 
 
+_SQL_TABLE_HEADER_RE = re.compile(
+    r"\bCREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+([A-Za-z0-9_.\"']+)\s*\(", re.IGNORECASE
+)
+_PRISMA_MODEL_HEADER_RE = re.compile(r"\bmodel\s+([A-Za-z0-9_]+)\s*\{", re.IGNORECASE)
+_ALTER_RLS_RE = re.compile(
+    r"\bALTER TABLE (?:IF EXISTS )?(?:ONLY )?([A-Za-z0-9_.\"']+) (?:FORCE|ENABLE) ROW LEVEL SECURITY\b",
+    re.IGNORECASE,
+)
+_SIMPLE_DANGEROUS_DB_RE = re.compile(
+    r"\bSUPERUSER\b|\bGRANT\s+ALL(?:\s+PRIVILEGES)?\b|\bxp_cmdshell\b|"
+    r"\bLOAD_FILE\s*\(|\bINTO\s+(?:OUTFILE|DUMPFILE)\b",
+    re.IGNORECASE,
+)
+_SIMPLE_UNSAFE_MIGRATION_RE = re.compile(
+    r"\bSET\s+FOREIGN_KEY_CHECKS\s*=\s*(?:0|OFF)\b|"
+    r"\bPRAGMA\s+foreign_keys\s*=\s*(?:0|OFF)\b|"
+    r"\bDISABLE\s+TRIGGER\s+ALL\b",
+    re.IGNORECASE,
+)
+_COPY_WORD_RE = re.compile(r"\bcopy\b", re.IGNORECASE)
+_FROM_PROGRAM_RE = re.compile(r"\bfrom[ \t]+program\b", re.IGNORECASE)
+_DROP_TABLE_RE = re.compile(r"\bdrop[ \t]+table\b", re.IGNORECASE)
+_CASCADE_RE = re.compile(r"\bcascade\b", re.IGNORECASE)
+
+
+def _iter_statements(content: str):
+    start = 0
+    while start < len(content):
+        end = content.find(";", start)
+        if end < 0:
+            yield start, content[start:]
+            return
+        yield start, content[start:end]
+        start = end + 1
+
+
+def _iter_rls_table_names(content: str):
+    for start, statement in _iter_statements(content):
+        normalized = " ".join(statement.split())
+        if not normalized:
+            continue
+        alter = _ALTER_RLS_RE.search(normalized)
+        if alter:
+            yield start, alter.group(1)
+        folded = normalized.casefold()
+        policy = folded.find("create policy ")
+        if policy < 0:
+            continue
+        on = folded.find(" on ", policy + len("create policy "))
+        if on < 0:
+            continue
+        pos = on + len(" on ")
+        end = pos
+        while end < len(normalized) and normalized[end] in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.\"'":
+            end += 1
+        if end > pos:
+            yield start, normalized[pos:end]
+
+
+def _iter_sql_tables(content: str):
+    cursor = 0
+    while (header := _SQL_TABLE_HEADER_RE.search(content, cursor)) is not None:
+        close = content.find(")", header.end())
+        while close >= 0:
+            tail = close + 1
+            while tail < len(content) and content[tail].isspace():
+                tail += 1
+            if tail < len(content) and content[tail] == ";":
+                yield header.start(), header.group(1), content[header.end():close]
+                cursor = tail + 1
+                break
+            close = content.find(")", close + 1)
+        else:
+            return
+
+
+def _iter_prisma_models(content: str):
+    cursor = 0
+    while (header := _PRISMA_MODEL_HEADER_RE.search(content, cursor)) is not None:
+        close = content.find("}", header.end())
+        if close < 0:
+            return
+        yield header.start(), header.group(1), content[header.end():close]
+        cursor = close + 1
+
+
+def _iter_dangerous_db_privileges(content: str):
+    for match in _SIMPLE_DANGEROUS_DB_RE.finditer(content):
+        yield match.start(), match.group(0)
+    offset = 0
+    for raw_line in content.splitlines(keepends=True):
+        line = raw_line.rstrip("\r\n")
+        segment_start = 0
+        while segment_start <= len(line):
+            segment_end = line.find(";", segment_start)
+            if segment_end < 0:
+                segment_end = len(line)
+            segment = line[segment_start:segment_end]
+            search_from = 0
+            while (copy := _COPY_WORD_RE.search(segment, search_from)) is not None:
+                marker = _FROM_PROGRAM_RE.search(segment, copy.end())
+                if marker:
+                    yield offset + segment_start + copy.start(), segment[copy.start():marker.end()]
+                    search_from = marker.end()
+                else:
+                    search_from = copy.end()
+            if segment_end == len(line):
+                break
+            segment_start = segment_end + 1
+        fields = line.split()
+        if fields and fields[0].casefold() in {"host", "local"} and len(fields) >= 4:
+            trust_index = 3 if len(fields) == 4 else 4
+            if trust_index < len(fields) and fields[trust_index].casefold() == "trust":
+                yield offset, line
+        offset += len(raw_line)
+
+
+def _iter_unsafe_migrations(content: str):
+    for match in _SIMPLE_UNSAFE_MIGRATION_RE.finditer(content):
+        yield match.start(), match.group(0)
+    offset = 0
+    for raw_line in content.splitlines(keepends=True):
+        line = raw_line.rstrip("\r\n")
+        segment_start = 0
+        while segment_start <= len(line):
+            segment_end = line.find(";", segment_start)
+            if segment_end < 0:
+                segment_end = len(line)
+            segment = line[segment_start:segment_end]
+            search_from = 0
+            while (drop := _DROP_TABLE_RE.search(segment, search_from)) is not None:
+                cascade = _CASCADE_RE.search(segment, drop.end())
+                if cascade:
+                    yield offset + segment_start + drop.start(), segment[drop.start():cascade.end()]
+                    search_from = cascade.end()
+                else:
+                    search_from = drop.end()
+            if segment_end == len(line):
+                break
+            segment_start = segment_end + 1
+        offset += len(raw_line)
+
+
 def _make_db_finding(
     *,
     severity: str,
@@ -102,37 +245,23 @@ def audit_database_schema_inline(
     has_global_rls = bool(
         re.search(r"\b(?:ENABLE\s+ROW\s+LEVEL\s+SECURITY|CREATE\s+POLICY)\b", raw_content, re.IGNORECASE)
     )
-    sql_table_re = re.compile(
-        r"CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+([A-Za-z0-9_.\"']+)\s*\((.*?)\)\s*;",
-        re.IGNORECASE | re.DOTALL,
-    )
     tenant_col_re = re.compile(
         r"\b(?:tenant_id|organization_id|org_id|workspace_id|account_id)\b",
         re.IGNORECASE,
     )
-    rls_name_re = re.compile(
-        r"ALTER\s+TABLE\s+(?:IF\s+EXISTS\s+)?(?:ONLY\s+)?([A-Za-z0-9_.\"']+)\s+(?:FORCE|ENABLE)\s+ROW\s+LEVEL\s+SECURITY"
-        r"|CREATE\s+POLICY\s+[^\n;]+?\s+ON\s+([A-Za-z0-9_.\"']+)",
-        re.IGNORECASE,
-    )
-
     def _short_name(identifier: str) -> str:
         return identifier.strip().strip("\"'").split(".")[-1].strip("\"'").casefold()
 
-    rls_tables = {
-        _short_name(found.group(1) or found.group(2))
-        for found in rls_name_re.finditer(raw_content)
-    }
+    rls_tables = {_short_name(table) for _offset, table in _iter_rls_table_names(raw_content)}
     reported_tables: set[str] = set()
-    for match in sql_table_re.finditer(raw_content):
-        table_name = match.group(1).strip('"\'')
+    for table_start, raw_table_name, table_body in _iter_sql_tables(raw_content):
+        table_name = raw_table_name.strip('"\'')
         short_table = table_name.split(".")[-1]
-        table_body = match.group(2)
         if tenant_col_re.search(table_body):
             key = _short_name(short_table)
             if key not in rls_tables and key not in reported_tables:
                 reported_tables.add(key)
-                line_no = _line_number_for_offset(raw_content, match.start())
+                line_no = _line_number_for_offset(raw_content, table_start)
                 snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else f"CREATE TABLE {table_name}"
                 _add(
                     _make_db_finding(
@@ -155,18 +284,12 @@ def audit_database_schema_inline(
                     )
                 )
 
-    prisma_model_re = re.compile(
-        r"model\s+([A-Za-z0-9_]+)\s*\{([^}]*)\}",
-        re.DOTALL,
-    )
     prisma_tenant_re = re.compile(
         r"\b(?:tenant_id|tenantId|organization_id|organizationId|org_id|orgId|workspace_id|workspaceId|account_id|accountId)\b"
     )
-    for match in prisma_model_re.finditer(raw_content):
-        model_name = match.group(1)
-        model_body = match.group(2)
+    for model_start, model_name, model_body in _iter_prisma_models(raw_content):
         if prisma_tenant_re.search(model_body) and not has_global_rls and "rls" not in model_body.lower():
-            line_no = _line_number_for_offset(raw_content, match.start())
+            line_no = _line_number_for_offset(raw_content, model_start)
             snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else f"model {model_name}"
             _add(
                 _make_db_finding(
@@ -223,22 +346,13 @@ def audit_database_schema_inline(
         )
 
     # 3. Excessive Database Privileges & Dangerous Command Execution (critical, CWE-250, SNIPER-CONF-08)
-    dangerous_db_priv_re = re.compile(
-        r"(?im)(?:\bSUPERUSER\b"
-        r"|\bGRANT\s+ALL(?:\s+PRIVILEGES)?\b"
-        r"|\bCOPY\s+[^\n;]+\s+FROM\s+PROGRAM\b"
-        r"|\bxp_cmdshell\b"
-        r"|\bLOAD_FILE\s*\("
-        r"|\bINTO\s+(?:OUTFILE|DUMPFILE)\b"
-        r"|^(?:host|local)\s+\S+\s+\S+(?:\s+\S+)?\s+trust\b)"
-    )
-    for match in dangerous_db_priv_re.finditer(raw_content):
-        if match.group(0).upper() == "SUPERUSER" and re.search(
-            r"\bNOSUPERUSER\b", lines[_line_number_for_offset(raw_content, match.start()) - 1], re.IGNORECASE
+    for privilege_start, privilege_text in _iter_dangerous_db_privileges(raw_content):
+        if privilege_text.upper() == "SUPERUSER" and re.search(
+            r"\bNOSUPERUSER\b", lines[_line_number_for_offset(raw_content, privilege_start) - 1], re.IGNORECASE
         ):
             continue
-        line_no = _line_number_for_offset(raw_content, match.start())
-        snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else match.group(0)
+        line_no = _line_number_for_offset(raw_content, privilege_start)
+        snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else privilege_text
         _add(
             _make_db_finding(
                 severity="critical",
@@ -261,15 +375,9 @@ def audit_database_schema_inline(
         )
 
     # 4. Unsafe Schema Migration / Foreign Key Disablement (medium, CWE-400, SNIPER-INFR-03)
-    unsafe_migration_re = re.compile(
-        r"(?im)(?:\bSET\s+FOREIGN_KEY_CHECKS\s*=\s*(?:0|OFF)\b"
-        r"|\bPRAGMA\s+foreign_keys\s*=\s*(?:0|OFF)\b"
-        r"|\bDISABLE\s+TRIGGER\s+ALL\b"
-        r"|\bDROP\s+TABLE\s+[^\n;]+\bCASCADE\b)"
-    )
-    for match in unsafe_migration_re.finditer(raw_content):
-        line_no = _line_number_for_offset(raw_content, match.start())
-        snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else match.group(0)
+    for migration_start, migration_text in _iter_unsafe_migrations(raw_content):
+        line_no = _line_number_for_offset(raw_content, migration_start)
+        snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else migration_text
         _add(
             _make_db_finding(
                 severity="medium",

@@ -209,6 +209,22 @@ class JsSemanticsTests(unittest.TestCase):
             window.location = cur.searchParams.get('next');
         """), [("redirect", 4), ("redirect", 5), ("redirect", 7), ("redirect", 15), ("redirect", 20), ("ssrf", 17)])
 
+    def test_single_slash_guard_does_not_hide_backslash_open_redirect(self):
+        self.assertEqual(self.sinks(r"""
+            app.get('/go', (req, res) => {
+              const next = req.query.next;
+              if (next.startsWith('/') && !next.startsWith('//')) {
+                return res.redirect(next);
+              }
+            });
+            app.get('/safe', (req, res) => {
+              const next = req.query.next;
+              if (/^\/(?![\\/])[^\\]*$/.test(next)) {
+                return res.redirect(next);
+              }
+            });
+        """), [("redirect", 4)])
+
     # -- 1e: yeni hedefler -------------------------------------------------------------
     def test_nosql_operator_injection(self):
         self.assertEqual(self.sinks("""

@@ -535,7 +535,44 @@ _INLINE_DOM_SOURCE_RE = re.compile(r"\blocation\b|document\.(?:URL|documentURI|r
                                    r"URLSearchParams|\.data\b|postMessage")
 _INLINE_DOM_SINK_RE = re.compile(r"innerHTML|outerHTML|document\.write|insertAdjacentHTML|\beval\s*\(|"
                                  r"setTimeout|setInterval|new\s+Function|\.html\s*\(|\.append\s*\(|\bsrc\b|\bhref\b")
-_INLINE_TEMPLATE_TAG_RE = re.compile(r"\{\{.*?\}\}|\{%.*?%\}|\{#.*?#\}|<%.*?%>", re.S)
+_INLINE_TEMPLATE_DELIMITERS = {"{{": "}}", "{%": "%}", "{#": "#}", "<%": "%>"}
+
+
+def _mask_inline_template_tags(text: str) -> str:
+    """Mask complete Jinja/Django/EJS tags in bounded linear time.
+
+    The output has exactly the same length and newline positions as ``text``.
+    Missing closers are memoized by delimiter, so a run of attacker-controlled
+    openers cannot cause a fresh suffix search for every two characters.
+    """
+    parts: list[str] = []
+    missing_closers: set[str] = set()
+    copied_until = 0
+    index = 0
+    length = len(text)
+    while index + 1 < length:
+        opener = text[index:index + 2]
+        closer = _INLINE_TEMPLATE_DELIMITERS.get(opener)
+        if closer is None or closer in missing_closers:
+            index += 1
+            continue
+        closing = text.find(closer, index + 2)
+        if closing < 0:
+            missing_closers.add(closer)
+            # Bir sonraki karakter başka bir açıcının başlangıcı olabilir (``{{#``
+            # içinde ikinci ``{`` ile başlayan ``{#`` gibi). Aynı kapatıcı yeniden aranmaz.
+            index += 1
+            continue
+        end = closing + 2
+        tag = text[index:end]
+        parts.append(text[copied_until:index])
+        # Tek ``0`` geçerli bir JS ifadesidir; kalan karakterleri boşlukla maskelemek hem
+        # uzunluğu hem de tag'in ilk dört karakterine düşebilen satır sonlarını korur.
+        parts.append("0" + "".join("\n" if char == "\n" else " " for char in tag[1:]))
+        copied_until = end
+        index = end
+    parts.append(text[copied_until:])
+    return "".join(parts)
 
 
 def _inline_script_analysis(text: str, relpath: str) -> Any:
@@ -552,7 +589,7 @@ def _inline_script_analysis(text: str, relpath: str) -> Any:
     k = 0
     for lo, hi in blocks:
         out.append(re.sub(r"[^\n]", " ", text[k:lo]))
-        out.append(_INLINE_TEMPLATE_TAG_RE.sub(lambda m: "null" + re.sub(r"[^\n]", " ", m.group(0)[4:]), text[lo:hi]))
+        out.append(_mask_inline_template_tags(text[lo:hi]))
         k = hi
     out.append(re.sub(r"[^\n]", " ", text[k:]))
     return taint_flow.analyze_javascript("".join(out), filename=relpath + ".inline.js")
@@ -641,14 +678,146 @@ TAINT_FLOW_RULES: dict[str, tuple[str, str, str, str, str]] = {
 }
 
 
-_RULE_PACK_YAML_RE = re.compile(r"(?m)^rules:\s*$")
-_RULE_PACK_KEY_RE = re.compile(r"(?m)^\s*-?\s*(?:pattern|patterns|pattern-either|pattern-regex|pattern-sources|pattern-sinks|mode:\s*taint)\b")
+def _regex_word_char(char: str) -> bool:
+    """Python ``\\w`` sınıfını tek karakter için regex çalıştırmadan yaklaşıkla."""
+    return char == "_" or char.isalnum()
+
+
+def _starts_with_word(text: str, prefix: str) -> bool:
+    return text.startswith(prefix) and (
+        len(text) == len(prefix) or not _regex_word_char(text[len(prefix)])
+    )
+
+
+def _yaml_line_entry(raw_line: str) -> tuple[int, str, str] | None:
+    """Basit ``[-] key: value`` satırını tek geçişte ayır.
+
+    Bu yardımcı bir YAML çözücü değildir; aşağıdaki güvenlik ön süzgeçlerinin
+    önceki kabul kümesini korurken ardışık ``\\s*`` regexlerinin geri izleme
+    maliyetini ortadan kaldırır.
+    """
+    length = len(raw_line)
+    index = 0
+    while index < length and raw_line[index].isspace():
+        index += 1
+    indent = index
+    if index < length and raw_line[index] == "-":
+        index += 1
+        while index < length and raw_line[index].isspace():
+            index += 1
+    key_start = index
+    while index < length and raw_line[index] != ":" and not raw_line[index].isspace():
+        index += 1
+    key = raw_line[key_start:index]
+    while index < length and raw_line[index].isspace():
+        index += 1
+    if not key or index >= length or raw_line[index] != ":":
+        return None
+    index += 1
+    while index < length and raw_line[index].isspace():
+        index += 1
+    return indent, key, raw_line[index:]
+
+
+def _yaml_entry_starts_word(
+    entry: tuple[int, str, str] | None, key: str, value: str
+) -> bool:
+    if entry is None or entry[1].casefold() != key.casefold():
+        return False
+    return _starts_with_word(entry[2].casefold(), value.casefold())
+
+
+def _has_rule_pack_yaml_shape(text: str) -> bool:
+    has_rules_root = False
+    has_rule_key = False
+    for raw_line in text.splitlines():
+        if raw_line.startswith("rules:") and not raw_line[len("rules:"):].strip():
+            has_rules_root = True
+        entry = _yaml_line_entry(raw_line)
+        if entry is None:
+            continue
+        content = entry[1] + ":" + entry[2]
+        # ``pattern`` ilk alternatiftir: eski regex pattern-either gibi bütün
+        # tireli Semgrep anahtarlarını da bu kelime sınırından kabul ediyordu.
+        if _starts_with_word(content, "pattern") or _starts_with_word(content, "patterns"):
+            has_rule_key = True
+        elif entry[1] == "mode" and _starts_with_word(entry[2], "taint"):
+            has_rule_key = True
+        if has_rules_root and has_rule_key:
+            return True
+    return False
+
+
+_GHA_UNTRUSTED_EVENT_PREFIXES = (
+    "issue.title", "issue.body",
+    "pull_request.title", "pull_request.body", "pull_request.head.ref",
+    "pull_request.head.label", "pull_request.head.repo.default_branch",
+    "comment.body", "review.body", "review_comment.body",
+    "head_commit.message", "head_commit.author.email", "head_commit.author.name",
+    "discussion.title", "discussion.body",
+    "workflow_run.head_branch", "workflow_run.display_title", "workflow_run.head_commit.message",
+)
+
+
+def _gha_suffix_is_untrusted(suffix: str) -> bool:
+    if suffix.startswith("head_ref"):
+        return True
+    if not suffix.startswith("event."):
+        return False
+    event = suffix[len("event."):]
+    if event.startswith(_GHA_UNTRUSTED_EVENT_PREFIXES):
+        return True
+    if event.startswith("pages."):
+        return event.find(".page_name", len("pages.")) >= 0
+    if event.startswith("commits."):
+        start = len("commits.")
+        return any(event.find(field, start) >= 0 for field in (
+            ".message", ".author.email", ".author.name",
+        ))
+    return False
+
+
+def _gha_expression_has_untrusted_field(expression: str) -> bool:
+    """Kapalı bir GitHub Actions ifade gövdesindeki riskli alanı doğrusal ara."""
+    cursor = 0
+    needle = "github."
+    while True:
+        found = expression.find(needle, cursor)
+        if found < 0:
+            return False
+        if (found == 0 or not _regex_word_char(expression[found - 1])) and _gha_suffix_is_untrusted(
+            expression[found + len(needle):]
+        ):
+            return True
+        cursor = found + len(needle)
+
+
+def _has_untrusted_gha_expression(raw_line: str) -> bool:
+    """Tam ``${{ ... }}`` segmentlerini yeniden taramadan tek geçişte denetle."""
+    segment_start = 0
+    cursor = 0
+    length = len(raw_line)
+    while cursor < length:
+        closing = raw_line.find("}", cursor)
+        if closing < 0:
+            return False
+        if closing + 1 < length and raw_line[closing + 1] == "}":
+            segment = raw_line[segment_start:closing]
+            opening = segment.find("${{")
+            if opening >= 0 and _gha_expression_has_untrusted_field(segment[opening + 3:]):
+                return True
+            cursor = closing + 2
+            segment_start = cursor
+        else:
+            cursor = closing + 1
+            segment_start = cursor
+    return False
 
 
 def _is_detection_rule_pack(suffix: str, text: str) -> bool:
     """Semgrep/Opengrep YAML kural paketi veya Sniper taint model JSON'u mu?"""
     if suffix in {".yaml", ".yml"}:
-        return bool(_RULE_PACK_YAML_RE.search(text) and _RULE_PACK_KEY_RE.search(text))
+        return _has_rule_pack_yaml_shape(text)
     if suffix == ".json":
         head = text[:400]
         return '"sniper-taint-models-v1"' in head or '"sniper-iac-rules-v1"' in head or (
@@ -1993,9 +2162,16 @@ def _analyze_project(
                         # Kaçışsız basılan alan, projede istek verisiyle yazılan bir kayıt alanı (ya da kayıtta kullanıcının
                         # seçtiği ad/e-posta, 25. tur): kalıcı XSS doğrulanmış; bulgu kaçışsız çıktının bulunduğu şablon
                         # satırında raporlanır.
-                        candidate = (root / template_loc.group(1)).resolve()
-                        if candidate.is_file() and candidate.is_relative_to(root.resolve()):
-                            emit_path, emit_line = root / template_loc.group(1), int(template_loc.group(2))
+                        relative_template = Path(template_loc.group(1))
+                        if not relative_template.is_absolute() and ".." not in relative_template.parts:
+                            try:
+                                candidate = (root / relative_template).resolve(strict=True)
+                                resolved_root = root.resolve(strict=True)
+                            except (OSError, RuntimeError, ValueError):
+                                candidate = None
+                            if candidate is not None and candidate.is_relative_to(resolved_root) \
+                                    and candidate.is_file():
+                                emit_path, emit_line = candidate, int(template_loc.group(2))
                     elif flow.language == "python" and flow.sink_kind == "html" and _PY_TEMPLATE_SINK_RE.match(flow.sink) \
                             and "kullanıcı kaydı" not in flow.source:
                         # Kayıtlı veri |safe / autoescape off ile basılıyor: zengin içerik (yönetici HTML'i, oEmbed,
@@ -2225,15 +2401,6 @@ def _analyze_project(
                 r"(?i)\b(apiVersion|kind|services|containers)\s*:", text
             ):
                 signals.add("container_iac")
-            # Yalnız saldırganın serbest metin olarak denetleyebildiği alanlar (GitHub Security Lab listesi);
-            # sha/number/id gibi değerler enjekte edilemez.
-            gha_expr_pattern = re.compile(
-                r"\$\{\{[^}]*\bgithub\.(?:head_ref|event\.(?:"
-                r"issue\.(?:title|body)|pull_request\.(?:title|body|head\.(?:ref|label|repo\.default_branch))"
-                r"|comment\.body|review\.body|review_comment\.body|pages\.[^}]*?\.page_name"
-                r"|commits\.[^}]*?\.(?:message|author\.(?:email|name))|head_commit\.(?:message|author\.(?:email|name))"
-                r"|discussion\.(?:title|body)|workflow_run\.(?:head_branch|display_title|head_commit\.message)))[^}]*\}\}"
-            )
             # İfade yalnız run:/script: (kabuk veya github-script) içinde enjeksiyon riski taşır;
             # env:/with:/concurrency içinde kullanmak önerilen güvenli yoldur.
             script_indent: int | None = None
@@ -2241,16 +2408,22 @@ def _analyze_project(
                 indent = len(raw_line) - len(raw_line.lstrip())
                 if script_indent is not None and raw_line.strip() and indent <= script_indent:
                     script_indent = None
-                script_match = re.match(r"^(\s*)(?:-\s*)?(run|script)\s*:\s*(.*)$", raw_line)
-                in_script = script_indent is not None or bool(script_match and script_match.group(3).strip() not in {"", "|", ">", "|-", ">-"})
-                if script_match and script_match.group(3).strip() in {"", "|", ">", "|-", ">-", "|+", ">+"}:
-                    script_indent = len(script_match.group(1))
+                yaml_entry = _yaml_line_entry(raw_line)
+                script_entry = (
+                    yaml_entry if yaml_entry is not None and yaml_entry[1] in {"run", "script"} else None
+                )
+                script_value = script_entry[2].strip() if script_entry is not None else None
+                in_script = script_indent is not None or bool(
+                    script_entry is not None and script_value not in {"", "|", ">", "|-", ">-"}
+                )
+                if script_entry is not None and script_value in {"", "|", ">", "|-", ">-", "|+", ">+"}:
+                    script_indent = script_entry[0]
                 stripped = raw_line.strip()
                 if not stripped or stripped.startswith("#"):
                     continue
                 if iac_manifest:
                     pass  # Kubernetes/compose dosyası IaC motorunca yapısal olarak denetlendi
-                elif re.search(r"(?i)^\s*-?\s*privileged\s*:\s*true\b", raw_line):
+                elif _yaml_entry_starts_word(yaml_entry, "privileged", "true"):
                     add(
                         "container", "high", "Konteyner/Pod privileged (tam yetkili) modda çalışıyor",
                         path, line_number,
@@ -2258,7 +2431,17 @@ def _analyze_project(
                         "privileged modunu kapatın; yalnızca gerçekten gereken Linux yeteneklerini (capabilities) tek tek tanımlayın.",
                         "CWE-250",
                     )
-                if not iac_manifest and re.search(r"(?i)^\s*-?\s*(?:network_mode\s*:\s*[\"']?host[\"']?|hostNetwork\s*:\s*true)\b", raw_line):
+                network_host = False
+                if yaml_entry is not None:
+                    yaml_key = yaml_entry[1].casefold()
+                    yaml_value = yaml_entry[2].casefold()
+                    if yaml_key == "network_mode":
+                        if yaml_value.startswith(("\"", "'")):
+                            yaml_value = yaml_value[1:]
+                        network_host = _starts_with_word(yaml_value, "host")
+                    elif yaml_key == "hostnetwork":
+                        network_host = _starts_with_word(yaml_value, "true")
+                if not iac_manifest and network_host:
                     add(
                         "container", "medium", "Konteyner/Pod ana makine ağ uzayını (hostNetwork) paylaşıyor",
                         path, line_number,
@@ -2274,7 +2457,9 @@ def _analyze_project(
                         "docker.sock soketini konteynerlere bağlamayın; bu erişim ana makine üzerinde root yetkisine eşdeğerdir.",
                         "CWE-250",
                     )
-                if not iac_manifest and re.search(r"(?i)^\s*-?\s*allowPrivilegeEscalation\s*:\s*true\b", raw_line):
+                if not iac_manifest and _yaml_entry_starts_word(
+                    yaml_entry, "allowPrivilegeEscalation", "true"
+                ):
                     add(
                         "container", "medium", "Kubernetes iş yükünde yetki yükseltme (allowPrivilegeEscalation) açık",
                         path, line_number,
@@ -2291,7 +2476,9 @@ def _analyze_project(
                             "Çatal (fork) PR kodunu pull_request_target içinde doğrudan çalıştırmayın; salt okunur pull_request tetikleyicisini tercih edin.",
                             "CWE-829",
                         )
-                    if in_script and gha_expr_pattern.search(raw_line):
+                    # Yalnız saldırganın serbest metin olarak denetleyebildiği alanlar
+                    # (GitHub Security Lab listesi); sha/number/id gibi değerler enjekte edilemez.
+                    if in_script and _has_untrusted_gha_expression(raw_line):
                         add(
                             "supplychain", "critical", "CI/CD iş akışında güvenilmeyen etkinlik verisiyle komut enjeksiyonu riski",
                             path, line_number,

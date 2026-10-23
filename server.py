@@ -48,6 +48,10 @@ import community_release_info
 import ai_triage
 import finding_tracking
 import portfolio
+from safe_file_read import read_bytes_bounded
+
+
+MAX_STATIC_FILE_BYTES = 8 * 1024 * 1024
 import notifications
 import ops_files
 import license_compliance
@@ -1266,6 +1270,17 @@ class SniperHandler(BaseHTTPRequestHandler):
     sys_version = ""
     # İstek satırı/başlık/gövde okumasında asılı kalan bağlantılar bu süre sonunda kapanır.
     timeout = 30
+    _RESPONSE_HEADER_NAME = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+\Z")
+
+    def send_header(self, keyword: str, value: str) -> None:
+        """Reject response-header injection before BaseHTTPRequestHandler buffers it."""
+        header_name = str(keyword)
+        header_value = str(value)
+        if not self._RESPONSE_HEADER_NAME.fullmatch(header_name):
+            raise ValueError("Geçersiz HTTP yanıt başlığı adı.")
+        if "\r" in header_value or "\n" in header_value:
+            raise ValueError("Geçersiz HTTP yanıt başlığı değeri.")
+        super().send_header(header_name, header_value)
 
     def handle_one_request(self) -> None:
         self._request_started = time.monotonic()
@@ -6838,7 +6853,9 @@ class SniperHandler(BaseHTTPRequestHandler):
                     return self._error(HTTPStatus.NOT_FOUND, "Dosya bulunamadı.")
             else:
                 return self._error(HTTPStatus.NOT_FOUND, "Dosya bulunamadı.")
-        body = candidate.read_bytes()
+        body = read_bytes_bounded(candidate, MAX_STATIC_FILE_BYTES, allow_empty=True)
+        if body is None:
+            return self._error(HTTPStatus.NOT_FOUND, "Dosya bulunamadı.")
         if candidate == (STATIC_DIR / "index.html").resolve():
             body = ui_assets.rewrite_index(STATIC_DIR, body)  # betik/stil paketleri (SNIPER_UI_BUNDLE=0 kapatır)
             body = _inject_local_home_config(body)

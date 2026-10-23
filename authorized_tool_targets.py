@@ -8,15 +8,26 @@ from __future__ import annotations
 
 import hashlib
 import ipaddress
-import re
 from urllib.parse import urlsplit
 
 
 CONSENT_VERSION = "authorized-target-v1"
 TOOLS = frozenset({"k6", "schemathesis"})
-_DNS_NAME_RE = re.compile(
-    r"(?=.{1,253}\Z)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*\Z"
-)
+_DNS_LABEL_CHARACTERS = frozenset("abcdefghijklmnopqrstuvwxyz0123456789-")
+
+
+def _is_dns_name(host: str) -> bool:
+    """Validate an ASCII DNS name with bounded, non-backtracking label checks."""
+    if not 1 <= len(host) <= 253:
+        return False
+    labels = host.split(".")
+    return all(
+        1 <= len(label) <= 63
+        and label[0] != "-"
+        and label[-1] != "-"
+        and all(character in _DNS_LABEL_CHARACTERS for character in label)
+        for label in labels
+    )
 
 
 def parse_authorized_target(tool: str, target: object) -> dict[str, object]:
@@ -62,7 +73,7 @@ def parse_authorized_target(tool: str, target: object) -> dict[str, object]:
         host = "127.0.0.1"
         kind = "loopback"
     else:
-        if not _DNS_NAME_RE.fullmatch(host) or host.isdigit():
+        if not _is_dns_name(host) or host.isdigit():
             raise ValueError("Geçersiz yetkili hedef adı.")
         kind = "loopback" if host == "localhost" else "hostname"
 

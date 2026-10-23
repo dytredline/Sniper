@@ -5160,8 +5160,110 @@ class Interp:
 # Dış API
 # ---------------------------------------------------------------------------
 _MYBATIS_STMT = re.compile(r"<(select|update|delete|insert)\b[^>]*\bid\s*=\s*[\"']([\w.]+)[\"'][^>]*>(.*?)</\1>", re.S)
-_MYBATIS_ANN = re.compile(r"@(?:Select|Update|Delete|Insert)\s*\(\s*(?:\{[^}]*\}|\"(?:\\.|[^\"])*\")\s*\)\s*"
-                          r"(?:@\w+(?:\([^)]*\))?\s*)*[\w<>\[\],.\s]+?\s(\w+)\s*\(", re.S)
+_MYBATIS_ANNOTATIONS = ("@Select", "@Update", "@Delete", "@Insert")
+
+
+def _balanced_close(text: str, opening: int) -> int | None:
+    """Return the matching ``)`` while respecting Java string/character literals."""
+    depth = 0
+    quote = ""
+    index = opening
+    while index < len(text):
+        char = text[index]
+        if quote:
+            if char == "\\" and index + 1 < len(text):
+                index += 2
+                continue
+            if char == quote:
+                quote = ""
+        elif char in "\"'":
+            quote = char
+        elif char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return index
+        index += 1
+    return None
+
+
+def _mybatis_method_after(text: str, index: int) -> str | None:
+    """Parse the method name following a MyBatis annotation without backtracking."""
+    length = len(text)
+    while True:
+        while index < length and text[index].isspace():
+            index += 1
+        if index >= length or text[index] != "@":
+            break
+
+        # Sonraki Java ek açıklamalarını (Results, Deprecated vb.) atla.
+        index += 1
+        name_start = index
+        while index < length and (text[index] == "_" or text[index] == "." or text[index].isalnum()):
+            index += 1
+        if index == name_start:
+            return None
+        while index < length and text[index].isspace():
+            index += 1
+        if index < length and text[index] == "(":
+            closing = _balanced_close(text, index)
+            if closing is None:
+                return None
+            index = closing + 1
+
+    header_start = index
+    allowed_punctuation = "<>[],."
+    while index < length and text[index] != "(":
+        char = text[index]
+        if not (char.isspace() or char == "_" or char.isalnum() or char in allowed_punctuation):
+            return None
+        index += 1
+    if index >= length:
+        return None
+
+    end = index
+    while end > header_start and text[end - 1].isspace():
+        end -= 1
+    start = end
+    while start > header_start and (text[start - 1] == "_" or text[start - 1].isalnum()):
+        start -= 1
+    return text[start:end] or None
+
+
+def _mybatis_annotation_methods(text: str) -> set[str]:
+    """Collect unsafe annotated methods with a single forward scan of Java source."""
+    out: set[str] = set()
+    index = 0
+    length = len(text)
+    while index < length:
+        marker_at = text.find("@", index)
+        if marker_at < 0:
+            break
+        marker = next((item for item in _MYBATIS_ANNOTATIONS if text.startswith(item, marker_at)), None)
+        if marker is None:
+            index = marker_at + 1
+            continue
+        cursor = marker_at + len(marker)
+        if cursor < length and (text[cursor] == "_" or text[cursor].isalnum()):
+            index = cursor
+            continue
+        while cursor < length and text[cursor].isspace():
+            cursor += 1
+        if cursor >= length or text[cursor] != "(":
+            index = cursor
+            continue
+        closing = _balanced_close(text, cursor)
+        if closing is None:
+            # Kapanmamış Java ek açıklamasında kalan dosya aynı sözdizimsel yapının
+            # parçasıdır. Kuyruğu tekrar tekrar taramadan güvenli biçimde bitir.
+            break
+        if "${" in text[cursor + 1:closing]:
+            method = _mybatis_method_after(text, closing + 1)
+            if method:
+                out.add(method)
+        index = closing + 1
+    return out
 
 
 def mybatis_unsafe_methods(texts: dict[str, str]) -> set[str]:
@@ -5173,9 +5275,7 @@ def mybatis_unsafe_methods(texts: dict[str, str]) -> set[str]:
                 if "${" in m.group(3):
                     out.add(m.group(2).rsplit(".", 1)[-1])
         elif path.endswith(".java") and "${" in text:
-            for m in _MYBATIS_ANN.finditer(text):
-                if "${" in m.group(0):
-                    out.add(m.group(1))
+            out.update(_mybatis_annotation_methods(text))
     return out
 
 

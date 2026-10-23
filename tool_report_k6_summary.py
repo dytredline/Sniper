@@ -133,6 +133,49 @@ def _machine_metric(metric: Any) -> None:
             raise ValueError("Geçersiz k6 v1 eğilimi")
 
 
+def _consume_k6_version_component(value: str, start: int) -> int | None:
+    if start >= len(value):
+        return None
+    if value[start] == "0":
+        return start + 1
+    if value[start] not in "123456789":
+        return None
+    cursor = start + 1
+    while cursor < len(value) and value[cursor].isdecimal():
+        cursor += 1
+    return cursor
+
+
+def _valid_k6_version(value: str) -> bool:
+    cursor = 0
+    for separator in (".", ".", None):
+        end = _consume_k6_version_component(value, cursor)
+        if end is None:
+            return False
+        cursor = end
+        if separator is not None:
+            if cursor >= len(value) or value[cursor] != separator:
+                return False
+            cursor += 1
+
+    suffix_chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.-"
+    if cursor < len(value) and value[cursor] == "-":
+        cursor += 1
+        start = cursor
+        while cursor < len(value) and value[cursor] in suffix_chars:
+            cursor += 1
+        if cursor == start:
+            return False
+    if cursor < len(value) and value[cursor] == "+":
+        cursor += 1
+        start = cursor
+        while cursor < len(value) and value[cursor] in suffix_chars:
+            cursor += 1
+        if cursor == start:
+            return False
+    return cursor == len(value)
+
+
 def parse_k6_machine_summary_v1(report: dict[str, Any]) -> dict[str, Any]:
     """Summarize official k6-summary 1.0.0 without exposing names or paths.
 
@@ -163,9 +206,7 @@ def parse_k6_machine_summary_v1(report: dict[str, Any]) -> dict[str, Any]:
         datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
     except ValueError as exc:
         raise ValueError("Geçersiz k6 v1 zaman damgası") from exc
-    if not isinstance(k6_version, str) or not re.fullmatch(
-            r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?",
-            k6_version):
+    if not isinstance(k6_version, str) or not _valid_k6_version(k6_version):
         raise ValueError("Geçersiz k6 sürümü")
     if not _object(config) or not {"execution", "duration"} <= set(config) or not set(config) <= {"execution", "duration", "script"}:
         raise ValueError("Geçersiz k6 v1 yapılandırması")

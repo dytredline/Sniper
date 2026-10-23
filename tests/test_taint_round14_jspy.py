@@ -42,6 +42,13 @@ class ScriptContextTemplateTests(unittest.TestCase):
         hbs = '<script>var a = "{{q}}"; init({{cfg}});</script><div>{{name}}</div>\n'
         self.assertEqual([p for _l, _s, p in taint_js_views.unescaped_outputs("views/a.hbs", hbs)], [[("cfg",)]])
 
+    def test_script_end_tag_with_html_whitespace_and_junk_is_still_scanned(self):
+        ejs = "<script>init(<%= cfg %>);</script\t\n ignored>\n"
+        self.assertEqual(
+            [p for _l, _s, p in taint_js_views.unescaped_outputs("views/a.ejs", ejs)],
+            [[("cfg",)]],
+        )
+
 
 @unittest.skipIf(NODE_ENV is None, "node bulunamadı")
 class JsRound14Tests(unittest.TestCase):

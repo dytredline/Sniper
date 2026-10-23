@@ -18,6 +18,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Iterable
 
+from safe_file_read import read_text_bounded
+
 MAX_SBOM_BYTES = 32 * 1024 * 1024
 MAX_COMPONENTS = 50_000
 MAX_EDGES = 250_000
@@ -43,12 +45,7 @@ def _purl(ecosystem: str, name: str, version: str) -> str:
 
 
 def _read(path: Path) -> str | None:
-    try:
-        if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_LOCK_BYTES:
-            return None
-        return path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return None
+    return read_text_bounded(path, MAX_LOCK_BYTES)
 
 
 def _resolve_npm(packages: dict[str, Any], from_path: str, dep: str) -> str | None:

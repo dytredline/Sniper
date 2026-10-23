@@ -23,6 +23,7 @@ import iac_engine
 import iac_hcl
 import iac_tf_eval
 from iac_hcl import Block, Call, Unknown
+from safe_file_read import read_bytes_bounded
 
 MAX_MODULE_DEPTH = 4
 MAX_INSTANCES = 400  # çok sayıda modül çağrısında üst sınır (süre bütçesi)
@@ -409,6 +410,7 @@ def scan_tree(root, skip_dirs) -> iac_engine.ProjectResults:
     root = Path(root)
     files: dict[str, str] = {}
     total = 0
+    candidates = 0
     limitations: set[str] = set()
     for current, directories, names in os.walk(root, followlinks=False):
         directories[:] = sorted(d for d in directories
@@ -431,14 +433,26 @@ def scan_tree(root, skip_dirs) -> iac_engine.ProjectResults:
             if info.st_size > MAX_TF_FILE_BYTES:
                 limitations.add("file-bytes")
                 continue
-            if len(files) >= MAX_TF_FILES or total + info.st_size > MAX_TF_TOTAL_BYTES:
-                limitations.add("file" if len(files) >= MAX_TF_FILES else "total-bytes")
+            if candidates >= MAX_TF_FILES:
+                limitations.add("file")
                 result = TerraformProject(files).analyze()
                 return result.mark_incomplete(*sorted(limitations))
-            try:
-                files[path.relative_to(root).as_posix()] = path.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError):
+            candidates += 1
+            raw = read_bytes_bounded(path, MAX_TF_FILE_BYTES, allow_empty=True)
+            if raw is None:
+                limitations.add("file-read")
                 continue
-            total += info.st_size
+            if total + len(raw) > MAX_TF_TOTAL_BYTES:
+                limitations.add("total-bytes")
+                result = TerraformProject(files).analyze()
+                return result.mark_incomplete(*sorted(limitations))
+            total += len(raw)
+            try:
+                text = raw.decode("utf-8", errors="strict")
+            except UnicodeDecodeError:
+                continue
+            if not text:
+                continue
+            files[path.relative_to(root).as_posix()] = text
     result = TerraformProject(files).analyze()
     return result.mark_incomplete(*sorted(limitations)) if limitations else result

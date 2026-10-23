@@ -24,13 +24,55 @@ CLICKJACKING_FORMAT = "sniper-clickjacking-runtime-proof/1"
 MAX_RESPONSE_BYTES = 262_144
 _PATH = re.compile(r"/[A-Za-z0-9._~!$&'()*+,;=:@%/-]{0,500}\Z")
 _PARAMETER = re.compile(r"[A-Za-z_][A-Za-z0-9_.-]{0,63}\Z")
-_CSP_SCHEME_SOURCE = re.compile(r"[A-Za-z][A-Za-z0-9+.-]*:\Z")
-_CSP_HOST_SOURCE = re.compile(
-    r"(?:(?:[A-Za-z][A-Za-z0-9+.-]*):\/\/)?"
-    r"(?:\*\.)?(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)"
-    r"(?:\.(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?))*"
-    r"(?::(?:\*|[0-9]{1,5}))?(?:/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?\Z"
-)
+_ASCII_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+_ASCII_ALNUM = _ASCII_LETTERS + "0123456789"
+_CSP_PATH_CHARS = frozenset(_ASCII_ALNUM + "._~!$&'()*+,;=:@%/-")
+
+
+def _valid_csp_scheme_name(value: str) -> bool:
+    return bool(value) and value[0] in _ASCII_LETTERS \
+        and all(char in _ASCII_ALNUM + "+.-" for char in value[1:])
+
+
+def _is_csp_scheme_source(value: str) -> bool:
+    return value.endswith(":") and _valid_csp_scheme_name(value[:-1])
+
+
+def _valid_csp_host_source(value: str) -> bool:
+    rest = value
+    scheme_end = value.find("://")
+    if scheme_end >= 0 and _valid_csp_scheme_name(value[:scheme_end]):
+        rest = value[scheme_end + 3:]
+
+    path_start = rest.find("/")
+    if path_start >= 0:
+        if any(char not in _CSP_PATH_CHARS for char in rest[path_start:]):
+            return False
+        host_port = rest[:path_start]
+    else:
+        host_port = rest
+
+    port = ""
+    if ":" in host_port:
+        host_port, port = host_port.rsplit(":", 1)
+        if port != "*":
+            if not 1 <= len(port) <= 5 or not port.isascii() or not port.isdecimal():
+                return False
+            if not 1 <= int(port) <= 65535:
+                return False
+
+    if host_port.startswith("*."):
+        host_port = host_port[2:]
+    labels = host_port.split(".")
+    if not labels or any(
+        not 1 <= len(label) <= 63
+        or label[0] not in _ASCII_ALNUM
+        or label[-1] not in _ASCII_ALNUM
+        or any(char not in _ASCII_ALNUM + "-" for char in label)
+        for label in labels
+    ):
+        return False
+    return True
 
 
 class RuntimeProofError(ValueError):
@@ -43,13 +85,9 @@ class RuntimeProofUnavailable(RuntimeProofError):
 
 def _valid_frame_ancestor_source(value: str) -> bool:
     """Recognize a conservative frame-ancestors source subset without repairing malformed values."""
-    if value in {"'self'", "'none'", "*"} or _CSP_SCHEME_SOURCE.fullmatch(value):
+    if value in {"'self'", "'none'", "*"} or _is_csp_scheme_source(value):
         return True
-    match = _CSP_HOST_SOURCE.fullmatch(value)
-    if not match:
-        return False
-    port = re.search(r":([0-9]{1,5})(?:/|\Z)", value)
-    return port is None or 1 <= int(port.group(1)) <= 65535
+    return _valid_csp_host_source(value)
 
 
 def _frame_ancestors_policy(policy: str) -> tuple[bool, bool]:

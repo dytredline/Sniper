@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 import tempfile
 from typing import Any, Iterable
@@ -149,6 +150,92 @@ def _safe_relpath(rel: str) -> bool:
     return all(part not in ("", ".", "..", ".git") for part in rel.split("/"))
 
 
+def _open_worktree_file(root: Path, rel: str) -> int | None:
+    """Open a regular worktree file without following any path component.
+
+    ``_walk_worktree`` deliberately yields names rather than open descriptors.  A
+    hostile working tree can replace a yielded file or one of its parent
+    directories before the consumer reads it.  Walking from a pinned root
+    directory descriptor closes that check/use gap.
+    """
+    if not _safe_relpath(rel):
+        return None
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+    file_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
+    try:
+        directory_fd = os.open(root, directory_flags)
+    except (OSError, TypeError, ValueError):
+        return None
+    try:
+        parts = rel.split("/")
+        for part in parts[:-1]:
+            try:
+                child_fd = os.open(part, directory_flags, dir_fd=directory_fd)
+            except OSError:
+                return None
+            os.close(directory_fd)
+            directory_fd = child_fd
+        try:
+            fd = os.open(parts[-1], file_flags, dir_fd=directory_fd)
+        except OSError:
+            return None
+        try:
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                os.close(fd)
+                return None
+        except OSError:
+            os.close(fd)
+            return None
+        return fd
+    finally:
+        os.close(directory_fd)
+
+
+def _read_worktree_bytes(
+    root: Path,
+    rel: str,
+    max_bytes: int,
+    *,
+    truncate: bool = False,
+) -> tuple[bytes, int] | None:
+    """Read from one verified descriptor, returning ``(data, fstat_size)``.
+
+    With ``truncate`` only the safe prefix is needed.  Otherwise a file that is
+    already too large or grows beyond the budget is rejected.
+    """
+    if max_bytes < 0:
+        return None
+    fd = _open_worktree_file(root, rel)
+    if fd is None:
+        return None
+    try:
+        info = os.fstat(fd)
+        if not truncate and info.st_size > max_bytes:
+            return None
+        limit = max_bytes if truncate else max_bytes + 1
+        chunks: list[bytes] = []
+        total = 0
+        while total < limit:
+            try:
+                chunk = os.read(fd, min(65536, limit - total))
+            except OSError:
+                return None
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+        if not truncate and total > max_bytes:
+            return None
+        return b"".join(chunks), info.st_size
+    finally:
+        os.close(fd)
+
+
+def _read_worktree_text(root: Path, rel: str, max_bytes: int, *, truncate: bool = False) -> str | None:
+    result = _read_worktree_bytes(root, rel, max_bytes, truncate=truncate)
+    return None if result is None else result[0].decode("utf-8", errors="replace")
+
+
 def _ignored_paths(base: BaseTree) -> tuple[set[str], tuple[str, ...]]:
     """Çalışma ağacında .gitignore ile yok sayılan izlenmeyen dosya/dizinler (proje köküne göre)."""
     raw = _git(base.repo_root, "ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z")
@@ -238,20 +325,18 @@ def compute_changes(project_root: Path, base: BaseTree, scope: scan_scope.ScanSc
         tracked = base.blobs.get(rel)
         if tracked is None and (rel in ignored_files or any(rel.startswith(d) for d in ignored_dirs)):
             continue
-        path = project_root / rel
-        try:
-            size = path.stat().st_size
-        except OSError:
+        opened = _read_worktree_bytes(
+            project_root,
+            rel,
+            max(scope.max_file_bytes, project_analyzer.MAX_FILE_BYTES),
+        )
+        if opened is None:
             continue
-        if size > scope.max_file_bytes and size > project_analyzer.MAX_FILE_BYTES:
-            continue  # analiz edilmeyecek kadar büyük
+        data, size = opened
         if tracked is not None and tracked[1] != size:
             modified.add(rel)
             continue
-        try:
-            blob = _blob_id(path.read_bytes(), base.object_format)
-        except OSError:
-            continue
+        blob = _blob_id(data, base.object_format)
         current[rel] = blob
         if tracked is None:
             added.add(rel)
@@ -357,10 +442,10 @@ def import_context(project_root: Path, changed: set[str], scope: scan_scope.Scan
                 by_module.setdefault(name, set()).add(rel)
     forward: dict[str, set[str]] = {}
     for rel in sources:
-        try:
-            text = (project_root / rel).read_text(encoding="utf-8", errors="replace")[:1_000_000]
-        except OSError:
+        text = _read_worktree_text(project_root, rel, 4_000_000, truncate=True)
+        if text is None:
             continue
+        text = text[:1_000_000]
         if rel.endswith(PY_SUFFIX):
             targets = set().union(*(by_module.get(name, set()) for name in _py_imports(rel, text)))
         else:
@@ -409,10 +494,8 @@ def context_fingerprints(findings: list[dict[str, Any]], root: Path) -> list[str
     for finding in findings:
         rel = str(finding.get("file") or "")
         if rel and rel not in cache:
-            try:
-                cache[rel] = (root / rel).read_text(encoding="utf-8", errors="replace").splitlines()
-            except OSError:
-                cache[rel] = []
+            text = _read_worktree_text(root, rel, scan_scope.HARD_MAX_FILE_BYTES)
+            cache[rel] = text.splitlines() if text is not None else []
         text = _line_text(cache.get(rel, []), finding.get("line"))
         rule = str(finding.get("reference") or finding.get("cwe") or "")
         keys.append("\x1f".join((rule, str(finding.get("category") or ""), rel, str(finding.get("title") or ""), text)))
@@ -571,10 +654,7 @@ def analyze_changed(
             new_count += 1
         if rel not in line_cache:
             old = old_blobs.get(base.blobs[rel][0]) if rel in changes.modified and rel in base.blobs else None
-            try:
-                text = (root / rel).read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                text = ""
+            text = _read_worktree_text(root, rel, scan_scope.HARD_MAX_FILE_BYTES) or ""
             line_cache[rel] = changed_lines(old, text) if rel in changes.modified else None
         lines = line_cache[rel]
         finding["in_changed_lines"] = lines is None or int(finding.get("line") or 0) in lines

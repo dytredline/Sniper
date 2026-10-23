@@ -23,6 +23,7 @@ import tomllib
 from typing import Any, Iterable
 
 import scan_scope
+from safe_file_read import read_text_bounded
 
 MAX_SUBPROJECTS = 200
 MAX_DEP_INVENTORY = 100
@@ -40,12 +41,7 @@ DEPENDENCY_MANIFESTS = frozenset({
 
 def _read(path: Path) -> str | None:
     """Kök altındaki düzenli dosyayı sınırlı oku (sembolik bağ yok)."""
-    try:
-        if path.is_symlink() or not path.is_file() or path.stat().st_size > MAX_READ:
-            return None
-        return path.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return None
+    return read_text_bounded(path, MAX_READ)
 
 
 def _clean_rel(value: str) -> str | None:
