@@ -12,9 +12,9 @@ reintroduction of the excluded delivery files.
 
 ## Release status
 
-This tree prepares Sniper Community v1.0.0. `COMMUNITY_VERSION` is the candidate source-version marker. This tree is
-not yet a promoted production release. The source in this repository is licensed under the Apache License 2.0;
-publication status does not make that license grant provisional. See [LICENSE](LICENSE).
+This repository is the Sniper Community v1.0.0 source release. `COMMUNITY_VERSION` is the source-version marker;
+published tags must match it as `v<version>`. The source is licensed under the Apache License 2.0. See
+[LICENSE](LICENSE). The publication status does not make that license grant provisional.
 
 ## What is included
 
@@ -30,7 +30,7 @@ human review.
 
 ## Source-checkout setup
 
-Python 3.12 is the tested interpreter. This candidate does not claim a pip-installable package: run the checked-in
+Python 3.12 is the tested interpreter. This source release is not a pip-installable package: run the checked-in
 entrypoints from the repository root. Install the pinned runtime dependency in an isolated environment, then verify
 the real MCP entrypoint:
 
@@ -129,7 +129,7 @@ The Community documentation/metadata gate is offline and read-only:
 python3 .github/scripts/validate-community-release.py
 ```
 
-Build the reviewable source candidate into a new directory outside this checkout, then validate that assembled tree:
+Build the reviewable source distribution into a new directory outside this checkout, then validate that assembled tree:
 
 ```bash
 python3 scripts/build-community-source.py --output /ABSOLUTE/PATH/TO/sniper-community-source

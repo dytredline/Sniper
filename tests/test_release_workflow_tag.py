@@ -14,8 +14,8 @@ WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 VERSION_PATH = ROOT / "COMMUNITY_VERSION"
 
 
-class TestCommunityReleaseCandidate(unittest.TestCase):
-    def test_workflow_builds_review_artifact_without_publishing(self) -> None:
+class TestCommunityRelease(unittest.TestCase):
+    def test_workflow_publishes_validated_tag_assets_without_overwrite(self) -> None:
         workflow = WORKFLOW.read_text(encoding="utf-8")
         version = VERSION_PATH.read_text(encoding="utf-8").strip()
 
@@ -33,9 +33,32 @@ class TestCommunityReleaseCandidate(unittest.TestCase):
             "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2",
             workflow,
         )
-        self.assertNotIn("gh release create", workflow)
+        self.assertIn("permissions:\n  contents: write", workflow)
+        self.assertIn("if: github.ref_type == 'tag'", workflow)
+        self.assertIn("GH_TOKEN: ${{ github.token }}", workflow)
+        self.assertIn('gh release create "v${VERSION}"', workflow)
+        self.assertIn('"sniper-community-${VERSION}.tar.gz"', workflow)
+        self.assertIn('"SHA256SUMS"', workflow)
+        self.assertIn("--verify-tag", workflow)
+        self.assertNotIn("--clobber", workflow)
         self.assertNotIn("Sniper Enterprise", workflow)
         self.assertNotIn("from version import", workflow)
+
+    def test_public_release_documents_do_not_claim_candidate_status(self) -> None:
+        texts = [
+            (ROOT / "README.md").read_text(encoding="utf-8"),
+            (ROOT / "SECURITY.md").read_text(encoding="utf-8"),
+            (ROOT / "COMMUNITY-RELEASE-LIMITATIONS.md").read_text(encoding="utf-8"),
+            (ROOT / "scripts" / "build-community-source.py").read_text(encoding="utf-8"),
+        ]
+        combined = "\n".join(texts).casefold()
+        for stale in (
+            "community release candidate",
+            "not yet a promoted production release",
+            "review artifact, not a promoted release",
+        ):
+            self.assertNotIn(stale, combined)
+        self.assertIn("sniper community v1.0.0 source release", texts[0].casefold())
 
     def test_builder_excludes_installed_release_record_and_rebrands_version(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

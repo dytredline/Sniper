@@ -114,9 +114,9 @@ INTERNAL_PATTERNS = (
     ),
 )
 
-LIMITATIONS = """# Community source candidate limitations
+LIMITATIONS = """# Community source distribution boundaries
 
-This assembled tree is a review artifact, not a promoted release.
+This assembled tree is the Sniper Community source distribution.
 
 Commercial delivery, customer-bound licensing, private installer, and native
 binary-delivery implementation are intentionally absent. The web runtime uses
@@ -124,7 +124,7 @@ the small Community-only version and backup module included in this tree.
 
 Maintainer-only evaluation fixtures, generated caches, database state,
 evidence bundles, frozen artifacts, and machine/session-specific documentation
-or tests are not copied into this source candidate.
+or tests are not copied into this source distribution.
 
 Required runtime files are retained when they contain a machine-specific
 literal, but the literal is normalized to a neutral Community placeholder in

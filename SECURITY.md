@@ -45,5 +45,5 @@ remove secrets before submitting a report.
 
 ## Supported versions
 
-This is a Community release candidate. Security fixes target the current published Community revision after that
-revision exists; unpublished snapshots have no support commitment.
+Security fixes target the latest published Community release. Older revisions and unreleased development snapshots
+have no support commitment.
