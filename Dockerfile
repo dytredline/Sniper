@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS community-runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -56,3 +56,22 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/api/health', timeout=3)" || exit 1
 
 CMD ["python", "server.py"]
+
+# Optional five-engine image. The acceptance gate is deliberately the first
+# instruction in this target: selecting it without an explicit acknowledgement
+# fails before any third-party artifact is requested. The locked installer
+# verifies every complete archive and never executes an installed scanner.
+FROM community-runtime AS community-tools
+ARG SNIPER_ACCEPT_THIRD_PARTY_LICENSES=0
+RUN test "$SNIPER_ACCEPT_THIRD_PARTY_LICENSES" = "1" || \
+    (echo "Third-party license acceptance is required for the community-tools target." >&2; exit 64)
+COPY COMMUNITY-TOOLS.lock.json ./COMMUNITY-TOOLS.lock.json
+COPY scripts/install-community-tools ./scripts/install-community-tools
+RUN python scripts/install-community-tools \
+    --profile local \
+    --install-dir /app/runtimes \
+    --accept-third-party-licenses
+
+# Keep this stage last: plain `docker build .` and the default Compose file
+# remain the network-minimal core image and never download optional engines.
+FROM community-runtime AS community-core

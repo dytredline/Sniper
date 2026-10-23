@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""Build the license-gated five-engine Community container image."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+
+APP_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(APP_ROOT))
+
+from community_tool_installer import InstallError, load_lock  # noqa: E402
+
+
+COMPOSE_FILES = ("docker-compose.yml", "docker-compose.tools.yml")
+
+
+def build_plan() -> dict[str, object]:
+    lock = load_lock(APP_ROOT / "COMMUNITY-TOOLS.lock.json")
+    tools = lock["profiles"].get("local")
+    if not isinstance(tools, list) or len(tools) != 5 or len(set(tools)) != len(tools):
+        raise InstallError("Community local profile must contain exactly five distinct locked tools")
+    command = ["docker", "compose"]
+    for relative in COMPOSE_FILES:
+        path = APP_ROOT / relative
+        if not path.is_file() or path.is_symlink():
+            raise InstallError(f"Required regular Compose file is unavailable: {relative}")
+        command.extend(("-f", relative))
+    command.extend(("build", "sniper"))
+    return {
+        "format": "sniper-community-tools-container-plan-v1",
+        "status": "planned",
+        "command": command,
+        "compose_files": list(COMPOSE_FILES),
+        "service": "sniper",
+        "build_target": "community-tools",
+        "image": "sniper-community-tools:local",
+        "platform_source": "linux-container-runtime",
+        "tools": list(tools),
+        "tool_count": len(tools),
+        "downloads_locked_artifacts": True,
+        "executes_scanners": False,
+        "publishes": ["127.0.0.1:8787:8787"],
+    }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--accept-third-party-licenses",
+        action="store_true",
+        help="confirm review and acceptance of licenses in COMMUNITY-TOOLS.lock.json",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the deterministic build plan without invoking Docker",
+    )
+    args = parser.parse_args(argv)
+    if not args.accept_third_party_licenses:
+        print("community tools image: FAIL (third-party license acceptance is required)", file=sys.stderr)
+        return 2
+    try:
+        plan = build_plan()
+    except InstallError as exc:
+        print(f"community tools image: FAIL ({exc})", file=sys.stderr)
+        return 1
+    if args.dry_run:
+        print(json.dumps(plan, indent=2, sort_keys=True))
+        return 0
+    if shutil.which("docker") is None:
+        print("community tools image: FAIL (docker CLI is unavailable)", file=sys.stderr)
+        return 1
+    env = dict(os.environ)
+    env["SNIPER_ACCEPT_THIRD_PARTY_LICENSES"] = "1"
+    completed = subprocess.run(plan["command"], cwd=APP_ROOT, env=env, check=False)  # type: ignore[arg-type]
+    return completed.returncode
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
