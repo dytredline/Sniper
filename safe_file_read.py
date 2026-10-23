@@ -53,10 +53,16 @@ def _open_regular_candidate(path: str | os.PathLike[str]) -> int:
     directory_fd = os.open("/" if absolute else ".", directory_flags)
     try:
         for component in parts[:-1]:
-            next_fd = os.open(component, directory_flags, dir_fd=directory_fd)
+            safe_component = os.path.basename(component)
+            if safe_component != component:
+                raise ValueError("invalid path component")
+            next_fd = os.open(safe_component, directory_flags, dir_fd=directory_fd)
             os.close(directory_fd)
             directory_fd = next_fd
-        return os.open(parts[-1], file_flags, dir_fd=directory_fd)
+        safe_leaf = os.path.basename(parts[-1])
+        if safe_leaf != parts[-1]:
+            raise ValueError("invalid path component")
+        return os.open(safe_leaf, file_flags, dir_fd=directory_fd)
     finally:
         os.close(directory_fd)
 
