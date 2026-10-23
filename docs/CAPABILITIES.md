@@ -95,6 +95,14 @@ Her IDOR adayı, yetkili test kapsamında iki ayrı kullanıcı/rol ve sentetik 
 bir başlangıç noktası sunar. Uzman; ağ geçidi, ara katman, politika servisi ve çalışma zamanı iş kurallarını da bu
 doğrulama sırasında değerlendirir.
 
+### App Store ve Google Play öncesi AI destekli uygulama incelemesi
+
+Sniper; desteklenen Android, iOS, Flutter ve React Native kaynaklarını ve mobil manifestleri API yolları, sır
+ipuçları, bağımlılıklar, SBOM verisi ve CI yapılandırmasıyla aynı yayın-öncesi incelemede birleştirir. MCP üzerinden
+bağlanan yapay zeka bulguları kanıtlarıyla açıklayabilir, ilgili riskleri gruplayabilir ve düzeltme önceliği
+oluşturabilir. Bu akış App Store/Google Play gönderimi, web sitesi veya API yayını ve release pull request'i öncesinde
+ekiplere ortak bir güvenlik kontrol noktası sunar.
+
 ### Altyapı kodu, bulut ve CI
 
 | Tür | Girdi | Doğrulanmış kontrol alanları |

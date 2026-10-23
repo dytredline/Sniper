@@ -4,6 +4,7 @@
 
 ## Built-in capabilities
 
+- AI-assisted release preflight brings supported Android, iOS, Flutter, and React Native source and manifests together with API paths, secrets, dependencies, SBOM data, and CI configuration before an App Store or Google Play submission, website/API launch, or release pull request.
 - Local source and configuration analysis, dependency and container inventory, infrastructure-as-code review, SBOM workflows, saved-report handling, and bounded security reports are included in the source tree.
 - Supported source-to-sink analysis covers SQL and command injection, XSS, SSRF, open redirect, path traversal, unsafe deserialization, XXE, expression-language, and LDAP risk patterns, with SARIF `codeFlows` where available.
 - Built-in route and authorization analysis surfaces unprotected-route candidates (CWE-862) and potential IDOR paths (CWE-639) in supported Python and JavaScript/TypeScript source to prioritize authorized manual penetration testing and evidence-led validation across separate test users and roles.

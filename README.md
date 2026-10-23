@@ -9,6 +9,17 @@ artifacts, infrastructure as code (IaC), CI configuration, and saved security re
 authorized web target, Sniper can also prepare a bounded runtime action for human review. Results are available to
 an AI client over local stdio MCP, to a person through the CLI, or in the loopback web interface.
 
+## Review before you ship
+
+Ask an AI assistant to review your application before release. Through Sniper's local stdio MCP workflow, the AI can
+guide a supported security review, explain findings with code evidence, and help prioritize remediation while the
+same results remain available in the web interface, CLI, and CI artifacts.
+
+For Android, iOS, Flutter, and React Native projects, bring supported source code, mobile manifests, API paths,
+secrets, dependencies, SBOM data, and CI configuration into one release-preflight view. Whether you are preparing an
+**App Store or Google Play submission**, a **website or API launch**, or a **pull request**, Sniper helps surface the
+security work worth completing before users receive the release.
+
 ## What Sniper helps you inspect
 
 | Area | Questions Sniper helps answer |

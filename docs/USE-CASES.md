@@ -18,6 +18,18 @@ every vulnerability, prove that a system is secure, or replace authorization, re
 All three paths expose the same defensive product boundaries. Choosing an AI client does not grant extra target
 authorization, and choosing a manual path does not bypass readiness or confirmation checks.
 
+## Review a mobile application before store submission
+
+| Stage | What to expect |
+| --- | --- |
+| Input | Supported Android, iOS, Flutter, or React Native source; mobile manifests; API definitions; dependency files; SBOMs; and CI configuration. |
+| AI-assisted review | Ask an MCP-capable AI client to organize the available security evidence, explain findings, and prepare supported remediation recommendations. |
+| Release value | Bring secrets, privacy flows, mobile configuration, API paths, dependencies, supply-chain evidence, and release-pipeline findings into one preflight review. |
+| Best timing | Before an App Store or Google Play submission, before a website or API launch, and before merging a release pull request. |
+
+This path gives product and security teams a shared, evidence-linked checklist for finding and prioritizing security
+work while the release is still easy to improve.
+
 ## Local source repository review
 
 | Stage | What to expect |
