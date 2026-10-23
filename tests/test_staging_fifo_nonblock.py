@@ -9,6 +9,7 @@ reddeder. Gerçek araç çalıştırılmaz.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import stat
 import tempfile
@@ -111,7 +112,12 @@ class StagingFifoTests(_FifoProjectMixin, unittest.TestCase):
         self._assert_fifo_rejected_and_lock_released(gitleaks_active.run_local_gitleaks, env, "in progress")
 
     def test_trivy_staging_rejects_fifo_swap_without_blocking(self) -> None:
-        env = {"SNIPER_DATA_DIR": str(self.data_dir), "SNIPER_TRIVY_BINARY": str(self.make_fake_binary("tv"))}
+        binary = self.make_fake_binary("tv")
+        env = {
+            "SNIPER_DATA_DIR": str(self.data_dir),
+            "SNIPER_TRIVY_BINARY": str(binary),
+            "SNIPER_TRIVY_BINARY_SHA256": hashlib.sha256(binary.read_bytes()).hexdigest(),
+        }
         self._assert_fifo_rejected_and_lock_released(trivy_active.run_local_trivy_secret, env, "in progress")
 
     def test_trufflehog_staging_rejects_fifo_swap_without_blocking(self) -> None:

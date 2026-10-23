@@ -35,33 +35,71 @@ class NucleiExecutionError(RuntimeError):
     pass
 
 
-def _trusted_binary() -> Path:
+def _open_trusted_binary() -> tuple[Path, int]:
+    """Open and verify the exact executable inode that the child will inherit."""
     configured = os.environ.get("SNIPER_NUCLEI_BINARY", "")
     digest = os.environ.get("SNIPER_NUCLEI_SHA256", "")
     path = Path(configured)
-    if not path.is_absolute() or path.is_symlink() or not path.is_file() or not os.access(path, os.X_OK):
+    if not path.is_absolute() or not re.fullmatch(r"[0-9a-f]{64}", digest):
         raise NucleiUnavailable("Nuclei ikilisi kullanılamıyor.")
-    if not re.fullmatch(r"[0-9a-f]{64}", digest):
-        raise NucleiUnavailable("Nuclei ikilisi hash değeri kullanılamıyor.")
+    binary_fd: int | None = None
     try:
-        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        binary_fd = os.open(
+            path,
+            os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC,
+        )
+        info = os.fstat(binary_fd)
+        if not stat.S_ISREG(info.st_mode) or not info.st_mode & 0o111:
+            raise OSError("geçersiz Nuclei ikilisi")
+        with os.fdopen(os.dup(binary_fd), "rb") as stream:
+            actual = hashlib.file_digest(stream, "sha256").hexdigest()
+        os.lseek(binary_fd, 0, os.SEEK_SET)
     except OSError as exc:
+        if binary_fd is not None:
+            os.close(binary_fd)
         raise NucleiUnavailable("Nuclei ikilisi okunamıyor.") from exc
     if actual != digest:
+        os.close(binary_fd)
         raise NucleiUnavailable("Nuclei ikilisi hash değeri uyuşmuyor.")
+    return path, binary_fd
+
+
+def _trusted_binary() -> Path:
+    """Compatibility readiness probe; execution uses the still-open descriptor."""
+    path, binary_fd = _open_trusted_binary()
+    os.close(binary_fd)
     return path
 
 
-def _trusted_template() -> Path:
-    if TEMPLATE.is_symlink() or not TEMPLATE.is_file():
-        raise NucleiUnavailable("Nuclei şablonu kullanılamıyor.")
+def _open_trusted_template() -> tuple[Path, int]:
+    """Open and verify the exact template inode that the child will inherit."""
+    template_fd: int | None = None
     try:
-        actual = hashlib.sha256(TEMPLATE.read_bytes()).hexdigest()
+        template_fd = os.open(
+            TEMPLATE,
+            os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC,
+        )
+        info = os.fstat(template_fd)
+        if not stat.S_ISREG(info.st_mode):
+            raise OSError("geçersiz Nuclei şablonu")
+        with os.fdopen(os.dup(template_fd), "rb") as stream:
+            actual = hashlib.file_digest(stream, "sha256").hexdigest()
+        os.lseek(template_fd, 0, os.SEEK_SET)
     except OSError as exc:
+        if template_fd is not None:
+            os.close(template_fd)
         raise NucleiUnavailable("Nuclei şablonu okunamıyor.") from exc
     if actual != TEMPLATE_SHA256:
+        os.close(template_fd)
         raise NucleiUnavailable("Nuclei şablonu hash değeri uyuşmuyor.")
-    return TEMPLATE
+    return TEMPLATE, template_fd
+
+
+def _trusted_template() -> Path:
+    """Compatibility readiness probe; execution uses the still-open descriptor."""
+    path, template_fd = _open_trusted_template()
+    os.close(template_fd)
+    return path
 
 
 def _lock_scan() -> int:
@@ -91,65 +129,73 @@ def run_nuclei_loopback(target: str) -> dict:
     match = TARGET_PATTERN.fullmatch(target)
     if match is None or int(match.group(1)) > 65535:
         raise ValueError("target 1..65535 aralığında portla 127.0.0.1:<port> olmalı")
-    binary = _trusted_binary()
-    template = _trusted_template()
-    fd = _lock_scan()
+    _binary, binary_fd = _open_trusted_binary()
+    template_fd: int | None = None
     try:
-        with tempfile.TemporaryDirectory(prefix="sniper_nuclei_") as temp:
-            report = Path(temp) / "report.jsonl"
-            environment = {
-                "HOME": temp,
-                "TMPDIR": temp,
-                "PATH": "/usr/bin:/bin",
-                "LANG": "C.UTF-8",
-                "NO_PROXY": "127.0.0.1,localhost",
-                "no_proxy": "127.0.0.1,localhost",
-            }
-            command = [
-                str(binary), "-u", f"http://{target}", "-t", str(template),
-                "-jsonl", "-silent", "-nc", "-or", "-ot", "-duc", "-ni", "-dr",
-                "-no-stdin", "-pt", "http", "-c", "1", "-rl", "1", "-timeout", "2",
-                "-retries", "0",
-            ]
-            started = time.monotonic()
-            try:
-                with report.open("wb") as output:
-                    process = subprocess.Popen(
-                        command,
-                        stdin=subprocess.DEVNULL,
-                        stdout=output,
-                        stderr=subprocess.DEVNULL,
-                        env=environment,
-                        start_new_session=True,
-                    )
-                    try:
-                        exit_code = process.wait(timeout=30)
-                    except subprocess.TimeoutExpired as exc:
+        _template, template_fd = _open_trusted_template()
+        fd = _lock_scan()
+        try:
+            with tempfile.TemporaryDirectory(prefix="sniper_nuclei_") as temp:
+                report = Path(temp) / "report.jsonl"
+                environment = {
+                    "HOME": temp,
+                    "TMPDIR": temp,
+                    "PATH": "/usr/bin:/bin",
+                    "LANG": "C.UTF-8",
+                    "NO_PROXY": "127.0.0.1,localhost",
+                    "no_proxy": "127.0.0.1,localhost",
+                }
+                command = [
+                    f"/proc/self/fd/{binary_fd}", "-u", f"http://{target}",
+                    "-t", f"/proc/self/fd/{template_fd}",
+                    "-jsonl", "-silent", "-nc", "-or", "-ot", "-duc", "-ni", "-dr",
+                    "-no-stdin", "-pt", "http", "-c", "1", "-rl", "1", "-timeout", "2",
+                    "-retries", "0",
+                ]
+                started = time.monotonic()
+                try:
+                    with report.open("wb") as output:
+                        process = subprocess.Popen(
+                            command,
+                            stdin=subprocess.DEVNULL,
+                            stdout=output,
+                            stderr=subprocess.DEVNULL,
+                            env=environment,
+                            start_new_session=True,
+                            pass_fds=(binary_fd, template_fd),
+                        )
                         try:
-                            os.killpg(process.pid, signal.SIGKILL)
-                        except ProcessLookupError:
-                            pass
-                        process.wait(timeout=3)
-                        raise NucleiExecutionError("Nuclei çalıştırması zaman aşımına uğradı.") from exc
-            except OSError as exc:
-                raise NucleiExecutionError("Nuclei çalıştırması başarısız oldu.") from exc
-            if exit_code:
-                raise NucleiExecutionError("Nuclei çalıştırması başarısız oldu.")
-            if report.stat().st_size > MAX_REPORT_BYTES:
-                raise NucleiExecutionError("Nuclei çıktısı boyut sınırını aştı.")
-            try:
-                lines = [line for line in report.read_text(encoding="utf-8").splitlines() if line.strip()]
-                if len(lines) > MAX_FINDINGS:
-                    raise ValueError("çok fazla kayıt")
-                records = [json.loads(line) for line in lines]
-                if any(row.get("template-id") != "sniper-local-powered-by-v1" for row in records):
-                    raise ValueError("beklenmeyen şablon")
-                summary = parse_nuclei_jsonl_summary(records)
-            except (UnicodeError, json.JSONDecodeError, ValueError, AttributeError) as exc:
-                raise NucleiExecutionError("Nuclei çıktısı doğrulamadan geçemedi.") from exc
-            summary["format"] = "nuclei-loopback-v1"
-            summary["profile"] = "local-powered-by-v1"
-            summary["elapsed_seconds"] = round(time.monotonic() - started, 3)
-            return summary
+                            exit_code = process.wait(timeout=30)
+                        except subprocess.TimeoutExpired as exc:
+                            try:
+                                os.killpg(process.pid, signal.SIGKILL)
+                            except ProcessLookupError:
+                                pass
+                            process.wait(timeout=3)
+                            raise NucleiExecutionError("Nuclei çalıştırması zaman aşımına uğradı.") from exc
+                except OSError as exc:
+                    raise NucleiExecutionError("Nuclei çalıştırması başarısız oldu.") from exc
+                if exit_code:
+                    raise NucleiExecutionError("Nuclei çalıştırması başarısız oldu.")
+                if report.stat().st_size > MAX_REPORT_BYTES:
+                    raise NucleiExecutionError("Nuclei çıktısı boyut sınırını aştı.")
+                try:
+                    lines = [line for line in report.read_text(encoding="utf-8").splitlines() if line.strip()]
+                    if len(lines) > MAX_FINDINGS:
+                        raise ValueError("çok fazla kayıt")
+                    records = [json.loads(line) for line in lines]
+                    if any(row.get("template-id") != "sniper-local-powered-by-v1" for row in records):
+                        raise ValueError("beklenmeyen şablon")
+                    summary = parse_nuclei_jsonl_summary(records)
+                except (UnicodeError, json.JSONDecodeError, ValueError, AttributeError) as exc:
+                    raise NucleiExecutionError("Nuclei çıktısı doğrulamadan geçemedi.") from exc
+                summary["format"] = "nuclei-loopback-v1"
+                summary["profile"] = "local-powered-by-v1"
+                summary["elapsed_seconds"] = round(time.monotonic() - started, 3)
+                return summary
+        finally:
+            os.close(fd)
     finally:
-        os.close(fd)
+        if template_fd is not None:
+            os.close(template_fd)
+        os.close(binary_fd)

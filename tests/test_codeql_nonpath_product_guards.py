@@ -107,6 +107,7 @@ class CodeQLNonPathProductGuardTests(unittest.TestCase):
             environment = {
                 "SNIPER_DATA_DIR": str(data_dir),
                 "SNIPER_TRIVY_BINARY": str(fake_trivy),
+                "SNIPER_TRIVY_BINARY_SHA256": hashlib.sha256(fake_trivy.read_bytes()).hexdigest(),
                 "SNIPER_TRIVY_VULN_CACHE_DIR": str(cache),
                 "SNIPER_TRIVY_VULN_DB_SHA256": hashlib.sha256(database_bytes).hexdigest(),
                 "SNIPER_SENTINEL": str(sentinel.with_suffix("")),

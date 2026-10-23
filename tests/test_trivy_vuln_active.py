@@ -39,11 +39,13 @@ class TestTrivyVulnActive(unittest.TestCase):
 
         # Set environment
         self.old_trivy_bin = os.environ.get("SNIPER_TRIVY_BINARY")
+        self.old_trivy_sha = os.environ.get("SNIPER_TRIVY_BINARY_SHA256")
         self.old_data_dir = os.environ.get("SNIPER_DATA_DIR")
         self.old_cache_dir = os.environ.get("SNIPER_TRIVY_VULN_CACHE_DIR")
         self.old_db_sha = os.environ.get("SNIPER_TRIVY_VULN_DB_SHA256")
 
         os.environ["SNIPER_TRIVY_BINARY"] = str(self.fake_bin)
+        os.environ["SNIPER_TRIVY_BINARY_SHA256"] = hashlib.sha256(self.fake_bin.read_bytes()).hexdigest()
         os.environ["SNIPER_DATA_DIR"] = str(self.data_dir)
         os.environ["SNIPER_TRIVY_VULN_CACHE_DIR"] = str(self.cache_dir)
         os.environ["SNIPER_TRIVY_VULN_DB_SHA256"] = self.db_sha
@@ -59,6 +61,10 @@ class TestTrivyVulnActive(unittest.TestCase):
             os.environ["SNIPER_TRIVY_BINARY"] = self.old_trivy_bin
         elif "SNIPER_TRIVY_BINARY" in os.environ:
             del os.environ["SNIPER_TRIVY_BINARY"]
+        if self.old_trivy_sha is not None:
+            os.environ["SNIPER_TRIVY_BINARY_SHA256"] = self.old_trivy_sha
+        else:
+            os.environ.pop("SNIPER_TRIVY_BINARY_SHA256", None)
         if self.old_data_dir is not None:
             os.environ["SNIPER_DATA_DIR"] = self.old_data_dir
         elif "SNIPER_DATA_DIR" in os.environ:

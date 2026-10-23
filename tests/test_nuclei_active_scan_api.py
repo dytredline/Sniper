@@ -2,15 +2,18 @@ import hashlib
 import json
 import os
 import stat
+import subprocess
 import tempfile
 import threading
 import unittest
+from unittest import mock
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 import server
+import nuclei_active
 from nuclei_active import run_nuclei_loopback
 from storage import Store
 
@@ -92,6 +95,61 @@ class TestNucleiActiveApi(unittest.TestCase):
         with self.assertRaises(HTTPError) as error:
             self.post({"confirm_local": True, "target": "127.0.0.1:12345"})
         self.assertEqual(error.exception.code, 502)
+
+    def test_verified_binary_path_swap_never_executes_replacement(self):
+        marker = self.base / "replacement-executed"
+        trusted_popen = subprocess.Popen
+
+        def replace_then_start(command, *args, **kwargs):
+            self.binary.unlink()
+            self.binary.write_text(
+                "#!/bin/sh\n"
+                f"printf attacked > {marker}\n"
+                "printf '%s\\n' '{\"template-id\":\"sniper-local-powered-by-v1\","
+                "\"type\":\"http\",\"info\":{\"severity\":\"info\"}}'\n",
+                encoding="utf-8",
+            )
+            self.binary.chmod(0o700)
+            return trusted_popen(command, *args, **kwargs)
+
+        with mock.patch("nuclei_active.subprocess.Popen", side_effect=replace_then_start):
+            result = run_nuclei_loopback("127.0.0.1:12345")
+
+        self.assertFalse(marker.exists())
+        self.assertEqual(result["record_count"], 1)
+
+    def test_verified_template_path_swap_never_reaches_nuclei(self):
+        marker = self.base / "replacement-template-read"
+        template = self.base / "trusted-template.yaml"
+        template.write_text("id: trusted-template\n", encoding="utf-8")
+        trusted_digest = hashlib.sha256(template.read_bytes()).hexdigest()
+        self.binary.write_text(
+            "#!/bin/sh\n"
+            "template=''\n"
+            "while [ \"$#\" -gt 0 ]; do\n"
+            "  if [ \"$1\" = '-t' ]; then template=$2; shift 2; else shift; fi\n"
+            "done\n"
+            f"if grep -q ATTACKER \"$template\"; then printf attacked > {marker}; fi\n"
+            "printf '%s\\n' '{\"template-id\":\"sniper-local-powered-by-v1\","
+            "\"type\":\"http\",\"info\":{\"severity\":\"info\"}}'\n",
+            encoding="utf-8",
+        )
+        self.binary.chmod(0o700)
+        os.environ["SNIPER_NUCLEI_SHA256"] = hashlib.sha256(self.binary.read_bytes()).hexdigest()
+        trusted_popen = subprocess.Popen
+
+        def replace_then_start(command, *args, **kwargs):
+            template.unlink()
+            template.write_text("id: ATTACKER\n", encoding="utf-8")
+            return trusted_popen(command, *args, **kwargs)
+
+        with mock.patch.object(nuclei_active, "TEMPLATE", template), \
+                mock.patch.object(nuclei_active, "TEMPLATE_SHA256", trusted_digest), \
+                mock.patch("nuclei_active.subprocess.Popen", side_effect=replace_then_start):
+            result = run_nuclei_loopback("127.0.0.1:12345")
+
+        self.assertFalse(marker.exists())
+        self.assertEqual(result["record_count"], 1)
 
 
 @unittest.skipUnless(os.environ.get("NUCLEI_TEST_BINARY"), "real Nuclei binary not provided")

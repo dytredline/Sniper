@@ -43,8 +43,8 @@ if vulnerable:
 pathlib.Path(args[args.index('--output')+1]).write_text(json.dumps(report))
 ''')
         self.fake.chmod(0o755)
-        self.keys = {k: os.environ.get(k) for k in ("SNIPER_TRIVY_BINARY", "SNIPER_DATA_DIR", "SNIPER_TRIVY_VULN_CACHE_DIR", "SNIPER_TRIVY_VULN_DB_SHA256")}
-        os.environ.update({"SNIPER_TRIVY_BINARY":str(self.fake), "SNIPER_DATA_DIR":str(self.base), "SNIPER_TRIVY_VULN_CACHE_DIR":str(self.cache), "SNIPER_TRIVY_VULN_DB_SHA256":hashlib.sha256(b"pinned test db").hexdigest()})
+        self.keys = {k: os.environ.get(k) for k in ("SNIPER_TRIVY_BINARY", "SNIPER_TRIVY_BINARY_SHA256", "SNIPER_DATA_DIR", "SNIPER_TRIVY_VULN_CACHE_DIR", "SNIPER_TRIVY_VULN_DB_SHA256")}
+        os.environ.update({"SNIPER_TRIVY_BINARY":str(self.fake), "SNIPER_TRIVY_BINARY_SHA256":hashlib.sha256(self.fake.read_bytes()).hexdigest(), "SNIPER_DATA_DIR":str(self.base), "SNIPER_TRIVY_VULN_CACHE_DIR":str(self.cache), "SNIPER_TRIVY_VULN_DB_SHA256":hashlib.sha256(b"pinned test db").hexdigest()})
         self.previous_store = server.STORE
         server.STORE = Store(self.base / "sniper.db")
         self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)

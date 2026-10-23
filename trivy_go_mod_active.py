@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from project_analyzer import validate_project_path, ProjectRejected
+from trivy_config_active import _open_trusted_binary
 
 
 from trivy_vuln_active import (
@@ -77,6 +78,7 @@ def run_local_trivy_go_mod_vulnerability(project_path: str) -> dict[str, Any]:
     lock_path.parent.mkdir(parents=True, exist_ok=True)
 
     lock_fd = None
+    binary_fd: int | None = None
     try:
         # Open with O_NOFOLLOW, O_CREAT, O_RDWR
         lock_fd = os.open(str(lock_path), os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
@@ -108,17 +110,10 @@ def run_local_trivy_go_mod_vulnerability(project_path: str) -> dict[str, Any]:
         raise TrivyVulnBusy("Başka bir Trivy taraması sürüyor.")
 
     try:
-        # Resolve binary — require absolute, regular, non-symlink, executable
-        trivy_bin = os.environ.get("SNIPER_TRIVY_BINARY")
-        if not trivy_bin:
-            raise TrivyVulnUnavailable("Trivy ikilisi yapılandırılmamış.")
-        trivy_path = Path(trivy_bin)
-        if not trivy_path.is_absolute():
-            raise TrivyVulnUnavailable("Trivy ikili yolu mutlak olmalı.")
-        if trivy_path.is_symlink() or not trivy_path.is_file():
-            raise TrivyVulnUnavailable("Trivy ikilisi normal bir dosya olmalı.")
-        if not os.access(trivy_path, os.X_OK):
-            raise TrivyVulnUnavailable("Trivy ikilisi çalıştırılabilir olmalı.")
+        try:
+            _trivy_path, binary_fd = _open_trusted_binary()
+        except RuntimeError as exc:
+            raise TrivyVulnUnavailable(str(exc)) from exc
 
         # Validate cache dir and DB
         cache_dir = os.environ.get("SNIPER_TRIVY_VULN_CACHE_DIR")
@@ -234,7 +229,7 @@ def run_local_trivy_go_mod_vulnerability(project_path: str) -> dict[str, Any]:
 
             # Build argument vector per spec — use VALIDATED cache dir
             cmd = [
-                str(trivy_path),
+                f"/proc/self/fd/{binary_fd}",
                 "fs",
                 "--scanners", "vuln",
                 "--offline-scan",
@@ -265,6 +260,7 @@ def run_local_trivy_go_mod_vulnerability(project_path: str) -> dict[str, Any]:
                     stderr=subprocess.DEVNULL,
                     timeout=90,
                     check=False,
+                    pass_fds=(binary_fd,),
                 )
             except subprocess.TimeoutExpired:
                 raise TrivyVulnExecutionError("Trivy çalıştırması zaman aşımına uğradı.")
@@ -305,6 +301,8 @@ def run_local_trivy_go_mod_vulnerability(project_path: str) -> dict[str, Any]:
             return summary
 
     finally:
+        if binary_fd is not None:
+            os.close(binary_fd)
         if lock_fd is not None:
             try:
                 fcntl.flock(lock_fd, fcntl.LOCK_UN)

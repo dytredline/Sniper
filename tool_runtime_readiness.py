@@ -202,10 +202,9 @@ def _runtime_check(tool_id: str, route: str) -> tuple[bool, str]:
         binary = os.environ.get("SNIPER_TRIVY_BINARY")
         if not _regular(binary, executable=True):
             return False, "binary_unavailable"
-        if route in _TRIVY_CONFIG_ROUTES:
-            from trivy_config_active import expected_trivy_sha256
-            if not _digest_matches(binary, expected_trivy_sha256()):
-                return False, "binary_digest_mismatch"
+        from trivy_config_active import expected_trivy_sha256
+        if not _digest_matches(binary, expected_trivy_sha256()):
+            return False, "binary_digest_mismatch"
         if route in _TRIVY_VULN_ROUTES and not _trivy_vulnerability_database():
             return False, "pinned_database_unavailable"
         return True, "local_prerequisites_found"

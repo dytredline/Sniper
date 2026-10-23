@@ -41,18 +41,38 @@ def expected_trivy_sha256() -> str:
     return configured if re.fullmatch(r"[0-9a-f]{64}", configured) else EXPECTED_TRIVY_SHA256
 
 
-def _trusted_binary() -> Path:
+def _open_trusted_binary() -> tuple[Path, int]:
+    """Open and verify the exact executable inode inherited by a child."""
     configured = os.environ.get("SNIPER_TRIVY_BINARY", "")
     path = Path(configured)
-    if not path.is_absolute() or path.is_symlink() or not path.is_file() or not os.access(path, os.X_OK):
+    if not path.is_absolute():
         raise TrivyConfigUnavailable("Trivy ikilisi kullanılamıyor.")
+    binary_fd: int | None = None
     try:
-        with path.open("rb") as stream:
+        binary_fd = os.open(
+            path,
+            os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC,
+        )
+        info = os.fstat(binary_fd)
+        if not stat.S_ISREG(info.st_mode) or not info.st_mode & 0o111:
+            raise OSError("geçersiz Trivy ikilisi")
+        with os.fdopen(os.dup(binary_fd), "rb") as stream:
             digest = hashlib.file_digest(stream, "sha256").hexdigest()
+        os.lseek(binary_fd, 0, os.SEEK_SET)
     except OSError as exc:
+        if binary_fd is not None:
+            os.close(binary_fd)
         raise TrivyConfigUnavailable("Trivy ikilisi okunamıyor.") from exc
     if digest != expected_trivy_sha256():
+        os.close(binary_fd)
         raise TrivyConfigUnavailable("Trivy ikilisi hash değeri uyuşmuyor.")
+    return path, binary_fd
+
+
+def _trusted_binary() -> Path:
+    """Compatibility/readiness probe; execution keeps its descriptor open."""
+    path, binary_fd = _open_trusted_binary()
+    os.close(binary_fd)
     return path
 
 
@@ -127,8 +147,12 @@ def _scan_lock() -> int:
 def run_local_trivy_dockerfile(project_path: str) -> dict:
     project_root = validate_project_path(project_path, allowed_roots=(Path.home().resolve(),))
     dockerfile = _read_dockerfile(project_root)
-    binary = _trusted_binary()
-    lock = _scan_lock()
+    _binary, binary_fd = _open_trusted_binary()
+    try:
+        lock = _scan_lock()
+    except BaseException:
+        os.close(binary_fd)
+        raise
     try:
         with tempfile.TemporaryDirectory(prefix="sniper_trivy_config_") as directory:
             scratch = Path(directory)
@@ -144,7 +168,7 @@ def run_local_trivy_dockerfile(project_path: str) -> dict:
                 "LANG": "C.UTF-8",
             }
             command = [
-                str(binary), "config", "--misconfig-scanners", "dockerfile",
+                f"/proc/self/fd/{binary_fd}", "config", "--misconfig-scanners", "dockerfile",
                 "--skip-check-update", "--skip-version-check", "--config=", "--ignorefile=",
                 "--format", "json", "--output", str(report), "--cache-dir", str(scratch / "cache"),
                 "--timeout", "30s", str(staged),
@@ -153,6 +177,7 @@ def run_local_trivy_dockerfile(project_path: str) -> dict:
                 process = subprocess.Popen(
                     command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL, env=environment, start_new_session=True,
+                    pass_fds=(binary_fd,),
                 )
                 try:
                     exit_code = process.wait(timeout=40)
@@ -197,12 +222,17 @@ def run_local_trivy_dockerfile(project_path: str) -> dict:
             return summary
     finally:
         os.close(lock)
+        os.close(binary_fd)
 
 def run_local_trivy_terraform(project_path: str, terraform_file: str) -> dict:
     project_root = validate_project_path(project_path, allowed_roots=(Path.home().resolve(),))
     terraform_data = _read_terraform_file(project_root, terraform_file)
-    binary = _trusted_binary()
-    lock = _scan_lock()
+    _binary, binary_fd = _open_trusted_binary()
+    try:
+        lock = _scan_lock()
+    except BaseException:
+        os.close(binary_fd)
+        raise
     try:
         with tempfile.TemporaryDirectory(prefix="sniper_trivy_terraform_") as directory:
             scratch = Path(directory)
@@ -218,7 +248,7 @@ def run_local_trivy_terraform(project_path: str, terraform_file: str) -> dict:
                 "LANG": "C.UTF-8",
             }
             command = [
-                str(binary), "config", "--misconfig-scanners", "terraform",
+                f"/proc/self/fd/{binary_fd}", "config", "--misconfig-scanners", "terraform",
                 "--skip-check-update", "--skip-version-check", "--config=", "--ignorefile=",
                 "--format", "json", "--output", str(report), "--cache-dir", str(scratch / "cache"),
                 "--timeout", "30s", str(staged),
@@ -227,6 +257,7 @@ def run_local_trivy_terraform(project_path: str, terraform_file: str) -> dict:
                 process = subprocess.Popen(
                     command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL, env=environment, start_new_session=True,
+                    pass_fds=(binary_fd,),
                 )
                 try:
                     exit_code = process.wait(timeout=40)
@@ -299,3 +330,4 @@ def run_local_trivy_terraform(project_path: str, terraform_file: str) -> dict:
             return summary
     finally:
         os.close(lock)
+        os.close(binary_fd)
