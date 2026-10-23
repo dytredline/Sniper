@@ -1,8 +1,39 @@
 # Sniper Community
 
-Sniper Community is a local-first defensive application-security toolkit. It combines source and configuration
-analysis, dependency and container inventory, reports, a loopback web interface, command-line workflows, and an
-AI-first review path through a stdio MCP server.
+**English** | [日本語](docs/README.ja.md) | [简体中文](docs/README.zh-CN.md) | [한국어](docs/README.ko.md)
+
+Sniper Community is an open-source, local-first defensive application-security toolkit for people who build, own,
+or review applications, APIs, and websites. It helps teams examine supported source code through static application
+security testing (SAST), dependency manifests and SBOMs for software composition analysis (SCA), container
+artifacts, infrastructure as code (IaC), CI configuration, and saved security reports. For an owned or explicitly
+authorized web target, Sniper can also prepare a bounded runtime action for human review. Results are available to
+an AI client over local stdio MCP, to a person through the CLI, or in the loopback web interface.
+
+## What Sniper helps you inspect
+
+| Area | Questions Sniper helps answer |
+| --- | --- |
+| Source code and configuration | Which supported code paths, security patterns, secrets, and configuration choices need human review? |
+| Dependencies and SBOMs | What components are present, how are they related, and what does the available local vulnerability evidence say? |
+| Containers and software supply chain | What packages, layers, manifests, provenance signals, and risky build choices appear in supported local artifacts? |
+| Infrastructure and CI/CD | Do supported Terraform, Kubernetes, Helm, Dockerfile, Compose, cloud IAM, or CI workflow inputs expose known risky settings? |
+| Saved security reports | Can supported SARIF and tool reports be validated, bounded, summarized, and brought into one review flow? |
+| Authorized website and TLS workflows | What exact target, scope, consent, readiness, and stop conditions must a human verify before an external action? |
+
+The complete, evidence-linked inventory is in [Capabilities and security checks](docs/CAPABILITIES.md). Practical
+paths for application, API, website, platform, and security teams are in [Use cases](docs/USE-CASES.md). AI systems
+can start with the compact [LLM project index](llms.txt), while people can inspect the latest
+[validation evidence](VALIDATION.md).
+
+Sniper includes built-in analyzers and report parsers in the source tree. Its rootless local profile can additionally
+install five pinned, optional third-party engines: **Nuclei**, **Trivy**, **Gitleaks**, **TruffleHog**, and
+**Opengrep**. The built-in analysis remains available independently; an optional engine or profile is shown as usable
+only after its runtime, data, and license readiness checks pass.
+
+The loopback interface and HTML reports use Turkish as the source language and provide an English base pack plus
+expanded Japanese, Simplified Chinese, and Korean starter packs. A missing CJK entry falls back to English when that
+entry exists, otherwise the original Turkish source remains. The CJK layouts are exercised in desktop and mobile
+Chromium viewports. See [localization coverage and language-pack updates](docs/LOCALIZATION.md).
 
 This repository prepares the Community release surface. Enterprise code is not included as a supported Community
 product surface. Commercial services, hosted operation, support commitments, customer-bound licensing, private
@@ -30,7 +61,12 @@ human review.
 
 ## Source-checkout setup
 
-Python 3.12 is the tested interpreter. This source release is not a pip-installable package: run the checked-in
+Python 3.12 is the tested interpreter. The complete native Community v1 setup and its five locked optional engines
+are supported on Linux ARM64 and Linux x86-64. Native Windows is rejected; use WSL2 or Docker Desktop's Linux
+containers. macOS has an experimental, core-only source setup, while the five-engine native profile remains
+unsupported. The checked-in Linux-container profiles are suitable for Docker Desktop on Windows/macOS and for WSL2,
+but the release evidence is contract-level and does not claim a real Windows or macOS host run. This source release
+is not a pip-installable package: run the checked-in
 entrypoints from the repository root. The rootless setup command creates `.venv`, installs the exact-version runtime
 dependencies and the locked local tool profile, then verifies the real MCP and project-audit help entrypoints without
 starting Sniper or a scanner:
@@ -42,6 +78,22 @@ python3 scripts/setup-community --accept-third-party-licenses
 The flag confirms that you reviewed the third-party licenses recorded in `COMMUNITY-TOOLS.lock.json`; setup never
 accepts them implicitly. Use `--wheelhouse` and `--tool-cache-dir` for prepared offline inputs. Setup does not open a
 database, start the web service, or run a scan.
+
+For Linux core-only setup, or the experimental macOS source path without optional engines, use:
+
+```bash
+python3 scripts/setup-community --core-only
+```
+
+For Windows/macOS Docker Desktop or WSL2, the default Compose file builds the core image. The optional five-engine
+image is a separate, explicit profile whose build requires third-party license acknowledgement:
+
+```bash
+docker compose build sniper
+python3 scripts/build-community-tools-image --accept-third-party-licenses
+```
+
+Neither build command starts a scanner. See [deployment and platform support](DEPLOYMENT.md) for exact limits.
 
 After setup, the MCP help entrypoint remains directly available as:
 
@@ -113,7 +165,8 @@ Community packaging does not remove the installed product's tested manual/API co
 
 The authorized OpenSSL contract is `POST /api/tool-runs/openssl-x509-authorized` with the exact request shape
 `{"confirm_authorized":true,"target":"https://HOST[:PORT]"}` and consent version `authorized-tls-target-v1`.
-Mevcut loopback rota ve payload/yanıt sözleşmesi değişmez. Its contract test uses a fake runner and gerçek dış hedefe bağlanmaz;
+The existing loopback route and payload/response contract remain unchanged. Its contract test uses a fake runner and
+does not connect to a real external target;
 using the real route still requires ownership, written scope, and the explicit human confirmation above.
 
 ## Data privacy

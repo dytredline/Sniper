@@ -15,6 +15,12 @@ For a new checkout, `python3 scripts/setup-community --accept-third-party-licens
 It does not start the server or execute a scanner. Prepared offline Python wheels and tool artifacts can be supplied
 with `--wheelhouse` and `--tool-cache-dir`.
 
+The source core can be prepared without optional tools on Linux, or experimentally on macOS, with
+`python3 scripts/setup-community --core-only`. Native Windows is intentionally rejected; use WSL2 or Docker Desktop's
+Linux-container path. For an optional five-engine container image, review the same lock-file licenses and run
+`python3 scripts/build-community-tools-image --accept-third-party-licenses`; see `DEPLOYMENT.md` for the exact profile
+and evidence boundary.
+
 The command downloads only artifacts listed in `COMMUNITY-TOOLS.lock.json`, verifies each complete artifact before
 extracting its declared executable, and never executes a scanner. It installs into the ignored `runtimes/` directory;
 Sniper discovers the files, records their hashes, and still requires the normal local-input or target-authorization

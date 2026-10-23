@@ -1,0 +1,66 @@
+# Sniper Community
+
+> Sniper Community is a local-first defensive application-security toolkit for people who own or are explicitly authorized to assess source code, application artifacts, websites, and APIs.
+
+## Built-in capabilities
+
+- Local source and configuration analysis, dependency and container inventory, infrastructure-as-code review, SBOM workflows, saved-report handling, and bounded security reports are included in the source tree.
+- Manual command-line workflows and a loopback web interface support operation without an AI client.
+- The canonical exhaustive map of built-in, optional, prerequisite-dependent, and human-review controls is [docs/CAPABILITIES.md](docs/CAPABILITIES.md). A mapped control is not a claim that it ran or passed.
+
+## Optional locked engines
+
+The rootless `local` profile installs five optional, version-locked engines after separate acceptance of their upstream licenses:
+
+- Nuclei 3.11.1
+- Trivy 0.75.0
+- Gitleaks 8.30.1
+- TruffleHog 3.99.0
+- Opengrep 1.30.1
+
+Versions, artifact SHA-256 values, platforms, and licenses are authoritative in [COMMUNITY-TOOLS.lock.json](COMMUNITY-TOOLS.lock.json). The binaries are installed separately and are not bundled in the source archive.
+
+## Prerequisite-dependent capabilities
+
+- Broad Nuclei HTTP assessment requires a separately pinned template catalog; the repository includes only a pinned loopback template.
+- Trivy configuration profiles can use the locked executable; vulnerability profiles also require a separately pinned offline database.
+- Other host-constrained or service-backed integrations remain unavailable until their documented runtime, isolation, license, and readiness conditions pass.
+- External-target workflows require target ownership or written scope, runtime readiness, and explicit authorization. Missing prerequisites are not reported as successful checks.
+
+## AI and MCP
+
+- The local [stdio MCP guide](docs/COMMUNITY-MCP.md) explains AI-assisted finding review and supported actions.
+- Effectful actions use `prepare_action` followed by `execute_action`: the exact immutable plan, scope, hash, and effects must be shown before human approval, and the MCP host may send `user_confirmed: true` only after that approval.
+- The local MCP server opens no network listener, but an MCP client may send selected source or findings to its model provider. Review provider retention and organizational sharing rules.
+
+## Install and operate
+
+```bash
+python3 scripts/setup-community --accept-third-party-licenses
+```
+
+- Runtime baseline: Python 3.12; locked optional-tool artifacts cover Linux ARM64 and x86-64.
+- Native Windows is not supported; use WSL2 or Docker Desktop's Linux containers. macOS source setup is experimental
+  and core-only (`python3 scripts/setup-community --core-only`).
+- The default container is core-only. The separate five-engine target is built with
+  `python3 scripts/build-community-tools-image --accept-third-party-licenses`; it is license-gated and does not run scanners during the build.
+- [README](README.md): setup, MCP quick start, manual operation, and responsible-use boundaries.
+- [Community tool installation](docs/COMMUNITY-TOOLS.md): optional engine installation and prerequisites.
+- [AI discovery guide](docs/AI-DISCOVERY.md): audiences, security-review use cases, and capability interpretation.
+- [Use cases](docs/USE-CASES.md): application, dependency, container, infrastructure, report, website, API, and AI review paths.
+
+## Localized introductions
+
+- [日本語](docs/README.ja.md): Japanese introduction and responsible-use summary.
+- [简体中文](docs/README.zh-CN.md): Simplified Chinese introduction and responsible-use summary.
+- [한국어](docs/README.ko.md): Korean introduction and responsible-use summary.
+- [Localization contract](docs/LOCALIZATION.md): measured English interface coverage, expanded CJK starter packs, fallback behavior, and language-only update gates.
+
+## Evidence, safety, and governance
+
+- [Validation evidence](VALIDATION.md): reproducible test snapshot and evidence limits.
+- [Security policy](SECURITY.md): private vulnerability reporting and authorized research rules.
+- [Deployment](DEPLOYMENT.md): Linux, experimental macOS core-only, Docker Desktop/WSL2, loopback binding, and source-manifest verification.
+- [License](LICENSE): Apache License 2.0 for Sniper Community; third-party licenses remain applicable.
+
+Sniper findings and clean results are advisory, not proof that a system is secure. Use external-target features only with explicit authorization, review AI suggestions, and independently reproduce material findings before remediation decisions.

@@ -5,6 +5,21 @@ machine. The web service binds to `127.0.0.1:8787` by default. Use a dedicated
 data directory and do not point a new checkout at an existing production
 database.
 
+## Platform support
+
+| Host path | Community v1 status |
+| --- | --- |
+| Linux ARM64 | Supported and release-tested for the native source setup and five locked optional engines |
+| Linux x86-64 | Locked artifacts are provided; GitHub CI validates the source/container path |
+| Windows native | Not supported in v1; setup fails before creating an environment and directs users to WSL2 or Docker |
+| macOS native | Experimental core-only source setup with `--core-only`; no locked native engine artifacts and no real-host release evidence |
+| Docker Desktop / WSL2 | Linux core and explicit five-engine container profiles are provided and contract-tested; real Windows/macOS host execution is not part of this release evidence |
+
+The default container runs the Sniper web application and does not bundle the five separately licensed optional
+engines. The distinct `community-tools` build target installs exactly the five Linux artifacts in
+`COMMUNITY-TOOLS.lock.json` after an explicit license acknowledgement. Linux-specific isolation profiles such as
+bubblewrap/seccomp do not become native Windows or macOS capabilities merely because a Linux container is used.
+
 The Community source distribution intentionally does not include commercial
 packaging, customer-bound licensing, private installers, or native-binary
 delivery tooling. Replace the source tree only after reviewing a new archive
@@ -45,6 +60,52 @@ file is bound to loopback.
 ./scripts/build.sh
 ./scripts/deploy.sh
 ```
+
+Plain `docker build .` and the default Compose build select `community-core` and never download optional engines.
+To build the five-engine image after reviewing the licenses recorded in `COMMUNITY-TOOLS.lock.json`, run:
+
+```bash
+python3 scripts/build-community-tools-image --accept-third-party-licenses --dry-run
+python3 scripts/build-community-tools-image --accept-third-party-licenses
+```
+
+The dry run prints the exact Compose plan without calling Docker or the network. The real command combines
+`docker-compose.yml` with `docker-compose.tools.yml`, selects `community-tools`, verifies every downloaded archive
+against its locked SHA-256, and does not execute a scanner. Omitting the acknowledgement fails before an optional
+artifact is requested. Start that image with the same explicit gate:
+
+```bash
+SNIPER_ACCEPT_THIRD_PARTY_LICENSES=1 docker compose \
+  -f docker-compose.yml -f docker-compose.tools.yml up -d sniper
+```
+
+Both profiles retain the loopback-only `127.0.0.1:8787` host publication and the same named data volumes. Docker
+Desktop/WSL2 supplies a Linux container runtime; it does not turn the source installer or optional engines into native
+Windows/macOS binaries.
+
+Docker Desktop on Windows (PowerShell), core profile:
+
+```powershell
+docker compose up -d sniper
+```
+
+Docker Desktop on Windows (PowerShell), explicit five-engine profile:
+
+```powershell
+$env:SNIPER_ACCEPT_THIRD_PARTY_LICENSES = "1"
+docker compose -f docker-compose.yml -f docker-compose.tools.yml up -d sniper
+```
+
+Docker Desktop on macOS or Docker from WSL2 uses the same Compose files from a POSIX shell:
+
+```bash
+docker compose up -d sniper
+SNIPER_ACCEPT_THIRD_PARTY_LICENSES=1 docker compose \
+  -f docker-compose.yml -f docker-compose.tools.yml up -d sniper
+```
+
+Review `COMMUNITY-TOOLS.lock.json` before setting the acknowledgement. The exact host run remains operator evidence;
+the release gate validates the plans, merged Compose model, architecture mapping, and fail-closed acknowledgement.
 
 `scripts/deploy.sh` creates a mode-`0600` `.env` file with a random local
 Grafana password when one does not already exist. It does not print the

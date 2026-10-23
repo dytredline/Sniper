@@ -12,8 +12,8 @@ class OpenSSLAuthorizedTargetContractTests(unittest.TestCase):
         self.assertIn("POST /api/tool-runs/openssl-x509-authorized", readme)
         self.assertIn('{"confirm_authorized":true,"target":"https://HOST[:PORT]"}', readme)
         self.assertIn("authorized-tls-target-v1", readme)
-        self.assertIn("Mevcut loopback rota ve payload/yanıt sözleşmesi değişmez", readme)
-        self.assertIn("gerçek dış hedefe bağlanmaz", readme)
+        self.assertIn("The existing loopback route and payload/response contract remain unchanged", readme)
+        self.assertIn("does not connect to a real external target", readme)
 
     def test_normalizes_dns_ipv4_ipv6_and_default_port(self) -> None:
         self.assertEqual(
