@@ -20,22 +20,25 @@ class TrivyRuntimeIntegrityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=Path.home()) as temp:
             root = Path(temp)
             binary = root / "trivy"
-            trusted = b"#!/bin/sh\n# trusted-trivy\n"
-            binary.write_bytes(trusted)
+            expected_bytes = b"#!/bin/sh\n# fixture-runtime\n"
+            binary.write_bytes(expected_bytes)
             binary.chmod(0o755)
             replacement = root / "replacement"
             replacement.write_bytes(b"#!/bin/sh\n# replacement\n")
             replacement.chmod(0o755)
             environment = {
                 "SNIPER_TRIVY_BINARY": str(binary),
-                "SNIPER_TRIVY_BINARY_SHA256": hashlib.sha256(trusted).hexdigest(),
+                "SNIPER_TRIVY_BINARY_SHA256": hashlib.sha256(expected_bytes).hexdigest(),
             }
 
             with mock.patch.dict(os.environ, environment, clear=True):
                 _path, descriptor = trivy_config_active._open_trusted_binary()
                 try:
                     replacement.replace(binary)
-                    self.assertEqual(os.pread(descriptor, len(trusted), 0), trusted)
+                    self.assertEqual(
+                        os.pread(descriptor, len(expected_bytes), 0),
+                        expected_bytes,
+                    )
                 finally:
                     os.close(descriptor)
 

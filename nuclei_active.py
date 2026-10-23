@@ -127,8 +127,12 @@ def _lock_scan() -> int:
 
 def run_nuclei_loopback(target: str) -> dict:
     match = TARGET_PATTERN.fullmatch(target)
-    if match is None or int(match.group(1)) > 65535:
+    if match is None:
         raise ValueError("target 1..65535 aralığında portla 127.0.0.1:<port> olmalı")
+    port = int(match.group(1))
+    if port > 65535:
+        raise ValueError("target 1..65535 aralığında portla 127.0.0.1:<port> olmalı")
+    loopback_url = "http://127.0.0.1:" + str(port)
     _binary, binary_fd = _open_trusted_binary()
     template_fd: int | None = None
     try:
@@ -146,7 +150,7 @@ def run_nuclei_loopback(target: str) -> dict:
                     "no_proxy": "127.0.0.1,localhost",
                 }
                 command = [
-                    f"/proc/self/fd/{binary_fd}", "-u", f"http://{target}",
+                    f"/proc/self/fd/{binary_fd}", "-u", loopback_url,
                     "-t", f"/proc/self/fd/{template_fd}",
                     "-jsonl", "-silent", "-nc", "-or", "-ot", "-duc", "-ni", "-dr",
                     "-no-stdin", "-pt", "http", "-c", "1", "-rl", "1", "-timeout", "2",
