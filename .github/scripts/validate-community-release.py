@@ -46,6 +46,7 @@ REQUIRED_FILES = (
     ".github/dependabot.yml",
     "docs/COMMUNITY-TOOLS.md",
     "scripts/install-community-tools",
+    "scripts/setup-community",
     "docs/COMMUNITY-MCP.md",
     "docs/examples/mcp/stdio-community.json",
     "docs/examples/mcp/stdio-read-only.json",
@@ -65,7 +66,7 @@ REQUIRED_TEXT = {
         "Manual CLI",
         "Local web",
         "Enterprise code is not included",
-        "python3 scripts/sniper-mcp --help",
+        ".venv/bin/python scripts/sniper-mcp --help",
         "prepare_action",
         "execute_action",
         "MCP host",
@@ -75,7 +76,7 @@ REQUIRED_TEXT = {
     "VALIDATION.md": (
         "Sniper Community validation evidence",
         "2,787 tests, 0 failures, 0 errors",
-        "163 passed",
+        "167 passed",
         "426 passed, 0 failed",
         "not a security certification",
         "No step in this validation snapshot scans an external website",
@@ -171,6 +172,12 @@ REQUIRED_TEXT = {
         "community_tool_installer",
         "--accept-third-party-licenses",
         "COMMUNITY-TOOLS.lock.json",
+    ),
+    "scripts/setup-community": (
+        "community_setup",
+        "--accept-third-party-licenses",
+        "--wheelhouse",
+        "--tool-cache-dir",
     ),
     ".github/ISSUE_TEMPLATE/bug_report.yml": (
         "name: Bug report",
@@ -763,17 +770,17 @@ def validate(root: Path, *, scan_release_tree: bool = False) -> list[str]:
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             fail(f"COMMUNITY-TOOLS.lock.json: invalid tool lock: {exc}", failures)
 
-    installer_relative = "scripts/install-community-tools"
-    if entry_map is not None:
-        installer_entry = entry_map.get(installer_relative)
-        installer_mode = installer_entry.mode if installer_entry is not None else 0
-    else:
-        try:
-            installer_mode = (root / installer_relative).lstat().st_mode
-        except OSError:
-            installer_mode = 0
-    if installer_mode and not installer_mode & 0o111:
-        fail("scripts/install-community-tools: entrypoint is not executable", failures)
+    for installer_relative in ("scripts/install-community-tools", "scripts/setup-community"):
+        if entry_map is not None:
+            installer_entry = entry_map.get(installer_relative)
+            installer_mode = installer_entry.mode if installer_entry is not None else 0
+        else:
+            try:
+                installer_mode = (root / installer_relative).lstat().st_mode
+            except OSError:
+                installer_mode = 0
+        if installer_mode and not installer_mode & 0o111:
+            fail(f"{installer_relative}: entrypoint is not executable", failures)
 
     for relative in (
         "docs/examples/mcp/stdio-community.json",
