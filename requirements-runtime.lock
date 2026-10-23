@@ -1,4 +1,6 @@
-# Runtime security dependency lock. Update this file and the runtime contract together.
+# Complete direct and transitive runtime dependency lock. Update this file and the runtime contract together.
+cffi==2.1.1
 cryptography==50.0.2
 packaging==26.3
+pycparser==3.12
 PyYAML==6.0.3

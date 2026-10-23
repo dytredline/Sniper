@@ -4,14 +4,14 @@ Sniper exposes a real Model Context Protocol server at `scripts/sniper-mcp`. It 
 the child process's stdin/stdout and does not open an HTTP or TCP listener. Run the source-checkout preflight first:
 
 ```bash
-python3 scripts/sniper-mcp --help
+.venv/bin/python scripts/sniper-mcp --help
 ```
 
 The server uses a local Sniper database. With no database option, Community mode creates an isolated per-user
 Community database. Never aim an unreviewed checkout at production state:
 
 ```bash
-python3 scripts/sniper-mcp --mode community
+.venv/bin/python scripts/sniper-mcp --mode community
 ```
 
 If you pass `--db`, it must name an existing, separate Community/development database. Community mode rejects the
@@ -36,7 +36,7 @@ Multi-user deployments can retain role-bound behavior with `--mode authenticated
 read-only metadata, or create a token when the associated role needs to submit suggestions:
 
 ```bash
-python3 cli_reports.py triage mcp-token create \
+.venv/bin/python cli_reports.py triage mcp-token create \
   --db /ABSOLUTE/PATH/TO/sniper.db \
   --username analyst-name \
   --label community-mcp \
@@ -104,8 +104,8 @@ create legal authorization.
 MCP is optional. People can inspect available CLI operations directly:
 
 ```bash
-python3 scripts/sniper-project-audit --help
-python3 cli_reports.py --help
+.venv/bin/python scripts/sniper-project-audit --help
+.venv/bin/python cli_reports.py --help
 ```
 
 The loopback Local web interface remains available through the documented deployment path and provides the human

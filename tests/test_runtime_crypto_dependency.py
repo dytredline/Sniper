@@ -12,8 +12,10 @@ import unittest
 
 APP = Path(__file__).resolve().parents[1]
 RUNTIME_PINS = {
+    "cffi==2.1.1",
     "cryptography==50.0.2",
     "packaging==26.3",
+    "pycparser==3.12",
     "PyYAML==6.0.3",
 }
 
@@ -22,11 +24,12 @@ class RuntimeCryptoDependencyTests(unittest.TestCase):
     def test_runtime_lock_and_container_install_exact_runtime_dependencies(self) -> None:
         lock = (APP / "requirements-runtime.lock").read_text(encoding="utf-8").splitlines()
         observed = {line.strip() for line in lock if line.strip() and not line.startswith("#")}
-        self.assertTrue(RUNTIME_PINS.issubset(observed), RUNTIME_PINS - observed)
+        self.assertEqual(observed, RUNTIME_PINS)
         dockerfile = (APP / "Dockerfile").read_text(encoding="utf-8")
         self.assertIn("COPY requirements-runtime.lock", dockerfile)
-        self.assertIn("pip install", dockerfile)
+        self.assertIn("pip install --no-cache-dir --disable-pip-version-check --no-deps", dockerfile)
         self.assertIn("requirements-runtime.lock", dockerfile)
+        self.assertIn("python -m pip check", dockerfile)
         self.assertIn("SNIPER_AUTH_FIELD_KEY_FILE=/var/lib/sniper-secrets/auth-field-keys.json", dockerfile)
         self.assertIn('"/var/lib/sniper-secrets"', dockerfile)
 

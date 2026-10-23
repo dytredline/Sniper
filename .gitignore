@@ -29,6 +29,7 @@ logs/
 htmlcov/
 .pytest_cache/
 .tox/
+.codebase-memory/
 .auth-field-keys/
 **/.auth-field-keys/
 release-signing.key

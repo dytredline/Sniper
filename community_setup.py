@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -13,6 +14,12 @@ MINIMUM_PYTHON = (3, 12)
 RUNTIME_LOCK = "requirements-runtime.lock"
 TOOL_INSTALLER = Path("scripts/install-community-tools")
 VERIFIED_ENTRYPOINTS = (Path("scripts/sniper-mcp"), Path("scripts/sniper-project-audit"))
+PYTHON_PROBE = (
+    "import json,sys;"
+    "print(json.dumps({'implementation':sys.implementation.name,"
+    "'version':list(sys.version_info[:3]),'prefix':sys.prefix,"
+    "'base_prefix':sys.base_prefix}))"
+)
 
 
 class SetupError(RuntimeError):
@@ -33,11 +40,60 @@ def _absolute_from(root: Path, value: Path) -> Path:
     return candidate if candidate.is_absolute() else root / candidate
 
 
+def _trusted_venv_python(environment: Path) -> Path | None:
+    """Accept a regular venv Python or its standard link to this interpreter's base executable."""
+    candidate = environment / "bin" / "python"
+    try:
+        if not candidate.exists() or not os.access(candidate, os.X_OK):
+            return None
+        if not candidate.is_symlink():
+            return candidate if candidate.is_file() else None
+        resolved = candidate.resolve(strict=True)
+        allowed = {
+            Path(sys.executable).resolve(strict=True),
+            Path(getattr(sys, "_base_executable", sys.executable)).resolve(strict=True),
+        }
+        return candidate if resolved in allowed and resolved.is_file() else None
+    except (OSError, RuntimeError):
+        return None
+
+
 def _run(command: list[str], *, root: Path, stage: str) -> None:
     try:
-        subprocess.run(command, cwd=root, check=True)
+        subprocess.run(command, cwd=root, check=True, stdout=subprocess.DEVNULL)
     except (OSError, subprocess.CalledProcessError) as exc:
         raise SetupError(f"Community setup failed during {stage}") from exc
+
+
+def _verify_venv_python(python: Path, environment: Path, *, root: Path) -> None:
+    """Fail closed unless the selected executable is CPython 3.12+ in this venv."""
+    try:
+        completed = subprocess.run(
+            [str(python), "-I", "-c", PYTHON_PROBE],
+            cwd=root,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        payload = json.loads(completed.stdout)
+        version = tuple(payload["version"])
+        prefix = Path(payload["prefix"]).resolve(strict=True)
+        base_prefix = Path(payload["base_prefix"]).resolve(strict=True)
+        expected_prefix = environment.resolve(strict=True)
+        if (
+            payload["implementation"] != "cpython"
+            or len(version) != 3
+            or not all(isinstance(part, int) for part in version)
+            or version < MINIMUM_PYTHON
+            or prefix != expected_prefix
+            or base_prefix == prefix
+        ):
+            raise ValueError("unexpected interpreter identity")
+    except (OSError, subprocess.CalledProcessError, ValueError, TypeError, KeyError, json.JSONDecodeError) as exc:
+        raise SetupError(
+            "Virtual environment must provide CPython 3.12 or newer from its own prefix"
+        ) from exc
 
 
 def setup_community(
@@ -67,19 +123,29 @@ def setup_community(
         if not _regular_file(root / relative, executable=True):
             raise SetupError(f"Required Community entrypoint is unavailable: {relative.as_posix()}")
 
+    runtime_root = _absolute_from(root, Path(install_dir))
+    expected_runtime_root = root / "runtimes"
+    if runtime_root != expected_runtime_root:
+        raise SetupError("One-command setup must use the discoverable repository runtimes directory")
+    if runtime_root.is_symlink():
+        raise SetupError("Tool runtime directory cannot be a symbolic link")
+
     environment = _absolute_from(root, Path(venv_dir))
     if environment.is_symlink():
         raise SetupError("Virtual environment cannot be a symbolic link")
-    environment_python = environment / "bin" / "python"
-    if not _regular_file(environment_python, executable=True):
+    environment_python = _trusted_venv_python(environment)
+    if environment_python is None:
         if environment.exists():
             raise SetupError("Existing virtual environment is incomplete")
         _run([sys.executable, "-m", "venv", str(environment)], root=root, stage="venv creation")
-        if not _regular_file(environment_python, executable=True):
+        environment_python = _trusted_venv_python(environment)
+        if environment_python is None:
             raise SetupError("Virtual environment did not provide an executable Python")
 
+    _verify_venv_python(environment_python, environment, root=root)
+
     pip_command = [
-        str(environment_python), "-m", "pip", "install",
+        str(environment_python), "-m", "pip", "install", "--no-deps",
     ]
     if wheelhouse is not None:
         wheels = _absolute_from(root, Path(wheelhouse))
@@ -88,10 +154,12 @@ def setup_community(
         pip_command.extend(["--no-index", "--find-links", str(wheels)])
     pip_command.extend(["-r", str(lock)])
     _run(pip_command, root=root, stage="runtime dependency installation")
+    _run(
+        [str(environment_python), "-m", "pip", "check"],
+        root=root,
+        stage="runtime dependency verification",
+    )
 
-    runtime_root = _absolute_from(root, Path(install_dir))
-    if runtime_root.is_symlink():
-        raise SetupError("Tool runtime directory cannot be a symbolic link")
     tool_command = [
         str(environment_python), str(installer), "--profile", "local",
         "--install-dir", str(runtime_root), "--accept-third-party-licenses",

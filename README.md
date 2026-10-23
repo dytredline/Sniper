@@ -64,7 +64,7 @@ Sniper's MCP server communicates only over the child process's stdin/stdout. Poi
 entrypoint; Community mode creates or reuses its isolated per-user Community database by default:
 
 ```text
-command: python3
+command: /ABSOLUTE/PATH/TO/sniper/.venv/bin/python
 args: /ABSOLUTE/PATH/TO/sniper/scripts/sniper-mcp --mode community
 ```
 
@@ -164,7 +164,7 @@ existing output directory. Review `COMMUNITY-RELEASE-LIMITATIONS.md` in its outp
 The repository's complete local test launcher is:
 
 ```bash
-python3 -m pip install -r requirements-runtime.lock -r requirements-test.lock
+python3 -m pip install --no-deps -r requirements-runtime.lock -r requirements-test.lock
 python3 scripts/run_all_tests.py
 ```
 
