@@ -11,6 +11,7 @@ import semgrep_active
 import tool_pins
 import trufflehog_active
 from tool_runtime_readiness import runtime_readiness_payload
+from verified_exec import VerificationError
 
 _HEX = set("0123456789abcdef")
 
@@ -61,7 +62,7 @@ class PinStatusAndRunnerTests(unittest.TestCase):
         env = {"SNIPER_GITLEAKS_BINARY": str(self.tool), "SNIPER_GITLEAKS_SHA256": ""}
         with mock.patch.dict(os.environ, env), mock.patch.object(tool_pins, "machine", return_value="unknown"):
             self.assertEqual(tool_pins.pin_status("gitleaks")["state"], "unpinned")
-        with mock.patch.dict(os.environ, env):
+        with mock.patch.dict(os.environ, env), mock.patch.object(tool_pins, "machine", return_value="aarch64"):
             self.assertEqual(tool_pins.pin_status("gitleaks")["state"], "mismatch")
         with mock.patch.dict(os.environ, {**env, "SNIPER_GITLEAKS_SHA256": self.sha}):
             status = tool_pins.pin_status("gitleaks")
@@ -75,7 +76,7 @@ class PinStatusAndRunnerTests(unittest.TestCase):
         env = {"SNIPER_DATA_DIR": str(self.data), "SNIPER_GITLEAKS_BINARY": str(self.tool),
                "SNIPER_TRUFFLEHOG_BINARY": str(self.tool),
                "SNIPER_GITLEAKS_SHA256": "", "SNIPER_TRUFFLEHOG_SHA256": ""}
-        with mock.patch.dict(os.environ, env):
+        with mock.patch.dict(os.environ, env), mock.patch.object(tool_pins, "machine", return_value="aarch64"):
             for runner in (gitleaks_active.run_local_gitleaks, trufflehog_active.run_local_trufflehog_filesystem):
                 with self.subTest(runner=runner.__name__):
                     with self.assertRaisesRegex(RuntimeError, "uyuşmuyor"):
@@ -115,7 +116,7 @@ class PinStatusAndRunnerTests(unittest.TestCase):
     def test_readiness_reports_pin_state_without_paths(self):
         env = {"SNIPER_GITLEAKS_BINARY": str(self.tool), "SNIPER_GITLEAKS_SHA256": "",
                "SNIPER_TRUFFLEHOG_BINARY": str(self.tool), "SNIPER_TRUFFLEHOG_SHA256": self.sha}
-        with mock.patch.dict(os.environ, env):
+        with mock.patch.dict(os.environ, env), mock.patch.object(tool_pins, "machine", return_value="aarch64"):
             payload = runtime_readiness_payload()
         pins = {pin["tool"]: pin for pin in payload["binary_pins"]}
         self.assertEqual(pins["gitleaks"]["state"], "mismatch")
@@ -124,6 +125,22 @@ class PinStatusAndRunnerTests(unittest.TestCase):
         local = next(p for p in gitleaks["profiles"] if p["route"] == "/api/tool-runs/gitleaks")
         self.assertEqual((local["runtime"], local["reason_code"]), ("unavailable", "binary_digest_mismatch"))
         self.assertNotIn(str(self.root), json.dumps(payload))
+
+    def test_unsupported_x86_architecture_has_no_implicit_pin_and_never_runs(self):
+        env = {
+            "SNIPER_GITLEAKS_BINARY": str(self.tool),
+            "SNIPER_TRUFFLEHOG_BINARY": str(self.tool),
+            "SNIPER_GITLEAKS_SHA256": "",
+            "SNIPER_TRUFFLEHOG_SHA256": "",
+        }
+        with mock.patch.dict(os.environ, env), mock.patch.object(tool_pins, "machine", return_value="x86_64"):
+            for tool in ("gitleaks", "trufflehog"):
+                with self.subTest(tool=tool):
+                    self.assertEqual(tool_pins.pin_status(tool)["state"], "unpinned")
+                    with self.assertRaises(VerificationError) as raised:
+                        tool_pins.open_pinned(tool, str(self.tool))
+                    self.assertEqual(raised.exception.reason, "pin_missing")
+        self.assertFalse(self.marker.exists())
 
 
 if __name__ == "__main__":

@@ -31,10 +31,17 @@ class NodeRuntimeSecurityPinTests(unittest.TestCase):
         self.assertIn(NODE_22_23_2_SHA256, pin.revoked_digests)
 
         # Ürünün önceki 22.23.2 dağıtımından kaydettiği bu tam ikili özeti ortam sabitlemesiyle geri alınamaz.
-        with mock.patch.dict(os.environ, {"SNIPER_NODE_SHA256": NODE_22_23_2_SHA256}):
+        with mock.patch.dict(os.environ, {"SNIPER_NODE_SHA256": NODE_22_23_2_SHA256}), \
+                mock.patch.object(tool_pins, "machine", return_value="aarch64"):
             accepted = tool_pins.accepted_digests("node")
         self.assertIn(NODE_22_23_4_SHA256, accepted)
         self.assertNotIn(NODE_22_23_2_SHA256, accepted)
+
+    def test_x86_without_a_verified_builtin_digest_stays_unpinned(self):
+        with mock.patch.dict(os.environ, {"SNIPER_NODE_SHA256": NODE_22_23_2_SHA256}), \
+                mock.patch.object(tool_pins, "machine", return_value="x86_64"):
+            accepted = tool_pins.accepted_digests("node")
+        self.assertEqual(accepted, {})
 
     @unittest.skipUnless(NODE_22_23_2.is_file() and NODE_22_23_4.is_file(), "yerel Node geçiş ikilileri yok")
     def test_real_old_binary_is_revoked_and_verified_new_binary_runs(self):

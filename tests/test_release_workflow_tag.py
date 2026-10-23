@@ -29,7 +29,10 @@ class TestCommunityReleaseCandidate(unittest.TestCase):
         self.assertIn("tar --sort=name --mtime='UTC 1970-01-01'", workflow)
         self.assertIn('-czf "sniper-community-${VERSION}.tar.gz"', workflow)
         self.assertIn('sha256sum "sniper-community-${VERSION}.tar.gz"', workflow)
-        self.assertIn("actions/upload-artifact@v4", workflow)
+        self.assertIn(
+            "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2",
+            workflow,
+        )
         self.assertNotIn("gh release create", workflow)
         self.assertNotIn("Sniper Enterprise", workflow)
         self.assertNotIn("from version import", workflow)

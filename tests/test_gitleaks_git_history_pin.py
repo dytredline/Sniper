@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest import mock
 
 import gitleaks_git_active
+import tool_pins
 from gitleaks_git_active import GitleaksGitUnavailable, run_local_gitleaks_git_history
 from tests.pin_helpers import pin_env
 
@@ -65,8 +66,18 @@ class GitleaksGitHistoryPinTests(unittest.TestCase):
         self.assertEqual(argv0, f"/proc/self/fd/{pass_fds[0]}")
 
     def test_unpinned_binary_is_never_started(self):
-        with mock.patch.dict(os.environ, self.env()):
+        # Bu beklenti, gömülü Gitleaks pininin bulunduğu desteklenen mimaride
+        # yanlış bir ikilinin digest uyuşmazlığı vermesini sınar.
+        with mock.patch.dict(os.environ, self.env()), \
+                mock.patch.object(tool_pins, "machine", return_value="aarch64"):
             with self.assertRaisesRegex(GitleaksGitUnavailable, "uyuşmuyor"):
+                run_local_gitleaks_git_history(str(self.repo))
+        self.assertFalse(self.marker.exists())
+
+    def test_unsupported_x86_architecture_fails_closed_before_start(self):
+        with mock.patch.dict(os.environ, self.env()), \
+                mock.patch.object(tool_pins, "machine", return_value="x86_64"):
+            with self.assertRaisesRegex(GitleaksGitUnavailable, "sabitlenmiş SHA-256 yok"):
                 run_local_gitleaks_git_history(str(self.repo))
         self.assertFalse(self.marker.exists())
 

@@ -1,0 +1,5 @@
+# CI test runner dependency lock. Keep pytest and its direct dependencies exact.
+iniconfig==2.3.1
+pluggy==1.6.0
+Pygments==2.21.0
+pytest==9.1.1
