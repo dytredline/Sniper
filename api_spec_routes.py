@@ -37,7 +37,6 @@ _PARAM_SEG_RE = re.compile(
     r"^(\{[^}]*\}|:[A-Za-z_][\w]*\??(\(.*\))?|<[^>]+>|\(\?P<[^>]+>.*\)|\(.*\)|\*+|\[[^\]]+\])$"
 )
 _PY_DEF_LINE_RE = re.compile(r"(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\(")
-_PY_CLASS_LINE_RE = re.compile(r"class\s+([A-Za-z_]\w*)[^\n]*:")
 
 
 # ---------------------------------------------------------------------------
@@ -250,6 +249,30 @@ def _method_ok(route_methods: Iterable[str], method: str, framework: str) -> boo
     return not methods or "ALL" in methods or method in methods or (framework == "django" and method in {"GET", "POST", "HEAD"})
 
 
+def _python_class_name(source_line: str) -> str | None:
+    """Return a Python class name using one forward pass over a stripped line."""
+    if not source_line.startswith("class"):
+        return None
+    cursor = len("class")
+    if cursor >= len(source_line) or not source_line[cursor].isspace():
+        return None
+    while cursor < len(source_line) and source_line[cursor].isspace():
+        cursor += 1
+    if cursor >= len(source_line) or not (
+        source_line[cursor] == "_" or source_line[cursor].isascii() and source_line[cursor].isalpha()
+    ):
+        return None
+    start = cursor
+    cursor += 1
+    while cursor < len(source_line) and (
+        source_line[cursor] == "_" or source_line[cursor].isalnum()
+    ):
+        cursor += 1
+    if source_line.find(":", cursor) < 0:
+        return None
+    return source_line[start:cursor]
+
+
 def _function_index(sources: Iterable[tuple]) -> tuple[set[str], set[str]]:
     """Sözleşme güdümlü çatılar için işlev dizini: (nitelikli 'modül.işlev', çıplak ad)."""
     qualified: set[str] = set()
@@ -268,9 +291,9 @@ def _function_index(sources: Iterable[tuple]) -> tuple[set[str], set[str]]:
                 indented = len(stripped) != len(source_line)
                 if not indented:
                     current_class = None
-                    class_match = _PY_CLASS_LINE_RE.match(stripped)
-                    if class_match is not None:
-                        current_class = class_match.group(1)
+                    class_name = _python_class_name(stripped)
+                    if class_name is not None:
+                        current_class = class_name
                         continue
                     function_match = _PY_DEF_LINE_RE.match(stripped)
                     if function_match is None:

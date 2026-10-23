@@ -170,6 +170,25 @@ if __name__ == "__main__":
 
 
 class JoernFastEngineMatchTests(unittest.TestCase):
+    def test_go_mod_prefix_rejects_parent_directory_symlink_replacement(self):
+        import joern_active
+
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            project = base / "project"
+            outside = base / "outside"
+            project.mkdir()
+            outside.mkdir()
+            candidate = project / "go.mod"
+            candidate.write_text("module verified.example/project\n", encoding="utf-8")
+            (outside / "go.mod").write_text("module attacker.example/outside\n", encoding="utf-8")
+
+            project.rename(base / "validated-project")
+            project.symlink_to(outside, target_is_directory=True)
+
+            with self.assertRaises((OSError, joern_active.JoernUnavailable)):
+                joern_active._read_regular_prefix(candidate, 80_003)
+
     def test_large_go_mod_keeps_bounded_prefix_for_fast_engine(self):
         import joern_active
 

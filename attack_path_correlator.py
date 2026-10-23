@@ -4,9 +4,9 @@ import re
 from pathlib import Path
 from typing import Any
 
+from ai_triage import TriageError, project_file_lines
 import legacy_basis
 from project_analyzer import ProjectRejected, validate_project_path
-from safe_file_read import read_text_bounded
 
 
 SEVERITY_RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1, "info": 0}
@@ -226,15 +226,9 @@ def _enclosing_names(project_root: Path | None, relpath: str, line: int) -> set[
     if project_root is None or not relpath or line < 1:
         return set()
     try:
-        resolved_root = project_root.resolve(strict=True)
-        path = (resolved_root / relpath).resolve(strict=True)
-        path.relative_to(resolved_root)
-    except (OSError, ValueError):
+        _relative, lines = project_file_lines(str(project_root), relpath)
+    except TriageError:
         return set()
-    content = read_text_bounded(path, 2_000_000)
-    if content is None:
-        return set()
-    lines = content.splitlines()
     names: set[str] = set()
     for text in reversed(lines[: min(line, len(lines))]):
         m = _DEF_RE.search(text)

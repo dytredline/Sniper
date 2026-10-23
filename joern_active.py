@@ -902,7 +902,21 @@ def _read_regular_prefix(path: Path, limit: int) -> bytes:
     Unlike :func:`_read_regular`, a larger file is accepted because callers
     explicitly need a bounded prefix rather than the complete file.
     """
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
+    absolute = Path(os.path.abspath(os.fspath(path)))
+    parts = absolute.parts
+    if len(parts) < 2:
+        raise JoernUnavailable("Joern girdisi normal dosya değil.")
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+    file_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
+    directory_fd = os.open(parts[0], directory_flags)
+    try:
+        for part in parts[1:-1]:
+            child_fd = os.open(part, directory_flags, dir_fd=directory_fd)
+            os.close(directory_fd)
+            directory_fd = child_fd
+        fd = os.open(parts[-1], file_flags, dir_fd=directory_fd)
+    finally:
+        os.close(directory_fd)
     try:
         info = os.fstat(fd)
         if not stat.S_ISREG(info.st_mode):

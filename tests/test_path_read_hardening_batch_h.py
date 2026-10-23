@@ -31,18 +31,43 @@ class ChangedScanPathReadTests(unittest.TestCase):
         self.root = self.base / "repo"
         self.root.mkdir()
 
+    def _compute_single(self, root: Path, rel: str) -> changed_scan.ChangeSet:
+        base = changed_scan.BaseTree(root, "", "0" * 40, "sha1", {})
+        with mock.patch.object(changed_scan, "_walk_worktree", return_value=iter([rel])), \
+                mock.patch.object(changed_scan, "_ignored_paths", return_value=(set(), ())):
+            return changed_scan.compute_changes(root, base, scan_scope.DEFAULT_SCOPE)
+
+    def test_compute_changes_rejects_symlink_project_root(self) -> None:
+        real_root = self.base / "real-repo"
+        real_root.mkdir()
+        (real_root / "victim.py").write_text("outside = True\n", encoding="utf-8")
+        root_link = self.base / "root-link"
+        root_link.symlink_to(real_root, target_is_directory=True)
+
+        changes = self._compute_single(root_link, "victim.py")
+
+        self.assertEqual(changes.added, set())
+        self.assertEqual(changes.current_blobs, {})
+
+    def test_compute_changes_rejects_intermediate_symlink_after_walk(self) -> None:
+        outside = self.base / "outside-dir"
+        outside.mkdir()
+        (outside / "victim.py").write_text("outside = True\n", encoding="utf-8")
+        (self.root / "pkg").symlink_to(outside, target_is_directory=True)
+
+        changes = self._compute_single(self.root, "pkg/victim.py")
+
+        self.assertEqual(changes.added, set())
+        self.assertEqual(changes.current_blobs, {})
+
     def test_compute_changes_rejects_leaf_replaced_by_symlink_after_walk(self) -> None:
         outside = self.base / "outside.py"
         outside.write_text("outside = True\n", encoding="utf-8")
         target = self.root / "victim.py"
         target.symlink_to(outside)
-        base = changed_scan.BaseTree(self.root, "", "0" * 40, "sha1", {})
-
         # The injected relative name models a regular entry already yielded by the
         # walker and replaced before the consumer opens it.
-        with mock.patch.object(changed_scan, "_walk_worktree", return_value=iter(["victim.py"])), \
-                mock.patch.object(changed_scan, "_ignored_paths", return_value=(set(), ())):
-            changes = changed_scan.compute_changes(self.root, base, scan_scope.DEFAULT_SCOPE)
+        changes = self._compute_single(self.root, "victim.py")
 
         self.assertEqual(changes.added, set())
         self.assertEqual(changes.current_blobs, {})

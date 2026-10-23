@@ -92,12 +92,8 @@ _SECRET_REDACT_RE = re.compile(
     r"hf_[A-Za-z0-9]{8,}|r8_[A-Za-z0-9]{8,}|gsk_[A-Za-z0-9]{8,})\b"
 )
 
-_SYSTEM_PROMPT_EXPOSURE_RE = re.compile(
-    r"(?:(?:NEXT_PUBLIC_|VITE_|REACT_APP_)[A-Z0-9_]*SYSTEM_PROMPT|"
-    r"(?:export\s+const|window\.|localStorage\.setItem\([^)]*)\s*(?:SYSTEM_PROMPT|systemPrompt)|"
-    r"\bSYSTEM_PROMPT\s*[:=]\s*[\"'][^\"']{8,}[\"'])",
-    re.IGNORECASE,
-)
+_ASCII_LOWER = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
+_SYSTEM_PROMPT_NAMES = ("system_prompt", "systemprompt")
 _LLM_OUTPUT_ASSIGNMENT_MARKERS = (
     "response.choices",
     "chat.completions.create",
@@ -178,12 +174,126 @@ def _line_number_for_offset(content: str, offset: int) -> int:
     return content.count("\n", 0, max(0, offset)) + 1
 
 
+def _system_prompt_exposure_offset(source_line: str) -> int | None:
+    """Find a client-visible system-prompt marker with bounded forward scans.
+
+    This intentionally replaces a regex whose ``localStorage.setItem(...)``
+    branch combined overlapping unbounded repetitions. A missing closing token
+    then caused quadratic backtracking on attacker-controlled project text.
+    """
+    lowered = source_line.translate(_ASCII_LOWER)
+    candidates: list[int] = []
+
+    # Public frontend environment variable names. The variable tail is the
+    # same ASCII identifier alphabet previously accepted by ``[A-Z0-9_]*``.
+    for prefix in ("next_public_", "vite_", "react_app_"):
+        cursor = 0
+        while True:
+            start = lowered.find(prefix, cursor)
+            if start < 0:
+                break
+            tail_start = start + len(prefix)
+            tail_end = tail_start
+            while tail_end < len(lowered) and (
+                "a" <= lowered[tail_end] <= "z"
+                or "0" <= lowered[tail_end] <= "9"
+                or lowered[tail_end] == "_"
+            ):
+                tail_end += 1
+            if lowered.find("system_prompt", tail_start, tail_end) >= 0:
+                candidates.append(start)
+                break
+            cursor = max(tail_end, tail_start)
+
+    def _prompt_name_at(offset: int) -> bool:
+        return any(lowered.startswith(name, offset) for name in _SYSTEM_PROMPT_NAMES)
+
+    # ``export const`` and ``window.`` forms have only bounded literal checks
+    # plus a single whitespace pass.
+    cursor = 0
+    while True:
+        start = lowered.find("export", cursor)
+        if start < 0:
+            break
+        offset = start + len("export")
+        if offset < len(lowered) and lowered[offset].isspace():
+            while offset < len(lowered) and lowered[offset].isspace():
+                offset += 1
+            if lowered.startswith("const", offset):
+                offset += len("const")
+                while offset < len(lowered) and lowered[offset].isspace():
+                    offset += 1
+                if _prompt_name_at(offset):
+                    candidates.append(start)
+                    break
+        cursor = start + len("export")
+
+    cursor = 0
+    while True:
+        start = lowered.find("window.", cursor)
+        if start < 0:
+            break
+        offset = start + len("window.")
+        while offset < len(lowered) and lowered[offset].isspace():
+            offset += 1
+        if _prompt_name_at(offset):
+            candidates.append(start)
+            break
+        cursor = start + len("window.")
+
+    # Examine each non-overlapping call segment once. If a call is unterminated,
+    # the remainder is inspected once and the scan ends.
+    cursor = 0
+    local_storage = "localstorage.setitem("
+    while True:
+        start = lowered.find(local_storage, cursor)
+        if start < 0:
+            break
+        content_start = start + len(local_storage)
+        close = lowered.find(")", content_start)
+        content_end = len(lowered) if close < 0 else close
+        if any(lowered.find(name, content_start, content_end) >= 0 for name in _SYSTEM_PROMPT_NAMES):
+            candidates.append(start)
+            break
+        if close < 0:
+            break
+        cursor = close + 1
+
+    # Quoted direct assignment: SYSTEM_PROMPT = "at least eight characters".
+    cursor = 0
+    assignment_name = "system_prompt"
+    while True:
+        start = lowered.find(assignment_name, cursor)
+        if start < 0:
+            break
+        previous = source_line[start - 1] if start else ""
+        offset = start + len(assignment_name)
+        while offset < len(source_line) and source_line[offset].isspace():
+            offset += 1
+        if (not previous or not (previous == "_" or previous.isalnum())) \
+                and offset < len(source_line) and source_line[offset] in ":=":
+            offset += 1
+            while offset < len(source_line) and source_line[offset].isspace():
+                offset += 1
+            if offset < len(source_line) and source_line[offset] in "\"'":
+                value_start = offset + 1
+                value_end = value_start
+                while value_end < len(source_line) and source_line[value_end] not in "\"'":
+                    value_end += 1
+                if value_end < len(source_line) and value_end - value_start >= 8:
+                    candidates.append(start)
+                    break
+        cursor = start + len(assignment_name)
+
+    return min(candidates) if candidates else None
+
+
 def _system_prompt_exposure_lines(lines: list[str]):
-    """Yield at most one match per source line without a greedy line prefix."""
+    """Yield at most one exposure offset per source line."""
     for line_no, source_line in enumerate(lines, 1):
-        match = _SYSTEM_PROMPT_EXPOSURE_RE.search(source_line)
-        if match is not None and "#" not in source_line[:match.start()]:
-            yield line_no, match
+        offset = _system_prompt_exposure_offset(source_line)
+        if offset is not None and "#" not in source_line[:offset]:
+            yield line_no, offset
 
 
 def _assigned_llm_output_name(source_line: str) -> str | None:
