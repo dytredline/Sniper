@@ -4,13 +4,12 @@ from datetime import datetime, timezone
 import hashlib
 import hmac
 import json
-import os
 from pathlib import Path
 import re
 from typing import Any
 
 from project_analyzer import SKIP_DIRS, validate_project_path
-from safe_file_read import read_text_bounded
+from project_tree import ProjectTree
 from scanner import _finding, calculate_score as _scanner_calculate_score
 import taint_flow
 from finding_limits import INLINE_FINDING_LIMIT, PROJECT_FINDING_LIMIT, cap_findings, summarize_finding_groups, project_scan_scope
@@ -1024,34 +1023,31 @@ def audit_logging_project(
     allowed_roots: tuple[Path, ...] | None = None,
 ) -> dict[str, Any]:
     root = validate_project_path(project_path, allowed_roots=allowed_roots)
-    taint_flow.activate_project_js_handlers(root, SKIP_DIRS)
     findings: list[dict[str, Any]] = []
     scanned_files = 0
     mutation_endpoint_count = 0
     sensitive_mutation_count = 0
     unlogged_mutation_count = 0
 
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            name
-            for name in directories
-            if name.casefold() not in SKIP_DIRS and not (Path(current) / name).is_symlink()
-        )
-        for name in sorted(files):
+    with ProjectTree(root) as tree:
+        taint_flow.activate_project_js_handlers(root, SKIP_DIRS, project_tree=tree)
+        for project_file in tree.iter_files(skip_dirs=SKIP_DIRS, reject_unsafe=False):
             if scanned_files >= MAX_PROJECT_FILES:
-                break
-            file_path = Path(current) / name
-            if file_path.is_symlink():
                 continue
-            ext = file_path.suffix.lower()
-            if ext not in AUDIT_LOGGING_EXTENSIONS and name.casefold() not in AUDIT_LOGGING_EXTRA_FILENAMES:
+            if any(part.casefold() in SKIP_DIRS for part in project_file.path.parts[:-1]):
                 continue
-            content = read_text_bounded(file_path, MAX_INLINE_BYTES)
-            if content is None:
+            ext = project_file.path.suffix.lower()
+            if (
+                ext not in AUDIT_LOGGING_EXTENSIONS
+                and project_file.name.casefold() not in AUDIT_LOGGING_EXTRA_FILENAMES
+            ):
                 continue
+            if project_file.size == 0 or project_file.size > MAX_INLINE_BYTES:
+                continue
+            content = tree.read_text(project_file, MAX_INLINE_BYTES, errors="replace")
             if not content.strip():
                 continue
-            rel_name = str(file_path.relative_to(root))
+            rel_name = project_file.path.as_posix()
             scanned_files += 1
             try:
                 file_report = audit_logging_inline(content, filename=rel_name)

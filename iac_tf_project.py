@@ -23,7 +23,7 @@ import iac_engine
 import iac_hcl
 import iac_tf_eval
 from iac_hcl import Block, Call, Unknown
-from safe_file_read import read_bytes_bounded
+from project_tree import ProjectTree, ProjectTreeError
 
 MAX_MODULE_DEPTH = 4
 MAX_INSTANCES = 400  # çok sayıda modül çağrısında üst sınır (süre bütçesi)
@@ -400,11 +400,9 @@ MAX_TF_FILE_BYTES = 1_000_000
 MAX_TF_TOTAL_BYTES = 30_000_000
 
 
-def scan_tree(root, skip_dirs) -> iac_engine.ProjectResults:
+def scan_tree(root, skip_dirs, *, project_tree: ProjectTree | None = None) -> iac_engine.ProjectResults:
     """Proje kökündeki .tf dosyalarını (atlanan dizinler, sembolik bağlar ve boyut sınırlarıyla) toplayıp proje
     bağlamında analiz eder. project_analyzer dosya döngüsü her .tf dosyası için bu sonuçtan okur."""
-    import os
-    import stat
     from pathlib import Path
 
     root = Path(root)
@@ -412,47 +410,41 @@ def scan_tree(root, skip_dirs) -> iac_engine.ProjectResults:
     total = 0
     candidates = 0
     limitations: set[str] = set()
-    for current, directories, names in os.walk(root, followlinks=False):
-        directories[:] = sorted(d for d in directories
-                                if d.casefold() not in skip_dirs and d != ".terraform"
-                                and not (Path(current) / d).is_symlink())
-        for name in sorted(names):
-            # Terraform yalnız sabit adlı ve *.auto adlı HCL/JSON tfvars dosyalarını otomatik yükler. Bu girdiler
-            # değerlendirme katmanında zaten destekleniyordu ancak proje yürüyüşü onları hiç toplamıyordu.
-            # Aynı dosya/bayt bütçesini tüketmeleri, çok sayıda tfvars ile sınırın aşılmasını engeller.
-            automatic_tfvars = _automatic_tfvars(name)
-            if not (name.endswith(".tf") or automatic_tfvars):
-                continue
-            path = Path(current) / name
-            try:
-                info = os.stat(path, follow_symlinks=False)
-            except OSError:
-                continue
-            if not stat.S_ISREG(info.st_mode):
-                continue
-            if info.st_size > MAX_TF_FILE_BYTES:
-                limitations.add("file-bytes")
-                continue
-            if candidates >= MAX_TF_FILES:
-                limitations.add("file")
-                result = TerraformProject(files).analyze()
-                return result.mark_incomplete(*sorted(limitations))
-            candidates += 1
-            raw = read_bytes_bounded(path, MAX_TF_FILE_BYTES, allow_empty=True)
-            if raw is None:
-                limitations.add("file-read")
-                continue
-            if total + len(raw) > MAX_TF_TOTAL_BYTES:
-                limitations.add("total-bytes")
-                result = TerraformProject(files).analyze()
-                return result.mark_incomplete(*sorted(limitations))
-            total += len(raw)
-            try:
-                text = raw.decode("utf-8", errors="strict")
-            except UnicodeDecodeError:
-                continue
-            if not text:
-                continue
-            files[path.relative_to(root).as_posix()] = text
+    tree = project_tree.duplicate() if project_tree is not None else ProjectTree(root)
+    try:
+        with tree:
+            ignored = set(skip_dirs) | {".terraform"}
+            for observed in tree.iter_files(skip_dirs=ignored, reject_unsafe=False):
+                name = observed.name
+                # Terraform yalnız sabit adlı ve *.auto adlı HCL/JSON tfvars dosyalarını otomatik yükler.
+                # Aynı dosya/bayt bütçesini tüketmeleri, çok sayıda tfvars ile sınırın aşılmasını engeller.
+                automatic_tfvars = _automatic_tfvars(name)
+                if not (name.endswith(".tf") or automatic_tfvars):
+                    continue
+                if observed.size > MAX_TF_FILE_BYTES:
+                    limitations.add("file-bytes")
+                    continue
+                if candidates >= MAX_TF_FILES:
+                    limitations.add("file")
+                    break
+                candidates += 1
+                try:
+                    raw = tree.read_bytes(observed, MAX_TF_FILE_BYTES, allow_empty=True)
+                except ProjectTreeError:
+                    limitations.add("file-read")
+                    continue
+                if total + len(raw) > MAX_TF_TOTAL_BYTES:
+                    limitations.add("total-bytes")
+                    break
+                total += len(raw)
+                try:
+                    text = raw.decode("utf-8", errors="strict")
+                except UnicodeDecodeError:
+                    continue
+                if not text:
+                    continue
+                files[observed.path.as_posix()] = text
+    except ProjectTreeError:
+        limitations.add("file-read")
     result = TerraformProject(files).analyze()
     return result.mark_incomplete(*sorted(limitations)) if limitations else result

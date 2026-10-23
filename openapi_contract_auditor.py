@@ -1,14 +1,14 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import json
-import os
 from pathlib import Path
 import re
-from typing import Any
+from typing import Any, Iterator
 
-from project_analyzer import SKIP_DIRS, validate_project_path
+from project_analyzer import ProjectRejected, SKIP_DIRS, validate_project_path
+from project_tree import ProjectTree, ProjectTreeError
 from finding_limits import INLINE_FINDING_LIMIT, PROJECT_FINDING_LIMIT, cap_findings, summarize_finding_groups
-from safe_file_read import read_text_bounded
 
 
 MAX_CONTRACT_BYTES = 2_000_000
@@ -38,6 +38,17 @@ GRAPHQL_SENSITIVE_FIELDS = {
     "creditcard",
     "credit_card",
 }
+
+
+@contextmanager
+def _opened_project_tree(root: Path) -> Iterator[ProjectTree]:
+    try:
+        with ProjectTree(str(root)) as tree:
+            yield tree
+    except ProjectTreeError as exc:
+        raise ProjectRejected("Proje ağacı güvenli biçimde okunamadı.") from exc
+
+
 GRAPHQL_BUILTIN_SCALARS = {"String", "Int", "Float", "Boolean", "ID"}
 
 OPENAPI_SENSITIVE_RESPONSE_FIELDS = {
@@ -794,28 +805,22 @@ def audit_project_api_contracts(
     contract_reports: list[dict[str, Any]] = []
     all_findings: list[dict[str, Any]] = []
 
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            d for d in directories
-            if d.casefold() not in SKIP_DIRS and not (Path(current) / d).is_symlink()
-        )
-        for filename in sorted(files):
-            file_path = Path(current) / filename
-            if file_path.is_symlink() or not file_path.is_file():
-                continue
+    with _opened_project_tree(root) as tree:
+        for project_file in tree.iter_files(skip_dirs=tuple(SKIP_DIRS), reject_unsafe=False):
+            filename = project_file.name
             lower_name = filename.casefold()
-            ext = file_path.suffix.casefold()
+            ext = project_file.path.suffix.casefold()
             is_openapi_file = lower_name in OPENAPI_CONTRACT_FILENAMES
             is_graphql_file = ext in GRAPHQL_EXTENSIONS
             if not (is_openapi_file or is_graphql_file):
                 continue
+            if project_file.size == 0 or project_file.size > MAX_CONTRACT_BYTES:
+                continue
             try:
-                content = read_text_bounded(file_path, MAX_CONTRACT_BYTES, errors="strict")
+                content = tree.read_text(project_file, MAX_CONTRACT_BYTES, errors="strict")
             except UnicodeDecodeError:
                 continue
-            if content is None:
-                continue
-            rel_name = str(file_path.relative_to(root))
+            rel_name = project_file.path.as_posix()
             try:
                 ctype = "graphql" if is_graphql_file else "auto"
                 report = audit_api_contract(content, contract_type=ctype, source_name=rel_name)

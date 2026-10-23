@@ -10,11 +10,13 @@ through the API.
 from __future__ import annotations
 
 import ast
+import os
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any
 
 from project_analyzer import MAX_FILE_BYTES
-from safe_file_read import read_text_bounded
+from project_tree import ProjectFile, ProjectTree, ProjectTreeError
 from tool_report_semgrep import MAX_FINDINGS
 
 
@@ -109,47 +111,58 @@ def filter_direct_requests_tls_findings(results: list[Any], input_dir: Path) -> 
     # source, including candidate-rule findings that might later be suppressed.
     if len(results) > MAX_FINDINGS:
         raise ValueError("Semgrep raporu geçerli JSON değil.")
-    root = input_dir.resolve(strict=True)
-    if not root.is_dir():
-        raise ValueError("Semgrep raporu geçerli JSON değil.")
-    cache: dict[Path, tuple[set[tuple[int, int]], tuple[int, ...]]] = {}
+    root = Path(os.path.abspath(os.fspath(input_dir)))
+    cache: dict[PurePosixPath, tuple[set[tuple[int, int]], tuple[int, ...]]] = {}
+    file_index: dict[PurePosixPath, ProjectFile] | None = None
     accepted: list[Any] = []
-    for finding in results:
-        if not isinstance(finding, dict):
-            raise ValueError("Semgrep raporu geçerli JSON değil.")
-        check_id = finding.get("check_id")
-        if not _is_rule(check_id):
-            accepted.append(finding)
-            continue
-        raw_path = finding.get("path")
-        start = finding.get("start")
-        if not (
-            isinstance(raw_path, str) and raw_path and isinstance(start, dict)
-            and type(start.get("line")) is int and start["line"] > 0
-            and type(start.get("col")) is int and start["col"] > 0
-        ):
-            raise ValueError("Semgrep raporu geçerli JSON değil.")
-        source_path = Path(raw_path)
-        if not source_path.is_absolute():
-            source_path = root / source_path
-        try:
-            if source_path.is_symlink() or not source_path.is_file():
-                raise ValueError("Semgrep raporu geçerli JSON değil.")
-            source_path = source_path.resolve(strict=True)
-            if not source_path.is_relative_to(root) or source_path.suffix != ".py":
-                raise ValueError("Semgrep raporu geçerli JSON değil.")
-            if source_path not in cache:
-                source = read_text_bounded(source_path, MAX_FILE_BYTES, errors="strict")
-                if source is None:
+    try:
+        with ProjectTree(root) as project_tree:
+            for finding in results:
+                if not isinstance(finding, dict):
                     raise ValueError("Semgrep raporu geçerli JSON değil.")
-                tree = ast.parse(source, filename="<local-snapshot>")
-                line_lengths = tuple(len(line.encode("utf-8")) for line in source.splitlines())
-                cache[source_path] = (_qualified_calls(tree), line_lengths)
-        except (OSError, UnicodeError, SyntaxError, RuntimeError) as exc:
-            raise ValueError("Semgrep raporu geçerli JSON değil.") from exc
-        qualified, line_lengths = cache[source_path]
-        if start["line"] > len(line_lengths) or start["col"] > line_lengths[start["line"] - 1] + 1:
-            raise ValueError("Semgrep raporu geçerli JSON değil.")
-        if (start["line"], start["col"]) in qualified:
-            accepted.append(finding)
+                check_id = finding.get("check_id")
+                if not _is_rule(check_id):
+                    accepted.append(finding)
+                    continue
+                raw_path = finding.get("path")
+                start = finding.get("start")
+                if not (
+                    isinstance(raw_path, str) and raw_path and isinstance(start, dict)
+                    and type(start.get("line")) is int and start["line"] > 0
+                    and type(start.get("col")) is int and start["col"] > 0
+                ):
+                    raise ValueError("Semgrep raporu geçerli JSON değil.")
+                logical = Path(raw_path)
+                if not logical.is_absolute():
+                    logical = root / logical
+                logical = Path(os.path.normpath(os.fspath(logical)))
+                try:
+                    relative = logical.relative_to(root)
+                except ValueError as exc:
+                    raise ValueError("Semgrep raporu geçerli JSON değil.") from exc
+                relative_path = PurePosixPath(*relative.parts)
+                if relative_path.suffix != ".py":
+                    raise ValueError("Semgrep raporu geçerli JSON değil.")
+                if file_index is None:
+                    file_index = {
+                        item.path: item
+                        for item in project_tree.iter_files(reject_unsafe=False)
+                    }
+                source_file = file_index.get(relative_path)
+                if source_file is None:
+                    raise ValueError("Semgrep raporu geçerli JSON değil.")
+                if relative_path not in cache:
+                    source = project_tree.read_text(source_file, MAX_FILE_BYTES, errors="strict")
+                    tree = ast.parse(source, filename="<local-snapshot>")
+                    line_lengths = tuple(len(line.encode("utf-8")) for line in source.splitlines())
+                    cache[relative_path] = (_qualified_calls(tree), line_lengths)
+                qualified, line_lengths = cache[relative_path]
+                if start["line"] > len(line_lengths) or start["col"] > line_lengths[start["line"] - 1] + 1:
+                    raise ValueError("Semgrep raporu geçerli JSON değil.")
+                if (start["line"], start["col"]) in qualified:
+                    accepted.append(finding)
+    except ProjectTreeError as exc:
+        raise ValueError("Semgrep raporu geçerli JSON değil.") from exc
+    except (OSError, UnicodeError, SyntaxError, RuntimeError) as exc:
+        raise ValueError("Semgrep raporu geçerli JSON değil.") from exc
     return accepted

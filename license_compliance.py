@@ -32,6 +32,7 @@ import tomllib
 from pathlib import Path
 from typing import Any, Iterable
 
+from project_tree import ProjectTree, ProjectTreeError
 from safe_file_read import read_bytes_bounded
 
 FORMAT = "sniper-license-report-v1"
@@ -422,26 +423,40 @@ class _Reader:
     """Kök altında, sembolik bağla dışarı çıkmadan ve okuma bütçesiyle dosya okur."""
 
     def __init__(self, root: Path):
-        self.root = root.resolve()
+        # ``resolve()`` ile doğrulanmış bir pathname'i sonraki her okumada yeniden açmak, kökün
+        # doğrulama sonrası yeniden adlandırılıp bir symlink ile değiştirilmesine izin veriyordu. Kök
+        # descriptor'ü toplayıcının tüm ömrü boyunca sabit tutulur; her dosya ona göreli açılır.
+        self.root = Path(root).absolute()
+        self.tree = ProjectTree(self.root).open()
         self.reads = 0
         self.exhausted = False
 
-    def inside(self, path: Path) -> bool:
+    def close(self) -> None:
+        self.tree.close()
+
+    def _relative(self, path: Path) -> str | None:
         try:
-            path.resolve().relative_to(self.root)
-            return True
-        except (ValueError, OSError):
-            return False
+            rel = Path(path).relative_to(self.root)
+        except ValueError:
+            return None
+        if not rel.parts or any(part in ("", ".", "..") for part in rel.parts):
+            return None
+        return rel.as_posix()
+
+    def inside(self, path: Path) -> bool:
+        return self._relative(path) is not None
 
     def read(self, path: Path, limit: int = MAX_FILE_BYTES) -> str | None:
         if self.reads >= MAX_READS:
             self.exhausted = True
             return None
-        if not self.inside(path):
+        relative = self._relative(path)
+        if relative is None:
             return None
         self.reads += 1
-        data = read_bytes_bounded(path, limit)
-        if data is None:
+        try:
+            data = self.tree.read_bytes(relative, limit)
+        except ProjectTreeError:
             return None
         return data.decode("utf-8", errors="replace")
 
@@ -993,12 +1008,16 @@ class _Collector:
                 break
 
     def run(self) -> None:
-        for step in (self.license_file, self.npm, self.python, self.cargo, self.go, self.maven, self.composer, self.ruby,
-                     self.maven_cache, self.cargo_cache, self.nuget_cache, self.go_cache, self.gem_cache):
-            try:
-                step()
-            except (OSError, ValueError, RecursionError):
-                continue
+        try:
+            for step in (self.license_file, self.npm, self.python, self.cargo, self.go, self.maven, self.composer,
+                         self.ruby, self.maven_cache, self.cargo_cache, self.nuget_cache, self.go_cache,
+                         self.gem_cache):
+                try:
+                    step()
+                except (OSError, ValueError, RecursionError):
+                    continue
+        finally:
+            self.reader.close()
 
 
 def collect(root: Path, manifests: Iterable[str] = (), components: Iterable[dict[str, Any]] | None = None,

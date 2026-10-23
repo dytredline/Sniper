@@ -1623,8 +1623,14 @@ class JsProject:
             elif self.template_root is not None:
                 state = tf._PROJECT.get()
                 skip = getattr(state, "skip_dirs", frozenset({"node_modules", ".git"}))
+                project_tree = getattr(state, "project_tree", None)
                 try:
-                    walker = tf._walk_project_files(Path(self.template_root), skip, frozenset(exts))
+                    walker = tf._walk_project_files(
+                        Path(self.template_root),
+                        skip,
+                        frozenset(exts),
+                        project_tree=project_tree,
+                    )
                     for index, path in enumerate(walker):
                         if index >= _MAX_VIEW_TEMPLATES:
                             break
@@ -2546,14 +2552,26 @@ class JsProject:
             return found
         state = tf._PROJECT.get()
         skip = getattr(state, "skip_dirs", frozenset({"node_modules", ".git"}))
+        project_tree = getattr(state, "project_tree", None)
         try:
-            for path in tf._walk_project_files(Path(self.template_root), skip, frozenset({".yml", ".yaml"})):
+            for path, observed, tree in tf._walk_project_records(
+                Path(self.template_root),
+                skip,
+                frozenset({".yml", ".yaml"}),
+                project_tree=project_tree,
+            ):
                 if path.name not in _SERVERLESS_CONFIGS:
                     continue
                 relpath = path.relative_to(self.template_root).as_posix()
-                text = taint_angular.read_template(self.template_root, relpath)
-                if text is not None:
-                    found.append((relpath, text))
+                try:
+                    text = tree.read_text(
+                        observed,
+                        taint_angular.MAX_TEMPLATE_BYTES,
+                        errors="replace",
+                    )
+                except tf.ProjectTreeError:
+                    continue
+                found.append((relpath, text))
                 if len(found) >= _MAX_SERVERLESS_CONFIGS:
                     break
         except (OSError, ValueError):

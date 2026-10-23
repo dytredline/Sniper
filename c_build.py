@@ -25,9 +25,10 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import shlex
-import stat
 import time
 from typing import Any, Callable, Iterable
+
+from project_tree import ProjectFile, ProjectTree, ProjectTreeError
 
 SOURCE_COMPILE_COMMANDS = "compile_commands"
 SOURCE_CMAKE = "cmake-metin"
@@ -99,25 +100,17 @@ def _is_within(path: Path, base: Path) -> bool:
     return path == base or str(path).startswith(str(base) + os.sep)
 
 
-def _read_text(path: Path, limit: int) -> str | None:
-    """Sembolik bağ izlemeden (O_NOFOLLOW) sınırlı okuma; okunamazsa None."""
-    try:
-        fd = os.open(str(path), os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0))
-    except OSError:
-        return None
-    try:
-        st = os.fstat(fd)
-        if not stat.S_ISREG(st.st_mode) or st.st_size > limit:
+def _lexical_absolute(path: Path, *, base: Path | None = None) -> Path | None:
+    """Return a normalized absolute path without consulting the filesystem."""
+    raw = str(path)
+    if not path.is_absolute():
+        if base is None:
             return None
-        with os.fdopen(fd, "rb", closefd=False) as fh:
-            data = fh.read(limit + 1)
-    except OSError:
+        raw = os.path.join(str(base), raw)
+    normalized = os.path.normpath(raw)
+    if not os.path.isabs(normalized):
         return None
-    finally:
-        os.close(fd)
-    if len(data) > limit:
-        return None
-    return data.decode("utf-8", "replace")
+    return Path(normalized)
 
 
 @dataclass
@@ -174,21 +167,45 @@ class _Flags:
 class _PathPolicy:
     """Include yolu / -include dosyası kabul kuralı: proje kökü içinde ya da sistem dizini; var olmalı."""
 
-    def __init__(self, root: Path) -> None:
-        self.root = root
+    def __init__(self, root: Path, *, directories: set[str] | None = None,
+                 files: set[str] | None = None) -> None:
+        normalized = _lexical_absolute(root)
+        if normalized is None:
+            raise ValueError("Proje kok yolu mutlak olmali.")
+        self.root = normalized
+        if directories is None or files is None:
+            directories, files = {"."}, set()
+            try:
+                with ProjectTree(str(self.root)) as tree:
+                    for entry in tree.walk(skip_dirs=SKIP_WALK_DIRS, reject_unsafe=False):
+                        directories.add(entry.directory.as_posix())
+                        directories.update(path.as_posix() for path in entry.directories)
+                        files.update(item.path.as_posix() for item in entry.files)
+            except ProjectTreeError:
+                pass
+        self.directories = frozenset(directories)
+        self.files = frozenset(files)
+
+    def _project_relative(self, raw: str, base: Path) -> tuple[Path, str] | None:
+        candidate = _lexical_absolute(Path(raw), base=base)
+        if candidate is None or not _is_within(candidate, self.root):
+            return None
+        try:
+            relative = candidate.relative_to(self.root).as_posix()
+        except ValueError:
+            return None
+        return candidate, relative or "."
 
     def include_dir(self, raw: str, base: Path) -> str | None:
         if not raw or "\x00" in raw or "$" in raw or len(raw) > 4096:
             return None
-        p = Path(raw)
-        if not p.is_absolute():
-            p = base / p
-        try:
-            r = p.resolve()
-        except (OSError, RuntimeError):
+        project = self._project_relative(raw, base)
+        if project is not None:
+            candidate, relative = project
+            return str(candidate) if relative in self.directories else None
+        r = _lexical_absolute(Path(raw), base=base)
+        if r is None:
             return None
-        if _is_within(r, self.root):
-            return str(r) if r.is_dir() else None
         if any(str(r) == pre.rstrip("/") or str(r).startswith(pre if pre.endswith(("/", "-")) else pre + "/")
                for pre in SYSTEM_INCLUDE_PREFIXES):
             return str(r) if r.is_dir() else None
@@ -197,14 +214,11 @@ class _PathPolicy:
     def forced_file(self, raw: str, base: Path) -> str | None:
         if not raw or "\x00" in raw or "$" in raw:
             return None
-        p = Path(raw)
-        if not p.is_absolute():
-            p = base / p
-        try:
-            r = p.resolve()
-        except (OSError, RuntimeError):
+        project = self._project_relative(raw, base)
+        if project is None:
             return None
-        return str(r) if _is_within(r, self.root) and r.is_file() else None
+        candidate, relative = project
+        return str(candidate) if relative in self.files else None
 
 
 def _valid_define(value: str) -> bool:
@@ -284,7 +298,7 @@ def filter_args(argv: Iterable[str], base: Path, policy: _PathPolicy, *,
 # ----------------------------------------------------------------------------------------------- compile_commands
 
 
-def _remap_prefix(entries: list[dict[str, Any]], root: Path) -> tuple[str, str] | None:
+def _remap_prefix(entries: list[dict[str, Any]], root: Path, files: frozenset[str]) -> tuple[str, str] | None:
     """compile_commands başka makinede üretilmişse özgün kök → tarama kökü eşlemesi (dosya sonekinden)."""
     votes: Counter[str] = Counter()
     inside = 0
@@ -296,7 +310,7 @@ def _remap_prefix(entries: list[dict[str, Any]], root: Path) -> tuple[str, str] 
         parts = PurePosixPath(f).parts
         for k in range(1, min(len(parts), 40)):
             rel = parts[k:]
-            if rel and (root.joinpath(*rel)).is_file():
+            if rel and PurePosixPath(*rel).as_posix() in files:
                 votes[str(PurePosixPath(*parts[:k]))] += 1
                 break
     if not votes:
@@ -307,10 +321,8 @@ def _remap_prefix(entries: list[dict[str, Any]], root: Path) -> tuple[str, str] 
     return prefix, str(root)
 
 
-def _load_compile_db(path: Path, root: Path, policy: _PathPolicy, out: dict[str, _Flags]) -> int:
-    text = _read_text(path, MAX_COMPILE_DB_BYTES)
-    if text is None:
-        return 0
+def _load_compile_db(text: str, path: Path, root: Path, policy: _PathPolicy,
+                     out: dict[str, _Flags]) -> int:
     try:
         data = json.loads(text)
     except ValueError:
@@ -318,7 +330,7 @@ def _load_compile_db(path: Path, root: Path, policy: _PathPolicy, out: dict[str,
     if not isinstance(data, list):
         return 0
     entries = [e for e in data[:MAX_COMPILE_ENTRIES] if isinstance(e, dict) and isinstance(e.get("file"), str)]
-    remap = _remap_prefix(entries, root)
+    remap = _remap_prefix(entries, root, policy.files)
 
     def translate(p: str) -> str:
         if remap and os.path.isabs(p):
@@ -343,11 +355,15 @@ def _load_compile_db(path: Path, root: Path, policy: _PathPolicy, out: dict[str,
                 continue
         file_s = translate(str(e["file"]))
         fpath = Path(file_s) if os.path.isabs(file_s) else Path(directory) / file_s
-        try:
-            key = str(fpath.resolve())
-        except (OSError, RuntimeError):
+        normalized = _lexical_absolute(fpath)
+        if normalized is None:
             continue
-        if not _is_within(Path(key), root) or key in out:
+        key = str(normalized)
+        try:
+            relative = normalized.relative_to(root).as_posix()
+        except ValueError:
+            continue
+        if relative not in policy.files or key in out:
             continue
         out[key] = filter_args(argv, Path(directory), policy, translate=translate)
         added += 1
@@ -773,9 +789,10 @@ def make_flags(variables: dict[str, list[tuple[str, bool]]], mdir: Path, policy:
 class BuildInfo:
     """Proje derleme bilgisi; ``flags_for(dosya)`` dosya başına güvenli argümanları ve kaynağı verir."""
 
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, *, directories: set[str] | None = None,
+                 files: set[str] | None = None) -> None:
         self.root = root
-        self.policy = _PathPolicy(root)
+        self.policy = _PathPolicy(root, directories=directories, files=files)
         self.compile_db: dict[str, _Flags] = {}
         self.compile_db_files: list[str] = []
         self.cmake_dirs: dict[str, _CMakeDir] = {}
@@ -788,7 +805,7 @@ class BuildInfo:
         self.header_names: set[str] = set()  # projedeki başlık dosyası adları (taban ad)
         self.template_names: set[str] = set()  # X.in / X.cmake şablonlarından üretilen başlık adları
         self.generator_files: list[Path] = []
-        self._mentioned: set[str] | None = None
+        self._mentioned: set[str] = set()
 
     # --- derlemede üretilen (eksik) başlık
     def generated_header(self, name: str) -> bool:
@@ -801,22 +818,19 @@ class BuildInfo:
             return False
         if base in self.template_names:
             return True
-        if self._mentioned is None:
-            mentioned: set[str] = set()
-            for f in self.generator_files:
-                text = _read_text(f, MAX_BUILD_FILE_BYTES)
-                if text:
-                    mentioned.update(_HEADER_TOKEN_RE.findall(text))
-            self._mentioned = mentioned
         return base in self._mentioned
 
     # --- dosya başına
     def flags_for(self, path: Path) -> FileFlags:
-        try:
-            rp = path.resolve()
-        except (OSError, RuntimeError):
+        rp = _lexical_absolute(path)
+        if rp is None:
             return FileFlags([], SOURCE_NONE)
         if not _is_within(rp, self.root):
+            return FileFlags([], SOURCE_NONE)
+        try:
+            if rp.relative_to(self.root).as_posix() not in self.policy.files:
+                return FileFlags([], SOURCE_NONE)
+        except ValueError:
             return FileFlags([], SOURCE_NONE)
         rel_origin = ""
         entry = self.compile_db.get(str(rp))
@@ -868,12 +882,7 @@ class BuildInfo:
                 continue
             ck = (str(anc), cxx)
             if ck not in self._make_cache:
-                variables: dict[str, list[tuple[str, bool]]] = {}
-                for f in files:
-                    text = _read_text(f, MAX_BUILD_FILE_BYTES)
-                    if text is not None:
-                        parse_make_vars(text, variables)
-                self._make_cache[ck] = make_flags(variables, anc, self.policy, cxx)
+                return None
             flags = self._make_cache[ck]
             if flags.empty():
                 return None  # en yakın Makefile bayrak vermiyorsa üst dizine çıkılmaz (başka bir derleme birimi)
@@ -891,26 +900,48 @@ class BuildInfo:
         }
 
 
-def load(root: Path, *, max_seconds: float = DEFAULT_LOAD_SECONDS) -> BuildInfo:
+def load(root: Path, *, max_seconds: float = DEFAULT_LOAD_SECONDS,
+         project_tree: ProjectTree | None = None) -> BuildInfo:
     """Proje kökünü (sembolik bağ izlemeden) gezip derleme bilgisini metin olarak okur. Hiçbir şey çalıştırılmaz."""
     started = time.monotonic()
-    root = Path(root).resolve()
-    info = BuildInfo(root)
+    normalized = _lexical_absolute(Path(root))
+    if normalized is None:
+        raise ValueError("Proje kok yolu mutlak olmali.")
+    root = normalized
+    if project_tree is not None and _lexical_absolute(project_tree.root) != root:
+        raise ProjectTreeError("Proje ağacı derleme bilgisi köküyle eşleşmiyor.")
     deadline = started + max_seconds
-    dbs: list[Path] = []
-    cmakes: list[Path] = []
-    makes: dict[str, list[Path]] = {}
+    dbs: list[ProjectFile] = []
+    cmakes: list[ProjectFile] = []
+    makes: dict[str, list[ProjectFile]] = {}
+    generators: list[ProjectFile] = []
     make_count = 0
     walked = 0
-    for current, dirs, files in os.walk(root, followlinks=False):
-        walked += 1
-        if walked > MAX_WALK_DIRS or time.monotonic() > deadline:
-            info.truncated = True
-            break
-        dirs[:] = sorted(d for d in dirs if d not in SKIP_WALK_DIRS and not (d.startswith(".") and d != ".build"))
-        cur = Path(current)
-        for fname in sorted(files):
-            p = cur / fname
+    owned_tree = project_tree.duplicate() if project_tree is not None else ProjectTree(str(root)).open()
+    try:
+        directories: set[str] = {"."}
+        files: set[str] = set()
+        entries = owned_tree.walk(skip_dirs=SKIP_WALK_DIRS, reject_unsafe=False)
+        observed: list[ProjectFile] = []
+        for entry in entries:
+            walked += 1
+            if walked > MAX_WALK_DIRS or time.monotonic() > deadline:
+                break
+            # Eski os.walk sözleşmesi: noktayla başlayan dizinler (.build dışında) atlanır.
+            if any(part.startswith(".") and part != ".build" for part in entry.directory.parts):
+                continue
+            directories.add(entry.directory.as_posix())
+            directories.update(path.as_posix() for path in entry.directories
+                               if not (path.name.startswith(".") and path.name != ".build"))
+            observed.extend(entry.files)
+            files.update(item.path.as_posix() for item in entry.files)
+        truncated = walked > MAX_WALK_DIRS or time.monotonic() > deadline
+        info = BuildInfo(root, directories=directories, files=files)
+        info.truncated = truncated
+        for item in observed:
+            fname = item.name
+            absolute = root / item.path
+            directory = str(absolute.parent)
             if fname.endswith(HEADER_SUFFIXES) and len(info.header_names) < MAX_HEADER_NAMES:
                 info.header_names.add(fname)
             elif fname.endswith((".in", ".cmake")):
@@ -918,58 +949,86 @@ def load(root: Path, *, max_seconds: float = DEFAULT_LOAD_SECONDS) -> BuildInfo:
                 for cand in (stem, stem.replace("-cmake", "").replace(".cmake", "")):
                     if cand.endswith(HEADER_SUFFIXES):
                         info.template_names.add(cand)
-                if fname.endswith(".cmake") and len(info.generator_files) < MAX_GENERATOR_FILES and not p.is_symlink():
-                    info.generator_files.append(p)
-            if fname in GENERATOR_NAMES and len(info.generator_files) < MAX_GENERATOR_FILES and not p.is_symlink():
-                info.generator_files.append(p)
-            if fname == "compile_commands.json":
-                if len(dbs) < MAX_COMPILE_DBS and not p.is_symlink():
-                    dbs.append(p)
-            elif fname == "CMakeLists.txt":
-                if len(cmakes) < MAX_CMAKE_FILES and not p.is_symlink():
-                    cmakes.append(p)
-            elif fname in MAKE_NAMES or fname.endswith(".mk"):
-                if make_count < MAX_MAKE_FILES and not p.is_symlink():
-                    makes.setdefault(current, []).append(p)
-                    make_count += 1
-    # 1) compile_commands.json (köke yakın olan önce)
-    for db in sorted(dbs, key=lambda p: (len(p.parts), str(p))):
-        if time.monotonic() > deadline + 5:
-            info.truncated = True
-            break
-        if _load_compile_db(db, root, info.policy, info.compile_db):
-            info.compile_db_files.append(os.path.relpath(db, root))
-    # 2) CMakeLists.txt (üstten alta; PROJECT_SOURCE_DIR en yakın project() dizini)
-    project_dirs: dict[str, Path] = {}
-    for cm in sorted(cmakes, key=lambda p: (len(p.parts), str(p))):
-        text = _read_text(cm, MAX_BUILD_FILE_BYTES)
-        if text is None:
-            continue
-        cdir = cm.parent
-        psd = root
-        ext = (True, True)
-        parents = list(reversed(info._ancestors(cdir.parent))) if cdir != root else []
-        for anc in parents:
-            if str(anc) in project_dirs:
-                psd = project_dirs[str(anc)]
+                if fname.endswith(".cmake") and len(generators) < MAX_GENERATOR_FILES:
+                    generators.append(item)
+            if fname in GENERATOR_NAMES and len(generators) < MAX_GENERATOR_FILES:
+                generators.append(item)
+            if fname == "compile_commands.json" and len(dbs) < MAX_COMPILE_DBS:
+                dbs.append(item)
+            elif fname == "CMakeLists.txt" and len(cmakes) < MAX_CMAKE_FILES:
+                cmakes.append(item)
+            elif (fname in MAKE_NAMES or fname.endswith(".mk")) and make_count < MAX_MAKE_FILES:
+                makes.setdefault(directory, []).append(item)
+                make_count += 1
+
+        def read_text(item: ProjectFile, limit: int) -> str | None:
+            if item.size > limit:
+                return None
+            return owned_tree.read_text(item, limit, errors="replace", allow_empty=True)
+
+        # 1) compile_commands.json (köke yakın olan önce)
+        for db in sorted(dbs, key=lambda item: (len(item.path.parts), item.path.as_posix())):
+            if time.monotonic() > deadline + 5:
+                info.truncated = True
                 break
-        for anc in parents:  # CMake değişken kapsamı: üst dizinin *_EXTENSIONS ayarı alt dizine geçer
-            if str(anc) in info.cmake_dirs:
-                ext = info.cmake_dirs[str(anc)].extensions
-                break
-        parsed = parse_cmake(text, cdir, root, psd, info.policy, os.path.relpath(cm, root), ext)
-        if parsed.project_dir:
-            project_dirs[str(cdir)] = cdir
-        info.cmake_dirs[str(cdir)] = parsed
-        for inc in parsed.public_includes:
-            if inc not in info.cmake_public and len(info.cmake_public) < MAX_INCLUDES:
-                info.cmake_public.append(inc)
-    for f in cmakes + [m for fl in makes.values() for m in fl]:
-        if len(info.generator_files) < MAX_GENERATOR_FILES:
-            info.generator_files.append(f)
-    # 3) Makefile / *.mk: dizin başına; önce Makefile adları, sonra *.mk
-    for d, fl in makes.items():
-        fl.sort(key=lambda p: (0 if p.name in MAKE_NAMES else 1, p.name))
-        info.make_files[d] = fl
-    info.seconds = time.monotonic() - started
-    return info
+            text = read_text(db, MAX_COMPILE_DB_BYTES)
+            path = root / db.path
+            if text is not None and _load_compile_db(text, path, root, info.policy, info.compile_db):
+                info.compile_db_files.append(db.path.as_posix())
+
+        # 2) CMakeLists.txt (üstten alta; PROJECT_SOURCE_DIR en yakın project() dizini)
+        project_dirs: dict[str, Path] = {}
+        for cm in sorted(cmakes, key=lambda item: (len(item.path.parts), item.path.as_posix())):
+            text = read_text(cm, MAX_BUILD_FILE_BYTES)
+            if text is None:
+                continue
+            cm_path = root / cm.path
+            cdir = cm_path.parent
+            psd = root
+            ext = (True, True)
+            parents = list(reversed(info._ancestors(cdir.parent))) if cdir != root else []
+            for anc in parents:
+                if str(anc) in project_dirs:
+                    psd = project_dirs[str(anc)]
+                    break
+            for anc in parents:
+                if str(anc) in info.cmake_dirs:
+                    ext = info.cmake_dirs[str(anc)].extensions
+                    break
+            parsed = parse_cmake(text, cdir, root, psd, info.policy, cm.path.as_posix(), ext)
+            if parsed.project_dir:
+                project_dirs[str(cdir)] = cdir
+            info.cmake_dirs[str(cdir)] = parsed
+            for inc in parsed.public_includes:
+                if inc not in info.cmake_public and len(info.cmake_public) < MAX_INCLUDES:
+                    info.cmake_public.append(inc)
+
+        # Yapı dosyalarındaki üretilen başlık kanıtı, açık tanıtıcı kapanmadan çıkarılır.
+        combined_generators = generators + cmakes + [item for group in makes.values() for item in group]
+        seen_generators: set[str] = set()
+        for item in combined_generators:
+            rel = item.path.as_posix()
+            if rel in seen_generators or len(info.generator_files) >= MAX_GENERATOR_FILES:
+                continue
+            seen_generators.add(rel)
+            info.generator_files.append(root / item.path)
+            text = read_text(item, MAX_BUILD_FILE_BYTES)
+            if text:
+                info._mentioned.update(_HEADER_TOKEN_RE.findall(text))
+
+        # 3) Makefile / *.mk: metin açık descriptor üzerinden bir kez okunur ve iki dil için önceden ayrıştırılır.
+        for directory, group in makes.items():
+            group.sort(key=lambda item: (0 if item.name in MAKE_NAMES else 1, item.name))
+            paths = [root / item.path for item in group]
+            info.make_files[directory] = paths
+            variables: dict[str, list[tuple[str, bool]]] = {}
+            for item in group:
+                text = read_text(item, MAX_BUILD_FILE_BYTES)
+                if text is not None:
+                    parse_make_vars(text, variables)
+            for cxx in (False, True):
+                info._make_cache[(directory, cxx)] = make_flags(variables, Path(directory), info.policy, cxx)
+        info.seconds = time.monotonic() - started
+        return info
+    finally:
+        owned_tree.close()

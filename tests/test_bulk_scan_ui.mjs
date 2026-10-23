@@ -20,7 +20,10 @@ function node(tag) {
 
 function load({ responses = [], confirmAnswer = true } = {}) {
   const calls = [];
-  const document = { createElement: (tag) => node(tag) };  // addEventListener yok → otomatik bağlama atlanır
+  const document = {
+    createElement: (tag) => node(tag),
+    createElementNS: (_namespace, tag) => node(tag),
+  };  // addEventListener yok → otomatik bağlama atlanır
   const window = {
     confirm: () => confirmAnswer,
     fetch: async (path, options = {}) => {
@@ -56,6 +59,10 @@ test('önizleme textContent ile çizilir; seçim ve uyarılar doğru', () => {
   const { win } = load();
   const panel = win.SniperBulkScan.buildPanel();
   assert.equal(panel.attrs.id, 'bulk-scan-launcher');
+  const icon = panel.children[0].children[0];
+  assert.equal(icon.textContent, '');
+  assert.equal(icon.children[0]?.tag, 'svg');
+  assert.equal(icon.children[0]?.children[0]?.attrs.href, '/static/ui-icons.svg#repositories');
   const ui = win.SniperBulkScan.state.ui;
   assert.equal(ui.start.disabled, true);
   win.SniperBulkScan.renderPreview(FOUND);

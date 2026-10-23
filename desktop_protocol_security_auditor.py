@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import json
-import os
 from pathlib import Path
 import re
-import stat
-from typing import Any
+from typing import Any, Iterator
 
-from project_analyzer import MAX_FILES, MAX_FILE_BYTES, MAX_TOTAL_BYTES, SKIP_DIRS, validate_project_path
+from project_analyzer import MAX_FILES, MAX_FILE_BYTES, MAX_TOTAL_BYTES, ProjectRejected, SKIP_DIRS, validate_project_path
+from project_tree import ProjectTree, ProjectTreeError
 from scanner import calculate_score, utc_now
 from finding_limits import INLINE_FINDING_LIMIT, PROJECT_FINDING_LIMIT, cap_findings, summarize_finding_groups, project_scan_scope
 
@@ -20,6 +20,15 @@ DESKTOP_EXTENSIONS = {
 DESKTOP_FILENAMES = {
     "package.json", "tauri.conf.json", "cargo.toml", "main.js", "index.js", "preload.js",
 }
+
+
+@contextmanager
+def _opened_project_tree(root: Path) -> Iterator[ProjectTree]:
+    try:
+        with ProjectTree(str(root)) as tree:
+            yield tree
+    except ProjectTreeError as exc:
+        raise ProjectRejected("Proje ağacı güvenli biçimde okunamadı.") from exc
 
 
 def _has_insecure_websocket_origin(content: str) -> bool:
@@ -151,40 +160,22 @@ def audit_desktop_app_project(
             )
         )
 
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            name for name in directories
-            if name.casefold() not in SKIP_DIRS and not (Path(current) / name).is_symlink()
-        )
-        for name in sorted(files):
-            path = Path(current) / name
-            if path.is_symlink():
-                continue
+    with _opened_project_tree(root) as tree:
+        for project_file in tree.iter_files(skip_dirs=tuple(SKIP_DIRS), reject_unsafe=False):
+            name = project_file.name
             normalized = name.casefold()
-            suffix = path.suffix.casefold()
+            suffix = project_file.path.suffix.casefold()
             if suffix not in DESKTOP_EXTENSIONS and normalized not in DESKTOP_FILENAMES:
                 continue
-            try:
-                fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
-            except OSError:
+            if project_file.size > MAX_FILE_BYTES:
                 continue
-            try:
-                st = os.fstat(fd)
-                if not stat.S_ISREG(st.st_mode) or st.st_size > MAX_FILE_BYTES:
-                    os.close(fd)
-                    continue
-                if scanned_files + 1 > MAX_FILES or total_bytes + st.st_size > MAX_TOTAL_BYTES:
-                    os.close(fd)
-                    break
-                text = os.read(fd, st.st_size).decode("utf-8", errors="ignore")
-            except OSError:
-                os.close(fd)
-                continue
-            os.close(fd)
+            if scanned_files + 1 > MAX_FILES or total_bytes + project_file.size > MAX_TOTAL_BYTES:
+                break
+            text = tree.read_text(project_file, MAX_FILE_BYTES, errors="ignore", allow_empty=True)
 
             scanned_files += 1
-            total_bytes += st.st_size
-            rel_file = str(path.relative_to(root))
+            total_bytes += project_file.size
+            rel_file = project_file.path.as_posix()
 
             if normalized == "package.json":
                 try:

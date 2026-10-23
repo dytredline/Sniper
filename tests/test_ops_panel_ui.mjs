@@ -34,7 +34,10 @@ test('index.html görünümleri, menüyü ve betiği içerir; app.js gezinmesi y
   assert.match(html, /data-view="schedules"/);
   assert.match(html, /data-view="notifications"/);
   assert.match(html, /\/ops_panel\.js\?v=1/);
-  assert.match(appJs, /"schedules", "notifications"\]/);
+  assert.match(appJs, /schedules:\s*Object\.freeze\(\{ view: "schedules", hash: "#schedules"/);
+  assert.match(appJs, /notifications:\s*Object\.freeze\(\{ view: "notifications", hash: "#notifications"/);
+  assert.match(appJs, /case "schedules": return NAVIGATION_DESTINATIONS\.schedules/);
+  assert.match(appJs, /case "notifications": return NAVIGATION_DESTINATIONS\.notifications/);
   assert.match(appJs, /SniperOps\.show\(view\)/);
 });
 

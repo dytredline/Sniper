@@ -3,13 +3,12 @@ from __future__ import annotations
 import bisect
 import hashlib
 import math
-import os
 from pathlib import Path
 import re
 from typing import Any
 
 from project_analyzer import SKIP_DIRS, validate_project_path
-from safe_file_read import read_text_bounded
+from project_tree import ProjectTree
 from scanner import _finding, calculate_score as _scanner_calculate_score
 from finding_limits import INLINE_FINDING_LIMIT, PROJECT_FINDING_LIMIT, cap_findings, summarize_finding_groups, project_scan_scope
 
@@ -852,26 +851,18 @@ def audit_secrets_project(
     findings: list[dict[str, Any]] = []
     scanned_files = 0
 
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            name
-            for name in directories
-            if name.casefold() not in SKIP_DIRS and not (Path(current) / name).is_symlink()
-        )
-        for name in sorted(files):
+    with ProjectTree(root) as tree:
+        for project_file in tree.iter_files(skip_dirs=SKIP_DIRS, reject_unsafe=False):
             if scanned_files >= MAX_PROJECT_FILES:
                 break
-            file_path = Path(current) / name
-            if file_path.is_symlink():
+            if not _is_secret_candidate(project_file.name):
                 continue
-            if not _is_secret_candidate(name):
+            if project_file.size == 0 or project_file.size > MAX_INLINE_BYTES:
                 continue
-            content = read_text_bounded(file_path, MAX_INLINE_BYTES)
-            if content is None:
-                continue
+            content = tree.read_text(project_file, MAX_INLINE_BYTES, errors="replace")
             if not content.strip():
                 continue
-            rel_name = str(file_path.relative_to(root))
+            rel_name = project_file.path.as_posix()
             scanned_files += 1
             findings.extend(_scan_secret_content(content, rel_name))
 

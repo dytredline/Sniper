@@ -56,6 +56,7 @@ import uuid
 
 from process_group_runner import run_in_process_group
 from project_analyzer import ProjectRejected, SKIP_DIRS, validate_project_path
+from project_tree import ProjectFile, ProjectTree, ProjectTreeError
 from joern_source_prep import prepare_source
 from tool_pins import PINS, SNIPER_TOOLS_DIR, open_pinned, pin_status
 from verified_exec import VerificationError
@@ -245,7 +246,9 @@ class JoernTimeout(JoernExecutionError):
 
 
 def collect_sources(root: Path, *, scripting: bool = False,
-                    warnings: list[str] | None = None) -> dict[str, list[Path]]:
+                    warnings: list[str] | None = None,
+                    project_tree: ProjectTree | None = None,
+                    records_out: dict[str, ProjectFile] | None = None) -> dict[str, list[Path]]:
     """Desteklenen dillerdeki normal dosyaları (bağ izlemeden) dile göre topla.
 
     JS/TS ve Python dosyaları yalnız ``scripting`` ile ve ayrı bir bütçeyle toplanır: bütçe aşılırsa proje
@@ -256,73 +259,76 @@ def collect_sources(root: Path, *, scripting: bool = False,
     script_files = 0
     script_bytes = 0
     script_dropped = 0
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            name for name in directories
-            if name.casefold() not in SKIP_DIRS and not (Path(current) / name).is_symlink()
-        )
-        for name in sorted(files):
-            path = Path(current) / name
-            suffix = path.suffix.lower()
+    tree = project_tree.duplicate() if project_tree is not None else ProjectTree(str(root)).open()
+    try:
+        observed = tree.iter_files(skip_dirs=SKIP_DIRS, reject_unsafe=False)
+        for record in observed:
+            if records_out is not None:
+                records_out[record.path.as_posix()] = record
+            name = record.name
+            path = root / record.path
+            suffix = record.path.suffix.lower()
             language = next((lang for lang, exts in LANGUAGE_EXTENSIONS.items() if suffix in exts), None)
             if language is None or (language in SCRIPTING_LANGUAGES and not scripting):
                 continue
             if language in SCRIPTING_LANGUAGES and name.lower().endswith(_SKIPPED_SCRIPT_SUFFIXES):
                 continue
-            try:
-                info = path.lstat()
-            except OSError:
-                continue
-            if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_FILE_BYTES:
+            if record.size > MAX_FILE_BYTES:
                 continue
             if language in SCRIPTING_LANGUAGES:
-                if script_files >= MAX_SCRIPT_FILES or script_bytes + info.st_size > MAX_SCRIPT_BYTES:
+                if script_files >= MAX_SCRIPT_FILES or script_bytes + record.size > MAX_SCRIPT_BYTES:
                     script_dropped += 1
                     continue
                 script_files += 1
-                script_bytes += info.st_size
+                script_bytes += record.size
                 found[language].append(path)
                 continue
             total_files += 1
-            total_bytes += info.st_size
+            total_bytes += record.size
             if total_files > MAX_FILES or total_bytes > MAX_TOTAL_BYTES:
                 raise ProjectRejected(
                     f"Derin analiz sınırı aşıldı (en çok {MAX_FILES} dosya / {MAX_TOTAL_BYTES // 1_000_000} MB kaynak)."
                 )
             found[language].append(path)
+    finally:
+        tree.close()
     if script_dropped and warnings is not None:
         warnings.append(f"JS/TS ve Python dosya bütçesi aşıldı (en çok {MAX_SCRIPT_FILES} dosya / "
                         f"{MAX_SCRIPT_BYTES // 1_000_000} MB): {script_dropped} dosya derin analize alınmadı.")
     return {language: paths for language, paths in found.items() if paths}
 
 
-def _copy_sources(root: Path, paths: Iterable[Path], destination: Path, language: str = "") -> int:
+def _copy_sources(root: Path, paths: Iterable[Path], destination: Path, language: str = "", *,
+                  project_tree: ProjectTree | None = None,
+                  records: dict[str, ProjectFile] | None = None) -> int:
     """Kaynakları O_NOFOLLOW ile okuyup çalışma dizinine kopyala (göreli yol korunur).
 
     Dile özgü, satır numaralarını koruyan ön işlem uygulanır (C#: süslü parantezsiz gövdeler sarılır;
     bkz. joern_source_prep)."""
-    copied = 0
-    for path in paths:
-        relative = path.relative_to(root)
-        target = destination / relative
-        target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        try:
-            fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
-        except OSError:
-            continue
-        try:
-            info = os.fstat(fd)
-            if not stat.S_ISREG(info.st_mode) or info.st_size > MAX_FILE_BYTES:
+    tree = project_tree.duplicate() if project_tree is not None else ProjectTree(str(root)).open()
+    try:
+        known = records
+        if known is None:
+            known = {record.path.as_posix(): record
+                     for record in tree.iter_files(skip_dirs=SKIP_DIRS, reject_unsafe=False)}
+        copied = 0
+        for path in paths:
+            try:
+                relative = path.relative_to(root)
+            except ValueError:
                 continue
-            data = os.read(fd, MAX_FILE_BYTES + 1)
-        finally:
-            os.close(fd)
-        if len(data) > MAX_FILE_BYTES:
-            continue
-        with open(target, "xb") as handle:
-            handle.write(prepare_source(language, data))
-        copied += 1
-    return copied
+            record = known.get(relative.as_posix())
+            if record is None or record.size > MAX_FILE_BYTES:
+                continue
+            data = tree.read_bytes(record, MAX_FILE_BYTES, allow_empty=True)
+            target = destination / relative
+            target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            with open(target, "xb") as handle:
+                handle.write(prepare_source(language, data))
+            copied += 1
+        return copied
+    finally:
+        tree.close()
 
 
 # ---------------------------------------------------------------------------
@@ -439,26 +445,29 @@ def _parse_steps(raw: Any, workspace: Path | None, language: str) -> list[dict[s
     return steps
 
 
-def mybatis_unsafe_statements(root: Path) -> list[str]:
+def _records_for(tree: ProjectTree, records: dict[str, ProjectFile] | None = None) -> dict[str, ProjectFile]:
+    if records is not None:
+        return records
+    return {record.path.as_posix(): record
+            for record in tree.iter_files(skip_dirs=SKIP_DIRS, reject_unsafe=False)}
+
+
+def mybatis_unsafe_statements(root: Path, *, project_tree: ProjectTree | None = None,
+                              records: dict[str, ProjectFile] | None = None) -> list[str]:
     """MyBatis XML eşleyicilerinde ${} (doğrudan metin yerleştirme) içeren ifadelerin nitelikli adları.
 
     XML ayrıştırıcısı kullanılmaz (varlık genişletme / XML bombası riski yok); sınırlı düzenli ifade taraması.
     <sql> parçalarındaki ${} de <include refid> ile içeren ifadelere taşınır.
     """
     names: list[str] = []
-    count = 0
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(d for d in directories if d.casefold() not in SKIP_DIRS and not (Path(current) / d).is_symlink())
-        for name in sorted(files):
-            if not name.endswith(".xml") or count >= MAX_MYBATIS_FILES:
+    tree = project_tree.duplicate() if project_tree is not None else ProjectTree(str(root)).open()
+    try:
+        count = 0
+        for rel, record in sorted(_records_for(tree, records).items()):
+            if (not record.name.endswith(".xml") or count >= MAX_MYBATIS_FILES
+                    or record.size > MAX_MYBATIS_BYTES):
                 continue
-            path = Path(current) / name
-            if path.is_symlink():
-                continue
-            try:
-                raw, _ = _read_regular(path, MAX_MYBATIS_BYTES)
-            except (OSError, JoernUnavailable):
-                continue
+            raw = tree.read_bytes(record, MAX_MYBATIS_BYTES, allow_empty=True)
             text = raw.decode("utf-8", "replace")
             namespace = _MYBATIS_NAMESPACE_RE.search(text)
             if namespace is None:
@@ -472,26 +481,25 @@ def mybatis_unsafe_statements(root: Path) -> list[str]:
                 includes = {ref.rsplit(".", 1)[-1] for ref in _MYBATIS_INCLUDE_RE.findall(body)}
                 if "${" in body or includes & unsafe_fragments:
                     names.append(f"{namespace.group(1)}.{ident}")
-    return sorted(set(names))
+        return sorted(set(names))
+    finally:
+        tree.close()
 
 
-def load_properties(root: Path) -> dict[str, str]:
+def load_properties(root: Path, *, project_tree: ProjectTree | None = None,
+                    records: dict[str, ProjectFile] | None = None) -> dict[str, str]:
     """Projedeki .properties dosyalarından anahtar=değer (yapılandırma sabitleri; sınırlı)."""
     values: dict[str, str] = {}
-    count = 0
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(d for d in directories if d.casefold() not in SKIP_DIRS and not (Path(current) / d).is_symlink())
-        for name in sorted(files):
-            if not name.endswith(".properties"):
+    tree = project_tree.duplicate() if project_tree is not None else ProjectTree(str(root)).open()
+    try:
+        count = 0
+        for _rel, record in sorted(_records_for(tree, records).items()):
+            if not record.name.endswith(".properties") or record.size > MAX_PROPERTY_BYTES:
                 continue
-            path = Path(current) / name
-            if path.is_symlink() or count >= MAX_PROPERTY_FILES:
+            if count >= MAX_PROPERTY_FILES:
                 continue
             count += 1
-            try:
-                raw, _ = _read_regular(path, MAX_PROPERTY_BYTES)
-            except (OSError, JoernUnavailable):
-                continue
+            raw = tree.read_bytes(record, MAX_PROPERTY_BYTES, allow_empty=True)
             for line in raw.decode("utf-8", "replace").splitlines():
                 line = line.strip()
                 if not line or line.startswith(("#", "!")):
@@ -499,7 +507,9 @@ def load_properties(root: Path) -> dict[str, str]:
                 match = re.match(r"([^=:\s]+)\s*[=:]\s*(.*)", line)
                 if match:
                     values.setdefault(match.group(1), match.group(2).strip())
-    return values
+        return values
+    finally:
+        tree.close()
 
 
 def resolve_algorithm(detail: dict[str, Any], properties: dict[str, str]) -> str | None:
@@ -578,64 +588,70 @@ _FAST_KIND = {"xss": "html"}
 _PATH_ONLY_SOURCE_RE = re.compile(r"(self\.)?(request|req|ctx)\.(path|path_info|full_path|originalUrl|url|baseUrl|FILES|files|file)\Z")
 
 
-def annotate_fast_engine_matches(root: Path, sources: dict[str, list[Path]], findings: list[dict[str, Any]]) -> dict[str, Any] | None:
+def annotate_fast_engine_matches(root: Path, sources: dict[str, list[Path]], findings: list[dict[str, Any]], *,
+                                 project_tree: ProjectTree | None = None,
+                                 records: dict[str, ProjectFile] | None = None) -> dict[str, Any] | None:
     """Go/Ruby: Joern bulgularını hızlı motorun (taint_goruby, proje analizindeki "Doğrulanmış veri akışı")
     akışlarıyla eşleştir. Eşleşen bulguya ``fast_engine_match: true`` yazılır; böylece aynı açık proje analizi ve
     derin analizde iki ayrı yeni bulgu gibi görünmez. Hızlı motor yalnız Joern'ün zaten okuduğu dosyalarda çalışır."""
     import taint_goruby
 
-    summary: dict[str, Any] = {}
-    fast_keys: set[tuple[str, str, int]] = set()
-    for language in ("go", "ruby"):
-        paths = [p for p in sources.get(language, []) if p.suffix.lower() in taint_goruby.GORUBY_SUFFIXES]
-        if not paths:
-            continue
-        files: dict[str, str] = {}
-        for path in paths:
-            if path.name.endswith("_test.go"):
+    tree = project_tree.duplicate() if project_tree is not None else ProjectTree(str(root)).open()
+    try:
+        known = _records_for(tree, records)
+        summary: dict[str, Any] = {}
+        fast_keys: set[tuple[str, str, int]] = set()
+        for language in ("go", "ruby"):
+            paths = [p for p in sources.get(language, []) if p.suffix.lower() in taint_goruby.GORUBY_SUFFIXES]
+            if not paths:
                 continue
+            files: dict[str, str] = {}
+            for path in paths:
+                rel = path.relative_to(root).as_posix()
+                if path.name.endswith("_test.go") or rel not in known:
+                    continue
+                try:
+                    raw = tree.read_bytes(known[rel], MAX_FILE_BYTES, allow_empty=True)
+                except ProjectTreeError:
+                    continue
+                files[rel] = raw.decode("utf-8", "replace")
+            if language == "go" and "go.mod" in known:
+                try:
+                    raw = tree.read_bytes(known["go.mod"], 20_000 * 4 + 3, allow_empty=True, truncate=True)
+                    files["go.mod"] = raw.decode("utf-8", errors="replace")[:20_000]
+                except ProjectTreeError:
+                    pass
             try:
-                raw, _ = _read_regular(path, MAX_FILE_BYTES)
-            except (OSError, JoernUnavailable):
+                results = taint_goruby.analyze_files(files, language)
+            except (RecursionError, MemoryError):
                 continue
-            files[path.relative_to(root).as_posix()] = raw.decode("utf-8", "replace")
-        mod = root / "go.mod"
-        if language == "go":
-            try:
-                # Eski davranış ilk 20.000 Unicode karakteri kullanıyordu.
-                # Dört bayt/karakter + son kod noktası payı, dosyanın tamamını
-                # okumadan aynı karakter bütçesini korur.
-                raw = _read_regular_prefix(mod, 20_000 * 4 + 3)
-                files["go.mod"] = raw.decode("utf-8", errors="replace")[:20_000]
-            except (OSError, JoernUnavailable):
-                pass
-        try:
-            results = taint_goruby.analyze_files(files, language)
-        except (RecursionError, MemoryError):
-            continue
-        count = 0
-        for rel, analysis in results.items():
-            for flow in analysis.flows:
-                fast_keys.add((_FAST_KIND.get(flow.sink_kind, flow.sink_kind), rel, flow.line))
-                count += 1
-        summary[language] = {"fast_flows": count}
-    if not summary:
-        return None
-    matched = 0
-    for finding in findings:
-        kind = (finding.get("taint_flow") or {}).get("sink_kind")
-        if not kind:
-            continue
-        kind = _FAST_KIND.get(kind, kind)
-        if any((kind, finding["file"], finding["line"] + delta) in fast_keys for delta in (-1, 0, 1)):
-            finding["fast_engine_match"] = True
-            matched += 1
-    summary["matched_findings"] = matched
-    summary["joern_only_findings"] = sum(1 for f in findings if f.get("taint_flow") and not f.get("fast_engine_match"))
-    return summary
+            count = 0
+            for rel, analysis in results.items():
+                for flow in analysis.flows:
+                    fast_keys.add((_FAST_KIND.get(flow.sink_kind, flow.sink_kind), rel, flow.line))
+                    count += 1
+            summary[language] = {"fast_flows": count}
+        if not summary:
+            return None
+        matched = 0
+        for finding in findings:
+            kind = (finding.get("taint_flow") or {}).get("sink_kind")
+            if not kind:
+                continue
+            kind = _FAST_KIND.get(kind, kind)
+            if any((kind, finding["file"], finding["line"] + delta) in fast_keys for delta in (-1, 0, 1)):
+                finding["fast_engine_match"] = True
+                matched += 1
+        summary["matched_findings"] = matched
+        summary["joern_only_findings"] = sum(1 for f in findings if f.get("taint_flow") and not f.get("fast_engine_match"))
+        return summary
+    finally:
+        tree.close()
 
 
-def mark_fast_engine_overlap(root: Path, sources: dict[str, list[Path]], findings: list[dict[str, Any]]) -> dict[str, Any]:
+def mark_fast_engine_overlap(root: Path, sources: dict[str, list[Path]], findings: list[dict[str, Any]], *,
+                             project_tree: ProjectTree | None = None,
+                             records: dict[str, ProjectFile] | None = None) -> dict[str, Any]:
     """Hızlı Java/C#/PHP (taint_clike) ve C/C++ (taint_cfamily) motorlarıyla (proje analizinde çalışır) tekilleştirme bilgisi.
 
     Aynı CWE + dosya + hedef satırı (±1) olan Joern bulgusu ``also_in_project_analysis: true`` ile işaretlenir; böylece
@@ -644,20 +660,26 @@ def mark_fast_engine_overlap(root: Path, sources: dict[str, list[Path]], finding
     try:
         import taint_clike
         from project_analyzer import TAINT_FLOW_RULES
-        from safe_file_read import read_text_bounded
-
         import taint_cfamily
 
+        tree = project_tree.duplicate() if project_tree is not None else ProjectTree(str(root)).open()
+        known = _records_for(tree, records)
         files: dict[str, str] = {}
         c_files: dict[str, str] = {}
-        for paths in sources.values():
-            for path in paths:
-                suffix = path.suffix.lower()
-                target = files if suffix in taint_clike.SUFFIXES else c_files if suffix in taint_cfamily.SUFFIXES else None
-                if target is not None:
-                    text = read_text_bounded(path, MAX_FILE_BYTES)
-                    if text is not None:
-                        target[path.relative_to(root).as_posix()] = text
+        try:
+            for paths in sources.values():
+                for path in paths:
+                    suffix = path.suffix.lower()
+                    target = files if suffix in taint_clike.SUFFIXES else c_files if suffix in taint_cfamily.SUFFIXES else None
+                    rel = path.relative_to(root).as_posix()
+                    if target is not None and rel in known:
+                        try:
+                            text = tree.read_text(known[rel], MAX_FILE_BYTES, errors="replace", allow_empty=True)
+                        except ProjectTreeError:
+                            continue
+                        target[rel] = text
+        finally:
+            tree.close()
         if not files and not c_files:
             return {"available": True, "both": 0, "joern_only": len(findings), "fast_only": 0}
         fast: set[tuple[str, str, int]] = set()
@@ -687,7 +709,9 @@ _SCRIPT_SUFFIXES = {suffix: language for language in SCRIPTING_LANGUAGES for suf
 
 
 def annotate_scripting_fast_engine(root: Path, sources: dict[str, list[Path]],
-                                   findings: list[dict[str, Any]]) -> dict[str, Any] | None:
+                                   findings: list[dict[str, Any]], *,
+                                   project_tree: ProjectTree | None = None,
+                                   records: dict[str, ProjectFile] | None = None) -> dict[str, Any] | None:
     """JS/TS ve Python: Joern bulgularını hızlı motorla (taint_flow; proje analizinin "Doğrulanmış veri akışı"
     kaynağı) karşılaştır — Joern burada tamamlayıcıdır.
 
@@ -702,13 +726,17 @@ def annotate_scripting_fast_engine(root: Path, sources: dict[str, list[Path]],
     languages = [language for language in ("python", "javascript") if sources.get(language)]
     if not languages:
         return None
+    tree: ProjectTree | None = None
+    state: Any = None
     try:
         import taint_flow
         from project_analyzer import SKIP_DIRS
-        from safe_file_read import read_text_bounded
-
-        taint_flow.activate_project_js_handlers(root, SKIP_DIRS)
-        state = taint_flow._ProjectState(root, frozenset(SKIP_DIRS))
+        tree = project_tree.duplicate() if project_tree is not None else ProjectTree(str(root)).open()
+        known = _records_for(tree, records)
+        taint_flow.activate_project_js_handlers(root, SKIP_DIRS, project_tree=tree)
+        state = taint_flow._PROJECT.get()
+        if state is None:
+            return {"available": False}
         verified: set[tuple[str, str, int]] = set()
         uncertain: set[tuple[str, str, int]] = set()
         evaluated: set[tuple[str, str, int]] = set()
@@ -719,8 +747,11 @@ def annotate_scripting_fast_engine(root: Path, sources: dict[str, list[Path]],
                 # Node/AST motoru yoksa proje analizindeki gibi dosya başına belirteç motoru.
                 results = {}
                 for path in sources[language]:
-                    text = read_text_bounded(path, MAX_FILE_BYTES)
                     rel = path.relative_to(root).as_posix()
+                    try:
+                        text = tree.read_text(known[rel], MAX_FILE_BYTES, errors="replace", allow_empty=True)
+                    except (KeyError, ProjectTreeError):
+                        text = None
                     analysis = taint_flow.analyze_javascript(text, filename=rel) if text is not None else None
                     if analysis is not None:
                         results[rel] = analysis
@@ -737,6 +768,11 @@ def annotate_scripting_fast_engine(root: Path, sources: dict[str, list[Path]],
             summary[language] = {"available": True, "fast_flows": flows}
     except Exception:  # tekilleştirme yardımcıdır; Joern sonucunu etkilemez
         return {"available": False}
+    finally:
+        if state is not None:
+            state.close()
+        if tree is not None:
+            tree.close()
 
     def near(keys: set[tuple[str, str, int]], kind: str, file: str, line: int) -> bool:
         # Hızlı motor şablon derlemesini (Template(girdi)) kod değerlendirme (eval) türünde raporlayabilir.
@@ -1689,25 +1725,29 @@ def scripting_default() -> bool:
     return os.environ.get("SNIPER_JOERN_SCRIPTING", "0").strip().lower() in {"1", "true", "yes", "on"}
 
 
-def run_joern_deep(project_path: str, *, timeout: float = DEFAULT_TIMEOUT_SECONDS,
-                   runner: Runner | None = None, max_findings: int = MAX_FINDINGS,
-                   allowed_roots: tuple[Path, ...] | None = None,
-                   scripting: bool | None = None) -> dict[str, Any]:
+def _run_joern_deep(project_path: str, *, timeout: float = DEFAULT_TIMEOUT_SECONDS,
+                    runner: Runner | None = None, max_findings: int = MAX_FINDINGS,
+                    allowed_roots: tuple[Path, ...] | None = None,
+                    scripting: bool | None = None,
+                    _project_tree: ProjectTree) -> dict[str, Any]:
     """Projeyi Joern ile analiz et ve bulguları (+ SARIF) döndür.
 
     ``scripting``: JS/TS ve Python dosyalarını da analiz et (None → :func:`scripting_default`). ``timeout`` süre
     bütçesidir: bir dil bitmeden süre ya da bellek tükenirse o ana kadarki akışlar ``partial: true`` ve
     ``warnings`` ile döner (hiçbir dil sonuç vermediyse hata yükseltilir)."""
-    root = validate_project_path(project_path, allowed_roots=allowed_roots)
+    validate_project_path(project_path, allowed_roots=allowed_roots)
+    root = _project_tree.root
     if scripting is None:
         scripting = scripting_default()
     warnings: list[str] = []
-    sources = collect_sources(root, scripting=scripting, warnings=warnings)
+    source_records: dict[str, ProjectFile] = {}
+    sources = collect_sources(root, scripting=scripting, warnings=warnings,
+                              project_tree=_project_tree, records_out=source_records)
     if not sources:
         if scripting:
             raise ProjectRejected("Projede Joern'ün desteklediği dillerde (C/C++, Java, Kotlin, PHP, Go, Ruby, C#, "
                                   "JavaScript/TypeScript, Python) kaynak dosyası bulunamadı.")
-        if collect_sources(root, scripting=True):
+        if collect_sources(root, scripting=True, project_tree=_project_tree, records_out=source_records):
             raise ProjectRejected("Projede C/C++, Java, Kotlin, PHP, Go, Ruby veya C# kaynak dosyası bulunamadı; yalnız "
                                   "JavaScript/TypeScript veya Python var: bunlar için derin analizde \"JS/TS ve Python dahil\" "
                                   "seçeneğini açın (birincil motor proje analizidir).")
@@ -1768,12 +1808,13 @@ def run_joern_deep(project_path: str, *, timeout: float = DEFAULT_TIMEOUT_SECOND
                         handle.write(verified_php())
                 src = work / f"src-{language}"
                 src.mkdir(mode=0o700)
-                languages[language] = _copy_sources(root, paths, src, language)
+                languages[language] = _copy_sources(root, paths, src, language,
+                                                     project_tree=_project_tree, records=source_records)
                 cpg = work / f"{language}.cpg.bin"
                 out = work / f"{language}.flows.jsonl"
                 if language == "java":
                     # Betik, ${} içeren MyBatis XML ifadelerini outFile + ".mybatis" yan dosyasından okur.
-                    unsafe = mybatis_unsafe_statements(root)
+                    unsafe = mybatis_unsafe_statements(root, project_tree=_project_tree, records=source_records)
                     if unsafe:
                         (work / f"{out.name}.mybatis").write_text("\n".join(unsafe) + "\n", encoding="utf-8")
 
@@ -1821,15 +1862,25 @@ def run_joern_deep(project_path: str, *, timeout: float = DEFAULT_TIMEOUT_SECOND
                     raise JoernExecutionError("Joern derin analizi zaman aşımına uğradı.")
                 raise JoernUnavailable("Desteklenen dillerin hiçbiri için ön uç hazır değil: " +
                                        "; ".join(f"{LANGUAGE_NAMES[k]}: {v}" for k, v in skipped.items()))
-            findings = flows_to_findings(all_flows, max_findings, load_properties(root))
-            fast_overlap = mark_fast_engine_overlap(root, sources, findings)
+            findings = flows_to_findings(
+                all_flows,
+                max_findings,
+                load_properties(root, project_tree=_project_tree, records=source_records),
+            )
+            fast_overlap = mark_fast_engine_overlap(
+                root, sources, findings, project_tree=_project_tree, records=source_records,
+            )
             engine = {"tool": "joern", "version": JOERN_VERSION, "jdk_sha256": jdk.sha256,
                       "provenance": jdk.provenance}
     finally:
         fcntl.flock(lock_fd, fcntl.LOCK_UN)
         os.close(lock_fd)
-    fast_engine = annotate_fast_engine_matches(root, sources, findings)
-    scripting_fast = annotate_scripting_fast_engine(root, sources, findings) if scripting else None
+    fast_engine = annotate_fast_engine_matches(
+        root, sources, findings, project_tree=_project_tree, records=source_records,
+    )
+    scripting_fast = annotate_scripting_fast_engine(
+        root, sources, findings, project_tree=_project_tree, records=source_records,
+    ) if scripting else None
     try:
         import eval_metrics
 
@@ -1859,6 +1910,27 @@ def run_joern_deep(project_path: str, *, timeout: float = DEFAULT_TIMEOUT_SECOND
         "findings": findings,
         "sarif": render_sarif(findings, engine=engine),
     }
+
+
+def run_joern_deep(project_path: str, *, timeout: float = DEFAULT_TIMEOUT_SECONDS,
+                   runner: Runner | None = None, max_findings: int = MAX_FINDINGS,
+                   allowed_roots: tuple[Path, ...] | None = None,
+                   scripting: bool | None = None) -> dict[str, Any]:
+    """Pin the validated project root for collection, staging, and all auxiliary reads."""
+    root = validate_project_path(project_path, allowed_roots=allowed_roots)
+    try:
+        with ProjectTree(str(root)) as project_tree:
+            return _run_joern_deep(
+                project_path,
+                timeout=timeout,
+                runner=runner,
+                max_findings=max_findings,
+                allowed_roots=allowed_roots,
+                scripting=scripting,
+                _project_tree=project_tree,
+            )
+    except ProjectTreeError as exc:
+        raise ProjectRejected("Proje ağacı doğrulamadan sonra değişti veya güvenli biçimde okunamadı.") from exc
 
 
 def _analyze_language(step: Callable[[list[str], dict[str, str], str], None], language: str, src: Path, cpg: Path,

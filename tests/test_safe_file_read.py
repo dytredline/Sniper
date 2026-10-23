@@ -114,6 +114,33 @@ class ReadTextBoundedTests(unittest.TestCase):
         self.assertIsNone(read_text_bounded(self.root, 100))
         self.assertIsNone(read_text_bounded(self.root / "missing.txt", 100))
 
+    def test_intermediate_parent_symlink_swap_is_rejected(self) -> None:
+        parent = self.root / "selected"
+        parent.mkdir()
+        victim = parent / "value.txt"
+        victim.write_text("verified", encoding="utf-8")
+        outside = self.root / "outside"
+        outside.mkdir()
+        external = outside / "value.txt"
+        external.write_text("outside-sentinel", encoding="utf-8")
+        moved = self.root / "selected-original"
+        real_open = os.open
+        swapped = False
+
+        def racing_open(path, flags, *args, **kwargs):
+            nonlocal swapped
+            if not swapped and (Path(path) == victim or path == "selected"):
+                swapped = True
+                parent.rename(moved)
+                parent.symlink_to(outside, target_is_directory=True)
+            return real_open(path, flags, *args, **kwargs)
+
+        with mock.patch("safe_file_read.os.open", side_effect=racing_open):
+            result = read_text_bounded(victim, 100)
+
+        self.assertTrue(swapped, "test must replace the intermediate directory at open time")
+        self.assertIsNone(result)
+
     def test_fifo_returns_none_without_blocking(self) -> None:
         fifo = self.root / "pipe.txt"
         os.mkfifo(fifo)

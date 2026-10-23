@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from project_analyzer import validate_project_path, ProjectRejected
+from project_tree import ProjectTree, ProjectTreeError
 
 
 class TrivyVulnUnavailable(RuntimeError):
@@ -38,6 +39,28 @@ def _streaming_sha256(path: Path) -> str:
                 break
             h.update(chunk)
     return h.hexdigest()
+
+
+def _read_root_project_file(
+    root: Path,
+    name: str,
+    max_bytes: int,
+    *,
+    allow_empty: bool,
+) -> bytes:
+    """Snapshot one root-level regular file by descriptor-observed identity."""
+    with ProjectTree(root) as tree:
+        walker = tree.walk(reject_unsafe=False)
+        try:
+            entry = next(walker)
+        finally:
+            walker.close()
+        source = next((item for item in entry.files if item.path.as_posix() == name), None)
+        if source is None:
+            raise ProjectTreeError("Kök proje dosyası bulunamadı veya normal bir dosya değil.")
+        if source.size > max_bytes or (source.size == 0 and not allow_empty):
+            raise ProjectTreeError("Kök proje dosyası boyut sınırını karşılamıyor.")
+        return tree.read_bytes(source, max_bytes, allow_empty=allow_empty)
 
 
 def run_local_trivy_vulnerability(project_path: str) -> dict[str, Any]:
@@ -142,58 +165,18 @@ def run_local_trivy_vulnerability(project_path: str) -> dict[str, Any]:
             input_dir = snapshot_root / "input"
             input_dir.mkdir(parents=True, exist_ok=True)
 
-            # Stage only root-level requirements.txt
-            req_file = src_root / "requirements.txt"
-            if not req_file.parent.resolve() == src_root.resolve():
-                raise TrivyVulnInvalidInput("Kök düzeydeki requirements.txt doğrudan proje kökünde bulunmalı.")
-            if not req_file.exists():
-                raise TrivyVulnInvalidInput("Kök düzeydeki requirements.txt mevcut olmalı.")
-            if req_file.is_symlink():
-                raise TrivyVulnInvalidInput("Kök düzeydeki requirements.txt sembolik bağ olmamalı.")
-            if not req_file.is_file():
-                raise TrivyVulnInvalidInput("Kök düzeydeki requirements.txt normal bir dosya olmalı.")
-
-            # Enforce bounded scan: per-file <= 1,000,000 bytes
             try:
-                st_req = os.lstat(req_file)
-            except OSError as e:
-                raise TrivyVulnInvalidInput("requirements.txt bilgisi alınamadı") from e
-            if not stat.S_ISREG(st_req.st_mode):
-                raise TrivyVulnInvalidInput("requirements.txt normal bir dosya olmalı.")
-            if st_req.st_size > 1_000_000:
-                raise TrivyVulnInvalidInput("requirements.txt 1.000.000 baytı aşıyor.")
-
-            # Copy with O_NOFOLLOW and fstat validation
-            fd = None
-            try:
-                fd = os.open(req_file, os.O_RDONLY | os.O_NOFOLLOW)
-                try:
-                    st2 = os.fstat(fd)
-                    if not stat.S_ISREG(st2.st_mode):
-                        raise TrivyVulnInvalidInput("requirements.txt lstat sonrasında değişti")
-                    if st2.st_size != st_req.st_size:
-                        raise TrivyVulnInvalidInput("requirements.txt boyutu lstat sonrasında değişti")
-                    data = bytearray()
-                    remaining = st_req.st_size
-                    while remaining > 0:
-                        chunk = os.read(fd, min(65536, remaining))
-                        if not chunk:
-                            break
-                        data.extend(chunk)
-                        remaining -= len(chunk)
-                    if len(data) != st_req.st_size:
-                        raise TrivyVulnInvalidInput("requirements.txt okuması eksik kaldı")
-                    dest = input_dir / "requirements.txt"
-                    dest.write_bytes(bytes(data))
-                finally:
-                    if fd is not None:
-                        os.close(fd)
-                        fd = None
-            except OSError as e:
-                if fd is not None:
-                    os.close(fd)
-                    fd = None
-                raise TrivyVulnInvalidInput("requirements.txt okunamadı") from e
+                data = _read_root_project_file(
+                    src_root,
+                    "requirements.txt",
+                    1_000_000,
+                    allow_empty=True,
+                )
+            except ProjectTreeError as exc:
+                raise TrivyVulnInvalidInput(
+                    "Kök düzeydeki requirements.txt en fazla 1.000.000 baytlık normal bir dosya olmalı."
+                ) from exc
+            (input_dir / "requirements.txt").write_bytes(data)
 
             # Prepare output report file
             report_file = snapshot_root / "report.json"

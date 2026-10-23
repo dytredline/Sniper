@@ -6,12 +6,12 @@ import json
 import os
 import re
 import signal
-import stat
 import subprocess
 import tempfile
 from pathlib import Path
 
 from project_analyzer import validate_project_path
+from project_tree import ProjectTree, ProjectTreeError
 from tool_report_trivy import parse_trivy_native_json_summary
 from trivy_config_active import (
     TrivyConfigExecutionError,
@@ -25,38 +25,36 @@ MAX_REPORT_BYTES = 2_000_000
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,123}\.ya?ml\Z")
 
 
-def _read_manifest(project_root: Path, manifest_name: str) -> bytes:
+def _read_manifest(project_root: Path | ProjectTree, manifest_name: str) -> bytes:
     if not isinstance(manifest_name, str) or not _NAME.fullmatch(manifest_name) or ".." in manifest_name:
         raise ValueError("manifest_name kök düzeyde bir YAML dosya adı olmalı.")
-    path = project_root / manifest_name
+    owned_tree = not isinstance(project_root, ProjectTree)
+    tree = ProjectTree(project_root) if owned_tree else project_root
     try:
-        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-    except OSError as exc:
-        raise ValueError("manifest_name normal bir yerel dosyayı göstermeli.") from exc
-    try:
-        before = os.fstat(fd)
-        if not stat.S_ISREG(before.st_mode) or not 0 < before.st_size <= MAX_MANIFEST_BYTES:
+        tree.open()
+        walker = tree.walk(reject_unsafe=False)
+        try:
+            entry = next(walker)
+        finally:
+            walker.close()
+        source = next((item for item in entry.files if item.path.as_posix() == manifest_name), None)
+        if source is None:
+            raise ValueError("manifest_name normal bir yerel dosyayı göstermeli.")
+        if not 0 < source.size <= MAX_MANIFEST_BYTES:
             raise ValueError("Manifest en fazla 1 MB büyüklüğünde, boş olmayan normal bir dosya olmalı.")
-        data = bytearray()
-        while len(data) <= MAX_MANIFEST_BYTES:
-            chunk = os.read(fd, min(65536, MAX_MANIFEST_BYTES + 1 - len(data)))
-            if not chunk:
-                break
-            data.extend(chunk)
-        after = os.fstat(fd)
-        if len(data) != before.st_size or (
-            before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns
-        ) != (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns):
-            raise ValueError("Manifest hazırlama sırasında değişti.")
-        return bytes(data)
+        return tree.read_bytes(source, MAX_MANIFEST_BYTES)
+    except ProjectTreeError as exc:
+        raise ValueError("Manifest hazırlama sırasında değişti.") from exc
     finally:
-        os.close(fd)
+        if owned_tree:
+            tree.close()
 
 
 def run_local_trivy_kubernetes(project_path: str, manifest_name: str) -> dict:
     """Scan one explicit root-level YAML file; return only aggregate findings."""
     project_root = validate_project_path(project_path, allowed_roots=(Path.home().resolve(),))
-    source = _read_manifest(project_root, manifest_name)
+    with ProjectTree(project_root) as tree:
+        source = _read_manifest(tree, manifest_name)
     binary = _trusted_binary()
     lock = _scan_lock()
     try:
@@ -145,12 +143,13 @@ def run_local_trivy_kubernetes_batch(project_path: str, manifest_names: list[str
 
     staged_total = 0
     staged_files = []
-    for name in manifest_names:
-        source = _read_manifest(project_root, name)
-        staged_total += len(source)
-        if staged_total > 8_000_000:
-            raise ValueError("Hazırlanan toplam manifest boyutu 8 MB'ı aştı.")
-        staged_files.append((name, source))
+    with ProjectTree(project_root) as tree:
+        for name in manifest_names:
+            source = _read_manifest(tree, name)
+            staged_total += len(source)
+            if staged_total > 8_000_000:
+                raise ValueError("Hazırlanan toplam manifest boyutu 8 MB'ı aştı.")
+            staged_files.append((name, source))
 
     binary = _trusted_binary()
     lock = _scan_lock()

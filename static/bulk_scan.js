@@ -23,6 +23,17 @@
     return node;
   }
 
+  function launcherIcon(symbol) {
+    const icon = el("span", { className: "project-audit-icon", "aria-hidden": "true" });
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "ui-symbol");
+    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    use.setAttribute("href", `/static/ui-icons.svg#${symbol}`);
+    svg.append(use);
+    icon.append(svg);
+    return icon;
+  }
+
   async function call(path, body) {
     const options = body === undefined ? {} : {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirm: true, ...body }),
@@ -144,7 +155,7 @@
   function buildPanel() {
     const section = el("section", { className: "panel project-audit-launcher bulk-scan-launcher", id: PANEL_ID });
     const intro = el("div");
-    intro.append(el("span", { className: "project-audit-icon", "aria-hidden": "true" }, "⧉"));
+    intro.append(launcherIcon("repositories"));
     const text = el("p");
     text.append(el("b", {}, "Bir klasördeki tüm depoları tara"));
     text.append(el("small", {}, "Kök dizindeki git depoları ve proje kökleri bulunur (sembolik bağ izlenmez, ağa çıkılmaz). "

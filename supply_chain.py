@@ -16,10 +16,12 @@ from __future__ import annotations
 import json
 import os
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+import stat
 from typing import Any, Iterable
 from urllib.parse import urlsplit
 
+from project_tree import ProjectFile, ProjectTree, ProjectTreeError
 from safe_file_read import read_text_bounded
 
 CATEGORY = "supply_chain"
@@ -69,13 +71,23 @@ def _finding(severity: str, title: str, file: str, evidence: str, recommendation
             "evidence": evidence, "recommendation": recommendation, "reference": reference}
 
 
-def _read_json(path: Path, limit: int) -> Any:
+def _read_json(
+    path: Path,
+    limit: int,
+    *,
+    project_tree: ProjectTree | None = None,
+    project_file: ProjectFile | None = None,
+) -> Any:
     try:
-        text = read_text_bounded(path, limit)
+        if project_tree is None:
+            text = read_text_bounded(path, limit)
+        else:
+            target: str | ProjectFile = project_file or path.relative_to(project_tree.root).as_posix()
+            text = project_tree.read_text(target, limit)
         if text is None:
             return None
         return json.loads(text)
-    except (OSError, ValueError, RecursionError):
+    except (OSError, ValueError, RecursionError, ProjectTreeError):
         return None
 
 
@@ -96,20 +108,27 @@ def _names(items: Iterable[str], limit: int = 10) -> str:
 # 1) Kötü amaçlı paketler
 # ---------------------------------------------------------------------------------------------
 
-def malicious_findings(root: Path, *, osv_root: Path | None = None) -> tuple[list[dict[str, Any]], list[str]]:
+def malicious_findings(
+    root: Path,
+    *,
+    osv_root: Path | None = None,
+    project_tree: ProjectTree | None = None,
+) -> tuple[list[dict[str, Any]], list[str]]:
     import dependency_security
     import osv_offline
 
     warnings: list[str] = []
     try:
         _root, components, _skipped = dependency_security.discover_inventory(
-            str(root), allowed_roots=(root.parent,), lenient=True, warnings=warnings)  # kök zaten doğrulandı
+            str(root), allowed_roots=(root.parent,), lenient=True, warnings=warnings,
+            project_tree=project_tree)  # kök zaten doğrulandı
     except Exception as exc:  # noqa: BLE001 — envanter kurulamazsa denetim atlanır
         return [], [f"Kötü amaçlı paket denetimi atlandı: {type(exc).__name__}"]
     if not components:
         return [], []
     result = osv_offline.malicious_components(components, root=osv_root)
-    lock = _read_json(root / "package-lock.json", MAX_LOCK_BYTES) if result["matches"] else None
+    lock = _read_json(root / "package-lock.json", MAX_LOCK_BYTES, project_tree=project_tree) \
+        if result["matches"] else None
     hosts = _lock_hosts(lock) if isinstance(lock, dict) else {}
     out = []
     for match in result["matches"]:
@@ -157,66 +176,126 @@ def suspicious_hits(text: str) -> list[str]:
     return [label for label, pattern in SUSPICIOUS_PATTERNS if pattern.search(text)]
 
 
-def _node_module_dirs(node_modules: Path) -> Iterable[Path]:
+_DIR_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+
+
+def _directory_entries(directory_fd: int) -> list[tuple[str, os.stat_result]]:
+    try:
+        with os.scandir(directory_fd) as entries:
+            observed = []
+            for entry in entries:
+                try:
+                    observed.append((entry.name, entry.stat(follow_symlinks=False)))
+                except OSError:
+                    continue
+            return sorted(observed, key=lambda item: item[0])
+    except OSError:
+        return []
+
+
+def _open_child_directory(directory_fd: int, name: str, expected: os.stat_result) -> int | None:
+    try:
+        if not stat.S_ISDIR(expected.st_mode):
+            return None
+        child_fd = os.open(name, _DIR_FLAGS, dir_fd=directory_fd)
+        actual = os.fstat(child_fd)
+        if not stat.S_ISDIR(actual.st_mode) or (actual.st_dev, actual.st_ino) != (expected.st_dev, expected.st_ino):
+            os.close(child_fd)
+            return None
+        return child_fd
+    except OSError:
+        return None
+
+
+def _node_module_dirs(project_tree: ProjectTree) -> Iterable[PurePosixPath]:
     count = 0
     try:
-        entries = sorted(node_modules.iterdir())
+        node_modules_fd = os.open("node_modules", _DIR_FLAGS, dir_fd=project_tree.fileno())
     except OSError:
         return
-    for entry in entries:
-        if count >= MAX_NODE_MODULES:
-            return
-        if entry.is_symlink() or not entry.is_dir() or entry.name.startswith("."):
-            continue
-        if entry.name.startswith("@"):
-            try:
-                scoped = sorted(entry.iterdir())
-            except OSError:
+    try:
+        for entry_name, entry_info in _directory_entries(node_modules_fd):
+            if count >= MAX_NODE_MODULES:
+                return
+            if entry_name.startswith("."):
                 continue
-            for sub in scoped:
-                if not sub.is_symlink() and sub.is_dir():
-                    count += 1
-                    yield sub
-        else:
-            count += 1
-            yield entry
+            entry_fd = _open_child_directory(node_modules_fd, entry_name, entry_info)
+            if entry_fd is None:
+                continue
+            if entry_name.startswith("@"):
+                try:
+                    for sub_name, sub_info in _directory_entries(entry_fd):
+                        if count >= MAX_NODE_MODULES:
+                            return
+                        sub_fd = _open_child_directory(entry_fd, sub_name, sub_info)
+                        if sub_fd is None:
+                            continue
+                        os.close(sub_fd)
+                        count += 1
+                        yield PurePosixPath("node_modules") / entry_name / sub_name
+                finally:
+                    os.close(entry_fd)
+            else:
+                os.close(entry_fd)
+                count += 1
+                yield PurePosixPath("node_modules") / entry_name
+    finally:
+        os.close(node_modules_fd)
 
 
-def _hook_file_text(package_dir: Path, command: str) -> str:
+def _hook_file_text(project_tree: ProjectTree, package_dir: PurePosixPath, command: str) -> str:
     """Betik ``node dosya.js`` çağırıyorsa paket içindeki o dosyanın metni (paket dışına çıkılmaz)."""
     match = _NODE_FILE_RE.search(command)
     if not match:
         return ""
-    target = (package_dir / match.group(1)).resolve()
-    try:
-        target.relative_to(package_dir.resolve())
-    except (OSError, ValueError):
+    raw = match.group(1).replace("\\", "/")
+    parts = PurePosixPath(raw).parts
+    if not parts or raw.startswith("/") or any(part in ("", ".", "..") for part in parts):
         return ""
-    return read_text_bounded(target, MAX_HOOK_FILE_BYTES) or ""
+    try:
+        return project_tree.read_text(package_dir.joinpath(*parts).as_posix(), MAX_HOOK_FILE_BYTES) or ""
+    except ProjectTreeError:
+        return ""
 
 
 def _find_files(root: Path, filename: str, skip_dirs: Iterable[str] = (), *, max_depth: int = 6,
-                max_dirs: int = 3000) -> list[Path]:
-    """Ad eşleşen dosyalar; node_modules, gizli ve atlanan dizinlere inilmez, sembolik bağ izlenmez (sınırlı)."""
+                max_dirs: int = 3000, project_tree: ProjectTree) -> list[ProjectFile]:
+    """Sabit proje descriptor'ünde ad eşleşen düzenli dosyalar (sınırlı)."""
+    del root
     skip = set(skip_dirs) | {"node_modules"}
-    found: list[Path] = []
+    found: list[ProjectFile] = []
     visited = 0
-    for current, dirs, files in os.walk(root, followlinks=False):
-        visited += 1
-        depth = len(Path(current).relative_to(root).parts)
-        dirs[:] = sorted(d for d in dirs if d not in skip and not d.startswith(".") and depth < max_depth)
-        if filename in files and not (Path(current) / filename).is_symlink():
-            found.append(Path(current) / filename)
-        if visited >= max_dirs:
-            break
-    return sorted(found)
+    try:
+        for walked in project_tree.walk(
+            skip_dirs=skip,
+            max_entries=min(10_000_000, max(100_000, max_dirs * 100)),
+            reject_unsafe=False,
+        ):
+            parts = () if walked.directory.as_posix() == "." else walked.directory.parts
+            if len(parts) > max_depth or any(part.startswith(".") for part in parts):
+                continue
+            visited += 1
+            found.extend(observed for observed in walked.files if observed.name == filename)
+            if visited >= max_dirs:
+                break
+    except ProjectTreeError:
+        pass
+    return sorted(found, key=lambda observed: observed.path.as_posix())
 
 
-def install_script_findings(root: Path, skip_dirs: Iterable[str] = ()) -> list[dict[str, Any]]:
+def install_script_findings(root: Path, skip_dirs: Iterable[str] = (), *,
+                            project_tree: ProjectTree | None = None) -> list[dict[str, Any]]:
+    root = Path(root).absolute()
+    if project_tree is None:
+        try:
+            with ProjectTree(root) as owned_tree:
+                return install_script_findings(root, skip_dirs, project_tree=owned_tree)
+        except ProjectTreeError:
+            return []
     out: list[dict[str, Any]] = []
-    for lock_path in _find_files(root, "package-lock.json", skip_dirs)[:20]:
-        rel = lock_path.relative_to(root)
-        lock = _read_json(lock_path, MAX_LOCK_BYTES)
+    for lock_file in _find_files(root, "package-lock.json", skip_dirs, project_tree=project_tree)[:20]:
+        rel = lock_file.path
+        lock = _read_json(root / rel, MAX_LOCK_BYTES, project_tree=project_tree, project_file=lock_file)
         if not isinstance(lock, dict):
             continue
         names = _lock_install_scripts(lock)
@@ -228,32 +307,31 @@ def install_script_findings(root: Path, skip_dirs: Iterable[str] = ()) -> list[d
                 "kullanıp gerçekten gereken paketlere izin verin (pnpm `onlyBuiltDependencies`, Yarn `enableScripts`); "
                 "yeni eklenen betikli paketleri gözden geçirin.",
                 "CWE-829"))
-    node_modules = root / "node_modules"
-    if node_modules.is_dir() and not node_modules.is_symlink():
-        for package_dir in _node_module_dirs(node_modules):
-            manifest = _read_json(package_dir / "package.json", MAX_PACKAGE_JSON_BYTES)
-            scripts = manifest.get("scripts") if isinstance(manifest, dict) else None
-            if not isinstance(scripts, dict):
-                continue
-            hooks = {hook: str(scripts[hook])[:4000] for hook in INSTALL_HOOKS if isinstance(scripts.get(hook), str)}
-            if not hooks:
-                continue
-            hits: list[str] = []
-            for command in hooks.values():
-                hits += suspicious_hits(command)
-                hits += suspicious_hits(_hook_file_text(package_dir, command))
-            if not hits:
-                continue
-            name = str(manifest.get("name") or package_dir.name)[:214]
-            version = str(manifest.get("version") or "")[:64]
-            rel = (package_dir / "package.json").relative_to(root).as_posix()
-            out.append(_finding(
-                "high", f"Şüpheli npm kurulum betiği: {name} {version}".strip(), rel,
-                f"{', '.join(sorted(hooks))} betiğinde: {'; '.join(sorted(set(hits)))}.",
-                "Paketi kaldırın ya da sürümünü doğrulanmış güvenli bir sürüme sabitleyin; betiğin ne yaptığını inceleyin. "
-                "Paket zaten kurulduysa makinedeki kimlik bilgilerini ve belirteçleri döndürün. Kurulumları "
-                "`--ignore-scripts` ile yapın.",
-                "CWE-506"))
+    for package_dir in _node_module_dirs(project_tree):
+        manifest_path = package_dir / "package.json"
+        manifest = _read_json(root / manifest_path, MAX_PACKAGE_JSON_BYTES, project_tree=project_tree)
+        scripts = manifest.get("scripts") if isinstance(manifest, dict) else None
+        if not isinstance(scripts, dict):
+            continue
+        hooks = {hook: str(scripts[hook])[:4000] for hook in INSTALL_HOOKS if isinstance(scripts.get(hook), str)}
+        if not hooks:
+            continue
+        hits: list[str] = []
+        for command in hooks.values():
+            hits += suspicious_hits(command)
+            hits += suspicious_hits(_hook_file_text(project_tree, package_dir, command))
+        if not hits:
+            continue
+        name = str(manifest.get("name") or package_dir.name)[:214]
+        version = str(manifest.get("version") or "")[:64]
+        rel = manifest_path.as_posix()
+        out.append(_finding(
+            "high", f"Şüpheli npm kurulum betiği: {name} {version}".strip(), rel,
+            f"{', '.join(sorted(hooks))} betiğinde: {'; '.join(sorted(set(hits)))}.",
+            "Paketi kaldırın ya da sürümünü doğrulanmış güvenli bir sürüme sabitleyin; betiğin ne yaptığını inceleyin. "
+            "Paket zaten kurulduysa makinedeki kimlik bilgilerini ve belirteçleri döndürün. Kurulumları "
+            "`--ignore-scripts` ile yapın.",
+            "CWE-506"))
     return out
 
 
@@ -314,19 +392,53 @@ def _lock_hosts(lock: dict[str, Any]) -> dict[str, set[str]]:
     return hosts
 
 
-def dependency_confusion_findings(root: Path) -> list[dict[str, Any]]:
+def _regular_exists(project_tree: ProjectTree, relative: str) -> bool:
+    try:
+        # ``truncate=True`` ve sıfır bütçe içeriği okumadan normal dosya/no-follow kontrolü yapar.
+        project_tree.read_bytes(relative, 0, allow_empty=True, truncate=True)
+        return True
+    except ProjectTreeError:
+        return False
+
+
+def _root_files(project_tree: ProjectTree) -> tuple[ProjectFile, ...]:
+    walker = project_tree.walk(reject_unsafe=False)
+    try:
+        first = next(walker, None)
+        return first.files if first is not None and first.directory.as_posix() == "." else ()
+    except ProjectTreeError:
+        return ()
+    finally:
+        walker.close()
+
+
+def dependency_confusion_findings(root: Path, *,
+                                  project_tree: ProjectTree | None = None) -> list[dict[str, Any]]:
+    root = Path(root).absolute()
+    if project_tree is None:
+        try:
+            with ProjectTree(root) as owned_tree:
+                return dependency_confusion_findings(root, project_tree=owned_tree)
+        except ProjectTreeError:
+            return []
     out: list[dict[str, Any]] = []
-    configs = [rel for rel in REGISTRY_CONFIG_FILES if (root / rel).is_file() and not (root / rel).is_symlink()]
-    root_manifest = _read_json(root / "package.json", MAX_PACKAGE_JSON_BYTES)
+    configs = [rel for rel in REGISTRY_CONFIG_FILES if _regular_exists(project_tree, rel)]
+    root_manifest = _read_json(root / "package.json", MAX_PACKAGE_JSON_BYTES, project_tree=project_tree)
     prefix = _company_prefix(root_manifest)
     direct: set[str] = set()
     if isinstance(root_manifest, dict):
         for field in ("dependencies", "devDependencies", "optionalDependencies", "peerDependencies"):
             if isinstance(root_manifest.get(field), dict):
                 direct.update(str(n) for n in root_manifest[field])
-    for req in sorted(root.glob("requirements*.txt"))[:10]:
-        text = read_text_bounded(req, MAX_LOCK_BYTES)
-        if text is None:
+    requirements = sorted(
+        (observed for observed in _root_files(project_tree)
+         if observed.name.startswith("requirements") and observed.name.endswith(".txt")),
+        key=lambda observed: observed.name,
+    )[:10]
+    for req in requirements:
+        try:
+            text = project_tree.read_text(req, MAX_LOCK_BYTES)
+        except ProjectTreeError:
             continue
         for line in text.splitlines()[:5000]:
             match = re.match(r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)", line)
@@ -342,7 +454,7 @@ def dependency_confusion_findings(root: Path) -> list[dict[str, Any]]:
             "herkese açık depoda aynı adı rezerve edin. pip'te `--extra-index-url` yerine tek iç dizin (proxy) kullanın; "
             "Maven/NuGet'te depo sırasını ve kaynak eşlemesini (package source mapping) sabitleyin.",
             "CWE-427"))
-    lock = _read_json(root / "package-lock.json", MAX_LOCK_BYTES)
+    lock = _read_json(root / "package-lock.json", MAX_LOCK_BYTES, project_tree=project_tree)
     if isinstance(lock, dict):
         hosts = _lock_hosts(lock)
         all_hosts = {h for hs in hosts.values() for h in hs}
@@ -374,17 +486,21 @@ def dependency_confusion_findings(root: Path) -> list[dict[str, Any]]:
 def analyze(root: Path, *, skip_dirs: Iterable[str] = (), osv_root: Path | None = None,
             malicious: bool | None = None) -> dict[str, Any]:
     """Proje analizi kancası: bulgular + özet. ``malicious`` None ise SNIPER_SUPPLY_CHAIN_OSV (varsayılan açık)."""
-    root = Path(root)
+    root = Path(root).absolute()
     if malicious is None:
         malicious = os.environ.get("SNIPER_SUPPLY_CHAIN_OSV", "1") != "0"
     findings: list[dict[str, Any]] = []
     warnings: list[str] = []
-    if malicious:
-        mal, mal_warnings = malicious_findings(root, osv_root=osv_root)
-        findings += mal
-        warnings += mal_warnings
-    findings += install_script_findings(root, skip_dirs)
-    findings += dependency_confusion_findings(root)
+    try:
+        with ProjectTree(root) as project_tree:
+            if malicious:
+                mal, mal_warnings = malicious_findings(root, osv_root=osv_root, project_tree=project_tree)
+                findings += mal
+                warnings += mal_warnings
+            findings += install_script_findings(root, skip_dirs, project_tree=project_tree)
+            findings += dependency_confusion_findings(root, project_tree=project_tree)
+    except ProjectTreeError:
+        warnings.append("Tedarik zinciri denetimi atlandı: proje ağacı güvenli biçimde okunamadı.")
     return {
         "findings": findings,
         "summary": {

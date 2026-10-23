@@ -14,6 +14,7 @@ from typing import Any
 
 from process_group_runner import run_in_process_group
 from project_analyzer import validate_project_path
+from project_tree import ProjectTree, ProjectTreeError
 from tool_report_npm_audit import parse_npm_audit_v2_summary
 from tool_pins import open_pinned
 from verified_exec import VerificationError
@@ -67,33 +68,21 @@ def _pinned_runtime(path_key: str, sha_key: str, *, executable: bool) -> Path:
 
 
 def _read_lockfile(root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
-    source = root / "package-lock.json"
     try:
-        before = os.lstat(source)
-    except OSError as exc:
-        raise ValueError("Kök package-lock.json eksik veya okunamıyor.") from exc
-    if not stat.S_ISREG(before.st_mode) or before.st_size > MAX_LOCK_BYTES:
-        raise ValueError("Kök package-lock.json en fazla 5 MB büyüklüğünde normal bir dosya olmalı.")
-    try:
-        fd = os.open(source, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-    except OSError as exc:
+        with ProjectTree(root) as tree:
+            walker = tree.walk(reject_unsafe=False)
+            try:
+                entry = next(walker)
+            finally:
+                walker.close()
+            source = next((item for item in entry.files if item.path.as_posix() == "package-lock.json"), None)
+            if source is None:
+                raise ValueError("Kök package-lock.json eksik veya anlık görüntü sırasında değişti.")
+            if source.size > MAX_LOCK_BYTES:
+                raise ValueError("Kök package-lock.json en fazla 5 MB büyüklüğünde normal bir dosya olmalı.")
+            raw = tree.read_bytes(source, MAX_LOCK_BYTES, allow_empty=True)
+    except ProjectTreeError as exc:
         raise ValueError("Kök package-lock.json güvenli biçimde açılamıyor.") from exc
-    try:
-        after = os.fstat(fd)
-        if not stat.S_ISREG(after.st_mode) or (after.st_dev, after.st_ino, after.st_size) != (
-            before.st_dev, before.st_ino, before.st_size
-        ):
-            raise ValueError("Kök package-lock.json anlık görüntü sırasında değişti.")
-        raw = bytearray()
-        while len(raw) <= MAX_LOCK_BYTES:
-            chunk = os.read(fd, min(65536, MAX_LOCK_BYTES + 1 - len(raw)))
-            if not chunk:
-                break
-            raw.extend(chunk)
-        if len(raw) != before.st_size or len(raw) > MAX_LOCK_BYTES:
-            raise ValueError("Kök package-lock.json anlık görüntü sırasında değişti.")
-    finally:
-        os.close(fd)
     try:
         lock = json.loads(raw)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:

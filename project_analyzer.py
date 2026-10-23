@@ -7,6 +7,8 @@ import io
 import json
 import os
 from pathlib import Path
+from pathlib import PurePosixPath
+import posixpath
 import re
 import threading
 import time
@@ -24,6 +26,7 @@ import project_progress
 import scan_scope
 import taint_flow
 import threat_model
+from project_tree import ProjectFile, ProjectTree, ProjectTreeError
 
 
 
@@ -170,9 +173,6 @@ def _iter_files(root: Path, max_files: int = MAX_FILES, skipped: dict[str, int] 
 
     ``scope.skipped_only``: yalnız varsayılan kapsamın atlayacağı dosyalar (isteğe bağlı dizinler, üretilmiş,
     büyük, bütçe dışı, UTF-8 olmayan) döner; normal taramada incelenenler ``already_scanned`` olarak sayılır."""
-    import os
-    import stat
-    from pathlib import Path
     counts = skipped if skipped is not None else {}
     scope = scope or scan_scope.current()
     skip_dirs = scope.skip_dirs
@@ -183,136 +183,137 @@ def _iter_files(root: Path, max_files: int = MAX_FILES, skipped: dict[str, int] 
         if size:
             counts[key + "_bytes"] = counts.get(key + "_bytes", 0) + size
 
-    # (yol, tür, boyut, varsayılan_atlardı); tür: secret_file | manifest | source
-    candidates: list[tuple[Path, str, int, bool]] = []
-    for current, directories, files in os.walk(root, followlinks=False):
-        kept_dirs = []
-        for name in directories:
-            if (Path(current) / name).is_symlink():
-                continue
-            group = scan_scope.dir_group(name)
-            if name.casefold() in skip_dirs:
-                if group:
-                    bump("dir_" + group)
-                continue
-            if group:
-                bump("included_dir_" + group)  # varsayılanda atlanırdı; kapsam seçeneğiyle dahil edildi
-            kept_dirs.append(name)
-        directories[:] = sorted(kept_dirs)
-        rel_dir = Path(current).relative_to(root).parts
-        in_default_skipped_dir = any(part.casefold() in scan_scope.DEFAULT_SKIP_DIRS for part in rel_dir)
-        for name in sorted(files):
-            path = Path(current) / name
-            if path.is_symlink():
-                continue
-            normalized = name.casefold()
-            is_secret = normalized == ".env" or normalized.startswith(".env.")
-            if not is_secret:
-                is_containerfile = _is_containerfile_name(normalized)
-                is_server_config = normalized == ".htaccess" or normalized in {"nginx.conf", "apache2.conf", "httpd.conf"}
-                if (
-                    path.suffix.casefold() not in SOURCE_EXTENSIONS
-                    and normalized not in MANIFEST_NAMES
-                    and not is_containerfile
-                    and not is_server_config
+    # (mantıksal_yol, descriptor ile gözlenen dosya, tür, boyut, varsayılan_atlardı)
+    # tür: secret_file | manifest | source
+    candidates: list[tuple[Path, ProjectFile, str, int, bool]] = []
+
+    try:
+        with ProjectTree(root) as tree:
+            walk_limit = min(10_000_000, max(100_000, max_files * 100))
+            for walked in tree.walk(
+                skip_dirs=skip_dirs,
+                max_entries=walk_limit,
+                reject_unsafe=False,
+            ):
+                for skipped_dir in walked.skipped_directories:
+                    group = scan_scope.dir_group(skipped_dir.name)
+                    if group:
+                        bump("dir_" + group)
+                for included_dir in walked.directories:
+                    group = scan_scope.dir_group(included_dir.name)
+                    if group:
+                        bump("included_dir_" + group)
+
+                rel_dir = () if walked.directory.as_posix() == "." else walked.directory.parts
+                in_default_skipped_dir = any(
+                    part.casefold() in scan_scope.DEFAULT_SKIP_DIRS for part in rel_dir
+                )
+                for observed in walked.files:
+                    path = root / observed.path
+                    normalized = observed.name.casefold()
+                    is_secret = normalized == ".env" or normalized.startswith(".env.")
+                    if not is_secret:
+                        is_containerfile = _is_containerfile_name(normalized)
+                        is_server_config = normalized == ".htaccess" or normalized in {
+                            "nginx.conf", "apache2.conf", "httpd.conf",
+                        }
+                        if (
+                            path.suffix.casefold() not in SOURCE_EXTENSIONS
+                            and normalized not in MANIFEST_NAMES
+                            and not is_containerfile
+                            and not is_server_config
+                        ):
+                            continue
+                    if is_secret:
+                        candidates.append((path, observed, "secret_file", 0, in_default_skipped_dir))
+                        continue
+                    kind = "manifest" if normalized in MANIFEST_NAMES else "source"
+                    generated = kind == "source" and normalized.endswith(GENERATED_SUFFIXES)
+                    if generated and not scope.include_generated:
+                        bump("generated", observed.size)
+                        continue
+                    if observed.size > max_file_bytes:
+                        bump("large", observed.size)
+                        continue
+                    default_skips = in_default_skipped_dir or generated or observed.size > MAX_FILE_BYTES
+                    candidates.append((path, observed, kind, observed.size, default_skips))
+
+            def budget_order(items):
+                # Önce bildirimler ve .env işaretleri, sonra kaynaklar küçükten büyüğe (en büyükler atlanır).
+                return sorted(items, key=lambda item: (item[2] == "source", item[3], str(item[0])))
+
+            recheck_encoding: set[Path] = set()
+            if scope.skipped_only:
+                # Varsayılan kapsamın bütçesi dışında kalan en büyük kaynaklar da "atlanmış" sayılır.
+                previously: set[Path] = set()
+                used_bytes = 0
+                for path, _observed, _kind, size, _default_skips in budget_order(
+                    [candidate for candidate in candidates if not candidate[4]]
                 ):
+                    if used_bytes + size <= MAX_TOTAL_BYTES:
+                        used_bytes += size
+                        previously.add(path)
+                if scope.include_non_utf8:
+                    recheck_encoding = {
+                        path for path in previously if not path.name.casefold().startswith(".env")
+                    }
+                counts["already_scanned"] = len(previously) - len(recheck_encoding)
+                candidates = [
+                    candidate for candidate in candidates
+                    if candidate[0] not in previously or candidate[0] in recheck_encoding
+                ]
+
+            if scope.only_paths is not None:
+                # Yalnız değişenler: bulgu yalnız bu dosyalar için üretilir; taint bağlamı tüm projeden gelir.
+                before = len(candidates)
+                candidates = [
+                    candidate for candidate in candidates
+                    if candidate[0].relative_to(root).as_posix() in scope.only_paths
+                ]
+                counts["unchanged"] = before - len(candidates)
+
+            if len(candidates) - len(recheck_encoding) > max_files:
+                raise ProjectRejected(
+                    f"Proje analiz sınırını aşıyor ({len(candidates)} dosya > {max_files} dosya sınırı). "
+                    "Kapsam seçeneklerinden dosya sınırını yükseltin veya dahil edilen dizin gruplarını azaltın."
+                )
+            keep: set[Path] = set()
+            used_bytes = 0
+            for path, _observed, _kind, size, _default_skips in budget_order(candidates):
+                if used_bytes + size > max_total_bytes:
+                    bump("budget", size)
                     continue
-            try:
-                st = os.stat(path, follow_symlinks=False)
-            except OSError:
-                continue
-            if not stat.S_ISREG(st.st_mode):
-                continue  # düzenli olmayan dosyalar bütçe tüketmez
-            if is_secret:
-                candidates.append((path, "secret_file", 0, in_default_skipped_dir))
-                continue
-            kind = "manifest" if normalized in MANIFEST_NAMES else "source"
-            generated = kind == "source" and normalized.endswith(GENERATED_SUFFIXES)
-            if generated and not scope.include_generated:
-                bump("generated", st.st_size)
-                continue
-            if st.st_size > max_file_bytes:
-                bump("large", st.st_size)
-                continue
-            default_skips = in_default_skipped_dir or generated or st.st_size > MAX_FILE_BYTES
-            candidates.append((path, kind, st.st_size, default_skips))
-
-    def budget_order(items):
-        # Önce bildirimler ve .env işaretleri, sonra kaynaklar küçükten büyüğe (en büyükler atlanır).
-        return sorted(items, key=lambda item: (item[1] == "source", item[2], str(item[0])))
-
-    recheck_encoding: set[Path] = set()
-    if scope.skipped_only:
-        # Varsayılan kapsamın bütçesi dışında kalan en büyük kaynaklar da "atlanmış" sayılır.
-        previously: set[Path] = set()
-        used_bytes = 0
-        for path, kind, size, default_skips in budget_order([c for c in candidates if not c[3]]):
-            if used_bytes + size <= MAX_TOTAL_BYTES:
                 used_bytes += size
-                previously.add(path)
-        if scope.include_non_utf8:
-            recheck_encoding = {path for path in previously if not path.name.casefold().startswith(".env")}
-        counts["already_scanned"] = len(previously) - len(recheck_encoding)
-        candidates = [c for c in candidates if c[0] not in previously or c[0] in recheck_encoding]
+                keep.add(path)
+            if stats is not None:
+                stats["total"] = len(keep)
+            project_progress.report("files", 0, len(keep), force=True)
 
-    if scope.only_paths is not None:
-        # Yalnız değişenler (changed_scan): bulgu yalnız bu dosyalar için üretilir; taint bağlamı tüm projeden gelir.
-        before = len(candidates)
-        candidates = [c for c in candidates if c[0].relative_to(root).as_posix() in scope.only_paths]
-        counts["unchanged"] = before - len(candidates)
-
-    # İstenen dosya sayısı sınırı (CLI --limit / API) bilinçli bir üst sınırdır: aşılırsa reddedilir.
-    if len(candidates) - len(recheck_encoding) > max_files:
-        raise ProjectRejected(
-            f"Proje analiz sınırını aşıyor ({len(candidates)} dosya > {max_files} dosya sınırı). "
-            "Kapsam seçeneklerinden dosya sınırını yükseltin veya dahil edilen dizin gruplarını azaltın."
-        )
-    keep: set[Path] = set()
-    used_bytes = 0
-    for path, kind, size, _default_skips in budget_order(candidates):
-        if used_bytes + size > max_total_bytes:
-            bump("budget", size)
-            continue
-        used_bytes += size
-        keep.add(path)
-    if stats is not None:
-        stats["total"] = len(keep)  # ilerleme yüzdesi için (proje analizi iş kuyruğunda)
-    project_progress.report("files", 0, len(keep), force=True)
-
-    for path, kind, size, _default_skips in candidates:  # yürüyüş sırası korunur
-        if path not in keep:
-            continue
-        if kind == "secret_file":
-            yield path, None, "secret_file"
-            continue
-        try:
-            fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
-        except OSError:
-            continue
-        try:
-            st = os.fstat(fd)
-            if not stat.S_ISREG(st.st_mode) or st.st_size > max_file_bytes:
-                continue  # stat ile okuma arasında değişti
-            try:
-                raw = _read_fd(fd, st.st_size)
-            except OSError:
-                continue
-            try:
-                text = raw.decode("utf-8")
-            except UnicodeDecodeError:
-                if not scope.include_non_utf8:
-                    bump("encoding", st.st_size)
+            for path, observed, kind, _size, _default_skips in candidates:
+                if path not in keep:
                     continue
-                # Satır numaraları korunur; çözülemeyen baytlar U+FFFD olur.
-                text = raw.decode("utf-8", errors="replace")
-                bump("decoded_lossy")
-            else:
-                if path in recheck_encoding:
-                    counts["already_scanned"] = counts.get("already_scanned", 0) + 1
-                    continue  # normal taramada zaten incelendi
-        finally:
-            os.close(fd)
-        yield path, text, kind
+                if kind == "secret_file":
+                    yield path, None, "secret_file", tree
+                    continue
+                try:
+                    raw = tree.read_bytes(observed, max_file_bytes, allow_empty=True)
+                except ProjectTreeError:
+                    continue
+                try:
+                    text = raw.decode("utf-8")
+                except UnicodeDecodeError:
+                    if not scope.include_non_utf8:
+                        bump("encoding", observed.size)
+                        continue
+                    text = raw.decode("utf-8", errors="replace")
+                    bump("decoded_lossy")
+                else:
+                    if path in recheck_encoding:
+                        counts["already_scanned"] = counts.get("already_scanned", 0) + 1
+                        continue
+                yield path, text, kind, tree
+    except ProjectTreeError as exc:
+        raise ProjectRejected("Proje ağacı güvenli biçimde açılamadı veya tarama sırasında değişti.") from exc
 
 
 def _time_budget_seconds() -> float | None:
@@ -1039,7 +1040,13 @@ MAX_PROJECT_HEADERS = 3000
 MAX_HEADERS_PER_FILE = 12
 
 
-def _project_headers(root: Path, path: Path, text: str, index: dict[str, Any]) -> list[tuple[str, str]]:
+def _project_headers(
+    root: Path,
+    path: Path,
+    text: str,
+    index: dict[str, Any],
+    project_tree: ProjectTree,
+) -> list[tuple[str, str]]:
     """Dosyanın ``#include "x.h"`` ettiği proje başlıkları: önce aynı dizin, sonra proje genelinde ad eşleşmesi."""
     import memsafety_c
 
@@ -1047,35 +1054,52 @@ def _project_headers(root: Path, path: Path, text: str, index: dict[str, Any]) -
     if not names:
         return []
     if "by_name" not in index:
-        by_name: dict[str, list[Path]] = {}
+        by_name: dict[str, list[ProjectFile]] = {}
+        by_path: dict[str, ProjectFile] = {}
         seen = 0
-        for current, directories, files in os.walk(root, followlinks=False):
-            directories[:] = sorted(d for d in directories if d.casefold() not in SKIP_DIRS and not d.startswith("."))
-            for fname in files:
-                if fname.lower().endswith((".h", ".hh", ".hpp", ".hxx")):
-                    by_name.setdefault(fname, []).append(Path(current) / fname)
-                    seen += 1
+        for observed in project_tree.iter_files(
+            skip_dirs=SKIP_DIRS,
+            max_entries=max(100_000, MAX_PROJECT_HEADERS * 100),
+            reject_unsafe=False,
+        ):
+            parents = observed.path.parts[:-1]
+            if any(part.startswith(".") for part in parents):
+                continue
+            if observed.name.lower().endswith((".h", ".hh", ".hpp", ".hxx")):
+                by_name.setdefault(observed.name, []).append(observed)
+                by_path[observed.path.as_posix()] = observed
+                seen += 1
             if seen > MAX_PROJECT_HEADERS:
                 break
         index["by_name"] = by_name
+        index["by_path"] = by_path
         index["texts"] = {}
     out = []
+    source_relative = PurePosixPath(path.relative_to(root).as_posix())
     for inc in names:
-        cand = (path.parent / inc)
-        paths = [cand] if cand.is_file() else index["by_name"].get(inc.rsplit("/", 1)[-1], [])[:1]
-        for hp in paths:
-            try:
-                hp = hp.resolve()
-                if not hp.is_relative_to(root.resolve()) or hp.is_symlink():
-                    continue
-            except (OSError, RuntimeError):
-                continue
-            key = str(hp)
+        if not isinstance(inc, str) or not inc or inc.startswith(("/", "\\")) or "\\" in inc or "\x00" in inc:
+            continue
+        combined = posixpath.normpath((source_relative.parent / inc).as_posix())
+        if combined in ("", ".", "..") or combined.startswith("../"):
+            candidates: list[ProjectFile] = []
+        else:
+            same_directory = index["by_path"].get(combined)
+            candidates = [same_directory] if same_directory is not None else index["by_name"].get(
+                inc.rsplit("/", 1)[-1], []
+            )[:1]
+        for header in candidates:
+            key = str(root / header.path)
             htext = index["texts"].get(key)
             if htext is None:
-                from safe_file_read import read_text_bounded
-
-                htext = read_text_bounded(hp, MAX_FILE_BYTES) or ""
+                try:
+                    htext = project_tree.read_text(
+                        header,
+                        MAX_FILE_BYTES,
+                        errors="replace",
+                        allow_empty=True,
+                    )
+                except ProjectTreeError:
+                    htext = ""
                 index["texts"][key] = htext
             if htext:
                 out.append((key, htext))
@@ -1379,7 +1403,11 @@ def _analyze_project(
     root = validate_project_path(value, allowed_roots)
     # Kısmi tarama (yalnız atlananlar / yalnız değişenler): proje geneli yokluk denetimleri anlamsız.
     partial_scan = scope.skipped_only or scope.only_paths is not None
-    taint_flow.activate_project_js_handlers(root, SKIP_DIRS)
+    try:
+        with ProjectTree(root) as activation_tree:
+            taint_flow.activate_project_js_handlers(root, SKIP_DIRS, project_tree=activation_tree)
+    except ProjectTreeError as exc:
+        raise ProjectRejected("Proje ağacı güvenli biçimde açılamadı veya doğrulamadan sonra değişti.") from exc
     findings: list[dict[str, Any]] = []
     finding_keys: set[tuple[str, str, int]] = set()
     file_count = 0
@@ -1658,7 +1686,13 @@ def _analyze_project(
         return memsafety_deadline_box[0]
 
     memsafety_skipped = [0]
-    for path, text, kind in _iter_files(root, max_files=max_files, skipped=skipped_files, scope=scope, stats=walk_stats):
+    for path, text, kind, project_tree in _iter_files(
+        root,
+        max_files=max_files,
+        skipped=skipped_files,
+        scope=scope,
+        stats=walk_stats,
+    ):
         total_files = walk_stats.get("total", 0)
         if deadline is not None and time.monotonic() > deadline:
             remaining = max(0, total_files - files_done)
@@ -2257,7 +2291,7 @@ def _analyze_project(
                         mem_facts = None
                     mem_findings, safe_lines = memsafety_c.analyze_text_ex(
                         text, file_rel_posix, deadline=min(deadline_, time.monotonic() + memsafety_c.FILE_BUDGET_S),
-                        headers=_project_headers(root, path, text, header_index), facts=mem_facts)
+                        headers=_project_headers(root, path, text, header_index, project_tree), facts=mem_facts)
                 except (RecursionError, MemoryError):
                     mem_findings, safe_lines = [], set()
                 if mem_findings or safe_lines:
@@ -2283,7 +2317,9 @@ def _analyze_project(
                     # 19. tur: Terraform proje bağlamında (değişken varsayılanları, tfvars, locals, yerel modüller)
                     if "terraform" not in iac_project_cache:
                         try:
-                            iac_project_cache["terraform"] = iac_tf_project.scan_tree(root, scope.skip_dirs)
+                            iac_project_cache["terraform"] = iac_tf_project.scan_tree(
+                                root, scope.skip_dirs, project_tree=project_tree,
+                            )
                             scan_result = iac_project_cache["terraform"]
                             if not getattr(scan_result, "analysis_complete", True):
                                 limits = ", ".join(getattr(scan_result, "limitations", ())) or "analiz bütçesi"
@@ -2298,7 +2334,9 @@ def _analyze_project(
                 if suffix in (".yaml", ".yml") and "{{" not in text:
                     if "kubernetes_relations" not in iac_project_cache:
                         try:
-                            iac_project_cache["kubernetes_relations"] = iac_k8s_project.scan_tree(root, scope.skip_dirs)
+                            iac_project_cache["kubernetes_relations"] = iac_k8s_project.scan_tree(
+                                root, scope.skip_dirs, project_tree=project_tree,
+                            )
                             scan_result = iac_project_cache["kubernetes_relations"]
                             if not getattr(scan_result, "analysis_complete", True):
                                 limits = ", ".join(getattr(scan_result, "limitations", ())) or "analiz bütçesi"

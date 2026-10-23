@@ -204,7 +204,12 @@ def _copy_context(root: Path, dest: Path, scope: scan_scope.ScanScope) -> dict[s
     total = 0
     limited = False
     try:
-        for path, text, kind in pa._iter_files(root, max_files=max(scope.max_files, pa.MAX_FILES), skipped={}, scope=scope):
+        for path, text, kind, _project_tree in pa._iter_files(
+            root,
+            max_files=max(scope.max_files, pa.MAX_FILES),
+            skipped={},
+            scope=scope,
+        ):
             if kind == "secret_file" or text is None:
                 continue
             size = len(text.encode("utf-8", errors="surrogatepass"))

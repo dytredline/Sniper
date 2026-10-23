@@ -8,6 +8,7 @@ const state = {
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const esc = (value = "") => String(value).replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
+const uiSymbol = name => `<svg class="ui-symbol" aria-hidden="true"><use href="/static/ui-icons.svg#${name}"></use></svg>`;
 
 // CSP (style-src 'self') satır içi style="" özniteliklerini reddeder; şablonlar bu yüzden data-style taşır ve değerler
 // CSSOM ile (CSP'ye takılmadan) uygulanır. Yalnız CSS değişkenleri ve birkaç yerleşim özelliği; url()/expression yok.
@@ -299,14 +300,45 @@ function showModal(id, visible = true) {
   }
 }
 
+const NAVIGATION_DESTINATIONS = Object.freeze({
+  dashboard: Object.freeze({ view: "dashboard", hash: "#dashboard", label: "Genel bakış" }),
+  targets: Object.freeze({ view: "targets", hash: "#targets", label: "Hedefler" }),
+  projects: Object.freeze({ view: "projects", hash: "#projects", label: "Uygulama analizi" }),
+  tracking: Object.freeze({ view: "tracking", hash: "#tracking", label: "Bulgu takibi" }),
+  portfolio: Object.freeze({ view: "portfolio", hash: "#portfolio", label: "Portföy ve SLA" }),
+  pentest: Object.freeze({ view: "pentest", hash: "#pentest", label: "Manuel test" }),
+  tooling: Object.freeze({ view: "tooling", hash: "#tooling", label: "Araç matrisi" }),
+  lab: Object.freeze({ view: "lab", hash: "#lab", label: "Güvenlik laboratuvarı" }),
+  reports: Object.freeze({ view: "reports", hash: "#reports", label: "Raporlar" }),
+  audit: Object.freeze({ view: "audit", hash: "#audit", label: "İşlem geçmişi" }),
+  schedules: Object.freeze({ view: "schedules", hash: "#schedules", label: "Zamanlanmış taramalar" }),
+  notifications: Object.freeze({ view: "notifications", hash: "#notifications", label: "Bildirimler" }),
+});
+
+function navigationDestination(view) {
+  switch (view) {
+    case "targets": return NAVIGATION_DESTINATIONS.targets;
+    case "projects": return NAVIGATION_DESTINATIONS.projects;
+    case "tracking": return NAVIGATION_DESTINATIONS.tracking;
+    case "portfolio": return NAVIGATION_DESTINATIONS.portfolio;
+    case "pentest": return NAVIGATION_DESTINATIONS.pentest;
+    case "tooling": return NAVIGATION_DESTINATIONS.tooling;
+    case "lab": return NAVIGATION_DESTINATIONS.lab;
+    case "reports": return NAVIGATION_DESTINATIONS.reports;
+    case "audit": return NAVIGATION_DESTINATIONS.audit;
+    case "schedules": return NAVIGATION_DESTINATIONS.schedules;
+    case "notifications": return NAVIGATION_DESTINATIONS.notifications;
+    default: return NAVIGATION_DESTINATIONS.dashboard;
+  }
+}
+
 function navigate(view) {
-  const allowed = ["dashboard", "targets", "projects", "tracking", "portfolio", "pentest", "tooling", "lab", "reports", "audit", "schedules", "notifications"];
-  if (!allowed.includes(view)) view = "dashboard";
+  const destination = navigationDestination(view);
+  view = destination.view;
   $$("[data-view]").forEach(node => node.classList.toggle("active", node.dataset.view === view));
   $$(".nav-item").forEach(node => node.classList.toggle("active", node.dataset.nav === view));
-  const labels = { dashboard: "Genel bakış", targets: "Hedefler", projects: "Uygulama analizi", tracking: "Bulgu takibi", portfolio: "Portföy ve SLA", pentest: "Manuel test", tooling: "Araç matrisi", lab: "Güvenlik laboratuvarı", reports: "Raporlar", audit: "İşlem geçmişi", schedules: "Zamanlanmış taramalar", notifications: "Bildirimler" };
-  $("#page-label").textContent = labels[view];
-  if (location.hash !== `#${view}`) history.replaceState(null, "", `#${view}`);
+  $("#page-label").textContent = destination.label;
+  if (location.hash !== destination.hash) history.replaceState(null, "", destination.hash);
   $(".sidebar").classList.remove("open");
   if (view === "audit") loadAudit();
   if (view === "tracking" && typeof globalThis.sniperLoadTracking === "function") globalThis.sniperLoadTracking();
@@ -432,7 +464,7 @@ function renderDependencySecurity() {
   $("#dependency-sources").innerHTML = (data.imports || []).slice(0, 4).map(item => `<span class="${item.stale ? "stale" : "fresh"}"><b>${esc(item.source.toUpperCase())}</b> ${item.stale ? `Veri ${item.age_days ?? "?"} günlük` : "Güncel"} · ${formatDate(item.source_timestamp)} · ${Number(item.finding_count)} bulgu</span>`).join("") + (data.sboms || []).slice(0, 3).map(item => `<a href="/api/dependency-sboms/${encodeURIComponent(item.id)}" download><b>SBOM</b> ${esc(item.project_name)} · ${Number(item.component_count)} bileşen</a>`).join("");
   renderDependencySbomDeltaChoices(data.sboms || []);
   $("#dependency-findings").innerHTML = findings.map(item => `<tr><td><b>${esc(item.vulnerability_id)}</b>${isMaliciousDependency(item) ? ` <span class="severity-label critical">KÖTÜ AMAÇLI</span>` : ""}<small>${esc(item.title || "")}</small></td><td><b>${esc(item.package_name)}</b><small>${esc(item.installed_version || "sürüm yok")}</small></td><td><span class="severity-label ${esc(item.severity)}">${esc(severityLabel(item.severity).toUpperCase())}</span></td><td>${esc(item.fixed_version || "Bilinmiyor")}</td><td>${esc(item.source.toUpperCase())}<small>${formatDate(item.source_timestamp)}</small></td><td><select data-dependency-status data-id="${esc(item.id)}"><option value="open" ${item.status === "open" ? "selected" : ""}>Açık</option><option value="in_progress" ${item.status === "in_progress" ? "selected" : ""}>Üzerinde çalışılıyor</option><option value="retest_required" ${item.status === "retest_required" ? "selected" : ""}>Yeniden test</option><option value="resolved" ${item.status === "resolved" ? "selected" : ""}>Çözüldü</option><option value="reopened" ${item.status === "reopened" ? "selected" : ""}>Yeniden açıldı</option><option value="risk_accepted" ${item.status === "risk_accepted" ? "selected" : ""}>Risk kabulü</option></select></td></tr>`).join("");
-  $("#dependency-report-findings").innerHTML = active.slice(0, 10).map(item => `<article><span class="severity-label ${esc(item.severity)}">${esc(severityLabel(item.severity).toUpperCase())}</span><p><b>${esc(item.vulnerability_id)} · ${esc(item.package_name)} ${esc(item.installed_version)}</b><small>${esc(item.title)} · Düzeltme: ${esc(item.fixed_version || "bilinmiyor")}</small></p><span class="status-pill ${esc(item.status)}">${esc(statusLabel(item.status))}</span></article>`).join("") || `<div class="empty-state"><div class="empty-icon">✓</div><h3>Etkin bağımlılık bulgusu yok</h3></div>`;
+  $("#dependency-report-findings").innerHTML = active.slice(0, 10).map(item => `<article><span class="severity-label ${esc(item.severity)}">${esc(severityLabel(item.severity).toUpperCase())}</span><p><b>${esc(item.vulnerability_id)} · ${esc(item.package_name)} ${esc(item.installed_version)}</b><small>${esc(item.title)} · Düzeltme: ${esc(item.fixed_version || "bilinmiyor")}</small></p><span class="status-pill ${esc(item.status)}">${esc(statusLabel(item.status))}</span></article>`).join("") || `<div class="empty-state"><div class="empty-icon">${uiSymbol("check")}</div><h3>Etkin bağımlılık bulgusu yok</h3></div>`;
 }
 
 function renderDependencySbomDeltaChoices(sboms) {
@@ -576,7 +608,7 @@ async function openProjectAudit(auditId) {
       ${audit.base_audit_id ? `<div class="project-limitations"><p><strong>Ek tarama:</strong> normal taramanın atladığı dosyalar incelendi. <button type="button" class="mini-button" data-action="open-project-audit" data-id="${esc(audit.base_audit_id)}">Temel analizi aç</button></p></div>` : ""}
       ${(audit.warnings || []).length ? `<div class="project-limitations"><p><strong>Uyarı:</strong> ${audit.scope?.skipped_only ? "Kapsam bilgisi" : "Proje sınırları nedeniyle bazı dosyalar atlandı (proje reddedilmedi)."}</p>${audit.warnings.map(item => `<p>• ${esc(item)}</p>`).join("")}${hasSkippedFiles(audit) ? `<div class="button-row"><button type="button" class="mini-button accent" data-rescan-mode="skipped" data-rescan-path="${esc(audit.project_path)}" data-rescan-base="${esc(audit.id)}">Yalnız atlananları tara</button><button type="button" class="mini-button" data-rescan-mode="all" data-rescan-path="${esc(audit.project_path)}">Tümünü dahil ederek baştan tara</button></div>` : ""}</div>` : ""}
       <div class="project-finding-summary"><b>${(audit.findings || []).length} doğrulanabilir sinyal</b><span>${Number(counts.critical || 0)} kritik · ${Number(counts.high || 0)} yüksek · ${Number(counts.medium || 0)} orta · ${Number(counts.low || 0)} düşük</span></div>
-      <div class="project-findings">${findings || `<div class="empty-state"><div class="empty-icon">✓</div><h3>Statik kural bulgusu yok</h3><p>Bu sonuç dinamik ve manuel test gereksinimini ortadan kaldırmaz.</p></div>`}</div>
+      <div class="project-findings">${findings || `<div class="empty-state"><div class="empty-icon">${uiSymbol("check")}</div><h3>Statik kural bulgusu yok</h3><p>Bu sonuç dinamik ve manuel test gereksinimini ortadan kaldırmaz.</p></div>`}</div>
       <div class="project-limitations">${(audit.limitations || []).map(item => `<p>• ${esc(item)}</p>`).join("")}</div>`;
     if (typeof window.renderRouteInventory === "function") window.renderRouteInventory(audit, $("#project-audit-detail"));
     globalThis.renderThreatModel?.(audit);
@@ -3401,6 +3433,30 @@ const TOOL_CARD_DESTINATIONS = Object.freeze({
   "/api/zero-trust-mesh/audit": { panel: "completed-backlog-panel", route: "/api/zero-trust-mesh/audit" },
 });
 
+const TOOL_CARD_ROUTE_LABELS = Object.freeze({
+  "/api/web-infra/dns-email-audit": "DNS ve e-posta yapılandırma denetimi",
+  "/api/tool-reports/npm-audit/summary": "Rapor özeti",
+  "/api/tool-reports/dependency-remediation-plan": "Düzeltme planı",
+  "/api/tool-reports/dependabot/summary": "Uyarı özeti",
+  "/api/tool-reports/dependabot/offline-sync": "Çevrimdışı eşitleme",
+  "/api/tool-reports/semgrep-native-json/summary": "Rapor özeti",
+  "/api/tool-reports/semgrep/rulepack-inventory": "Kural envanteri",
+  "/api/tool-reports/semgrep/tls-verify-filter": "TLS doğrulama filtresi",
+  "/api/tool-reports/trivy-native-json/summary": "Rapor özeti",
+  "/api/tool-reports/trivy/db-freshness": "Veritabanı tazeliği",
+  "/api/tool-reports/nuclei-jsonl/summary": "JSONL özeti",
+  "/api/tool-reports/nuclei/verification-coverage": "Doğrulama kapsamı",
+  "/api/tool-reports/burp-sitemap/summary": "Site haritası özeti",
+  "/api/tool-reports/burp-sitemap/handoff-manifest": "Handoff manifesti",
+  "/api/tool-reports/burp-logger-csv/summary": "Logger CSV özeti",
+  "/api/tool-reports/testssl/summary": "Rapor özeti",
+  "/api/tool-reports/testssl/boundary-contract": "Sınır sözleşmesi",
+  "/api/tool-reports/trufflehog/summary": "Rapor özeti",
+  "/api/tool-runs/secret-bundle/validate": "Sır doğrulama paketi",
+  "/api/tool-reports/ssllabs-host/summary": "Ana makine özeti",
+  "/api/tool-reports/ssllabs/cache-contract": "Önbellek sözleşmesi",
+});
+
 const TOOL_SPECIFIC_PANELS = Object.freeze([
   "trivy-vuln-local-panel",
   "trivy-secret-panel",
@@ -3420,6 +3476,11 @@ function toolCardProfileAvailable(profile) {
   if (profile.action === "report_only") return true;
   return profile.runtime === "precheck_passed" &&
     ["native", "authorization_required", "local_input_required"].includes(profile.action);
+}
+
+function toolCardProfileVisible(profile) {
+  return toolCardProfileAvailable(profile) &&
+    Object.hasOwn(TOOL_CARD_DESTINATIONS, profile.route || "");
 }
 
 function toolingReadinessMissing() {
@@ -3446,7 +3507,7 @@ function effectiveToolReadinessTools() {
 
 function renderToolSpecificPanels(profiles) {
   if (typeof document === "undefined") return;
-  const visiblePanels = new Set(profiles.filter(toolCardProfileAvailable).map(profile =>
+  const visiblePanels = new Set(profiles.filter(toolCardProfileVisible).map(profile =>
     TOOL_CARD_DESTINATIONS[profile.route || ""]?.panel).filter(Boolean));
   TOOL_SPECIFIC_PANELS.forEach(panelId => {
     document.getElementById?.(panelId)?.classList?.toggle("hidden", !visiblePanels.has(panelId));
@@ -3533,10 +3594,9 @@ function renderTooling() {
   const effectiveReadinessTools = effectiveToolReadinessTools();
   const readinessIndex = new Map(effectiveReadinessTools.map(tool => [tool.id, tool.profiles || []]));
   const visibleProfilesByTool = new Map([...readinessIndex].map(([toolId, profiles]) =>
-    [toolId, profiles.filter(toolCardProfileAvailable)]));
+    [toolId, profiles.filter(toolCardProfileVisible)]));
   const visibleTools = tooling.tools.filter(tool => (visibleProfilesByTool.get(tool.id) || []).length > 0);
   const visibleToolIds = new Set(visibleTools.map(tool => tool.id));
-  const visibleProfiles = [...visibleProfilesByTool.values()].flat();
   const pinIndex = new Map((state.toolingReadiness?.binary_pins || []).map(pin => [pin.tool === "opengrep" ? "semgrep" : pin.tool, pin]));
   const pinText = pin => {
     const name = `${pin.tool || ""} ${pin.version || ""}`.trim();
@@ -3556,11 +3616,14 @@ function renderTooling() {
     return ({ native: "Yerleşik akış", report_only: "Yalnız rapor özeti", external_only: "Yalnız harici yöntem", manual: "Manuel inceleme" })[profile.action] || "Durum bilinmiyor";
   };
   const summary = tooling.summary || {};
+  const visibleFlowCount = [...visibleProfilesByTool.values()].reduce((total, profiles) => total + new Set(
+    profiles.map(profile => `${profile.label || ""}\u001f${readinessText(profile)}`)
+  ).size, 0);
   const metrics = [
     ["KONTROL EŞLEMESİ", summary.control_count || 0, "Tüm metodoloji maddeleri"],
     ["KATEGORİ", summary.category_count || 0, "Web, API, kod ve altyapı"],
     ["COMMUNITY'DE GÖRÜNEN", visibleTools.length, "Hazır araçlar ve rapor içe aktarma yöntemleri"],
-    ["KULLANILABİLİR AKIŞ", visibleProfiles.length, "Çalışma zamanı ön koşulu geçen veya yalnız rapor alan akışlar"],
+    ["KULLANILABİLİR AKIŞ", visibleFlowCount, "Tekrarsız, çalışma zamanı doğrulanmış akışlar"],
   ];
   $("#tooling-summary").innerHTML = metrics.map(([label, value, note]) => `<article><small>${esc(label)}</small><b>${esc(value)}</b><span>${esc(note)}</span></article>`).join("");
   const readinessWarning = readinessMissing
@@ -3572,22 +3635,34 @@ function renderTooling() {
   renderToolSpecificPanels(effectiveReadinessTools.flatMap(tool => tool.profiles || []));
   $("#tool-card-grid").innerHTML = visibleTools.map(tool => {
     const profiles = visibleProfilesByTool.get(tool.id) || [];
-    const visibleRoutes = new Set(profiles.map(profile => profile.route).filter(Boolean));
-    const workflows = (tool.workflows || []).filter(workflow =>
-      (workflow.routes || []).some(route => visibleRoutes.has(route)));
-    const readinessHtml = `<div class="tool-formats" aria-label="Çalışma zamanı ön koşulları">${profiles.map(profile => `<span title="${esc(profile.route || profile.reason_code)}">${esc(profile.label)}: ${esc(readinessText(profile))}</span>`).join("")}</div>`;
+    const capabilityGroups = new Map();
+    profiles.forEach(profile => {
+      const status = readinessText(profile);
+      const key = `${profile.label || ""}\u001f${status}`;
+      if (!capabilityGroups.has(key)) capabilityGroups.set(key, { label: profile.label, status, profiles: [] });
+      capabilityGroups.get(key).profiles.push(profile);
+    });
     const pin = pinIndex.get(tool.id);
     const hasRunnableProfile = profiles.some(profile => profile.action !== "report_only");
     const pinHtml = pin && hasRunnableProfile
       ? `<div class="tool-formats" aria-label="İkili bütünlüğü"><span title="${esc(pin.provenance || pin.reason_code || "")}">${esc(pinText(pin))}</span></div>`
       : "";
-    const actionsHtml = profiles.filter(profile => Object.hasOwn(TOOL_CARD_DESTINATIONS, profile.route || ""))
-      .map(profile => {
+    const capabilitiesHtml = [...capabilityGroups.values()].map(group => {
+      const actionGroups = new Map();
+      group.profiles.forEach(profile => {
         const destination = TOOL_CARD_DESTINATIONS[profile.route];
-        const label = destination.view ? "Hedefleri aç" : profile.action === "report_only" ? "Rapor önizlemesini aç" : "Formu aç";
-        return `<button type="button" class="button secondary" data-tool-route="${esc(profile.route)}" aria-label="${esc(profile.label)}: ${label}">${esc(profile.label)} · ${label}</button>`;
+        const key = [destination.view, destination.action, destination.panel, destination.flow].join("\u001f");
+        if (!actionGroups.has(key)) actionGroups.set(key, profile);
+      });
+      const actions = [...actionGroups.values()].map(profile => {
+        const destination = TOOL_CARD_DESTINATIONS[profile.route];
+        const label = TOOL_CARD_ROUTE_LABELS[profile.route] ||
+          (destination.view ? "Hedefleri aç" : profile.action === "report_only" ? "Raporu aç" : "Formu aç");
+        return `<button type="button" class="button secondary" data-tool-route="${esc(profile.route)}">${esc(label)}</button>`;
       }).join("");
-    return `<article class="tool-card"><div class="tool-card-head"><span>${esc(tool.kind)}</span><b>${esc(tool.license)}</b></div><h3>${esc(tool.name)}</h3><p>${esc(tool.summary)}</p><div class="tool-formats">${tool.formats.map(format => `<span>${esc(format)}</span>`).join("")}</div><div class="tool-formats" aria-label="Sniper akışları">${workflows.map(workflow => `<span title="${esc((workflow.routes || []).filter(route => visibleRoutes.has(route)).join(", "))}">${esc(workflow.label)}</span>`).join("")}</div>${readinessHtml}${pinHtml}<div class="tool-card-actions">${actionsHtml}</div><small>${esc(hasRunnableProfile ? "Çalıştırma için gerekli izin, kapsam ve girdiler çalışma anında ayrıca doğrulanır." : "Rapor özeti içe aktarma işlemi tarama başlatmaz.")}</small><a href="${esc(tool.url)}" target="_blank" rel="noopener noreferrer">Resmî sayfa →</a></article>`;
+      return `<section class="tool-capability"><div><b>${esc(group.label)}</b><small>${esc(group.status)}</small></div><div class="tool-card-actions">${actions}</div></section>`;
+    }).join("");
+    return `<article class="tool-card"><div class="tool-card-head"><span>${esc(tool.kind)}</span><b>${esc(tool.license)}</b></div><h3>${esc(tool.name)}</h3><p>${esc(tool.summary)}</p><div class="tool-formats">${tool.formats.map(format => `<span>${esc(format)}</span>`).join("")}</div>${pinHtml}<div class="tool-capabilities" aria-label="Kullanılabilir yetenekler">${capabilitiesHtml}</div><small>${esc(hasRunnableProfile ? "Çalıştırma için gerekli izin, kapsam ve girdiler çalışma anında ayrıca doğrulanır." : "Rapor özeti içe aktarma işlemi tarama başlatmaz.")}</small><a href="${esc(tool.url)}" target="_blank" rel="noopener noreferrer">Resmî sayfa →</a></article>`;
   }).join("");
   $("#tool-matrix-body").innerHTML = tooling.categories.map(category => `<tr><td><b>${esc(category.title)}</b><small>${esc(category.reference)}</small></td><td>${Number(category.control_count)}</td><td><span class="coverage-chip">${esc(category.coverage)}</span></td><td><div class="tool-tags">${category.tool_ids.filter(toolId => visibleToolIds.has(toolId)).map(toolId => `<span>${esc(toolIndex.get(toolId)?.name || toolId)}</span>`).join("")}</div></td><td>${esc(category.required_input)}</td></tr>`).join("");
 }

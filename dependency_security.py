@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
+from contextvars import ContextVar
 import errno
 import hashlib
 import json
@@ -12,13 +14,11 @@ import tomllib
 import urllib.parse
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any
+from pathlib import Path, PurePosixPath
+from typing import Any, Iterator
 
 from project_analyzer import ProjectRejected, validate_project_path
-
-from safe_file_read import read_bytes_bounded, read_text_bounded
-
+from project_tree import ProjectFile, ProjectTree, ProjectTreeError
 
 MAX_REPORT_BYTES = 8_000_000
 MAX_COMPONENTS = 20_000
@@ -30,6 +30,125 @@ SEVERITIES = {"critical", "high", "medium", "low", "info", "unknown"}
 
 class DependencySecurityError(ValueError):
     pass
+
+
+_DIR_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+_FILE_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
+
+
+class _ProjectInventoryView:
+    """Descriptor-pinned access used by the existing manifest parsers."""
+
+    def __init__(self, root: Path, tree: ProjectTree) -> None:
+        self.root = root
+        self.tree = tree
+
+    def relative_path(self, directory: Path, filename: str = "") -> PurePosixPath | None:
+        candidate = Path(directory) / filename if filename else Path(directory)
+        try:
+            relative = candidate.relative_to(self.root)
+        except ValueError:
+            return None
+        if not relative.parts or any(part in ("", ".", "..") for part in relative.parts):
+            return None
+        return PurePosixPath(*relative.parts)
+
+    def observe(self, relative: PurePosixPath) -> ProjectFile | None:
+        directory_fd = os.dup(self.tree.fileno())
+        file_fd: int | None = None
+        try:
+            for component in relative.parts[:-1]:
+                try:
+                    next_fd = os.open(component, _DIR_FLAGS, dir_fd=directory_fd)
+                except FileNotFoundError:
+                    return None
+                except OSError as exc:
+                    raise DependencySecurityError(f"{relative.as_posix()} güvenli biçimde açılamadı.") from exc
+                os.close(directory_fd)
+                directory_fd = next_fd
+            try:
+                file_fd = os.open(relative.name, _FILE_FLAGS, dir_fd=directory_fd)
+            except FileNotFoundError:
+                return None
+            except OSError as exc:
+                if exc.errno == errno.ELOOP:
+                    raise DependencySecurityError(f"{relative.as_posix()} bir simge bağlantısı olamaz.") from exc
+                raise DependencySecurityError(f"{relative.as_posix()} okunamadı.") from exc
+            info = os.fstat(file_fd)
+            if not stat.S_ISREG(info.st_mode):
+                raise DependencySecurityError(f"{relative.as_posix()} normal bir dosya olmalıdır.")
+            return ProjectFile(
+                path=relative,
+                size=info.st_size,
+                device=info.st_dev,
+                inode=info.st_ino,
+                mtime_ns=info.st_mtime_ns,
+                ctime_ns=info.st_ctime_ns,
+            )
+        except DependencySecurityError:
+            raise
+        except OSError as exc:
+            raise DependencySecurityError(f"{relative.as_posix()} okunamadı.") from exc
+        finally:
+            if file_fd is not None:
+                os.close(file_fd)
+            os.close(directory_fd)
+
+    def list_files(self, directory: Path) -> list[ProjectFile]:
+        relative = PurePosixPath(".") if Path(directory) == self.root else self.relative_path(directory)
+        if relative is None:
+            return []
+        directory_fd = os.dup(self.tree.fileno())
+        try:
+            if relative != PurePosixPath("."):
+                for component in relative.parts:
+                    try:
+                        expected = os.stat(component, dir_fd=directory_fd, follow_symlinks=False)
+                        if stat.S_ISLNK(expected.st_mode) or not stat.S_ISDIR(expected.st_mode):
+                            return []
+                        next_fd = os.open(component, _DIR_FLAGS, dir_fd=directory_fd)
+                    except FileNotFoundError:
+                        return []
+                    except OSError as exc:
+                        raise DependencySecurityError("Manifest dizini güvenli biçimde açılamadı.") from exc
+                    opened = os.fstat(next_fd)
+                    if (opened.st_dev, opened.st_ino) != (expected.st_dev, expected.st_ino):
+                        os.close(next_fd)
+                        raise DependencySecurityError("Manifest dizini yürüyüş sırasında değişti.")
+                    os.close(directory_fd)
+                    directory_fd = next_fd
+            files: list[ProjectFile] = []
+            with os.scandir(directory_fd) as entries:
+                for entry in entries:
+                    info = entry.stat(follow_symlinks=False)
+                    if not stat.S_ISREG(info.st_mode):
+                        continue
+                    path = PurePosixPath(entry.name) if relative == PurePosixPath(".") else relative / entry.name
+                    files.append(ProjectFile(path, info.st_size, info.st_dev, info.st_ino, info.st_mtime_ns, info.st_ctime_ns))
+            return sorted(files, key=lambda item: item.path.as_posix())
+        except DependencySecurityError:
+            raise
+        except OSError as exc:
+            raise DependencySecurityError("Manifest dizini güvenli biçimde listelenemedi.") from exc
+        finally:
+            os.close(directory_fd)
+
+
+_ACTIVE_INVENTORY: ContextVar[_ProjectInventoryView | None] = ContextVar("dependency_inventory_tree", default=None)
+
+
+@contextmanager
+def _inventory_view(root: Path, project_tree: ProjectTree | None) -> Iterator[_ProjectInventoryView]:
+    if project_tree is not None and root != project_tree.root:
+        raise DependencySecurityError("Proje ağacı kökü istenen proje ile eşleşmiyor.")
+    tree = project_tree.duplicate() if project_tree is not None else ProjectTree(root).open()
+    view = _ProjectInventoryView(root, tree)
+    token = _ACTIVE_INVENTORY.set(view)
+    try:
+        yield view
+    finally:
+        _ACTIVE_INVENTORY.reset(token)
+        tree.close()
 
 
 def _clean(value: Any, maximum: int = 4_000) -> str:
@@ -86,16 +205,8 @@ def _split_requirement(value: str) -> tuple[str, str] | None:
 
 def _python_components(root: Path) -> list[dict[str, str]]:
     result: list[dict[str, str]] = []
-    requirements = root / "requirements.txt"
-    if requirements.is_symlink():
-        raise DependencySecurityError("requirements.txt bir simge bağlantısı olamaz.")
-    if requirements.is_file() and requirements.stat().st_size > 1_000_000:
-        raise DependencySecurityError("requirements.txt boyut sınırını aşıyor.")
-    if requirements.is_file() and requirements.stat().st_size <= 1_000_000:
-        try:
-            text = requirements.read_text(encoding="utf-8")
-        except UnicodeDecodeError as e:
-            raise DependencySecurityError(f"requirements.txt decode hatası: {e}") from e
+    text = _read_manifest_text(root, "requirements.txt", 1_000_000)
+    if text is not None:
         if text.startswith("\ufeff"):
             text = text[1:]
         for line in text.splitlines():
@@ -103,19 +214,8 @@ def _python_components(root: Path) -> list[dict[str, str]]:
             if parsed:
                 name, version = parsed
                 result.append({"name": name, "version": version, "ecosystem": "PyPI", "manifest": "requirements.txt"})
-    pyproject = root / "pyproject.toml"
-    if pyproject.is_symlink():
-        raise DependencySecurityError("pyproject.toml bir simge bağlantısı olamaz.")
-    if pyproject.is_file() and pyproject.stat().st_size > 1_000_000:
-        raise DependencySecurityError("pyproject.toml boyut sınırını aşıyor.")
-    if pyproject.is_file() and pyproject.stat().st_size <= 1_000_000:
-        raw_pyproject = read_bytes_bounded(pyproject, 1_000_000, allow_empty=True)
-        if raw_pyproject is None:
-            raise DependencySecurityError("pyproject.toml güvenli biçimde okunamadı.")
-        try:
-            content = raw_pyproject.decode("utf-8")
-        except UnicodeDecodeError as exc:
-            raise DependencySecurityError("pyproject.toml geçerli UTF-8 değil.") from exc
+    content = _read_manifest_text(root, "pyproject.toml", 1_000_000)
+    if content is not None:
         try:
             document = tomllib.loads(content)
         except (OSError, tomllib.TOMLDecodeError, RecursionError) as exc:
@@ -154,21 +254,11 @@ def _python_components(root: Path) -> list[dict[str, str]]:
 
 
 def _poetry_components(root: Path) -> list[dict[str, str]]:
-    lockfile = root / "poetry.lock"
-    if lockfile.is_symlink():
-        raise DependencySecurityError("poetry.lock bir simge bağlantısı olamaz.")
-    if not lockfile.is_file():
+    content = _read_manifest_text(root, "poetry.lock")
+    if content is None:
         return []
-    size = lockfile.stat().st_size
-    if size > MAX_REPORT_BYTES:
-        raise DependencySecurityError("poetry.lock boyut sınırını aşıyor.")
     try:
-        content = lockfile.read_text(encoding="utf-8", errors="strict")
         document = tomllib.loads(content)
-    except OSError as exc:
-        raise DependencySecurityError("poetry.lock okunamadı.") from exc
-    except UnicodeDecodeError as exc:
-        raise DependencySecurityError("poetry.lock geçerli UTF-8 değil.") from exc
     except (tomllib.TOMLDecodeError, RecursionError) as exc:
         raise DependencySecurityError("poetry.lock geçerli TOML değil.") from exc
     if not isinstance(document, dict):
@@ -238,40 +328,37 @@ def _read_regular_file_bytes(root: Path, filename: str, limit: int = MAX_REPORT_
     limit+1 bayt ile sınırlandığından fstat sonrası büyüme yakalanır.
     Dosya yoksa None döner.
     """
-    flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
-    try:
-        fd = os.open(root / filename, flags)
-    except FileNotFoundError:
-        return None
-    except OSError as exc:
-        if exc.errno == errno.ELOOP:
-            raise DependencySecurityError(f"{filename} bir simge bağlantısı olamaz.") from exc
-        raise DependencySecurityError(f"{filename} okunamadı.") from exc
-    try:
+    active = _ACTIVE_INVENTORY.get()
+    owned_tree: ProjectTree | None = None
+    view = active
+    relative = view.relative_path(root, filename) if view is not None else None
+    if relative is None:
         try:
-            file_stat = os.fstat(fd)
-        except OSError as exc:
-            raise DependencySecurityError(f"{filename} okunamadı.") from exc
-        if not stat.S_ISREG(file_stat.st_mode):
-            raise DependencySecurityError(f"{filename} normal bir dosya olmalıdır.")
-        if file_stat.st_size > limit:
+            owned_tree = ProjectTree(root).open()
+        except ProjectTreeError as exc:
+            raise DependencySecurityError(f"{filename} güvenli biçimde açılamadı.") from exc
+        view = _ProjectInventoryView(Path(root), owned_tree)
+        relative = view.relative_path(Path(root), filename)
+    if relative is None or view is None:
+        if owned_tree is not None:
+            owned_tree.close()
+        return None
+    try:
+        observed = view.observe(relative)
+        if observed is None:
+            return None
+        if observed.size > limit:
             raise DependencySecurityError(f"{filename} boyut sınırını aşıyor.")
-        chunks: list[bytes] = []
-        total = 0
-        while True:
-            try:
-                chunk = os.read(fd, min(1 << 20, limit + 1 - total))
-            except OSError as exc:
-                raise DependencySecurityError(f"{filename} okunamadı.") from exc
-            if not chunk:
-                break
-            chunks.append(chunk)
-            total += len(chunk)
-            if total > limit:
+        try:
+            return view.tree.read_bytes(observed, limit, allow_empty=True)
+        except ProjectTreeError as exc:
+            current = view.observe(relative)
+            if current is not None and current.size > limit:
                 raise DependencySecurityError(f"{filename} boyut sınırını aşıyor.")
-        return b"".join(chunks)
+            raise DependencySecurityError(f"{filename} güvenli biçimde okunamadı.") from exc
     finally:
-        os.close(fd)
+        if owned_tree is not None:
+            owned_tree.close()
 
 
 def _pipfile_repository_url(raw_url: str) -> str:
@@ -442,23 +529,15 @@ def _npm_components(root: Path) -> list[dict[str, str]]:
 def _npm_lock_components(root: Path, filename: str) -> list[dict[str, str]]:
     """package-lock.json / npm-shrinkwrap.json: lockfileVersion 2–3 ``packages`` haritası, yoksa v1 ``dependencies``
     ağacı (18. tur). Yerel/git/URL kaynakları sürüm sayılmaz."""
-    lockfile = root / filename
-    if lockfile.is_symlink():
-        raise DependencySecurityError(f"{filename} bir simge bağlantısı olamaz.")
-    if not lockfile.is_file():
+    content = _read_regular_file_bytes(root, filename)
+    if content is None:
         return []
-    if lockfile.stat().st_size > MAX_REPORT_BYTES:
-        raise DependencySecurityError(f"{filename} boyut sınırını aşıyor.")
     try:
-        content = lockfile.read_bytes()
-        try:
-            document = json.loads(content.decode("utf-8"), parse_constant=lambda x: (_ for _ in ()).throw(ValueError("JSON dışı sabit: " + x)))
-        except UnicodeDecodeError as exc:
-            raise DependencySecurityError(f"{filename} geçerli UTF-8 değil.") from exc
-        except (json.JSONDecodeError, ValueError, RecursionError) as exc:
-            raise DependencySecurityError(f"{filename} geçersiz JSON.") from exc
-    except OSError as exc:
-        raise DependencySecurityError(f"{filename} okunamadı.") from exc
+        document = json.loads(content.decode("utf-8"), parse_constant=lambda x: (_ for _ in ()).throw(ValueError("JSON dışı sabit: " + x)))
+    except UnicodeDecodeError as exc:
+        raise DependencySecurityError(f"{filename} geçerli UTF-8 değil.") from exc
+    except (json.JSONDecodeError, ValueError, RecursionError) as exc:
+        raise DependencySecurityError(f"{filename} geçersiz JSON.") from exc
     if not isinstance(document, dict):
         raise DependencySecurityError(f"{filename} kökü bir JSON nesnesi olmalıdır.")
     result: list[dict[str, str]] = []
@@ -543,27 +622,40 @@ def _npm_v1_components(tree: dict[str, Any], filename: str) -> list[dict[str, st
     return result
 
 
-def _read_manifest_text(root: Path, filename: str) -> str | None:
-    manifest = root / filename
-    if manifest.is_symlink():
-        raise DependencySecurityError(f"{filename} bir simge bağlantısı olamaz.")
-    if not manifest.is_file():
+def _read_manifest_text(root: Path, filename: str, limit: int = MAX_REPORT_BYTES) -> str | None:
+    raw = _read_regular_file_bytes(root, filename, limit)
+    if raw is None:
         return None
     try:
-        size = manifest.stat().st_size
-    except OSError as exc:
-        raise DependencySecurityError(f"{filename} okunamadı.") from exc
-    if size > MAX_REPORT_BYTES:
-        raise DependencySecurityError(f"{filename} boyut sınırını aşıyor.")
-    try:
-        text = manifest.read_text(encoding="utf-8", errors="strict")
+        text = raw.decode("utf-8", errors="strict")
     except UnicodeDecodeError as exc:
         raise DependencySecurityError(f"{filename} geçerli UTF-8 değil.") from exc
-    except OSError as exc:
-        raise DependencySecurityError(f"{filename} okunamadı.") from exc
-    if text.startswith("\ufeff"):
-        text = text[1:]
-    return text
+    return text[1:] if text.startswith("\ufeff") else text
+
+
+def _manifest_exists(root: Path, filename: str) -> bool:
+    view = _ACTIVE_INVENTORY.get()
+    if view is not None:
+        relative = view.relative_path(root, filename)
+        return bool(relative is not None and view.observe(relative) is not None)
+    try:
+        with ProjectTree(root) as tree:
+            temporary = _ProjectInventoryView(Path(root), tree)
+            relative = temporary.relative_path(Path(root), filename)
+            return bool(relative is not None and temporary.observe(relative) is not None)
+    except ProjectTreeError as exc:
+        raise DependencySecurityError(f"{filename} güvenli biçimde doğrulanamadı.") from exc
+
+
+def _manifest_files(root: Path) -> list[ProjectFile]:
+    view = _ACTIVE_INVENTORY.get()
+    if view is not None:
+        return view.list_files(root)
+    try:
+        with ProjectTree(root) as tree:
+            return _ProjectInventoryView(Path(root), tree).list_files(Path(root))
+    except ProjectTreeError as exc:
+        raise DependencySecurityError("Manifest dizini güvenli biçimde listelenemedi.") from exc
 
 
 def _go_components(root: Path) -> list[dict[str, str]]:
@@ -1414,11 +1506,11 @@ def _nuget_components(root: Path) -> list[dict[str, str]]:
                 name, version = element.get("Include"), element.get("Version")
                 if isinstance(name, str) and isinstance(version, str):
                     central[name.strip().casefold()] = version
-    try:
-        project_files = sorted(p.name for p in root.iterdir()
-                               if p.suffix in (".csproj", ".fsproj", ".vbproj") and p.is_file() and not p.is_symlink())
-    except OSError:
-        project_files = []
+    observed_files = _manifest_files(root)
+    project_files = sorted(
+        entry.name for entry in observed_files
+        if entry.path.suffix in (".csproj", ".fsproj", ".vbproj")
+    )
     for filename in project_files[:20]:
         text = _read_manifest_text(root, filename)
         if text is None:
@@ -1563,29 +1655,29 @@ def _requirements_extra_components(root: Path, project_root: Path | None = None)
     """requirements*.txt|lock / *-requirements.txt|lock ve ``-r``/``-c`` içermeleri (proje kökü dışına
     çıkmadan, en çok 50 dosya). Kök requirements.txt'nin satırları ayrıca _python_components'ta okunur; tekrar
     discover_inventory'de tekilleşir."""
-    project_root = (project_root or root).resolve()
+    project_root = project_root or root
     queue: list[Path] = []
-    try:
-        queue += sorted(p for p in root.iterdir() if p.is_file() and not p.is_symlink() and _REQ_FILE.match(p.name))
-        sub = root / "requirements"
-        if sub.is_dir() and not sub.is_symlink():
-            queue += sorted(
-                p for p in sub.iterdir()
-                if p.is_file() and not p.is_symlink() and p.suffix.casefold() in {".txt", ".lock"}
-            )
-    except OSError:
-        return []
+    observed_root = _manifest_files(root)
+    queue += [root / entry.name for entry in observed_root if _REQ_FILE.match(entry.name)]
+    queue += [
+        root / "requirements" / entry.name
+        for entry in _manifest_files(root / "requirements")
+        if entry.path.suffix.casefold() in {".txt", ".lock"}
+    ]
     seen: set[Path] = set()
     result: list[dict[str, str]] = []
     while queue and len(seen) < MAX_REQUIREMENT_FILES:
-        path = queue.pop(0)
+        path = Path(os.path.normpath(queue.pop(0)))
         try:
-            real = path.resolve()
-        except (OSError, RuntimeError):
+            relative = path.relative_to(project_root)
+        except ValueError:
             continue
-        if real in seen or not real.is_relative_to(project_root) or path.is_symlink():
+        if not relative.parts or any(part in ("", ".", "..") for part in relative.parts):
             continue
-        seen.add(real)
+        logical = project_root / relative
+        if logical in seen:
+            continue
+        seen.add(logical)
         text = _read_manifest_text(path.parent, path.name)
         if text is None:
             continue
@@ -1844,30 +1936,24 @@ def _local_npm_component(root: Path, name: str, requested: str) -> dict[str, str
     parts = name.split("/")
     if not parts or len(parts) > 2 or any(not p or p in {".", ".."} for p in parts):
         return None
-    package_dir = root / "node_modules"
-    if package_dir.is_symlink():
-        return None
-    for part in parts:
-        package_dir /= part
-        if package_dir.is_symlink():
-            return None
-    manifest = package_dir / "package.json"
+    relative_manifest = str(Path("node_modules", *parts, "package.json"))
     try:
-        if manifest.is_symlink() or not manifest.is_file() or manifest.stat().st_size > 1_000_000:
+        text = _read_manifest_text(root, relative_manifest, 1_000_000)
+        if text is None:
             return None
-        document = json.loads(manifest.read_text(encoding="utf-8", errors="strict"))
+        document = json.loads(text)
     except (OSError, UnicodeError, ValueError, RecursionError):
         return None
     version = document.get("version") if isinstance(document, dict) else None
     if document.get("name") != name or not isinstance(version, str) or not _npm_range_contains(requested, version):
         return None
     return {"name": name, "version": version, "ecosystem": "npm",
-            "manifest": manifest.relative_to(root).as_posix(), "requested_range": requested}
+            "manifest": Path(relative_manifest).as_posix(), "requested_range": requested}
 
 
 def _package_json_components(root: Path, counters: dict[str, int] | None = None) -> list[dict[str, str]]:
     """Kilit yoksa kesin sürümleri, aralıklar için de doğrulanmış yerel kurulum sürümünü kullan."""
-    if any((root / name).exists() for name in _NPM_LOCK_FILES):
+    if any(_manifest_exists(root, name) for name in _NPM_LOCK_FILES):
         return []
     text = _read_manifest_text(root, "package.json")
     if text is None:
@@ -2041,7 +2127,7 @@ def _is_manifest_dir(filenames: list[str]) -> bool:
                for name in filenames)
 
 
-def _manifest_dirs(root: Path, warnings: list[str]) -> list[Path]:
+def _manifest_dirs(root: Path, warnings: list[str], view: _ProjectInventoryView) -> list[Path]:
     """Kök altındaki manifest içeren alt dizinler (monorepo, çok modüllü Maven/Gradle, servisler). Sembolik bağ
     izlenmez; varsayılan atlanan dizinler (node_modules, vendor, test, build …) ve gizli dizinler girilmez."""
     import scan_scope
@@ -2049,27 +2135,34 @@ def _manifest_dirs(root: Path, warnings: list[str]) -> list[Path]:
     skip = {name.casefold() for name in scan_scope.DEFAULT_SKIP_DIRS}
     found: list[Path] = []
     visited = 0
-    for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
-        current = Path(dirpath)
-        depth = len(current.relative_to(root).parts)
-        eligible_dirs = sorted(d for d in dirnames if d.casefold() not in skip and not d.startswith(".")
-                               and not (current / d).is_symlink())
-        if depth >= MAX_MANIFEST_DEPTH and eligible_dirs:
-            warning = f"Bağımlılık envanteri: manifest dizini derinlik sınırında ({MAX_MANIFEST_DEPTH}) durduruldu."
-            if warning not in warnings:
-                warnings.append(warning)
-            dirnames[:] = []
-        else:
-            dirnames[:] = eligible_dirs
-        visited += 1
-        if visited > MAX_WALK_DIRS:
-            warnings.append(f"Bağımlılık envanteri: {MAX_WALK_DIRS} dizinden sonra alt dizin taraması durduruldu.")
-            break
-        if depth and _is_manifest_dir(filenames):
-            found.append(current)
-            if len(found) >= MAX_MANIFEST_DIRS:
-                warnings.append(f"Bağımlılık envanteri: en çok {MAX_MANIFEST_DIRS} manifest dizini okundu.")
+    walk = view.tree.walk(skip_dirs=skip, reject_unsafe=False)
+    try:
+        for entry in walk:
+            parts = () if entry.directory == PurePosixPath(".") else entry.directory.parts
+            if any(part.startswith(".") for part in parts):
+                continue
+            depth = len(parts)
+            eligible_dirs = [
+                path for path in entry.directories
+                if not path.name.startswith(".") and path.name.casefold() not in skip
+            ]
+            if depth >= MAX_MANIFEST_DEPTH and eligible_dirs:
+                warning = f"Bağımlılık envanteri: manifest dizini derinlik sınırında ({MAX_MANIFEST_DEPTH}) durduruldu."
+                if warning not in warnings:
+                    warnings.append(warning)
+            if depth > MAX_MANIFEST_DEPTH:
+                continue
+            visited += 1
+            if visited > MAX_WALK_DIRS:
+                warnings.append(f"Bağımlılık envanteri: {MAX_WALK_DIRS} dizinden sonra alt dizin taraması durduruldu.")
                 break
+            if depth and _is_manifest_dir([item.name for item in entry.files]):
+                found.append(root.joinpath(*parts))
+                if len(found) >= MAX_MANIFEST_DIRS:
+                    warnings.append(f"Bağımlılık envanteri: en çok {MAX_MANIFEST_DIRS} manifest dizini okundu.")
+                    break
+    finally:
+        walk.close()
     return found
 
 
@@ -2118,28 +2211,37 @@ def _directory_inventory(directory: Path, project_root: Path, *, strict: bool, w
 def discover_inventory(
     project_path: str, *, allowed_roots: tuple[Path, ...] | None = None, lenient: bool = False,
     warnings: list[str] | None = None, recursive: bool = True,
+    project_tree: ProjectTree | None = None,
 ) -> tuple[Path, list[dict[str, str]], list[dict[str, str]]]:
     """Bileşenleri ve bileşen olarak üretilmeyen (atlanan) kilit kayıtlarını döndürür.
 
     Kök dizindeki bozuk manifest varsayılan olarak hata verir (önceki sözleşme). 18. tur: alt dizinlerdeki
     manifestler de okunur (monorepo/çok modüllü projeler) ve oradaki hatalar yalnız ``warnings`` listesine düşer;
     ``lenient=True`` kökteki hataları da uyarıya çevirir (çevrimdışı SCA taraması)."""
-    try:
-        root = validate_project_path(project_path, allowed_roots)
-    except ProjectRejected as exc:
-        raise DependencySecurityError(str(exc)) from exc
+    if project_tree is None:
+        try:
+            root = validate_project_path(project_path, allowed_roots)
+        except ProjectRejected as exc:
+            raise DependencySecurityError(str(exc)) from exc
+    else:
+        root = project_tree.root
+        if not isinstance(project_path, str) or project_path.strip() != str(root):
+            raise DependencySecurityError("Proje ağacı kökü istenen proje ile eşleşmiyor.")
+        if allowed_roots is not None and not any(root != allowed and allowed in root.parents for allowed in allowed_roots):
+            raise DependencySecurityError("Proje izin verilen yerel köklerin dışında.")
     warnings = warnings if warnings is not None else []
     counters: dict[str, int] = {}
-    all_components, skipped = _directory_inventory(root, root, strict=not lenient, warnings=warnings, counters=counters)
-    if recursive:
-        for directory in _manifest_dirs(root, warnings):
-            sub_components, sub_skipped = _directory_inventory(directory, root, strict=False, warnings=warnings,
-                                                               counters=counters)
-            all_components += sub_components
-            skipped += sub_skipped
-            if len(all_components) > MAX_COMPONENTS * 2:
-                warnings.append("Bağımlılık envanteri: bileşen sınırına ulaşıldı; kalan alt dizinler okunmadı.")
-                break
+    with _inventory_view(root, project_tree) as view:
+        all_components, skipped = _directory_inventory(root, root, strict=not lenient, warnings=warnings, counters=counters)
+        if recursive:
+            for directory in _manifest_dirs(root, warnings, view):
+                sub_components, sub_skipped = _directory_inventory(directory, root, strict=False, warnings=warnings,
+                                                                   counters=counters)
+                all_components += sub_components
+                skipped += sub_skipped
+                if len(all_components) > MAX_COMPONENTS * 2:
+                    warnings.append("Bağımlılık envanteri: bileşen sınırına ulaşıldı; kalan alt dizinler okunmadı.")
+                    break
     if counters.get("npm_ranges_skipped"):
         warnings.append(f"package.json: kilit dosyası olmayan {counters['npm_ranges_skipped']} aralıklı sürüm "
                         "güvenli yerel kurulumla doğrulanamadığı için denetlenmedi.")
@@ -2165,8 +2267,17 @@ def discover_inventory(
     return root, components, skipped
 
 
-def discover_components(project_path: str, *, allowed_roots: tuple[Path, ...] | None = None) -> tuple[Path, list[dict[str, str]]]:
-    root, components, _skipped = discover_inventory(project_path, allowed_roots=allowed_roots)
+def discover_components(
+    project_path: str,
+    *,
+    allowed_roots: tuple[Path, ...] | None = None,
+    project_tree: ProjectTree | None = None,
+) -> tuple[Path, list[dict[str, str]]]:
+    root, components, _skipped = discover_inventory(
+        project_path,
+        allowed_roots=allowed_roots,
+        project_tree=project_tree,
+    )
     return root, components
 
 
@@ -3016,47 +3127,49 @@ def analyze_vulnerability_reachability(
     *,
     findings: list[dict[str, Any]] | None = None,
     allowed_roots: tuple[Path, ...] | None = None,
+    _project_tree: ProjectTree | None = None,
 ) -> dict[str, Any]:
-    import os
-
-    try:
-        root = validate_project_path(project_path, allowed_roots)
-    except ProjectRejected as exc:
-        raise DependencySecurityError(str(exc)) from exc
+    if _project_tree is None:
+        try:
+            root = validate_project_path(project_path, allowed_roots)
+        except ProjectRejected as exc:
+            raise DependencySecurityError(str(exc)) from exc
+        with ProjectTree(root) as project_tree:
+            return analyze_vulnerability_reachability(
+                str(root),
+                findings=findings,
+                allowed_roots=allowed_roots,
+                _project_tree=project_tree,
+            )
+    root = _project_tree.root
 
     import_index: dict[str, list[dict[str, Any]]] = {}
     scanned_files_count = 0
     seen_suffixes: set[str] = set()  # 20. tur: ekosistem kaynağı var mı ("kullanılmıyor" demek için gerekli)
 
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            d for d in directories
-            if d.casefold() not in _REACHABILITY_SKIP_DIRS and not (Path(current) / d).is_symlink()
-        )
-        for filename in sorted(files):
-            fpath = Path(current) / filename
-            if fpath.is_symlink() or not fpath.is_file():
-                continue
-            ext = fpath.suffix.casefold()
-            if ext not in _REACHABILITY_SOURCE_EXTENSIONS:
-                continue
-            content = read_text_bounded(fpath, 1_000_000, errors="ignore", allow_empty=True)
-            if content is None:
-                continue
-            scanned_files_count += 1
-            seen_suffixes.add(ext)
-            rel_path = str(fpath.relative_to(root))
-            for line_no, raw_line in enumerate(content.splitlines(), start=1):
-                for ident in _extract_line_imports(raw_line, ext):
-                    sites = import_index.setdefault(ident, [])
-                    if len(sites) < 25:
-                        sites.append({"file": rel_path, "line": line_no})
+    for project_file in _project_tree.iter_files(skip_dirs=_REACHABILITY_SKIP_DIRS, reject_unsafe=False):
+        ext = project_file.path.suffix.casefold()
+        if ext not in _REACHABILITY_SOURCE_EXTENSIONS or project_file.size > 1_000_000:
+            continue
+        content = _project_tree.read_text(project_file, 1_000_000, errors="ignore", allow_empty=True)
+        scanned_files_count += 1
+        seen_suffixes.add(ext)
+        rel_path = project_file.path.as_posix()
+        for line_no, raw_line in enumerate(content.splitlines(), start=1):
+            for ident in _extract_line_imports(raw_line, ext):
+                sites = import_index.setdefault(ident, [])
+                if len(sites) < 25:
+                    sites.append({"file": rel_path, "line": line_no})
 
     target_entries: list[dict[str, Any]]
     if findings:
         target_entries = list(findings)
     else:
-        _, discovered = discover_components(project_path, allowed_roots=allowed_roots)
+        _, discovered = discover_components(
+            project_path,
+            allowed_roots=allowed_roots,
+            project_tree=_project_tree,
+        )
         target_entries = list(discovered)
 
     items: list[dict[str, Any]] = []
@@ -3073,8 +3186,8 @@ def analyze_vulnerability_reachability(
     if package_names:
         alias_owners: dict[str, set[str]] = {}
         for alias_map in (
-            dr.cargo_dependency_aliases(root, _REACHABILITY_SKIP_DIRS),
-            dr.npm_dependency_aliases(root, _REACHABILITY_SKIP_DIRS),
+            dr.cargo_dependency_aliases(root, _REACHABILITY_SKIP_DIRS, project_tree=_project_tree),
+            dr.npm_dependency_aliases(root, _REACHABILITY_SKIP_DIRS, project_tree=_project_tree),
         ):
             for package, aliases in alias_map.items():
                 for alias in aliases:
@@ -3089,7 +3202,8 @@ def analyze_vulnerability_reachability(
     hints: set[str] = set()
     for name in package_names:
         hints |= import_candidates(name)
-    usage = (dr.build_usage_index(root, _REACHABILITY_SKIP_DIRS, packages_hint=hints, packages=package_names)
+    usage = (dr.build_usage_index(root, _REACHABILITY_SKIP_DIRS, packages_hint=hints, packages=package_names,
+                                  project_tree=_project_tree)
              if package_names else dr.UsageIndex())
     # Kodda içe aktarılan paketler (yükleyici → sürücü ilişkisi için)
     used_packages = {
@@ -3098,13 +3212,15 @@ def analyze_vulnerability_reachability(
         or any(import_index.get(cand) for cand in import_candidates(name))
     }
     offline_osv = dr.OfflineOSV()
-    direct_names = dr.direct_dependencies(root, _REACHABILITY_SKIP_DIRS) if package_names else set()
+    direct_names = dr.direct_dependencies(root, _REACHABILITY_SKIP_DIRS,
+                                          project_tree=_project_tree) if package_names else set()
     verdict_counts = {key: 0 for key in dr.VERDICT_LABELS}
     # 20. tur: PHP composer autoload ad alanları ve Ruby Bundler.require (Gemfile'daki gem'ler açılışta yüklenir)
-    php_namespaces = dr.composer_namespaces(root) if package_names else {}
-    bundler_loaded = dr.bundler_autorequired(root) if package_names else {}
-    npm_tools = dr.npm_tool_mentions(root, package_names) if package_names else {}
-    cli_tools = dr.cli_tool_mentions(root, package_names, _REACHABILITY_SKIP_DIRS) if package_names else {}
+    php_namespaces = dr.composer_namespaces(root, project_tree=_project_tree) if package_names else {}
+    bundler_loaded = dr.bundler_autorequired(root, project_tree=_project_tree) if package_names else {}
+    npm_tools = dr.npm_tool_mentions(root, package_names, project_tree=_project_tree) if package_names else {}
+    cli_tools = dr.cli_tool_mentions(root, package_names, _REACHABILITY_SKIP_DIRS,
+                                     project_tree=_project_tree) if package_names else {}
     jvm_tokens: dict[str, set[str]] = {}
     for name in package_names:
         if ":" in name:  # Maven: JDBC adresi/sürücü sınıfı ya da en az iki parçalı paket öneki yapılandırmada
@@ -3112,7 +3228,8 @@ def analyze_vulnerability_reachability(
             toks |= set(dr.JDBC_SCHEMES.get(name.casefold(), ()))
             if toks:
                 jvm_tokens[name.casefold()] = toks
-    jvm_config = dr.jvm_config_mentions(root, jvm_tokens, _REACHABILITY_SKIP_DIRS) if jvm_tokens else {}
+    jvm_config = dr.jvm_config_mentions(root, jvm_tokens, _REACHABILITY_SKIP_DIRS,
+                                        project_tree=_project_tree) if jvm_tokens else {}
     usage_counts = {key: 0 for key in dr.USAGE_LABELS}
 
     for entry in target_entries:

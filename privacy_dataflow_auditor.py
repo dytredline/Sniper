@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 import re
 from typing import Any
 
 from project_analyzer import SKIP_DIRS, validate_project_path
-from safe_file_read import read_text_bounded
+from project_tree import ProjectTree
 import taint_flow
 from scanner import _finding, calculate_score as _scanner_calculate_score
 from finding_limits import INLINE_FINDING_LIMIT, PROJECT_FINDING_LIMIT, cap_findings, summarize_finding_groups, project_scan_scope
@@ -624,33 +623,25 @@ def audit_privacy_project(
     allowed_roots: tuple[Path, ...] | None = None,
 ) -> dict[str, Any]:
     root = validate_project_path(project_path, allowed_roots=allowed_roots)
-    taint_flow.activate_project(root, SKIP_DIRS)
     findings: list[dict[str, Any]] = []
     inventory = _new_inventory()
     scanned_files = 0
     pii_model_files: list[str] = []
     erasure_flow_detected = False
 
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            name
-            for name in directories
-            if name.casefold() not in SKIP_DIRS and not (Path(current) / name).is_symlink()
-        )
-        for name in sorted(files):
+    with ProjectTree(root) as tree:
+        taint_flow.activate_project(root, SKIP_DIRS, project_tree=tree)
+        for project_file in tree.iter_files(skip_dirs=SKIP_DIRS, reject_unsafe=False):
             if scanned_files >= MAX_PROJECT_FILES:
                 break
-            file_path = Path(current) / name
-            if file_path.is_symlink():
+            if project_file.path.suffix.lower() not in PRIVACY_EXTENSIONS:
                 continue
-            if file_path.suffix.lower() not in PRIVACY_EXTENSIONS:
+            if project_file.size == 0 or project_file.size > MAX_INLINE_BYTES:
                 continue
-            content = read_text_bounded(file_path, MAX_INLINE_BYTES)
-            if content is None:
-                continue
+            content = tree.read_text(project_file, MAX_INLINE_BYTES, errors="replace")
             if not content.strip():
                 continue
-            rel_name = str(file_path.relative_to(root))
+            rel_name = project_file.path.as_posix()
             scanned_files += 1
             file_findings, file_inventory, has_pii_model = _analyze_privacy(content, rel_name)
             findings.extend(file_findings)

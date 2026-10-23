@@ -18,6 +18,17 @@
     return node;
   }
 
+  function launcherIcon(symbol) {
+    const icon = el("span", { className: "project-audit-icon", "aria-hidden": "true" });
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("class", "ui-symbol");
+    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    use.setAttribute("href", `/static/ui-icons.svg#${symbol}`);
+    svg.append(use);
+    icon.append(svg);
+    return icon;
+  }
+
   async function postScan(body) {
     const response = await scope.fetch(ROUTE, {
       method: "POST",
@@ -32,7 +43,7 @@
   function buildPanel() {
     const section = el("section", { className: "panel project-audit-launcher container-scan-launcher", id: PANEL_ID });
     const intro = el("div");
-    intro.append(el("span", { className: "project-audit-icon", "aria-hidden": "true" }, "▣"));
+    intro.append(launcherIcon("container"));
     const text = el("p");
     text.append(el("b", {}, "Konteyner imajını yerelde incele"));
     text.append(el("small", {}, "docker save arşivi, OCI düzeni ya da açılmış rootfs: işletim sistemi paketleri (dpkg, apk, rpm) "

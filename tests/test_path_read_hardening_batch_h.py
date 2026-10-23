@@ -33,8 +33,7 @@ class ChangedScanPathReadTests(unittest.TestCase):
 
     def _compute_single(self, root: Path, rel: str) -> changed_scan.ChangeSet:
         base = changed_scan.BaseTree(root, "", "0" * 40, "sha1", {})
-        with mock.patch.object(changed_scan, "_walk_worktree", return_value=iter([rel])), \
-                mock.patch.object(changed_scan, "_ignored_paths", return_value=(set(), ())):
+        with mock.patch.object(changed_scan, "_ignored_paths", return_value=(set(), ())):
             return changed_scan.compute_changes(root, base, scan_scope.DEFAULT_SCOPE)
 
     def test_compute_changes_rejects_symlink_project_root(self) -> None:
@@ -44,10 +43,8 @@ class ChangedScanPathReadTests(unittest.TestCase):
         root_link = self.base / "root-link"
         root_link.symlink_to(real_root, target_is_directory=True)
 
-        changes = self._compute_single(root_link, "victim.py")
-
-        self.assertEqual(changes.added, set())
-        self.assertEqual(changes.current_blobs, {})
+        with self.assertRaises(changed_scan.ChangedScanError):
+            self._compute_single(root_link, "victim.py")
 
     def test_compute_changes_rejects_intermediate_symlink_after_walk(self) -> None:
         outside = self.base / "outside-dir"
@@ -78,10 +75,9 @@ class ChangedScanPathReadTests(unittest.TestCase):
         (self.root / "a.py").symlink_to(outside)
         (self.root / "victim.py").write_text("VALUE = 1\n", encoding="utf-8")
 
-        with mock.patch.object(changed_scan, "_walk_worktree", return_value=iter(["a.py", "victim.py"])):
-            context = changed_scan.import_context(self.root, {"a.py"}, scan_scope.DEFAULT_SCOPE)
+        context = changed_scan.import_context(self.root, {"a.py"}, scan_scope.DEFAULT_SCOPE)
 
-        self.assertEqual(context, frozenset({"a.py"}))
+        self.assertEqual(context, frozenset())
 
     def test_fingerprint_does_not_use_replaced_symlink_contents(self) -> None:
         outside = self.base / "outside.py"
@@ -147,7 +143,7 @@ class ContainerPathReadTests(unittest.TestCase):
             dockerfile.symlink_to(outside)
             return dockerfile
 
-        with mock.patch.object(container_scan, "validate_image_path", side_effect=replace_after_initial_check), \
+        with mock.patch.object(container_scan, "_allowed_input_path", side_effect=replace_after_initial_check), \
                 self.assertRaises(container_scan.ContainerScanError):
             container_scan._read_dockerfile(str(dockerfile), (self.base,))
 

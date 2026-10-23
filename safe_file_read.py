@@ -20,6 +20,33 @@ from pathlib import Path
 _CHUNK_BYTES = 65536
 
 
+def _open_regular_candidate(path: str | os.PathLike[str]) -> int:
+    """Open a file without following any pathname component.
+
+    ``O_NOFOLLOW`` on a full pathname protects only the leaf.  Walk directory
+    components relative to an already-open descriptor so an intermediate
+    symlink replacement cannot redirect the read outside the selected tree.
+    """
+    raw = os.fspath(path)
+    if not isinstance(raw, str) or not raw or "\x00" in raw:
+        raise ValueError("invalid path")
+    absolute = raw.startswith("/")
+    parts = [part for part in raw.split("/") if part not in ("", ".")]
+    if not parts:
+        raise ValueError("file path required")
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+    file_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
+    directory_fd = os.open("/" if absolute else ".", directory_flags)
+    try:
+        for component in parts[:-1]:
+            next_fd = os.open(component, directory_flags, dir_fd=directory_fd)
+            os.close(directory_fd)
+            directory_fd = next_fd
+        return os.open(parts[-1], file_flags, dir_fd=directory_fd)
+    finally:
+        os.close(directory_fd)
+
+
 def read_bytes_bounded(path: str | os.PathLike[str], max_bytes: int, *, allow_empty: bool = False) -> bytes | None:
     """Normal dosyanın içeriğini en fazla ``max_bytes`` bayt olarak döndürür.
 
@@ -28,9 +55,8 @@ def read_bytes_bounded(path: str | os.PathLike[str], max_bytes: int, *, allow_em
     """
     if max_bytes < 0:
         return None
-    flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
     try:
-        fd = os.open(os.fspath(path), flags)
+        fd = _open_regular_candidate(path)
     except (OSError, ValueError, TypeError):
         return None
     try:

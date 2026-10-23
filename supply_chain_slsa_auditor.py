@@ -6,10 +6,10 @@ import re
 import tomllib
 from typing import Any
 
-from dependency_security import discover_components
+from dependency_security import DependencySecurityError, discover_components
 import legacy_basis
 from project_analyzer import validate_project_path
-from safe_file_read import read_text_bounded
+from project_tree import ProjectFile, ProjectTree, ProjectTreeError
 from scanner import calculate_score
 from finding_limits import INLINE_FINDING_LIMIT, PROJECT_FINDING_LIMIT, cap_findings, summarize_finding_groups
 
@@ -152,11 +152,14 @@ def _detect_typosquat(pkg_name: str) -> tuple[str, str] | None:
     return None
 
 
-def _read_manifest_licenses(root: Path) -> list[tuple[str, str]]:
+def _read_manifest_licenses(
+    tree: ProjectTree,
+    files_by_path: dict[str, ProjectFile],
+) -> list[tuple[str, str]]:
     discovered: list[tuple[str, str]] = []
-    pkg_json = root / "package.json"
-    pkg_json_text = read_text_bounded(pkg_json, 1_000_000, errors="ignore", allow_empty=True)
-    if pkg_json_text is not None:
+    pkg_json = files_by_path.get("package.json")
+    if pkg_json is not None and pkg_json.size <= 1_000_000:
+        pkg_json_text = tree.read_text(pkg_json, 1_000_000, errors="ignore", allow_empty=True)
         try:
             data = json.loads(pkg_json_text)
             if isinstance(data, dict):
@@ -167,9 +170,9 @@ def _read_manifest_licenses(root: Path) -> list[tuple[str, str]]:
         except Exception:
             pass
 
-    pyproject = root / "pyproject.toml"
-    pyproject_text = read_text_bounded(pyproject, 1_000_000, errors="ignore", allow_empty=True)
-    if pyproject_text is not None:
+    pyproject = files_by_path.get("pyproject.toml")
+    if pyproject is not None and pyproject.size <= 1_000_000:
+        pyproject_text = tree.read_text(pyproject, 1_000_000, errors="ignore", allow_empty=True)
         try:
             data = tomllib.loads(pyproject_text)
             if isinstance(data, dict):
@@ -186,9 +189,9 @@ def _read_manifest_licenses(root: Path) -> list[tuple[str, str]]:
         except Exception:
             pass
 
-    cargo = root / "Cargo.toml"
-    cargo_text = read_text_bounded(cargo, 1_000_000, errors="ignore", allow_empty=True)
-    if cargo_text is not None:
+    cargo = files_by_path.get("Cargo.toml")
+    if cargo is not None and cargo.size <= 1_000_000:
+        cargo_text = tree.read_text(cargo, 1_000_000, errors="ignore", allow_empty=True)
         try:
             data = tomllib.loads(cargo_text)
             if isinstance(data, dict):
@@ -225,46 +228,34 @@ def _classify_provenance_file(name: str) -> str | None:
     return None
 
 
-def _project_provenance_signals(root: Path) -> dict[str, Any]:
+def _project_provenance_signals(
+    tree: ProjectTree,
+    project_files: list[ProjectFile],
+    files_by_path: dict[str, ProjectFile],
+) -> dict[str, Any]:
     """Projede gerçekten bulunan sürüm manifesti, imza, SBOM ve VEX dosyaları."""
     found: dict[str, list[str]] = {"provenance": [], "signature": [], "sbom": [], "vex": [], "checksum": []}
     release_manifest: dict[str, Any] | None = None
-    seen = 0
-    stack: list[tuple[Path, int]] = [(root, 0)]
-    while stack and seen < _PROVENANCE_MAX_ENTRIES:
-        current, depth = stack.pop()
-        try:
-            entries = sorted(current.iterdir())
-        except OSError:
-            continue
-        for entry in entries:
-            seen += 1
-            if seen >= _PROVENANCE_MAX_ENTRIES:
-                break
-            if entry.is_symlink():
-                continue
-            rel = entry.relative_to(root).as_posix()
-            if entry.is_dir():
-                if depth < 2 and entry.name not in _PROVENANCE_SCAN_SKIP:
-                    stack.append((entry, depth + 1))
-                continue
-            if entry.name == "MANIFEST.json" and release_manifest is None:
-                text = read_text_bounded(entry, 4_000_000, errors="ignore", allow_empty=True)
+    for entry in project_files:
+        rel = entry.path.as_posix()
+        if entry.name == "MANIFEST.json" and release_manifest is None:
+            if entry.size <= 4_000_000:
+                text = tree.read_text(entry, 4_000_000, errors="ignore", allow_empty=True)
                 try:
                     data = json.loads(text) if text else None
                 except ValueError:
                     data = None
                 if isinstance(data, dict) and str(data.get("format") or "").startswith("sniper-release/"):
-                    sig = entry.with_name("MANIFEST.json.sig")
+                    sig = entry.path.with_name("MANIFEST.json.sig").as_posix()
                     release_manifest = {
                         "path": rel, "format": data.get("format"), "version": str(data.get("version") or ""),
                         "file_count": len(data.get("files") or []),
-                        "signed": sig.is_file() and not sig.is_symlink(),
+                        "signed": sig in files_by_path,
                     }
-                continue
-            kind = _classify_provenance_file(entry.name)
-            if kind and len(found[kind]) < 20:
-                found[kind].append(rel)
+            continue
+        kind = _classify_provenance_file(entry.name)
+        if kind and len(found[kind]) < 20:
+            found[kind].append(rel)
     return {"files": found, "release_manifest": release_manifest}
 
 
@@ -307,23 +298,40 @@ def audit_supply_chain_slsa(
 
     if project_path is not None:
         root = validate_project_path(project_path, allowed_roots)
-        try:
-            _, discovered = discover_components(str(root), allowed_roots=allowed_roots)
-            comp_list.extend(discovered)
-        except Exception:
-            pass
-        manifest_licenses.extend(_read_manifest_licenses(root))
-        provenance = _project_provenance_signals(root)
+        with ProjectTree(root) as tree:
+            try:
+                _, discovered = discover_components(
+                    str(root), allowed_roots=allowed_roots, project_tree=tree
+                )
+                comp_list.extend(discovered)
+            except ProjectTreeError:
+                raise
+            except DependencySecurityError as exc:
+                if isinstance(exc.__cause__, ProjectTreeError):
+                    raise
+                pass
+            project_files = [
+                project_file
+                for project_file in tree.iter_files(
+                    skip_dirs=_PROVENANCE_SCAN_SKIP,
+                    max_entries=_PROVENANCE_MAX_ENTRIES,
+                    reject_unsafe=False,
+                )
+                if len(project_file.path.parts) <= 3
+            ]
+            files_by_path = {project_file.path.as_posix(): project_file for project_file in project_files}
+            manifest_licenses.extend(_read_manifest_licenses(tree, files_by_path))
+            provenance = _project_provenance_signals(tree, project_files, files_by_path)
+            for project_file in project_files:
+                if (
+                    project_file.path.parent.as_posix() != ".github/workflows"
+                    or project_file.path.suffix.casefold() not in {".yml", ".yaml"}
+                    or project_file.size > 1_000_000
+                ):
+                    continue
+                wf_text = tree.read_text(project_file, 1_000_000, errors="ignore", allow_empty=True)
+                workflows.append((project_file.path.as_posix(), wf_text))
         vex_state = _vex_status(store, str(root), allowed_roots)
-        wf_dir = root / ".github" / "workflows"
-        if wf_dir.is_dir() and not wf_dir.is_symlink():
-            for wf_path in sorted(wf_dir.iterdir()):
-                if wf_path.suffix.casefold() not in {".yml", ".yaml"}:
-                    continue
-                wf_text = read_text_bounded(wf_path, 1_000_000, errors="ignore", allow_empty=True)
-                if wf_text is None:
-                    continue
-                workflows.append((f".github/workflows/{wf_path.name}", wf_text))
 
     if isinstance(components, list):
         for item in components:

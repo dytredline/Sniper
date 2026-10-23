@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import os
+from contextlib import contextmanager
 from pathlib import Path
 import re
-import stat
-from typing import Any
+from typing import Any, Iterator
 
-from project_analyzer import MAX_FILES, MAX_FILE_BYTES, MAX_TOTAL_BYTES, SKIP_DIRS, validate_project_path
+from project_analyzer import MAX_FILES, MAX_FILE_BYTES, MAX_TOTAL_BYTES, ProjectRejected, SKIP_DIRS, validate_project_path
+from project_tree import ProjectTree, ProjectTreeError
 from scanner import calculate_score, utc_now
 from finding_limits import INLINE_FINDING_LIMIT, PROJECT_FINDING_LIMIT, cap_findings, summarize_finding_groups, project_scan_scope
 
@@ -17,6 +17,15 @@ SMART_CONTRACT_EXTENSIONS = {".sol"}
 IOT_FIRMWARE_EXTENSIONS = {
     ".c", ".cpp", ".cc", ".h", ".hpp", ".ino", ".conf", ".yaml", ".yml", ".ini",
 }
+
+
+@contextmanager
+def _opened_project_tree(root: Path) -> Iterator[ProjectTree]:
+    try:
+        with ProjectTree(str(root)) as tree:
+            yield tree
+    except ProjectTreeError as exc:
+        raise ProjectRejected("Proje ağacı güvenli biçimde okunamadı.") from exc
 
 
 def _make_finding(
@@ -571,40 +580,22 @@ def audit_web3_and_iot_project(
 
     all_extensions = SMART_CONTRACT_EXTENSIONS | IOT_FIRMWARE_EXTENSIONS
 
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            name for name in directories
-            if name.casefold() not in SKIP_DIRS and not (Path(current) / name).is_symlink()
-        )
-        for name in sorted(files):
-            path = Path(current) / name
-            if path.is_symlink():
-                continue
-            suffix = path.suffix.casefold()
+    with _opened_project_tree(root) as tree:
+        for project_file in tree.iter_files(skip_dirs=tuple(SKIP_DIRS), reject_unsafe=False):
+            suffix = project_file.path.suffix.casefold()
             if suffix not in all_extensions:
                 continue
-            try:
-                fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
-            except OSError:
+            if project_file.size > MAX_FILE_BYTES:
                 continue
-            try:
-                st = os.fstat(fd)
-                if not stat.S_ISREG(st.st_mode) or st.st_size > MAX_FILE_BYTES:
-                    os.close(fd)
-                    continue
-                if scanned_files + 1 > MAX_FILES or total_bytes + st.st_size > MAX_TOTAL_BYTES:
-                    os.close(fd)
-                    break
-                with os.fdopen(fd, "rb") as handle:
-                    raw = handle.read(MAX_FILE_BYTES + 1)
-            except OSError:
-                continue
-            if len(raw) > MAX_FILE_BYTES or b"\x00" in raw[:4096]:
+            if scanned_files + 1 > MAX_FILES or total_bytes + project_file.size > MAX_TOTAL_BYTES:
+                break
+            raw = tree.read_bytes(project_file, MAX_FILE_BYTES, allow_empty=True)
+            if b"\x00" in raw[:4096]:
                 continue
             text = raw.decode("utf-8", errors="ignore")
             scanned_files += 1
             total_bytes += len(raw)
-            rel_file = str(path.relative_to(root))
+            rel_file = project_file.path.as_posix()
 
             if suffix in SMART_CONTRACT_EXTENSIONS:
                 sol_files += 1

@@ -12,6 +12,7 @@ from unittest import mock
 
 import dependency_reachability as dr
 from dependency_security import analyze_vulnerability_reachability
+from project_tree import ProjectTreeError
 
 
 def _path_read_text_calls(function: object) -> list[int]:
@@ -24,6 +25,10 @@ def _path_read_text_calls(function: object) -> list[int]:
         if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Attribute)
         and node.func.attr == "read_text"
+        and not (
+            isinstance(node.func.value, ast.Name)
+            and node.func.value.id in {"tree", "project_tree", "_project_tree"}
+        )
     ]
 
 
@@ -89,10 +94,10 @@ class DependencyPathReadHardeningTests(unittest.TestCase):
             return real_open(path, flags, *args, **kwargs)
 
         with mock.patch.object(dr.os, "open", side_effect=replacing_open):
-            aliases = dr.npm_dependency_aliases(self.project, ())
+            with self.assertRaises(ProjectTreeError):
+                dr.npm_dependency_aliases(self.project, ())
 
         self.assertTrue(replaced)
-        self.assertNotIn("evil-package", aliases)
 
     def test_manifest_readers_reject_parent_directory_symlink_replacement(self) -> None:
         cases = (

@@ -5985,7 +5985,10 @@ class SniperHandler(BaseHTTPRequestHandler):
                 from project_analyzer import _iter_files, validate_project_path
 
                 root = validate_project_path(str(audit.get("project_path") or ""))
-                files = ((path.relative_to(root).as_posix(), text, kind) for path, text, kind in _iter_files(root))
+                files = (
+                    (path.relative_to(root).as_posix(), text, kind)
+                    for path, text, kind, _project_tree in _iter_files(root)
+                )
                 model = threat_model.build_from_paths(root, files, list(audit.get("findings") or []), project_name=root.name)
                 rebuilt = True
             except (ProjectRejected, OSError, ValueError):

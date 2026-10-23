@@ -30,12 +30,16 @@ import tempfile
 import time
 from typing import Any, Iterable
 
+from project_tree import ProjectFile, ProjectTree, ProjectTreeError
+
 DEFAULT_BINARY = "/usr/bin/clang"
 PER_FILE_TIMEOUT = 20
 DEFAULT_BUDGET = 60
 DEFAULT_MAX_FILES = 300
 MAX_INCLUDE_DIRS = 40
 MAX_OUTPUT = 512_000
+MAX_STAGE_FILE_BYTES = 64 << 20
+STAGE_SKIP_DIRS = frozenset({"node_modules", "__pycache__", ".git", ".hg", ".svn", ".tox", ".venv", "venv"})
 C_SOURCE_SUFFIXES = frozenset({".c"})
 CPP_SOURCE_SUFFIXES = frozenset({".cc", ".cpp", ".cxx", ".c++", ".ino"})
 HEADER_SUFFIXES = frozenset({".h", ".hh", ".hpp", ".hxx"})
@@ -78,6 +82,42 @@ def _env_int(name: str, default: int, lo: int, hi: int) -> int:
         return max(lo, min(hi, int(os.environ.get(name, default))))
     except (TypeError, ValueError):
         return default
+
+
+def _relative_project_path(root: Path, path: Path) -> str | None:
+    """Lexically map a caller path to the pinned project; never resolve it through the OS."""
+    raw = os.path.normpath(str(path if path.is_absolute() else root / path))
+    root_raw = os.path.normpath(str(root))
+    if raw == root_raw or not raw.startswith(root_raw + os.sep):
+        return None
+    rel = os.path.relpath(raw, root_raw).replace(os.sep, "/")
+    return None if rel in ("", ".", "..") or rel.startswith("../") else rel
+
+
+def _stage_record(tree: ProjectTree, record: ProjectFile, destination: Path) -> Path:
+    """Copy identity-verified bytes from the pinned tree into a private staging tree."""
+    data = tree.read_bytes(record, MAX_STAGE_FILE_BYTES, allow_empty=True)
+    target = destination.joinpath(*record.path.parts)
+    target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with open(target, "xb") as handle:
+        handle.write(data)
+    return target
+
+
+def _rebase_build_args(args: Iterable[str], root: Path, stage: Path) -> list[str]:
+    """Move project-local include/forced-file operands onto verified staging paths."""
+    out: list[str] = []
+    expects_path = False
+    path_flags = {"-I", "-isystem", "-iquote", "-include"}
+    for arg in args:
+        if expects_path:
+            rel = _relative_project_path(root, Path(arg))
+            out.append(str(stage / rel) if rel is not None else arg)
+            expects_path = False
+            continue
+        out.append(arg)
+        expects_path = arg in path_flags
+    return out
 
 
 def include_dirs(root: Path, files: Iterable[Path]) -> list[Path]:
@@ -231,20 +271,16 @@ class _StubDir:
         self.path: str | None = None
         self.names: set[str] = set()
         self.lock = threading.Lock()
+        self.tree = ProjectTree(str(root)).open()
 
     def _quoted_include(self, including: str, line: int, name: str) -> bool:
         """Hata satırındaki yönerge ``#include "ad"`` mı (sistem/dış bağımlılık <...> başlıkları yer tutucu almaz)."""
-        try:
-            fpath = Path(including).resolve()
-        except (OSError, RuntimeError):
-            return False
-        if not str(fpath).startswith(str(self.root.resolve()) + os.sep):
+        relative = _relative_project_path(self.root, Path(including))
+        if relative is None:
             return False
         try:
-            import c_build
-
-            text = c_build._read_text(fpath, 8 << 20)
-        except Exception:  # noqa: BLE001
+            text = self.tree.read_text(relative, 8 << 20, errors="replace", allow_empty=True)
+        except ProjectTreeError:
             return False
         lines = (text or "").splitlines()
         if not 0 < line <= len(lines):
@@ -274,6 +310,7 @@ class _StubDir:
             return True
 
     def cleanup(self) -> None:
+        self.tree.close()
         if self.path:
             import shutil
 
@@ -350,10 +387,9 @@ def author_suppressed(root: Path, rel: str, line: int, kind: str) -> bool:
     if kind not in ("uaf", "double_free"):
         return False
     try:
-        import c_build
-
-        text = c_build._read_text((root / rel), 8 << 20)
-    except Exception:  # noqa: BLE001
+        with ProjectTree(str(root)) as tree:
+            text = tree.read_text(rel, 8 << 20, errors="replace", allow_empty=True)
+    except ProjectTreeError:
         return False
     lines = (text or "").splitlines()
     if not 0 < line <= len(lines):
@@ -376,74 +412,125 @@ def analyze_files(root: Path, files: list[Path], *, budget: float | None = None,
     started = time.monotonic()
     budget = float(budget if budget is not None else _env_int("SNIPER_CLANG_BUDGET", DEFAULT_BUDGET, 5, 3600))
     max_files = max_files if max_files is not None else _env_int("SNIPER_CLANG_MAX_FILES", DEFAULT_MAX_FILES, 1, 100000)
-    sources = [f for f in files if f.suffix.lower() in C_SOURCE_SUFFIXES | CPP_SOURCE_SUFFIXES]
-    prio: set[str] = set()
-    for q in priority or ():
-        try:
-            prio.add(str(Path(q).resolve()))
-        except (OSError, RuntimeError):
-            continue
-
-    scan_inputs = len(sources) <= MAX_PRIORITY_SCAN_FILES
-
-    def _rank(p: Path) -> tuple[int, int]:
-        size = p.stat().st_size if p.exists() else 0
-        try:
-            if str(p.resolve()) in prio:
-                return 0, size
-        except (OSError, RuntimeError):
-            pass
-        return (1 if scan_inputs and _reads_input(p) else 2), size
-
-    sources.sort(key=_rank)  # öncelikli → girdi okuyan → diğer; her grupta küçükler önce
-    truncated = len(sources) > max_files
-    sources = sources[:max_files]
-    if not sources:
-        return {"status": "no_sources", "files": 0, "seconds": 0.0, "findings": [], "build": None}
-    incs = include_dirs(root, files)
+    root = Path(os.path.normpath(str(root)))
+    requested = {_relative_project_path(root, path) for path in files}
+    requested.discard(None)
+    prio = {_relative_project_path(root, Path(path)) for path in (priority or ())}
+    prio.discard(None)
     deadline = started + budget
-    info = None
-    if build_info is not False:
-        info = build_info
-        if info is None:
-            try:
-                import c_build
-
-                info = c_build.load(root, max_seconds=min(10.0, max(1.0, budget / 6)))
-            except Exception:  # noqa: BLE001 - derleme bilgisi okunamazsa bugünkü davranış
-                info = None
-    stub_dir = _StubDir(root, info) if stubs and info is not None else None
-    per_file_build: list[Any] = []
-    for p in sources:
-        try:
-            per_file_build.append(info.flags_for(p) if info is not None else None)
-        except Exception:  # noqa: BLE001
-            per_file_build.append(None)
-    workers = workers or max(1, min(4, (os.cpu_count() or 2) // 2))
     findings: list[dict[str, Any]] = []
     done = 0
     by_source: dict[str, int] = {}
     outcome: dict[str, int] = {}
+    info = None
+    stub_dir: _StubDir | None = None
+    priority_files = 0
+
     try:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
-            futs = [pool.submit(_run_with_build, clang, p, root, incs, deadline, b, stub_dir)
-                    for p, b in zip(sources, per_file_build)]
-            for fut, b in zip(futs, per_file_build):
+        with ProjectTree(str(root)) as tree, tempfile.TemporaryDirectory(prefix="sniper-clang-stage-") as tmp:
+            stage = Path(tmp)
+            os.chmod(stage, 0o700)
+            all_records: dict[str, ProjectFile] = {}
+            for record in tree.iter_files(skip_dirs=STAGE_SKIP_DIRS, reject_unsafe=False):
+                rel = record.path.as_posix()
+                all_records[rel] = record
+
+            records = {
+                rel: record for rel, record in all_records.items()
+                if rel in requested or record.path.suffix.lower() in HEADER_SUFFIXES | {".ipp", ".inl", ".tcc"}
+            }
+
+            staged_files: list[Path] = []
+            source_pairs: list[tuple[str, Path, ProjectFile]] = []
+            for rel in sorted(records):
+                record = records[rel]
+                staged = _stage_record(tree, record, stage)
+                staged_files.append(staged)
+                if staged.suffix.lower() in C_SOURCE_SUFFIXES | CPP_SOURCE_SUFFIXES:
+                    source_pairs.append((rel, staged, record))
+            if not source_pairs:
+                return {"status": "no_sources", "files": 0, "seconds": 0.0, "findings": [], "build": None}
+
+            if build_info is not False:
+                info = build_info
+                if info is None:
+                    try:
+                        import c_build
+
+                        info = c_build.load(root, max_seconds=min(10.0, max(1.0, budget / 6)), project_tree=tree)
+                    except ProjectTreeError:
+                        raise
+                    except Exception:  # noqa: BLE001 - derleme bilgisi okunamazsa bugünkü davranış
+                        info = None
+
+            logical_builds: dict[str, Any] = {}
+            if info is not None:
+                for rel, _staged, _record in source_pairs:
+                    try:
+                        build = info.flags_for(root / rel)
+                    except Exception:  # noqa: BLE001
+                        continue
+                    logical_builds[rel] = build
+                    expects_path = False
+                    for arg in build.args:
+                        if expects_path:
+                            forced_rel = _relative_project_path(root, Path(arg))
+                            if forced_rel in all_records and forced_rel not in records:
+                                staged_files.append(_stage_record(tree, all_records[forced_rel], stage))
+                                records[forced_rel] = all_records[forced_rel]
+                            expects_path = False
+                            continue
+                        expects_path = arg == "-include"
+
+            scan_inputs = len(source_pairs) <= MAX_PRIORITY_SCAN_FILES
+
+            def rank(item: tuple[str, Path, ProjectFile]) -> tuple[int, int]:
+                rel, staged, record = item
+                if rel in prio:
+                    return 0, record.size
+                return (1 if scan_inputs and _reads_input(staged) else 2), record.size
+
+            source_pairs.sort(key=rank)
+            truncated = len(source_pairs) > max_files
+            source_pairs = source_pairs[:max_files]
+            sources = [staged for _rel, staged, _record in source_pairs]
+            priority_files = sum(1 for rel, _staged, _record in source_pairs if rel in prio)
+            incs = include_dirs(stage, staged_files)
+            per_file_build: list[Any] = []
+            for rel, _staged, _record in source_pairs:
                 try:
-                    found, used, result = fut.result()
-                except Exception:  # noqa: BLE001 - tek dosya hatası analizi durdurmaz
-                    continue
-                findings += found
-                done += 1
-                src = b.source if b is not None else "yok"
-                by_source[src] = by_source.get(src, 0) + 1
-                outcome[result] = outcome.get(result, 0) + 1
-    except RuntimeError:
-        return {"status": "error", "files": done, "seconds": round(time.monotonic() - started, 1), "findings": findings,
-                "build": None}
-    finally:
-        if stub_dir is not None:
-            stub_dir.cleanup()
+                    build = logical_builds.get(rel) if info is not None else None
+                    if build is not None:
+                        build = type(build)(_rebase_build_args(build.args, root, stage), build.source, build.origin)
+                    per_file_build.append(build)
+                except Exception:  # noqa: BLE001
+                    per_file_build.append(None)
+
+            stub_dir = _StubDir(stage, info) if stubs and info is not None else None
+            workers = workers or max(1, min(4, (os.cpu_count() or 2) // 2))
+            try:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+                    futs = [pool.submit(_run_with_build, clang, path, stage, incs, deadline, build, stub_dir)
+                            for path, build in zip(sources, per_file_build)]
+                    for fut, build in zip(futs, per_file_build):
+                        try:
+                            found, _used, result = fut.result()
+                        except Exception:  # noqa: BLE001 - tek dosya hatası analizi durdurmaz
+                            continue
+                        findings += found
+                        done += 1
+                        source = build.source if build is not None else "yok"
+                        by_source[source] = by_source.get(source, 0) + 1
+                        outcome[result] = outcome.get(result, 0) + 1
+            except RuntimeError:
+                return {"status": "error", "files": done, "seconds": round(time.monotonic() - started, 1),
+                        "findings": findings, "build": None}
+            finally:
+                if stub_dir is not None:
+                    stub_dir.cleanup()
+    except ProjectTreeError:
+        return {"status": "unsafe_tree", "files": 0, "seconds": round(time.monotonic() - started, 1),
+                "findings": [], "build": None}
     status = "budget" if time.monotonic() > deadline else ("truncated" if truncated else "ok")
     build_summary = {
         "files_by_source": dict(sorted(by_source.items())),  # dosyanın derleme bilgisi kaynağı
@@ -452,7 +539,7 @@ def analyze_files(root: Path, files: list[Path], *, budget: float | None = None,
         "analyzed_plain": outcome.get("plain", 0),
         "analyzed_with_stub_headers": outcome.get("stub", 0),  # eksik üretilen başlık yer tutucuyla çözümlendi
         "stub_headers": sorted(stub_dir.names)[:50] if stub_dir is not None else [],
-        "priority_files": sum(1 for p in sources if str(p.resolve()) in prio),
+        "priority_files": priority_files,
         "failed": outcome.get("failed", 0),  # derleme hatası (eksik/üretilen başlık vb.): çözümlenemedi
         "timeout": outcome.get("timeout", 0),  # dosya süresi ya da toplam bütçe doldu
         "inputs": info.summary() if info is not None else None,

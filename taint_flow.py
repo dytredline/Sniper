@@ -46,6 +46,7 @@ import stat
 import tomllib
 from typing import Any, Callable, Iterator
 
+from project_tree import ProjectFile, ProjectTree, ProjectTreeError
 from safe_file_read import read_text_bounded
 import scan_scope
 import taint_py_views
@@ -156,6 +157,9 @@ def project_context(func: Callable[..., Any]) -> Callable[..., Any]:
             try:
                 return func(*args, **kwargs)
             finally:
+                state = _PROJECT.get()
+                if state is not None:
+                    state.close()
                 _PROJECT_CONTEXT_DEPTH.reset(depth_token)
                 _PROJECT_JS_HANDLERS.reset(handlers_token)
                 _PROJECT.reset(project_token)
@@ -172,14 +176,24 @@ def project_context(func: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-def activate_project(root: Path, skip_dirs: set[str] | frozenset[str]) -> None:
+def activate_project(
+    root: Path,
+    skip_dirs: set[str] | frozenset[str],
+    *,
+    project_tree: ProjectTree | None = None,
+) -> None:
     """Proje taramasını etkinleştir: dosyalar arası JS işleyici adları ve (ilk Python
     dosyası analiz edilirken tembel olarak kurulan) proje geneli Python analizi.
 
     Yalnızca :func:`project_context` ile sarılmış fonksiyon içinde, doğrulanmış kökle çağırın.
     """
-    _PROJECT_JS_HANDLERS.set(project_js_handler_names(root, skip_dirs))
-    _PROJECT.set(_ProjectState(Path(root), frozenset(skip_dirs)))
+    tree = project_tree.duplicate() if project_tree is not None else ProjectTree(root).open()
+    try:
+        _PROJECT_JS_HANDLERS.set(project_js_handler_names(root, skip_dirs, project_tree=tree))
+        _PROJECT.set(_ProjectState(Path(root), frozenset(skip_dirs), tree))
+    except BaseException:
+        tree.close()
+        raise
 
 
 # Geriye uyumluluk: denetçiler bu adla çağırır.
@@ -5323,19 +5337,32 @@ def _django_route_text_params(pattern: str, is_path: bool) -> set[str]:
     return names
 
 
-def collect_python_templates(root: Path, skip_dirs: set[str] | frozenset[str]) -> dict[str, str]:
+def collect_python_templates(
+    root: Path,
+    skip_dirs: set[str] | frozenset[str],
+    *,
+    project_tree: ProjectTree | None = None,
+) -> dict[str, str]:
     """Proje içindeki ``templates``/``jinja2`` dizinlerinde bulunan sunucu tarafı şablonlar (sınırlı)."""
     found: dict[str, str] = {}
     total = 0
     try:
-        for path in _walk_project_files(Path(root), frozenset(skip_dirs), frozenset(taint_py_views.TEMPLATE_EXTS)):
+        for path, observed, tree in _walk_project_records(
+            Path(root),
+            frozenset(skip_dirs),
+            frozenset(taint_py_views.TEMPLATE_EXTS),
+            project_tree=project_tree,
+        ):
             relpath = path.relative_to(root).as_posix()
             if not any(part.lower() in taint_py_views.TEMPLATE_DIR_NAMES for part in PurePosixPath(relpath).parts[:-1]):
                 continue
             if len(found) >= _MAX_PY_TEMPLATES:
                 break
-            text = read_text_bounded(path, 1_000_000)
-            if text is None or "{{" not in text and "{%" not in text:
+            try:
+                text = tree.read_text(observed, 1_000_000, errors="replace", allow_empty=True)
+            except ProjectTreeError:
+                continue
+            if not text or "{{" not in text and "{%" not in text:
                 continue
             total += len(text)
             if total > _MAX_PY_TEMPLATE_BYTES:
@@ -6556,38 +6583,86 @@ def cfamily_facts(filename: str, text: str) -> dict[str, Any] | None:
     return facts
 
 
-def _walk_project_files(root: Path, skip_dirs: frozenset[str], suffixes: frozenset[str],
-                        limitations: set[str] | None = None) -> Iterator[Path]:
+def _walk_project_records(
+    root: Path,
+    skip_dirs: frozenset[str],
+    suffixes: frozenset[str],
+    limitations: set[str] | None = None,
+    *,
+    project_tree: ProjectTree | None = None,
+) -> Iterator[tuple[Path, ProjectFile, ProjectTree]]:
     seen = 0
     # "Yalnız atlananlar" modunda normal taramanın incelediği dosyalar dosyalar arası analize de girmez.
     skipped_only = scan_scope.current().skipped_only
     # "Yalnız değişenler": dosyalar arası bağlam değişen dosyaların içe aktarma komşuluğuyla sınırlanır (changed_scan).
     context = scan_scope.current().context_paths
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            name for name in directories
-            if name.casefold() not in skip_dirs and not (Path(current) / name).is_symlink()
+    if project_tree is None:
+        try:
+            with ProjectTree(root) as opened_tree:
+                yield from _walk_project_records(
+                    root,
+                    skip_dirs,
+                    suffixes,
+                    limitations,
+                    project_tree=opened_tree,
+                )
+        except ProjectTreeError:
+            if limitations is not None:
+                limitations.add("project-tree-changed")
+        return
+
+    try:
+        observed_files = project_tree.iter_files(
+            skip_dirs=skip_dirs,
+            max_entries=min(10_000_000, max(100_000, _project_files_limit() * 100)),
+            reject_unsafe=False,
         )
-        for name in sorted(files):
-            path = Path(current) / name
-            if path.suffix.lower() not in suffixes or path.is_symlink():
+        for observed in observed_files:
+            path = root / observed.path
+            if observed.path.suffix.lower() not in suffixes:
                 continue
             if skipped_only:
-                try:
-                    size = path.stat().st_size
-                except OSError:
+                if not scan_scope.default_skips_path(observed.path.parts, observed.size):
                     continue
-                if not scan_scope.default_skips_path(path.relative_to(root).parts, size):
-                    continue
-            if (context is not None and path.suffix.lower() in PY_SUFFIXES | JS_SUFFIXES
-                    and path.relative_to(root).as_posix() not in context):
+            if (
+                context is not None
+                and observed.path.suffix.lower() in PY_SUFFIXES | JS_SUFFIXES
+                and observed.path.as_posix() not in context
+            ):
                 continue
             seen += 1
             if seen > _project_files_limit():
                 if limitations is not None:
                     limitations.add("project-files")
                 return
-            yield path
+            yield path, observed, project_tree
+    except ProjectTreeError:
+        if limitations is not None:
+            limitations.add("project-tree-changed")
+
+
+def _walk_project_files(
+    root: Path,
+    skip_dirs: frozenset[str],
+    suffixes: frozenset[str],
+    limitations: set[str] | None = None,
+    *,
+    project_tree: ProjectTree | None = None,
+) -> Iterator[Path]:
+    """Compatibility path iterator backed by descriptor-pinned tree records.
+
+    Consumers that read file contents must use :func:`_walk_project_records`
+    and the yielded ``ProjectTree``/``ProjectFile`` pair.  This wrapper keeps
+    the established path-only enumeration contract for metadata consumers.
+    """
+    for path, _observed, _tree in _walk_project_records(
+        root,
+        skip_dirs,
+        suffixes,
+        limitations,
+        project_tree=project_tree,
+    ):
+        yield path
 
 
 def project_limitations() -> tuple[str, ...]:
@@ -6628,17 +6703,28 @@ def _entrypoints_from_config(text: str) -> set[str]:
     return found
 
 
-def collect_python_entrypoints(root: Path, skip_dirs: set[str] | frozenset[str]) -> frozenset[str]:
+def collect_python_entrypoints(
+    root: Path,
+    skip_dirs: set[str] | frozenset[str],
+    *,
+    project_tree: ProjectTree | None = None,
+) -> frozenset[str]:
     """Proje yapılandırmasında (OpenAPI/Connexion, serverless.yml, SAM) adı geçen Python işleyicileri."""
     if not is_enabled():
         return frozenset()
     found: set[str] = set()
     total = 0
-    for index, path in enumerate(_walk_project_files(Path(root), frozenset(skip_dirs), _ENTRY_CONFIG_SUFFIXES)):
+    for index, (_path, observed, tree) in enumerate(_walk_project_records(
+        Path(root),
+        frozenset(skip_dirs),
+        _ENTRY_CONFIG_SUFFIXES,
+        project_tree=project_tree,
+    )):
         if index >= _ENTRY_CONFIG_MAX_FILES or total > _ENTRY_CONFIG_MAX_BYTES:
             break
-        text = read_text_bounded(path, _source_limit())
-        if text is None:
+        try:
+            text = tree.read_text(observed, _source_limit(), errors="replace", allow_empty=True)
+        except ProjectTreeError:
             continue
         total += len(text)
         found |= _entrypoints_from_config(text)
@@ -6650,9 +6736,10 @@ def collect_python_entrypoints(root: Path, skip_dirs: set[str] | frozenset[str])
 class _ProjectState:
     """Bir proje taraması boyunca paylaşılan, tembel kurulan dosyalar arası analiz."""
 
-    def __init__(self, root: Path, skip_dirs: frozenset[str]) -> None:
+    def __init__(self, root: Path, skip_dirs: frozenset[str], project_tree: ProjectTree) -> None:
         self.root = root
         self.skip_dirs = skip_dirs
+        self.project_tree = project_tree
         self._python: dict[Any, tuple[dict[str, str], dict[str, Analysis] | None]] = {}
         self._js: dict[Any, tuple[dict[str, str], dict[str, Analysis] | None]] = {}
         self._goruby: dict[str, tuple[dict[str, str], dict[str, Analysis] | None]] = {}
@@ -6660,6 +6747,9 @@ class _ProjectState:
         self._native: dict[str, tuple[dict[str, str], dict[str, Analysis] | None]] = {}
         self._native_facts: dict[str, tuple[dict[str, str], dict[str, Any]]] = {}
         self.limitations: dict[str, set[str]] = {}
+
+    def close(self) -> None:
+        self.project_tree.close()
 
     def _bounded(self, engine: str, reasons: set[str], results: dict[str, Analysis] | None) -> None:
         if results is None:
@@ -6683,10 +6773,16 @@ class _ProjectState:
         files: dict[str, str] = {}
         total = 0
         limits: set[str] = set()
-        for path in _walk_project_files(self.root, self.skip_dirs, PY_SUFFIXES, limits):
-            # Yalnız normal dosyalar (O_NOFOLLOW|O_NONBLOCK + fstat): FIFO/aygıt dosyası bekletemez.
-            text = read_text_bounded(path, _source_limit())
-            if text is None:
+        for path, observed, tree in _walk_project_records(
+            self.root,
+            self.skip_dirs,
+            PY_SUFFIXES,
+            limits,
+            project_tree=self.project_tree,
+        ):
+            try:
+                text = tree.read_text(observed, _source_limit(), errors="replace", allow_empty=True)
+            except ProjectTreeError:
                 continue
             total += len(text)
             if total > _project_bytes_limit():
@@ -6694,8 +6790,8 @@ class _ProjectState:
                 break
             files[path.relative_to(self.root).as_posix()] = text
         digests = {relpath: self._digest(text) for relpath, text in files.items()}
-        entrypoints = collect_python_entrypoints(self.root, self.skip_dirs)
-        templates = collect_python_templates(self.root, self.skip_dirs)
+        entrypoints = collect_python_entrypoints(self.root, self.skip_dirs, project_tree=self.project_tree)
+        templates = collect_python_templates(self.root, self.skip_dirs, project_tree=self.project_tree)
         results = analyze_python_files(files, pii=pii, entrypoints=entrypoints, templates=templates)
         self._bounded("python", limits, results)
         return digests, results
@@ -6708,9 +6804,18 @@ class _ProjectState:
         files: dict[str, str] = {}
         total = 0
         limits: set[str] = set()
-        for path in _walk_project_files(self.root, self.skip_dirs, JS_SUFFIXES, limits):
-            text = read_text_bounded(path, _source_limit())
-            if text is None or is_minified_js(text):
+        for path, observed, tree in _walk_project_records(
+            self.root,
+            self.skip_dirs,
+            JS_SUFFIXES,
+            limits,
+            project_tree=self.project_tree,
+        ):
+            try:
+                text = tree.read_text(observed, _source_limit(), errors="replace", allow_empty=True)
+            except ProjectTreeError:
+                continue
+            if is_minified_js(text):
                 continue
             total += len(text)
             if total > _project_bytes_limit():
@@ -6732,14 +6837,21 @@ class _ProjectState:
         files: dict[str, str] = {}
         total = 0
         limits: set[str] = set()
-        for path in _walk_project_files(self.root, self.skip_dirs, frozenset(suffixes), limits):
+        for path, observed, tree in _walk_project_records(
+            self.root,
+            self.skip_dirs,
+            frozenset(suffixes),
+            limits,
+            project_tree=self.project_tree,
+        ):
             name = path.name
             if name.endswith(".mod") and name != "go.mod":
                 continue
             if language == "go" and name.endswith("_test.go"):
                 continue
-            text = read_text_bounded(path, _source_limit())
-            if text is None:
+            try:
+                text = tree.read_text(observed, _source_limit(), errors="replace", allow_empty=True)
+            except ProjectTreeError:
                 continue
             total += len(text)
             if total > _project_bytes_limit():
@@ -6772,10 +6884,16 @@ class _ProjectState:
         mappers: dict[str, str] = {}
         total = 0
         limits: set[str] = set()
-        for path in _walk_project_files(self.root, self.skip_dirs,
-                                        CLIKE_SUFFIXES | frozenset({".xml", ".proto", ".twig", ".html"}), limits):
-            text = read_text_bounded(path, _source_limit())
-            if text is None:
+        for path, observed, tree in _walk_project_records(
+            self.root,
+            self.skip_dirs,
+            CLIKE_SUFFIXES | frozenset({".xml", ".proto", ".twig", ".html"}),
+            limits,
+            project_tree=self.project_tree,
+        ):
+            try:
+                text = tree.read_text(observed, _source_limit(), errors="replace", allow_empty=True)
+            except ProjectTreeError:
                 continue
             relpath = path.relative_to(self.root).as_posix()
             if path.suffix.lower() == ".twig":
@@ -6822,9 +6940,16 @@ class _ProjectState:
         files: dict[str, str] = {}
         total = 0
         limits: set[str] = set()
-        for path in _walk_project_files(self.root, self.skip_dirs, suffixes, limits):
-            text = read_text_bounded(path, _source_limit())
-            if text is None:
+        for path, observed, tree in _walk_project_records(
+            self.root,
+            self.skip_dirs,
+            suffixes,
+            limits,
+            project_tree=self.project_tree,
+        ):
+            try:
+                text = tree.read_text(observed, _source_limit(), errors="replace", allow_empty=True)
+            except ProjectTreeError:
                 continue
             total += len(text)
             if total > _project_bytes_limit():
@@ -6860,21 +6985,30 @@ class _ProjectState:
         """Dağıtım dosyaları standart girdinin ağ bağlantısı olduğunu söylüyor mu: systemd soket etkinleştirmesi
         (``*.socket`` içinde ``Accept=yes``), xinetd hizmet tanımı ya da ``socat … EXEC:``/``tcpserver`` sarmalayıcısı."""
         seen = 0
-        for current, directories, names in os.walk(self.root, followlinks=False):
-            directories[:] = [d for d in directories if d.casefold() not in self.skip_dirs and not d.startswith(".")]
-            for name in names:
-                low = name.lower()
-                if not (low.endswith((".socket", ".sh", ".conf", ".yml", ".yaml")) or low in (
-                        "dockerfile", "xinetd", "entrypoint", "run", "start")):
-                    continue
-                seen += 1
-                if seen > 400:
-                    return False
-                text = read_text_bounded(Path(current) / name, 200_000) or ""
-                if (low.endswith(".socket") and re.search(r"(?im)^\s*Accept\s*=\s*(yes|true)", text)) or \
-                        (re.search(r"(?m)^\s*socket_type\s*=", text) and re.search(r"(?m)^\s*server\s*=", text)) or \
-                        re.search(r"socat\b[^\n]*\b(EXEC|SYSTEM):", text) or re.search(r"\btcpserver\b", text):
-                    return True
+        suffixes = frozenset({"", ".socket", ".sh", ".conf", ".yml", ".yaml"})
+        for _path, observed, tree in _walk_project_records(
+            self.root,
+            self.skip_dirs,
+            suffixes,
+            project_tree=self.project_tree,
+        ):
+            if any(part.startswith(".") for part in observed.path.parts[:-1]):
+                continue
+            low = observed.name.lower()
+            if not (low.endswith((".socket", ".sh", ".conf", ".yml", ".yaml")) or low in (
+                    "dockerfile", "xinetd", "entrypoint", "run", "start")):
+                continue
+            seen += 1
+            if seen > 400:
+                return False
+            try:
+                text = tree.read_text(observed, 200_000, errors="replace", allow_empty=True)
+            except ProjectTreeError:
+                continue
+            if (low.endswith(".socket") and re.search(r"(?im)^\s*Accept\s*=\s*(yes|true)", text)) or \
+                    (re.search(r"(?m)^\s*socket_type\s*=", text) and re.search(r"(?m)^\s*server\s*=", text)) or \
+                    re.search(r"socat\b[^\n]*\b(EXEC|SYSTEM):", text) or re.search(r"\btcpserver\b", text):
+                return True
         return False
 
     def native_facts(self, family: str) -> tuple[dict[str, str], dict[str, Any]] | None:
@@ -6928,28 +7062,30 @@ class _ProjectState:
         return results[relpath]
 
 
-def project_js_handler_names(root: Path, skip_dirs: set[str] | frozenset[str]) -> frozenset[str]:
+def project_js_handler_names(
+    root: Path,
+    skip_dirs: set[str] | frozenset[str],
+    *,
+    project_tree: ProjectTree | None = None,
+) -> frozenset[str]:
     """Proje genelinde router çağrılarında adı geçen işleyicileri topla (dosyalar arası)."""
     if not is_enabled():
         return frozenset()
     names: set[str] = set()
     seen = 0
-    for current, directories, files in os.walk(root, followlinks=False):
-        directories[:] = sorted(
-            name for name in directories
-            if name.casefold() not in skip_dirs and not (Path(current) / name).is_symlink()
-        )
-        for name in sorted(files):
-            path = Path(current) / name
-            if path.suffix.lower() not in JS_SUFFIXES or path.is_symlink():
-                continue
-            seen += 1
-            if seen > _project_files_limit():
-                return frozenset(names)
-            # Yalnız normal dosyalar (O_NOFOLLOW|O_NONBLOCK + fstat): FIFO/aygıt dosyası bekletemez.
-            text = read_text_bounded(path, _source_limit())
-            if text is None:
-                continue
-            if ".get(" in text or ".post(" in text or ".put(" in text or ".delete(" in text or ".patch(" in text or ".use(" in text or ".all(" in text:
-                names |= collect_js_route_handlers(text)
+    for _path, observed, tree in _walk_project_records(
+        Path(root),
+        frozenset(skip_dirs),
+        JS_SUFFIXES,
+        project_tree=project_tree,
+    ):
+        seen += 1
+        if seen > _project_files_limit():
+            return frozenset(names)
+        try:
+            text = tree.read_text(observed, _source_limit(), errors="replace", allow_empty=True)
+        except ProjectTreeError:
+            continue
+        if ".get(" in text or ".post(" in text or ".put(" in text or ".delete(" in text or ".patch(" in text or ".use(" in text or ".all(" in text:
+            names |= collect_js_route_handlers(text)
     return frozenset(names)

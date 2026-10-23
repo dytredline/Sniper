@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Any
 
 from process_group_runner import run_in_process_group
+from project_tree import ProjectTree, ProjectTreeError
+from safe_file_read import read_bytes_bounded
 from tool_pins import PINS, configured_binary, open_pinned
 from verified_exec import VerificationError
 from project_analyzer import (
@@ -38,6 +40,7 @@ ALLOWED_RULEPACK_CATEGORIES = frozenset({
 # Opengrep için Sniper'ın kendi yazdığı, lisans açısından temiz kural paketi.
 BUILTIN_OPENGREP_RULES = Path(__file__).resolve().parent / "rules" / "opengrep" / "sniper-core.yaml"
 MAX_REPORTED_FINDINGS = 200
+MAX_RULEPACK_BYTES = 10_000_000
 
 
 def active_engine() -> tuple[str, str | None, str | None]:
@@ -449,8 +452,14 @@ def _load_rulepack_document(raw_text: str) -> Any:
         raise RuntimeError("Semgrep kuralları geçerli YAML değil.") from exc
 
 
-def _extract_rulepack_coverage_metadata(rules_path: Path) -> dict[str, Any]:
-    raw_bytes = rules_path.read_bytes()
+def _read_rulepack_bytes(rules_path: Path) -> bytes:
+    raw_bytes = read_bytes_bounded(rules_path, MAX_RULEPACK_BYTES)
+    if raw_bytes is None:
+        raise RuntimeError("Semgrep kuralları normal ve sınırlı bir dosya olmalı.")
+    return raw_bytes
+
+
+def _extract_rulepack_coverage_metadata_from_bytes(raw_bytes: bytes) -> dict[str, Any]:
     rulepack_sha256 = hashlib.sha256(raw_bytes).hexdigest()
     try:
         raw_text = raw_bytes.decode("utf-8")
@@ -517,28 +526,83 @@ def _extract_rulepack_coverage_metadata(rules_path: Path) -> dict[str, Any]:
     }
 
 
-def _count_skipped_breakdown(src_root: Path, secret_env_files: int) -> dict[str, int]:
+def _extract_rulepack_coverage_metadata(rules_path: Path) -> dict[str, Any]:
+    return _extract_rulepack_coverage_metadata_from_bytes(_read_rulepack_bytes(rules_path))
+
+
+def _count_skipped_breakdown(src_root: Path | ProjectTree, secret_env_files: int) -> dict[str, int]:
+    """Count non-staged entries without reopening a validated project pathname.
+
+    When staging has yielded at least one project entry, callers pass a duplicate
+    of that same descriptor-pinned tree.  The Path form remains for the public
+    helper contract and opens its own no-follow tree.
+    """
     excluded_directories = 0
     unsupported_or_binary_files = 0
-    for current, directories, files in os.walk(src_root, followlinks=False):
-        kept_dirs: list[str] = []
-        for dname in sorted(directories):
-            dpath = Path(current) / dname
-            if dname.casefold() in SKIP_DIRS or dpath.is_symlink():
-                excluded_directories += 1
-            else:
-                kept_dirs.append(dname)
-        directories[:] = kept_dirs
-        for fname in sorted(files):
-            fpath = Path(current) / fname
-            if fpath.is_symlink():
-                unsupported_or_binary_files += 1
-                continue
-            normalized = fname.casefold()
-            if normalized == ".env" or normalized.startswith(".env."):
-                continue
-            if fpath.suffix.casefold() not in SOURCE_EXTENSIONS and normalized not in MANIFEST_NAMES:
-                unsupported_or_binary_files += 1
+    tree = src_root.duplicate() if isinstance(src_root, ProjectTree) else ProjectTree(src_root)
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+    stack: list[int] = []
+    try:
+        with tree:
+            stack.append(os.dup(tree.fileno()))
+            seen = 0
+            while stack:
+                directory_fd = stack.pop()
+                try:
+                    with os.scandir(directory_fd) as entries:
+                        ordered = sorted(entries, key=lambda entry: entry.name)
+                    for entry in ordered:
+                        seen += 1
+                        if seen > 1_000_000:
+                            raise ProjectTreeError("Semgrep kapsam sayımı girdi sınırını aşıyor.")
+                        try:
+                            info = entry.stat(follow_symlinks=False)
+                        except OSError as exc:
+                            raise ProjectTreeError("Semgrep kapsam girdisi değişti.") from exc
+                        name = entry.name
+                        normalized = name.casefold()
+                        if stat.S_ISLNK(info.st_mode):
+                            try:
+                                points_to_directory = entry.is_dir(follow_symlinks=True)
+                            except OSError:
+                                points_to_directory = False
+                            if points_to_directory:
+                                excluded_directories += 1
+                            else:
+                                unsupported_or_binary_files += 1
+                            continue
+                        if stat.S_ISDIR(info.st_mode):
+                            if normalized in SKIP_DIRS:
+                                excluded_directories += 1
+                                continue
+                            child_fd: int | None = None
+                            try:
+                                child_fd = os.open(name, directory_flags, dir_fd=directory_fd)
+                                opened = os.fstat(child_fd)
+                            except OSError as exc:
+                                if child_fd is not None:
+                                    os.close(child_fd)
+                                raise ProjectTreeError("Semgrep kapsam dizini değişti.") from exc
+                            if not stat.S_ISDIR(opened.st_mode) or (
+                                opened.st_dev,
+                                opened.st_ino,
+                            ) != (info.st_dev, info.st_ino):
+                                os.close(child_fd)
+                                raise ProjectTreeError("Semgrep kapsam dizini değişti.")
+                            stack.append(child_fd)
+                            continue
+                        if not stat.S_ISREG(info.st_mode):
+                            unsupported_or_binary_files += 1
+                            continue
+                        if normalized == ".env" or normalized.startswith(".env."):
+                            continue
+                        if Path(name).suffix.casefold() not in SOURCE_EXTENSIONS and normalized not in MANIFEST_NAMES:
+                            unsupported_or_binary_files += 1
+                finally:
+                    os.close(directory_fd)
+    finally:
+        for directory_fd in stack:
+            os.close(directory_fd)
     return {
         "secret_env_files": secret_env_files,
         "excluded_directories": excluded_directories,
@@ -669,10 +733,12 @@ def run_local_semgrep(project_path: str) -> dict[str, Any]:
         rules_path = Path(semgrep_rules)
         if not rules_path.is_absolute():
             raise RuntimeError("Semgrep kural yolu mutlak olmalı.")
-        if rules_path.is_symlink() or not rules_path.is_file():
-            raise RuntimeError("Semgrep kuralları normal bir dosya olmalı.")
-
-        rulepack_meta = _extract_rulepack_coverage_metadata(rules_path)
+        rules_bytes = _read_rulepack_bytes(rules_path)
+        try:
+            rules_text = rules_bytes.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise RuntimeError("Semgrep kuralları geçerli UTF-8 olmalı.") from exc
+        rulepack_meta = _extract_rulepack_coverage_metadata_from_bytes(rules_bytes)
         try:
             verified = open_pinned(engine, engine_bin)
         except VerificationError as exc:
@@ -683,25 +749,43 @@ def run_local_semgrep(project_path: str) -> dict[str, Any]:
             snapshot_root = Path(tmpdir)
             input_dir = snapshot_root / "input"
             input_dir.mkdir(parents=True, exist_ok=True)
+            rule_dir = snapshot_root / "rules"
+            rule_dir.mkdir(mode=0o700)
+            staged_rules_path = rule_dir / rules_path.name
+            staged_rules_path.write_bytes(rules_bytes)
 
             staged_file_count = 0
             secret_env_files = 0
-            # Use upstream _iter_files, skip secret_file, write only text
+            project_snapshot: ProjectTree | None = None
             try:
-                for path, text, kind in _iter_files(src_root):
-                    if kind == "secret_file":
-                        secret_env_files += 1
-                        continue
-                    rel = path.relative_to(src_root)
-                    dest = input_dir / rel
-                    dest.parent.mkdir(parents=True, exist_ok=True)
-                    if text is not None:
-                        dest.write_text(text, encoding="utf-8")
-                        staged_file_count += 1
-            except ProjectRejected as e:
-                raise RuntimeError(str(e))
-
-            skipped_counts = _count_skipped_breakdown(src_root, secret_env_files)
+                # Upstream iterator decodes through one pinned tree. Retain a
+                # duplicate while calculating coverage so the project pathname
+                # is never reopened after staging.
+                try:
+                    for path, text, kind, project_tree in _iter_files(src_root):
+                        if project_snapshot is None:
+                            project_snapshot = project_tree.duplicate()
+                        if kind == "secret_file":
+                            secret_env_files += 1
+                            continue
+                        rel = path.relative_to(src_root)
+                        dest = input_dir / rel
+                        dest.parent.mkdir(parents=True, exist_ok=True)
+                        if text is not None:
+                            dest.write_text(text, encoding="utf-8")
+                            staged_file_count += 1
+                except ProjectRejected as exc:
+                    raise RuntimeError(str(exc)) from exc
+                try:
+                    skipped_counts = _count_skipped_breakdown(
+                        project_snapshot if project_snapshot is not None else src_root,
+                        secret_env_files,
+                    )
+                except ProjectTreeError as exc:
+                    raise RuntimeError("Semgrep proje kapsamı tarama sırasında değişti.") from exc
+            finally:
+                if project_snapshot is not None:
+                    project_snapshot.close()
 
             # Prepare output report file as sibling of input/
             report_file = snapshot_root / "report.json"
@@ -715,7 +799,7 @@ def run_local_semgrep(project_path: str) -> dict[str, Any]:
                     "scan",
                     str(input_dir),
                     "--config",
-                    rules_path.name,
+                    staged_rules_path.name,
                     "--json",
                     "--quiet",
                     "--disable-version-check",
@@ -728,14 +812,11 @@ def run_local_semgrep(project_path: str) -> dict[str, Any]:
                     "--output",
                     str(report_file),
                 ]
-                run_cwd: str | None = str(rules_path.parent)
+                run_cwd: str | None = str(rule_dir)
                 custom_text = _custom_opengrep_rules()
                 if custom_text:
                     # İşletmecinin onaylı özel kuralları (taint_rules_dsl): sabitli paketle birlikte,
                     # kural kimlikleri yol öneki almasın diye ikisi de geçici kural dizininden verilir.
-                    rule_dir = snapshot_root / "rules"
-                    rule_dir.mkdir(mode=0o700)
-                    (rule_dir / rules_path.name).write_bytes(rules_path.read_bytes())
                     (rule_dir / "sniper-custom.yaml").write_text(custom_text, encoding="utf-8")
                     cmd[cmd.index("--json"):cmd.index("--json")] = ["--config", "sniper-custom.yaml"]
                     run_cwd = str(rule_dir)
@@ -744,7 +825,7 @@ def run_local_semgrep(project_path: str) -> dict[str, Any]:
                     verified.argv0,
                     str(input_dir),
                     "--config",
-                    str(rules_path),
+                    str(staged_rules_path),
                     "--json",
                     "--quiet",
                     "--metrics",
@@ -825,7 +906,7 @@ def run_local_semgrep(project_path: str) -> dict[str, Any]:
                 "binary_sha256": verified.sha256,
                 "provenance": verified.provenance,
             }
-            rule_index = _rule_index(_load_rulepack_document(rules_path.read_text(encoding="utf-8")))
+            rule_index = _rule_index(_load_rulepack_document(rules_text))
             if engine == "opengrep" and custom_text:
                 rule_index.update(_rule_index(_load_rulepack_document(custom_text)))
                 summary["custom_rule_count"] = len(_rule_index(_load_rulepack_document(custom_text)))

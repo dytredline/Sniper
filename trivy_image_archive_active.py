@@ -11,10 +11,12 @@ from pathlib import Path
 from typing import Any
 
 from project_analyzer import validate_project_path, ProjectRejected
+from project_tree import ProjectTreeError
 from trivy_vuln_active import (
     TrivyVulnUnavailable,
     TrivyVulnBusy,
     TrivyVulnExecutionError,
+    _read_root_project_file,
     _streaming_sha256,
 )
 
@@ -39,23 +41,17 @@ def run_local_trivy_image_archive_vulnerability(
     if not archive_name.endswith(".tar"):
         raise TrivyImageArchiveInvalidInput("archive_name .tar ile bitmeli")
 
-    archive_path = src_root / archive_name
-
-    # Must be a regular file, not a symlink, at project root
     try:
-        st = os.lstat(archive_path)
-    except OSError as e:
-        raise TrivyImageArchiveInvalidInput("archive bulunamadı veya bilgisi alınamadı") from e
-
-    if not stat.S_ISREG(st.st_mode):
-        raise TrivyImageArchiveInvalidInput("archive normal bir dosya olmalı")
-    if stat.S_ISLNK(st.st_mode):
-        raise TrivyImageArchiveInvalidInput("archive sembolik bağ olmamalı")
-
-    # Size bounds: 1..250_000_000 bytes
-    size = st.st_size
-    if size < 1 or size > 250_000_000:
-        raise TrivyImageArchiveInvalidInput("archive boyutu 1 ile 250.000.000 bayt arasında olmalı")
+        archive_data = _read_root_project_file(
+            src_root,
+            archive_name,
+            250_000_000,
+            allow_empty=False,
+        )
+    except ProjectTreeError as exc:
+        raise TrivyImageArchiveInvalidInput(
+            "archive boyutu 1 ile 250.000.000 bayt arasında olan normal bir dosya olmalı"
+        ) from exc
 
     # Acquire persistent lock in SNIPER_DATA_DIR
     data_dir = os.environ.get("SNIPER_DATA_DIR")
@@ -154,64 +150,8 @@ def run_local_trivy_image_archive_vulnerability(
             input_dir = snapshot_root / "input"
             input_dir.mkdir(parents=True, exist_ok=True)
 
-            # Copy archive with O_NOFOLLOW and bounded streaming + fstat validation
-            fd = None
-            try:
-                fd = os.open(archive_path, os.O_RDONLY | os.O_NOFOLLOW)
-                try:
-                    st2 = os.fstat(fd)
-                    if not stat.S_ISREG(st2.st_mode):
-                        raise TrivyImageArchiveInvalidInput("archive lstat sonrasında değişti")
-                    if st2.st_size != size:
-                        raise TrivyImageArchiveInvalidInput("archive boyutu lstat sonrasında değişti")
-
-                    if st2.st_dev != st.st_dev or st2.st_ino != st.st_ino or st2.st_size != st.st_size:
-                        raise TrivyImageArchiveInvalidInput("archive kimliği lstat sonrasında değişti")
-
-                    # Record snapshot metadata for later validation
-                    snapshot_st = st2
-
-                    # Bounded streaming copy to temp
-                    dest = input_dir / archive_name
-                    with os.fdopen(os.open(str(dest), os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600), "wb") as out_f:
-                        copied = 0
-                        while copied < size:
-                            chunk = os.read(fd, min(65536, size - copied))
-                            if not chunk:
-                                raise TrivyImageArchiveInvalidInput("archive kopyası eksik: erken dosya sonu")
-                            out_f.write(chunk)
-                            copied += len(chunk)
-                        if copied != size:
-                            raise TrivyImageArchiveInvalidInput("archive kopyası eksik: bayt sayısı uyuşmuyor")
-
-                    # Validate destination file is regular and size matches
-                    dest_fd = os.open(str(dest), os.O_RDONLY | os.O_NOFOLLOW)
-                    try:
-                        dest_st = os.fstat(dest_fd)
-                        if not stat.S_ISREG(dest_st.st_mode):
-                            raise TrivyImageArchiveInvalidInput("hedef normal bir dosya değil")
-                        if dest_st.st_size != copied:
-                            raise TrivyImageArchiveInvalidInput("kopyalama sonrası hedef boyutu uyuşmuyor")
-                    finally:
-                        os.close(dest_fd)
-
-                    # Validate source file unchanged during copy: re-fstat source and compare to snapshot
-                    re_st = os.fstat(fd)
-                    if (re_st.st_dev != snapshot_st.st_dev or
-                        re_st.st_ino != snapshot_st.st_ino or
-                        re_st.st_size != snapshot_st.st_size or
-                        re_st.st_mtime_ns != snapshot_st.st_mtime_ns or
-                        re_st.st_ctime_ns != snapshot_st.st_ctime_ns):
-                        raise TrivyImageArchiveInvalidInput("archive dosyası kopyalama sırasında değişti")
-                finally:
-                    if fd is not None:
-                        os.close(fd)
-                        fd = None
-            except OSError as e:
-                if fd is not None:
-                    os.close(fd)
-                    fd = None
-                raise TrivyImageArchiveInvalidInput("archive okunamadı/kopyalanamadı") from e
+            # Only descriptor-validated bytes enter the private staging area.
+            (input_dir / archive_name).write_bytes(archive_data)
 
             # Prepare output report file
             report_file = snapshot_root / "report.json"
