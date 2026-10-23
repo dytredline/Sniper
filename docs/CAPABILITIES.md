@@ -370,7 +370,7 @@ yazılı kapsam, zaman aralığı, hız sınırı, veri işleme ve durdurma koş
 | Platform ve yayın-sırrı kapıları | PASS — Linux/macOS/Windows politika yolları ile `.env`/anahtar dışlama sözleşmeleri |
 | Compose yapılandırması | Varsayılan ve lisans-kapılı tools override yerelde PASS |
 | Community container build | Önceki main core build PASS; bu aday başlığı için yeni PR CI bekleniyor |
-| CodeQL | Önceki main işleri PASS; bu aday başlığı için yeni PR analizi bekleniyor |
+| CodeQL | PR #7 Actions, JavaScript/TypeScript ve Python işleri PASS; dal ve PR ref'lerinde açık alarm 0 |
 
 Bu sayılar ürünün bulduğu açık sayısı değildir ve yalnız o kaynak anlık görüntüsü/fixture'ları için geçerlidir.
 Gelecek commitler test toplamlarını değiştirebilir; bir motorun CI'da veya başka mimaride atlanması o motora ilişkin

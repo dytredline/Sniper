@@ -40,8 +40,8 @@ tree.
 | One-command offline setup smoke | PASS — parseable JSON result, five provenance-bound tools, and both real help entrypoints |
 | Changed-file Python compilation and JavaScript syntax | PASS |
 | Docker Compose configuration | PASS locally for default and explicit tools override; missing license acknowledgement rejected |
-| Community container image build | Previous main core image passed in GitHub Actions; this candidate head still requires its PR CI build |
-| CodeQL languages | Previous main GitHub Actions, JavaScript/TypeScript, and Python jobs passed; this candidate head still requires fresh PR analysis |
+| Community container image build | PASS — PR #7 built the current `community-core` image and its isolated container reached healthy state |
+| CodeQL languages | PASS — PR #7 Actions, JavaScript/TypeScript, and Python jobs passed; branch and PR refs reported 0 open alerts |
 
 Public workflow history is available in [Community CI](https://github.com/dytredline/Sniper/actions/workflows/ci.yml)
 and the [CodeQL runs](https://github.com/dytredline/Sniper/actions?query=workflow%3ACodeQL+branch%3Amain).
@@ -63,7 +63,7 @@ closed as **used in tests** with their test boundary recorded. Thirty-nine were 
 the relevant allowlist, containment, no-follow, XML-entity, header, redirect, and redaction controls passed focused
 runtime checks. The remaining four caused code changes: one real SBOM saved-path identity race was fixed in the
 product, and three unnecessary test-harness patterns were replaced with safer equivalents. The candidate still
-requires a fresh PR and post-merge CodeQL run before a release tag is created.
+requires a post-merge main CI and CodeQL run before a release tag is created; PR #7 passed the fresh pre-merge gates.
 
 These numbers describe this exact snapshot. Future commits can legitimately change test totals, and optional-engine
 availability varies by host.
