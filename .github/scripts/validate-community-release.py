@@ -25,6 +25,7 @@ MAX_SNAPSHOT_BYTES = 512 * 1024 * 1024
 READ_CHUNK_BYTES = 1024 * 1024
 REQUIRED_FILES = (
     "README.md",
+    "VALIDATION.md",
     "DEPLOYMENT.md",
     "LICENSE",
     "SECURITY.md",
@@ -59,6 +60,14 @@ REQUIRED_TEXT = {
         "MCP host",
         "Gökçe Baran Karakamış",
         "@dytredline",
+    ),
+    "VALIDATION.md": (
+        "Sniper Community validation evidence",
+        "2,714 tests, 0 failures, 0 errors",
+        "158 passed",
+        "412 passed, 0 failed",
+        "not a security certification",
+        "No step in this validation snapshot scans an external website",
     ),
     "DEPLOYMENT.md": (
         "Sniper Community local deployment",

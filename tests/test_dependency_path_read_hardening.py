@@ -52,6 +52,23 @@ class DependencyPathReadHardeningTests(unittest.TestCase):
 
         return replacing_stat
 
+    @staticmethod
+    def _walk_after_parent_replacement(root: Path, parent: Path, replacement: Path):
+        """Replay a completed walk, swapping one enumerated parent before use."""
+        entries = list(os.walk(root, followlinks=False))
+        replaced = False
+
+        def racing_walk(_root: Path, *, followlinks: bool = False):
+            nonlocal replaced
+            for current, directories, files in entries:
+                if not replaced and Path(current) == parent:
+                    parent.rename(parent.with_name(parent.name + "-validated"))
+                    parent.symlink_to(replacement, target_is_directory=True)
+                    replaced = True
+                yield current, list(directories), list(files)
+
+        return racing_walk
+
     def test_npm_alias_reader_does_not_follow_file_replaced_after_metadata_check(self) -> None:
         manifest = self.project / "package.json"
         manifest.write_text(json.dumps({"dependencies": {"left-pad": "1.0.0"}}), encoding="utf-8")
@@ -60,11 +77,62 @@ class DependencyPathReadHardeningTests(unittest.TestCase):
             json.dumps({"dependencies": {"safealias": "npm:evil-package@1.0.0"}}),
             encoding="utf-8",
         )
+        real_open = os.open
+        replaced = False
 
-        with mock.patch.object(Path, "stat", self._replace_on_first_stat(manifest, outside)):
+        def replacing_open(path: object, flags: int, *args: object, **kwargs: object):
+            nonlocal replaced
+            if not replaced and Path(path).name == manifest.name:
+                manifest.unlink()
+                manifest.symlink_to(outside)
+                replaced = True
+            return real_open(path, flags, *args, **kwargs)
+
+        with mock.patch.object(dr.os, "open", side_effect=replacing_open):
             aliases = dr.npm_dependency_aliases(self.project, ())
 
+        self.assertTrue(replaced)
         self.assertNotIn("evil-package", aliases)
+
+    def test_manifest_readers_reject_parent_directory_symlink_replacement(self) -> None:
+        cases = (
+            (
+                "Cargo.toml",
+                '[dependencies]\nsafe_alias = { package = "safe-package", version = "1" }\n',
+                '[dependencies]\nevil_alias = { package = "evil-package", version = "1" }\n',
+                lambda root: dr.cargo_dependency_aliases(root, ()),
+                "evil-package",
+            ),
+            (
+                "package.json",
+                json.dumps({"dependencies": {"safe": "npm:safe-package@1"}}),
+                json.dumps({"dependencies": {"evil": "npm:evil-package@1"}}),
+                lambda root: dr.npm_dependency_aliases(root, ()),
+                "evil-package",
+            ),
+            (
+                "package.json",
+                json.dumps({"dependencies": {"safe-package": "1"}}),
+                json.dumps({"dependencies": {"evil-package": "1"}}),
+                lambda root: dr.direct_dependencies(root, ()),
+                "evil-package",
+            ),
+        )
+        for index, (leaf, safe_text, outside_text, reader, forbidden) in enumerate(cases):
+            with self.subTest(leaf=leaf, reader=reader):
+                project = self.base / f"project-{index}"
+                manifest_dir = project / "manifest"
+                outside = self.base / (project.name + "-outside")
+                manifest_dir.mkdir(parents=True)
+                outside.mkdir()
+                (manifest_dir / leaf).write_text(safe_text, encoding="utf-8")
+                (outside / leaf).write_text(outside_text, encoding="utf-8")
+                hook = self._walk_after_parent_replacement(project, manifest_dir, outside)
+
+                with mock.patch.object(dr.os, "walk", hook):
+                    result = reader(project)
+
+                self.assertNotIn(forbidden, result)
 
     def test_reachability_reader_does_not_follow_source_replaced_after_metadata_check(self) -> None:
         source = self.project / "app.py"

@@ -110,6 +110,18 @@ class TestCommunitySourceSeparation(unittest.TestCase):
         self.assertTrue((self.output / "scripts/install_joern.py").is_file())
         self.assertTrue((self.output / "tests/test_install_joern.py").is_file())
 
+    def test_validation_evidence_is_required_in_the_public_tree(self) -> None:
+        validator = _load(VALIDATOR, "community_validation_evidence_test")
+        evidence = self.output / "VALIDATION.md"
+        self.assertTrue(evidence.is_file())
+        original = evidence.read_bytes()
+        evidence.unlink()
+        try:
+            failures = validator.validate(self.output, scan_release_tree=True)
+        finally:
+            evidence.write_bytes(original)
+        self.assertIn("missing required file: VALIDATION.md", failures)
+
     def test_executable_plugin_roots_are_not_group_or_world_writable(self) -> None:
         for relative in ("plugins", "plugins/base", "plugins/user"):
             mode = (self.output / relative).stat().st_mode

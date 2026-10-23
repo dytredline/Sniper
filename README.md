@@ -123,6 +123,9 @@ Security Maintainer: **Gökçe Baran Karakamış** ([@dytredline](https://github
 
 ## Validation and tests
 
+See [VALIDATION.md](VALIDATION.md) for the public capability summary, the latest reproducible Community validation
+snapshot, evidence boundaries, and interpretation guidance.
+
 The Community documentation/metadata gate is offline and read-only:
 
 ```bash

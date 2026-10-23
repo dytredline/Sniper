@@ -14,7 +14,9 @@ import fnmatch
 import hashlib
 import ipaddress
 import json
+import os
 import re
+import stat
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -23,7 +25,6 @@ from typing import Any, Iterable
 import iac_hcl
 import iac_yaml
 from iac_hcl import Block, Call, Unknown
-from safe_file_read import read_bytes_bounded
 
 RULES_DIR = Path(__file__).resolve().parent / "rules" / "iac"
 FRAMEWORKS = ("dockerfile", "kubernetes", "compose", "terraform", "ci")
@@ -2537,38 +2538,74 @@ def _analyze_helm(text: str, values: dict) -> IacResult | None:
     return result
 
 
+def _read_helm_values_at(root: Path, chart_parts: list[str]) -> bytes | None:
+    """Open a chart beneath ``root`` without following any path component."""
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+    file_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
+    directory_fds: list[int] = []
+    marker_fd: int | None = None
+    values_fd: int | None = None
+    try:
+        absolute_root = Path(os.path.abspath(os.fspath(root)))
+        root_parts = absolute_root.parts
+        if not root_parts or root_parts[0] != os.path.sep:
+            return None
+
+        directory_fd = os.open(os.path.sep, directory_flags)
+        directory_fds.append(directory_fd)
+        for component in (*root_parts[1:], *chart_parts):
+            directory_fd = os.open(component, directory_flags, dir_fd=directory_fd)
+            directory_fds.append(directory_fd)
+
+        marker_fd = os.open("Chart.yaml", file_flags, dir_fd=directory_fd)
+        if not stat.S_ISREG(os.fstat(marker_fd).st_mode):
+            return None
+        values_fd = os.open("values.yaml", file_flags, dir_fd=directory_fd)
+        info = os.fstat(values_fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_size > 1_000_000:
+            return None
+        chunks: list[bytes] = []
+        total = 0
+        while total <= 1_000_000:
+            chunk = os.read(values_fd, min(65_536, 1_000_001 - total))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+        return b"".join(chunks) if total <= 1_000_000 else None
+    except (OSError, ValueError, TypeError):
+        return None
+    finally:
+        if values_fd is not None:
+            os.close(values_fd)
+        if marker_fd is not None:
+            os.close(marker_fd)
+        for directory_fd in reversed(directory_fds):
+            os.close(directory_fd)
+
+
 def helm_values_for(root: Path, rel_path: str) -> dict | None:
     """``<grafik>/templates/…`` dosyası için grafiğin values.yaml değerleri (Chart.yaml olan dizin). Proje kökü dışına
     çıkılmaz, sembolik bağ izlenmez; 1 MB üstü değer dosyası okunmaz."""
     import iac_helm
 
     parts = rel_path.replace("\\", "/").split("/")
-    if "templates" not in parts:
+    if "templates" not in parts or any(not part or part in {".", ".."} or "\x00" in part for part in parts):
         return None
     chart_parts = parts[:len(parts) - 1 - parts[::-1].index("templates")]
-    chart = root.joinpath(*chart_parts) if chart_parts else root
-    values_path = chart / "values.yaml"
-    try:
-        if not (chart / "Chart.yaml").is_file() or values_path.is_symlink() or not values_path.is_file():
-            return None
-        resolved = values_path.resolve()
-        if root.resolve() not in resolved.parents:
-            return None
-        raw = read_bytes_bounded(values_path, 1_000_000, allow_empty=True)
-        if raw is None:
-            return None
-        key = (str(resolved), hashlib.sha256(raw).digest())
-        with _HELM_VALUES_CACHE_LOCK:
-            cached = _HELM_VALUES_CACHE.get(key, _HELM_CACHE_MISS)
-        if cached is _HELM_CACHE_MISS:
-            parsed = iac_helm.load_values(raw.decode("utf-8", errors="replace"))
-            with _HELM_VALUES_CACHE_LOCK:
-                if len(_HELM_VALUES_CACHE) >= 256:
-                    _HELM_VALUES_CACHE.clear()
-                cached = _HELM_VALUES_CACHE.setdefault(key, parsed)
-        return cached
-    except OSError:
+    raw = _read_helm_values_at(root, chart_parts)
+    if raw is None:
         return None
+    key = (str(root) + "/" + "/".join(chart_parts) + "/values.yaml", hashlib.sha256(raw).digest())
+    with _HELM_VALUES_CACHE_LOCK:
+        cached = _HELM_VALUES_CACHE.get(key, _HELM_CACHE_MISS)
+    if cached is _HELM_CACHE_MISS:
+        parsed = iac_helm.load_values(raw.decode("utf-8", errors="replace"))
+        with _HELM_VALUES_CACHE_LOCK:
+            if len(_HELM_VALUES_CACHE) >= 256:
+                _HELM_VALUES_CACHE.clear()
+            cached = _HELM_VALUES_CACHE.setdefault(key, parsed)
+    return cached
 
 
 _HELM_CACHE_MISS = object()
