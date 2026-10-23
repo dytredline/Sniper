@@ -25,6 +25,7 @@ MAX_SNAPSHOT_BYTES = 512 * 1024 * 1024
 READ_CHUNK_BYTES = 1024 * 1024
 REQUIRED_FILES = (
     "README.md",
+    "llms.txt",
     "VALIDATION.md",
     "DEPLOYMENT.md",
     "LICENSE",
@@ -37,6 +38,9 @@ REQUIRED_FILES = (
     "CITATION.cff",
     "COMMUNITY-TOOLS.lock.json",
     "COMMUNITY_VERSION",
+    "Dockerfile",
+    "docker-compose.yml",
+    "docker-compose.tools.yml",
     ".github/CODEOWNERS",
     ".github/VULNERABILITY_REPORT.yml",
     ".github/ISSUE_TEMPLATE/bug_report.yml",
@@ -45,16 +49,90 @@ REQUIRED_FILES = (
     ".github/pull_request_template.md",
     ".github/dependabot.yml",
     "docs/COMMUNITY-TOOLS.md",
+    "docs/AI-DISCOVERY.md",
+    "docs/CAPABILITIES.md",
+    "docs/LOCALIZATION.md",
+    "docs/USE-CASES.md",
+    "docs/README.ja.md",
+    "docs/README.zh-CN.md",
+    "docs/README.ko.md",
     "scripts/install-community-tools",
     "scripts/setup-community",
+    "scripts/build-community-tools-image",
     "docs/COMMUNITY-MCP.md",
     "docs/examples/mcp/stdio-community.json",
     "docs/examples/mcp/stdio-read-only.json",
     "docs/examples/mcp/stdio-with-token.json",
     "docs/examples/mcp/codex-config.toml",
+    "static/i18n-ja.tsv",
+    "static/i18n-zh-CN.tsv",
+    "static/i18n-ko.tsv",
 )
 
 REQUIRED_TEXT = {
+    "llms.txt": (
+        "# Sniper Community",
+        "local-first defensive application-security toolkit",
+        "## Built-in capabilities",
+        "## Optional locked engines",
+        "## Prerequisite-dependent capabilities",
+        "docs/CAPABILITIES.md",
+        "Nuclei 3.11.1",
+        "Trivy 0.75.0",
+        "Gitleaks 8.30.1",
+        "TruffleHog 3.99.0",
+        "Opengrep 1.30.1",
+        "stdio MCP",
+        "prepare_action",
+        "execute_action",
+        "human approval",
+        "explicit authorization",
+        "VALIDATION.md",
+        "SECURITY.md",
+        "docs/LOCALIZATION.md",
+    ),
+    "docs/AI-DISCOVERY.md": (
+        "# AI discovery guide",
+        "## Who Sniper Community is for",
+        "Application and source owners",
+        "Website and API owners",
+        "AI-assisted security review",
+        "## Capability boundary",
+        "Built-in",
+        "Optional locked engine",
+        "Prerequisite-dependent",
+        "Human review",
+        "CAPABILITIES.md",
+        "COMMUNITY-TOOLS.lock.json",
+        "prepare_action",
+        "execute_action",
+        "user_confirmed: true",
+        "## Reproducible evidence",
+        "VALIDATION.md",
+    ),
+    "docs/CAPABILITIES.md": (
+        "# Sniper Community v1 yetenekleri",
+        "## Yetenek etiketleri",
+        "COMMUNITY-TOOLS.lock.json",
+    ),
+    "docs/LOCALIZATION.md": (
+        "# Sniper Community localization",
+        "Japonca (`ja`)",
+        "Basitleştirilmiş Çince (`zh-CN`)",
+        "Korece (`ko`)",
+        "1908/2064 (%92,4)",
+        "özgün Türkçe kaynak korunur",
+        "browser-tests/test_i18n_layout_browser.mjs",
+    ),
+    "docs/USE-CASES.md": (
+        "# Sniper Community use cases",
+        "## Choose a review path",
+        "## Plan an authorized website or API action",
+        "CAPABILITIES.md",
+    ),
+    "docs/README.ja.md": ("# Sniper Community",),
+    "docs/README.zh-CN.md": ("# Sniper Community",),
+    "docs/README.ko.md": ("# Sniper Community",),
     "README.md": (
         "Sniper Community",
         "Apache License 2.0",
@@ -75,9 +153,9 @@ REQUIRED_TEXT = {
     ),
     "VALIDATION.md": (
         "Sniper Community validation evidence",
-        "2,802 tests, 0 failures, 0 errors",
-        "188 passed",
-        "426 passed, 0 failed",
+        "2,812 tests, 0 failures, 0 errors",
+        "204 passed",
+        "432 passed, 0 failed",
         "not a security certification",
         "No step in this validation snapshot scans an external website",
     ),
@@ -161,6 +239,24 @@ REQUIRED_TEXT = {
         '"sha256"',
         '"license"',
     ),
+    "Dockerfile": (
+        "AS community-runtime",
+        "AS community-tools",
+        "SNIPER_ACCEPT_THIRD_PARTY_LICENSES",
+        "scripts/install-community-tools",
+        "AS community-core",
+    ),
+    "docker-compose.yml": (
+        '"127.0.0.1:8787:8787"',
+        "sniper_data:/var/lib/sniper",
+        "sniper_integrity:/var/lib/sniper-integrity",
+        "sniper_secrets:/var/lib/sniper-secrets",
+    ),
+    "docker-compose.tools.yml": (
+        "target: community-tools",
+        "SNIPER_ACCEPT_THIRD_PARTY_LICENSES",
+        "sniper-community-tools:local",
+    ),
     "docs/COMMUNITY-TOOLS.md": (
         "# Community tool installation",
         "python3 scripts/install-community-tools --profile local --accept-third-party-licenses",
@@ -178,7 +274,17 @@ REQUIRED_TEXT = {
         "--accept-third-party-licenses",
         "--wheelhouse",
         "--tool-cache-dir",
+        "--core-only",
     ),
+    "scripts/build-community-tools-image": (
+        "COMMUNITY-TOOLS.lock.json",
+        "--accept-third-party-licenses",
+        "--dry-run",
+        "docker-compose.tools.yml",
+    ),
+    "static/i18n-ja.tsv": ("# sniper-i18n/1\tja", "スキャンレポート"),
+    "static/i18n-zh-CN.tsv": ("# sniper-i18n/1\tzh-CN", "扫描报告"),
+    "static/i18n-ko.tsv": ("# sniper-i18n/1\tko", "스캔 보고서"),
     ".github/ISSUE_TEMPLATE/bug_report.yml": (
         "name: Bug report",
         "Do not report security vulnerabilities in a public issue",
@@ -242,11 +348,12 @@ FORBIDDEN_RELEASE_SURFACE = {
 
 FORBIDDEN_ARTIFACT_DIRS = frozenset({
     "__pycache__", ".codebase-memory", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", "node_modules",
-    "runtimes", "data", "backups", "backup", "evidence", "dev-" + "evidence", "frozen-" + "evidence",
+    "runtimes", "data", "backups", "backup", "evidence", ".auth-field-keys",
+    "dev-" + "evidence", "frozen-" + "evidence",
 })
 FORBIDDEN_ARTIFACT_NAMES = frozenset({"release.json", ".coverage"})
 FORBIDDEN_ARTIFACT_SUFFIXES = (
-    ".pyc", ".pyo", ".db", ".sqlite", ".sqlite3", "-wal", "-shm", "-journal",
+    ".pyc", ".pyo", ".db", ".sqlite", ".sqlite3", "-wal", "-shm", "-journal", ".key", ".tar",
 )
 PRIVATE_HOME = re.compile(r"/home/(?!community-user(?=/|[^A-Za-z0-9_.-]|$))[A-Za-z0-9_.-]+")
 PRIVATE_KEY_BLOCK = re.compile(
@@ -609,7 +716,7 @@ def _validate_release_tree(entries: list[ReleaseEntry], failures: list[str]) -> 
         relative = PurePosixPath(entry.relative)
         relative_text = entry.relative
         if stat.S_ISDIR(entry.mode):
-            if relative.name in FORBIDDEN_ARTIFACT_DIRS:
+            if relative.name.casefold() in FORBIDDEN_ARTIFACT_DIRS:
                 fail(f"release tree: forbidden artifact directory: {relative_text}", failures)
             continue
         if not stat.S_ISREG(entry.mode):
@@ -621,11 +728,15 @@ def _validate_release_tree(entries: list[ReleaseEntry], failures: list[str]) -> 
         if entry.payload is None:
             fail(f"release tree: regular file could not be read safely: {relative_text}", failures)
             continue
-        if any(part in FORBIDDEN_ARTIFACT_DIRS for part in relative.parts[:-1]):
+        if any(part.casefold() in FORBIDDEN_ARTIFACT_DIRS for part in relative.parts[:-1]):
             fail(f"release tree: forbidden artifact directory: {relative_text}", failures)
         if relative.name.casefold() in FORBIDDEN_ARTIFACT_NAMES or relative.name.startswith(".coverage."):
             fail(f"release tree: forbidden installed/runtime record: {relative_text}", failures)
-        if relative.name.endswith(FORBIDDEN_ARTIFACT_SUFFIXES):
+        name_casefold = relative.name.casefold()
+        if name_casefold == ".env" or name_casefold.startswith(".env.") \
+                or ("auth-field-keys" in name_casefold and name_casefold.endswith(".json")):
+            fail(f"release tree: forbidden secret-bearing filename: {relative_text}", failures)
+        if name_casefold.endswith(FORBIDDEN_ARTIFACT_SUFFIXES):
             fail(f"release tree: forbidden runtime artifact: {relative_text}", failures)
         if relative.name.casefold() in FORBIDDEN_CLOSED_BASENAMES_CASEFOLD \
                 or relative_text.casefold() in FORBIDDEN_CLOSED_PATHS_CASEFOLD:
@@ -770,7 +881,11 @@ def validate(root: Path, *, scan_release_tree: bool = False) -> list[str]:
         except (TypeError, ValueError, json.JSONDecodeError) as exc:
             fail(f"COMMUNITY-TOOLS.lock.json: invalid tool lock: {exc}", failures)
 
-    for installer_relative in ("scripts/install-community-tools", "scripts/setup-community"):
+    for installer_relative in (
+        "scripts/install-community-tools",
+        "scripts/setup-community",
+        "scripts/build-community-tools-image",
+    ):
         if entry_map is not None:
             installer_entry = entry_map.get(installer_relative)
             installer_mode = installer_entry.mode if installer_entry is not None else 0
