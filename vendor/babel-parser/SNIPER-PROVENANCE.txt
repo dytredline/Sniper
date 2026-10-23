@@ -3,3 +3,9 @@ npm bütünlüğü (tarball): sha512-CjXrNHTnvqBVqHgdBysY3vk2T8tpJHb5/RMeHJBTyVa
 Yayın tarihi: 2026-09-18. İndirme ve doğrulama: 2026-10-19 (Claude, 3. tur).
 Kullanılan dosya: package/lib/index.js (dış require yok). SHA-256 değeri taint_js_ast.py içinde sabitlidir
 ve Node köprüsü ayrıştırıcıyı yüklemeden önce aynı tampondan doğrular.
+
+Sniper yerel güvenlik hardening'i (2026-10-23): CodeQL `js/polynomial-redos` #1/#2 tarafından
+işaretlenen `nextTokenStartSince` ve `nextTokenInLineStartSince` whitespace/comment regexleri,
+aynı token sınırı davranışını koruyan tek geçişli karakter tarayıcıyla değiştirildi. Upstream 7.29.9
+paket kimliği korunur; vendored `index.js` yerel yama sonrası SHA-256 değeri:
+f6e920862db6ceb7f5521d12300dd6e5ceb8ef8e52198e7d4dccf431258116eb

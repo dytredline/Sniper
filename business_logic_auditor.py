@@ -84,6 +84,79 @@ def _extract_enclosing_window(content: str, match_offset: int, before: int = 350
     return content[start:end]
 
 
+_BALANCE_TARGET_RE = re.compile(
+    r"\b(?:balance|wallet\.balance|user\.balance|account\.balance|credit|credits|stock|inventory)\b",
+    re.IGNORECASE,
+)
+_COUPON_TARGET_RE = re.compile(
+    r"\b(?:coupon|voucher|promo_code|gift_card)\.(?:used|is_used|redeemed|is_redeemed)\b",
+    re.IGNORECASE,
+)
+_STATE_GUARD_CALL_RE = re.compile(
+    r"\b(?:transition_to|can_transition|validate_transition|verify_signature|construct_event|"
+    r"hmac\.compare_digest|webhook_secret)\b",
+    re.IGNORECASE,
+)
+
+
+def _skip_space(text: str, pos: int) -> int:
+    while pos < len(text) and text[pos].isspace():
+        pos += 1
+    return pos
+
+
+def _has_toctou_mutation(line: str) -> bool:
+    for found in _BALANCE_TARGET_RE.finditer(line):
+        pos = _skip_space(line, found.end())
+        if line.startswith("-=", pos):
+            return True
+        if pos < len(line) and line[pos] == "=":
+            tail = line[pos + 1:].split(";", 1)[0]
+            dash = tail.find("-")
+            while dash >= 0:
+                value = _skip_space(tail, dash + 1)
+                end = value
+                while end < len(tail) and (tail[end].isalnum() or tail[end] == "_"):
+                    end += 1
+                if tail[value:end].casefold() in {"amount", "qty", "quantity", "price", "cost"}:
+                    return True
+                dash = tail.find("-", dash + 1)
+    for found in _COUPON_TARGET_RE.finditer(line):
+        pos = _skip_space(line, found.end())
+        if pos >= len(line) or line[pos] != "=":
+            continue
+        pos = _skip_space(line, pos + 1)
+        end = pos
+        while end < len(line) and (line[end].isalnum() or line[end] == "_"):
+            end += 1
+        if line[pos:end].casefold() in {"true", "1"}:
+            return True
+    return False
+
+
+def _has_state_guard(text: str) -> bool:
+    if _STATE_GUARD_CALL_RE.search(text):
+        return True
+    for line in text.splitlines():
+        head = line.split(":", 1)[0]
+        folded = head.casefold()
+        condition = re.search(r"\bif\b", folded)
+        if condition is None:
+            continue
+        condition_tail = folded[condition.end():]
+        for state in re.finditer(r"\b(?:status|state)\b", condition_tail):
+            operator = _skip_space(condition_tail, state.end())
+            if condition_tail.startswith(("==", "!="), operator):
+                return True
+            if condition_tail.startswith("in", operator):
+                word_end = operator + len("in")
+                if word_end == len(condition_tail) or not (
+                    condition_tail[word_end].isalnum() or condition_tail[word_end] == "_"
+                ):
+                    return True
+    return False
+
+
 def audit_business_logic_inline(
     raw_content: str,
     *,
@@ -109,20 +182,20 @@ def audit_business_logic_inline(
             findings.append(finding)
 
     # 1. Race Condition / TOCTOU / Double Spending (high, CWE-362, SNIPER-BUSL-01)
-    toctou_mutation_re = re.compile(
-        r"(?im)^[^\n#]*(?:\b(?:balance|wallet\.balance|user\.balance|account\.balance|credit|credits|stock|inventory)\s*(?:-=|=\s*[^\n;]*-\s*\b(?:amount|qty|quantity|price|cost)\b)"
-        r"|\b(?:coupon|voucher|promo_code|gift_card)\.(?:used|is_used|redeemed|is_redeemed)\s*=\s*(?:True|true|1)\b)"
-    )
     concurrency_guard_re = re.compile(
         r"\b(?:select_for_update|with_for_update|FOR\s+UPDATE|transaction\.atomic|"
         r"F\s*\(|idempotency_key|Idempotency-Key|mutex|RLock|Lock\s*\(|atomic\b|SERIALIZABLE)\b",
         re.IGNORECASE,
     )
-    for match in toctou_mutation_re.finditer(raw_content):
-        window = _extract_enclosing_window(raw_content, match.start(), before=450, after=450)
+    offset = 0
+    for line_no, raw_line in enumerate(raw_content.splitlines(keepends=True), 1):
+        code = raw_line.split("#", 1)[0]
+        if not _has_toctou_mutation(code):
+            offset += len(raw_line)
+            continue
+        window = _extract_enclosing_window(raw_content, offset, before=450, after=450)
         if not concurrency_guard_re.search(window):
-            line_no = _line_number_for_offset(raw_content, match.start())
-            snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else match.group(0)
+            snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else code
             _add(
                 _make_busl_finding(
                     severity="high",
@@ -144,6 +217,7 @@ def audit_business_logic_inline(
                     line=line_no,
                 )
             )
+        offset += len(raw_line)
 
     # 2. Financial Float Precision & Negative Amount Bypass (high, CWE-682, SNIPER-BUSL-02)
     float_money_re = re.compile(
@@ -254,15 +328,9 @@ def audit_business_logic_inline(
         r"(?im)^[^\n#]*(?:\b(?:[A-Za-z0-9_]+\.)?(?:status|payment_status|order_status|kyc_status)\s*=\s*[\"'](?:paid|completed|approved|settled)[\"']"
         r"|\b(?:[A-Za-z0-9_]+\.)?is_verified\s*=\s*True\b)"
     )
-    state_guard_re = re.compile(
-        r"(?:\bif\s+[^\n:]*\b(?:status|state)\s*(?:==|!=|in\b)|"
-        r"\b(?:transition_to|can_transition|validate_transition|verify_signature|"
-        r"construct_event|hmac\.compare_digest|webhook_secret)\b)",
-        re.IGNORECASE,
-    )
     for match in state_bypass_re.finditer(raw_content):
         window = _extract_enclosing_window(raw_content, match.start(), before=450, after=300)
-        if not state_guard_re.search(window):
+        if not _has_state_guard(window):
             line_no = _line_number_for_offset(raw_content, match.start())
             snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else match.group(0)
             _add(

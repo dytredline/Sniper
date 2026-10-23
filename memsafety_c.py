@@ -420,19 +420,73 @@ def _parse_num(text: str) -> int | None:
     return None
 
 
-_DEFINE_RE = re.compile(r"(?m)^[ \t]*#[ \t]*define[ \t]+([A-Za-z_]\w*)(?![\w(])[ \t]*((?:[^\n\\]|\\\n|\\.)*)$")
+def _object_defines(text: str) -> list[tuple[str, str]]:
+    """Parse object-like ``#define`` directives with escaped continuations."""
+    out: list[tuple[str, str]] = []
+    line_start = 0
+    length = len(text)
+    while line_start < length:
+        physical_end = text.find("\n", line_start)
+        next_line = length if physical_end < 0 else physical_end + 1
+        index = line_start
+        while index < length and text[index] in " \t":
+            index += 1
+        if index >= length or text[index] != "#":
+            line_start = next_line
+            continue
+        index += 1
+        while index < length and text[index] in " \t":
+            index += 1
+        if not text.startswith("define", index):
+            line_start = next_line
+            continue
+        index += len("define")
+        spacing = index
+        while index < length and text[index] in " \t":
+            index += 1
+        if index == spacing or index >= length or not (text[index] == "_" or
+                                                        "A" <= text[index] <= "Z" or
+                                                        "a" <= text[index] <= "z"):
+            line_start = next_line
+            continue
+        name_start = index
+        index += 1
+        while index < length and (text[index] == "_" or text[index].isalnum()):
+            index += 1
+        name = text[name_start:index]
+        if index < length and text[index] == "(":
+            line_start = next_line
+            continue  # function-like macro
+        while index < length and text[index] in " \t":
+            index += 1
+        body_start = index
+        valid = True
+        while index < length:
+            if text[index] == "\n":
+                break
+            if text[index] == "\\":
+                if index + 1 >= length:
+                    valid = False
+                    break
+                index += 2  # escaped character or backslash-newline continuation
+                continue
+            index += 1
+        if valid:
+            out.append((name, text[body_start:index]))
+        line_start = length if index >= length else index + 1
+    return out
 
 
 def _collect_defines(text: str) -> dict[str, list[Tok]]:
     out: dict[str, list[Tok]] = {}
-    for m in _DEFINE_RE.finditer(text):
-        body = m.group(2).replace("\\\n", " ")
+    for name, raw_body in _object_defines(text):
+        body = raw_body.replace("\\\n", " ")
         body = re.sub(r"/\*.*?\*/|//.*$", "", body).strip()
         if not body or len(body) > 200 or '"' in body:
             continue
         toks = core.tokenize(body, rust=False)
         if toks and all(t.kind in ("num", "op", "id", "chr") for t in toks):
-            out.setdefault(m.group(1), toks)
+            out.setdefault(name, toks)
     return out
 
 

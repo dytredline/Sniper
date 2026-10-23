@@ -23,6 +23,7 @@ from typing import Any, Iterable
 import iac_hcl
 import iac_yaml
 from iac_hcl import Block, Call, Unknown
+from safe_file_read import read_bytes_bounded
 
 RULES_DIR = Path(__file__).resolve().parent / "rules" / "iac"
 FRAMEWORKS = ("dockerfile", "kubernetes", "compose", "terraform", "ci")
@@ -147,14 +148,150 @@ def _as_list(value: Any) -> list[Any]:
 _PIPE_SH = re.compile(r"(?i)\b(?:curl|wget)\b[^\n|]*\|\s*(?:sudo\s+)?(?:ba|da|z|k)?sh\b")
 _SUDO = re.compile(r"(?:^|[;&|(]\s*|\s)sudo\s")
 _CHMOD_777 = re.compile(r"\bchmod\s+(?:-[A-Za-z]+\s+)*(?:0?777|[augo]*\+rwx)\b")
-_TLS_OFF = re.compile(
-    r"(?i)(?:\bcurl\b[^;&|]*\s(?:-k|--insecure)\b|\bwget\b[^;&|]*--no-check-certificate|\bpip3?\b[^;&|]*--trusted-host|"
-    r"\b(?:npm|yarn|pnpm)\b[^;&|]*strict[-_]ssl[\s=]+false|--allow-unauthenticated|AllowUnauthenticated\s*\"?true|"
-    r"\bapk\b[^;&|]*--allow-untrusted|gpgcheck\s*=\s*0|--nogpgcheck|\brpm\b[^;&|]*--nosignature|"
-    r"http\.sslverify\s*=?\s*false|\bgit\b[^;&|]*sslVerify=false)"
-)
-_TLS_OFF_ENV = re.compile(r"(?i)^(NODE_TLS_REJECT_UNAUTHORIZED\s*[= ]\s*[\"']?0|PYTHONHTTPSVERIFY\s*[= ]\s*[\"']?0|"
-                          r"GIT_SSL_NO_VERIFY\s*[= ]\s*[\"']?(?:1|true))")
+
+
+def _word_at(text: str, word: str, start: int = 0) -> int:
+    """Find an ASCII command word without a regex suffix scan."""
+    cursor = start
+    while True:
+        found = text.find(word, cursor)
+        if found < 0:
+            return -1
+        before = text[found - 1] if found else ""
+        after_at = found + len(word)
+        after = text[after_at] if after_at < len(text) else ""
+        if not (before == "_" or before.isalnum()) and not (after == "_" or after.isalnum()):
+            return found
+        cursor = found + 1
+
+
+def _flag_after_command(segment: str, commands: tuple[str, ...], flags: tuple[str, ...], *,
+                        require_space: bool = False, word_boundary: bool = False) -> bool:
+    for command in commands:
+        command_at = _word_at(segment, command)
+        if command_at < 0:
+            continue
+        suffix = segment[command_at + len(command):]
+        for flag in flags:
+            cursor = 0
+            while True:
+                found = suffix.find(flag, cursor)
+                if found < 0:
+                    break
+                after_at = found + len(flag)
+                after = suffix[after_at] if after_at < len(suffix) else ""
+                spaced = found > 0 and suffix[found - 1].isspace()
+                bounded = not (after == "_" or after.isalnum())
+                if (not require_space or spaced) and (not word_boundary or bounded):
+                    return True
+                cursor = found + 1
+    return False
+
+
+def _setting_is(text: str, key: str, values: tuple[str, ...], *, quote: bool = False,
+                require_equals: bool = False, require_separator: bool = False,
+                allow_equals: bool = True) -> bool:
+    """Recognize ``key [=] value`` settings with bounded forward scans."""
+    cursor = 0
+    while True:
+        found = text.find(key, cursor)
+        if found < 0:
+            return False
+        index = found + len(key)
+        if require_separator:
+            separator_start = index
+            while index < len(text) and (text[index].isspace() or text[index] == "="):
+                index += 1
+            if index == separator_start:
+                cursor = found + len(key)
+                continue
+        else:
+            while index < len(text) and text[index].isspace():
+                index += 1
+            if index < len(text) and text[index] == "=":
+                if not allow_equals:
+                    cursor = found + len(key)
+                    continue
+                index += 1
+                while index < len(text) and text[index].isspace():
+                    index += 1
+            elif require_equals:
+                cursor = found + len(key)
+                continue
+        if quote and index < len(text) and text[index] in "\"'":
+            index += 1
+        if any(text.startswith(value, index) for value in values):
+            return True
+        cursor = found + len(key)
+
+
+def _tls_disabled_in_run(args: str) -> bool:
+    """Docker RUN TLS bypasses, parsed without overlapping whitespace regexes."""
+    lowered = args.casefold()
+    if "--allow-unauthenticated" in lowered or "--nogpgcheck" in lowered:
+        return True
+    if _setting_is(lowered, "allowunauthenticated", ("true",), quote=True, allow_equals=False):
+        return True
+    if _setting_is(lowered, "gpgcheck", ("0",), require_equals=True):
+        return True
+    if _setting_is(lowered, "http.sslverify", ("false",)):
+        return True
+    for segment in re.split(r"[;&|]", lowered):
+        if _flag_after_command(segment, ("curl",), ("-k", "--insecure"),
+                               require_space=True, word_boundary=True):
+            return True
+        if _flag_after_command(segment, ("wget",), ("--no-check-certificate",)):
+            return True
+        if _flag_after_command(segment, ("pip", "pip3"), ("--trusted-host",)):
+            return True
+        if _flag_after_command(segment, ("apk",), ("--allow-untrusted",)):
+            return True
+        if _flag_after_command(segment, ("rpm",), ("--nosignature",)):
+            return True
+        for command in ("npm", "yarn", "pnpm"):
+            command_at = _word_at(segment, command)
+            if command_at < 0:
+                continue
+            suffix = segment[command_at + len(command):]
+            if _setting_is(suffix, "strict-ssl", ("false",), require_separator=True) or \
+                    _setting_is(suffix, "strict_ssl", ("false",), require_separator=True):
+                return True
+        git_at = _word_at(segment, "git")
+        if git_at >= 0 and "sslverify=false" in segment[git_at + 3:]:
+            return True
+    return False
+
+
+def _tls_disabled_env(name: str, value: str) -> bool:
+    normalized_name = name.casefold()
+    normalized_value = value.lstrip().casefold()
+    if normalized_value.startswith(("\"", "'")):
+        normalized_value = normalized_value[1:]
+    if normalized_name in {"node_tls_reject_unauthorized", "pythonhttpsverify"}:
+        return normalized_value.startswith("0")
+    return normalized_name == "git_ssl_no_verify" and normalized_value.startswith(("1", "true"))
+
+
+def _docker_from(args: str) -> tuple[str, str | None] | None:
+    """Parse Docker FROM flags, image and optional stage alias in one pass."""
+    tokens = args.split()
+    flag_count = 0
+    while flag_count < len(tokens) and len(tokens[flag_count]) > 2 and tokens[flag_count].startswith("--"):
+        flag_count += 1
+    index = flag_count
+    if index >= len(tokens) or not tokens[index].split("#", 1)[0]:
+        # The regex-era grammar backtracked one flag token and treated it as the
+        # image when no following image token existed.
+        index = max(0, flag_count - 1)
+    if index >= len(tokens):
+        return None
+    image = tokens[index].split("#", 1)[0]
+    if not image:
+        return None
+    alias = None
+    if "#" not in tokens[index] and index + 2 < len(tokens) and tokens[index + 1].casefold() == "as":
+        alias = tokens[index + 2].split("#", 1)[0] or None
+    return image, alias
 
 
 def _docker_instructions(text: str) -> list[tuple[int, str, str]]:
@@ -189,12 +326,59 @@ def _docker_instructions(text: str) -> list[tuple[int, str, str]]:
 
 def _env_pairs(args: str, instruction: str) -> list[tuple[str, str]]:
     args = args.strip()
+    if not args:
+        return []
     if instruction == "ENV" and "=" not in args.split(None, 1)[0]:
         parts = args.split(None, 1)  # eski biçim: ENV AD değer
         return [(parts[0], parts[1] if len(parts) > 1 else "")]
-    pairs = []
-    for match in re.finditer(r"([A-Za-z_][A-Za-z0-9_.-]*)(?:=(\"(?:\\.|[^\"])*\"|'[^']*'|\S*))?", args):
-        pairs.append((match.group(1), (match.group(2) or "").strip("\"'")))
+
+    # Docker ARG/ENV metni proje girdisidir. Burada daha önce kullanılan tırnaklı-değer regex'inde
+    # ``\\.`` ile ``[^\"]`` aynı ters eğik çizgiyi tüketebildiğinden, kapanmamış bir çift
+    # tırnak üstel geri izlemeye yol açıyordu. Aynı anahtar/değer biçimlerini tek geçişte tara.
+    pairs: list[tuple[str, str]] = []
+    length = len(args)
+    index = 0
+    while index < length:
+        char = args[index]
+        if not (char == "_" or "A" <= char <= "Z" or "a" <= char <= "z"):
+            index += 1
+            continue
+
+        name_start = index
+        index += 1
+        while index < length:
+            char = args[index]
+            if char == "_" or char in ".-" or char.isascii() and char.isalnum():
+                index += 1
+                continue
+            break
+        name = args[name_start:index]
+        value = ""
+        if index < length and args[index] == "=":
+            index += 1
+            value_start = index
+            if index < length and args[index] in "\"'":
+                quote = args[index]
+                index += 1
+                while index < length:
+                    if quote == '"' and args[index] == "\\" and index + 1 < length:
+                        index += 2
+                        continue
+                    if args[index] == quote:
+                        index += 1
+                        break
+                    index += 1
+                else:
+                    # Kapanmamış tırnak, eski ``\S*`` geri dönüşü gibi ilk boşluğa kadar
+                    # ham değerdir; yeniden baştan taramak toplamda yine doğrusal kalır.
+                    index = value_start
+                    while index < length and not args[index].isspace():
+                        index += 1
+            else:
+                while index < length and not args[index].isspace():
+                    index += 1
+            value = args[value_start:index].strip("\"'")
+        pairs.append((name, value))
     return pairs
 
 
@@ -207,12 +391,12 @@ def analyze_dockerfile(text: str) -> IacResult:
     healthcheck = False
     for line, instruction, args in _docker_instructions(text):
         if instruction == "FROM":
-            match = re.match(r"(?:--\S+\s+)*([^\s#]+)(?:\s+AS\s+([^\s#]+))?", args, re.I)
-            if not match:
+            parsed_from = _docker_from(args)
+            if parsed_from is None:
                 continue
-            image = match.group(1)
-            if match.group(2):
-                stage_aliases.add(match.group(2).casefold())
+            image, alias = parsed_from
+            if alias:
+                stage_aliases.add(alias.casefold())
             low = image.casefold()
             if low != "scratch" and low not in stage_aliases:
                 has_from = True
@@ -228,14 +412,14 @@ def analyze_dockerfile(text: str) -> IacResult:
                 col.add("SNP-IAC-DF-006", line)
             if _CHMOD_777.search(args):
                 col.add("SNP-IAC-DF-008", line)
-            if _TLS_OFF.search(args):
+            if _tls_disabled_in_run(args):
                 col.add("SNP-IAC-DF-009", line)
         elif instruction == "ADD":
             if re.search(r"(?i)\bhttps?://", args) and "--checksum" not in args:
                 col.add("SNP-IAC-DF-005", line)
         elif instruction in ("ENV", "ARG"):
             for name, value in _env_pairs(args, instruction):
-                if _TLS_OFF_ENV.match(f"{name}={value}"):
+                if _tls_disabled_env(name, value):
                     col.add("SNP-IAC-DF-009", line)
                 elif ((_secret_name(name) and _literal_secret(value, name)) or _aws_key_value(value)) \
                         and not _GENERIC_SECRET_LINE.search(_line_text(lines, line)):
@@ -1109,7 +1293,6 @@ _GH_UNTRUSTED = re.compile(
     r"discussion\.(?:title|body)|workflow_run\.(?:head_branch|display_title|head_commit\.message)))"
 )
 _GH_STEP_ID = re.compile(r"^\s*(?:-\s*)?id\s*:\s*['\"]?([A-Za-z_][\w-]*)")
-_GH_OUTPUT_WRITE = re.compile(r"([A-Za-z_][\w-]*)\s*=\s*\$\{\{\s*([^}]+)\}\}")
 _GH_OUTPUT_BLOCK = re.compile(r"\b([A-Za-z_][\w-]*)\s*<<\s*([A-Za-z_][\w-]*)\b")
 _GH_OUTPUT_READ = re.compile(r"\$\{\{\s*steps\.([A-Za-z_][\w-]*)\.outputs\.([A-Za-z_][\w-]*)\b")
 _GH_JOB_OUTPUT_READ = re.compile(
@@ -1119,10 +1302,98 @@ _GH_OUTPUT_ASSIGN = re.compile(r"\b([A-Za-z_][\w-]*)\s*=\s*([^\r\n]+)")
 _GH_ENV_READ = re.compile(r"\$(?:\{([A-Za-z_][A-Za-z0-9_]*)\}|([A-Za-z_][A-Za-z0-9_]*))")
 _GH_OUTPUT_REDIRECT = re.compile(r">>?\s*[\"']?(\$(?:\{GITHUB_OUTPUT\}|GITHUB_OUTPUT))[\"']?")
 _GH_ENV_REDIRECT = re.compile(r">>?\s*[\"']?(\$(?:\{GITHUB_ENV\}|GITHUB_ENV))[\"']?")
-_CI_COMMAND = re.compile(r"^(\s*)(?:-\s*)?(run|script)\s*:\s*(.*)$")
 _GL_UNTRUSTED = re.compile(r"\$CI_MERGE_REQUEST_(?:TITLE|DESCRIPTION|SOURCE_BRANCH_NAME|SOURCE_PROJECT_URL|LABELS)\b")
 _GL_DOTENV_WRITE = re.compile(r"\b([A-Z_][A-Z0-9_]*)\s*=.*\$CI_MERGE_REQUEST_")
 _GL_REDIRECT = re.compile(r">>?(?:\s*)[\"']?([^\s\"']+)")
+
+
+def _github_output_writes(text: str) -> list[tuple[str, str]]:
+    """Return ``name=${{ expression }}`` pairs with bounded delimiter scans."""
+    out: list[tuple[str, str]] = []
+    cursor = 0
+    while cursor < len(text):
+        opening = text.find("${{", cursor)
+        if opening < 0:
+            break
+
+        equals = opening - 1
+        while equals >= 0 and text[equals].isspace():
+            equals -= 1
+        if equals < 0 or text[equals] != "=":
+            cursor = opening + 3
+            continue
+        name_end = equals
+        while name_end and text[name_end - 1].isspace():
+            name_end -= 1
+        name_start = name_end
+        while name_start and (text[name_start - 1] == "_" or text[name_start - 1] == "-" or
+                              text[name_start - 1].isalnum()):
+            name_start -= 1
+        name = text[name_start:name_end]
+        if not name or not (name[0] == "_" or "A" <= name[0] <= "Z" or "a" <= name[0] <= "z"):
+            cursor = opening + 3
+            continue
+
+        body_start = opening + 3
+        while body_start < len(text) and text[body_start].isspace():
+            body_start += 1
+        closing = text.find("}", body_start)
+        if closing < 0:
+            break
+        if closing > body_start and closing + 1 < len(text) and text[closing + 1] == "}":
+            out.append((name, text[body_start:closing]))
+            cursor = closing + 2
+        else:
+            cursor = closing + 1
+    return out
+
+
+def _ci_command(line: str) -> tuple[int, str, str] | None:
+    """Parse an indented optional-list ``run:``/``script:`` line."""
+    index = 0
+    while index < len(line) and line[index].isspace():
+        index += 1
+    indent = index
+    if index < len(line) and line[index] == "-":
+        index += 1
+        while index < len(line) and line[index].isspace():
+            index += 1
+    key = "run" if line.startswith("run", index) else "script" if line.startswith("script", index) else ""
+    if not key:
+        return None
+    index += len(key)
+    while index < len(line) and line[index].isspace():
+        index += 1
+    if index >= len(line) or line[index] != ":":
+        return None
+    index += 1
+    while index < len(line) and line[index].isspace():
+        index += 1
+    return indent, key, line[index:]
+
+
+def _writes_dotenv_file(text: str) -> bool:
+    """Recognize a shell redirection to a non-whitespace ``*.env`` token."""
+    cursor = 0
+    while cursor < len(text):
+        redirect = text.find(">", cursor)
+        if redirect < 0:
+            return False
+        start = redirect + 1
+        while start < len(text) and text[start].isspace():
+            start += 1
+        end = start
+        while end < len(text) and not text[end].isspace():
+            end += 1
+        token = text[start:end]
+        suffix = token.find(".env")
+        while suffix >= 0:
+            after = suffix + 4
+            if after == len(token) or not (token[after] == "_" or token[after].isalnum()):
+                return True
+            suffix = token.find(".env", suffix + 1)
+        cursor = max(end, redirect + 1)
+    return False
 
 
 def _ci_root(text: str) -> iac_yaml.LDict | None:
@@ -1480,15 +1751,15 @@ def analyze_ci(rel_path: str, text: str) -> IacResult | None:
             if id_match:
                 step_id = id_match.group(1)
             if step_id and "GITHUB_OUTPUT" in raw:
-                for match in _GH_OUTPUT_WRITE.finditer(raw):
-                    if _GH_UNTRUSTED.search(match.group(2)):
-                        tainted.add((step_id, match.group(1)))
+                for name, expression in _github_output_writes(raw):
+                    if _GH_UNTRUSTED.search(expression):
+                        tainted.add((step_id, name))
         block_indent: int | None = None
         for number, raw in enumerate(lines, 1):
-            command = _CI_COMMAND.match(raw)
+            command = _ci_command(raw)
             payload = ""
             if command:
-                indent, payload = len(command.group(1)), command.group(3)
+                indent, _key, payload = command
                 block_indent = indent if payload.strip() in ("|", ">", "|-", ">-") else None
             elif block_indent is not None:
                 indent = len(raw) - len(raw.lstrip())
@@ -1502,7 +1773,7 @@ def analyze_ci(rel_path: str, text: str) -> IacResult | None:
         tainted_names: set[str] = set()
         source_lines: set[int] = set()
         for number, raw in enumerate(lines, 1):
-            if _GL_UNTRUSTED.search(raw) and re.search(r">\s*[^\s]+\.env\b", raw):
+            if _GL_UNTRUSTED.search(raw) and _writes_dotenv_file(raw):
                 match = _GL_DOTENV_WRITE.search(raw)
                 if match:
                     tainted_names.add(match.group(1))
@@ -2283,10 +2554,9 @@ def helm_values_for(root: Path, rel_path: str) -> dict | None:
         resolved = values_path.resolve()
         if root.resolve() not in resolved.parents:
             return None
-        info = values_path.stat()
-        if info.st_size > 1_000_000:
+        raw = read_bytes_bounded(values_path, 1_000_000, allow_empty=True)
+        if raw is None:
             return None
-        raw = values_path.read_bytes()
         key = (str(resolved), hashlib.sha256(raw).digest())
         with _HELM_VALUES_CACHE_LOCK:
             cached = _HELM_VALUES_CACHE.get(key, _HELM_CACHE_MISS)

@@ -132,17 +132,12 @@ CACHE_PUT_RE = re.compile(r"\b(?:\w*[Cc]ache|c)\.put\s*\(")
 ADD_ALL_RE = re.compile(r"\.addAll\s*\(")
 REGISTER_ROUTE_RE = re.compile(r"\bregisterRoute\s*\(")
 CACHE_STRATEGY_RE = re.compile(r"\b(?:CacheFirst|StaleWhileRevalidate|CacheOnly)\b")
-SENSITIVE_PATH_LITERAL_RE = re.compile(
-    r"""['"`][^'"`\n]*(?:/api/|/api\b|auth|account|token|session|profile|/me\b|/user)[^'"`\n]*['"`]""",
-    re.IGNORECASE,
-)
 SENSITIVE_ROUTE_TEXT_RE = re.compile(r"/api|auth|account|token|session|profile|/me\b|/user", re.IGNORECASE)
 AUTH_HEADER_RE = re.compile(
     r"""headers\.get\s*\(\s*['"]authorization['"]|credentials\s*:\s*['"]include['"]""",
     re.IGNORECASE,
 )
 RESPONSE_CHECK_RE = re.compile(r"\.ok\b|\.status\b|\.type\b|opaque", re.IGNORECASE)
-POSTMESSAGE_STAR_RE = re.compile(r"""\.postMessage\s*\([^)]*,\s*['"]\*['"]""")
 SW_CONTENT_RE = re.compile(r"""\bself\.addEventListener\s*\(\s*['"]fetch['"]|\bself\.onfetch\s*=""")
 
 
@@ -305,6 +300,70 @@ def _call_arguments(lines: list[str], idx: int, open_col: int, max_lines: int = 
 
 def _is_comment(stripped: str) -> bool:
     return stripped.startswith(("//", "/*", "*"))
+
+
+def _contains_sensitive_path(value: str) -> bool:
+    folded = value.casefold()
+    if any(term in folded for term in ("auth", "account", "token", "session", "profile", "/user")):
+        return True
+    for term in ("/api", "/me"):
+        start = 0
+        while (found := folded.find(term, start)) >= 0:
+            end = found + len(term)
+            if end == len(folded) or not (folded[end].isalnum() or folded[end] == "_"):
+                return True
+            start = found + 1
+    return False
+
+
+def _find_sensitive_path_literal(text: str) -> str | None:
+    """İlk tamamlanmış hassas tırnaklı yolu tek geçişte döndür."""
+    index = 0
+    while index < len(text):
+        quote = text[index]
+        if quote not in "'\"`":
+            index += 1
+            continue
+        end = index + 1
+        while end < len(text) and text[end] not in "'\"`\n":
+            end += 1
+        if end >= len(text):
+            return None
+        if text[end] in "'\"`":
+            literal = text[index:end + 1]
+            if _contains_sensitive_path(literal[1:-1]):
+                return literal
+        index = end + 1
+    return None
+
+
+def _has_postmessage_star(line: str) -> bool:
+    """postMessage çağrısında `'*'` hedef kökenini geri izleme olmadan bul."""
+    cursor = 0
+    marker = ".postMessage"
+    while (start := line.find(marker, cursor)) >= 0:
+        pos = start + len(marker)
+        while pos < len(line) and line[pos].isspace():
+            pos += 1
+        if pos >= len(line) or line[pos] != "(":
+            cursor = start + len(marker)
+            continue
+        end = line.find(")", pos + 1)
+        if end < 0:
+            end = len(line)
+        comma = pos + 1
+        while (comma := line.find(",", comma, end)) >= 0:
+            value = comma + 1
+            while value < end and line[value].isspace():
+                value += 1
+            if value + 2 < end and line[value] in "'\"" and line[value + 1] == "*" \
+                    and line[value + 2] == line[value]:
+                return True
+            comma += 1
+        if end == len(line):
+            return False
+        cursor = end + 1
+    return False
 
 
 def _is_service_worker_name(name: str) -> bool:
@@ -875,12 +934,12 @@ def audit_service_worker_inline(
         add_all = ADD_ALL_RE.search(line)
         if add_all:
             arguments = _call_arguments(lines, idx, add_all.end() - 1, max_lines=12)
-            sensitive = SENSITIVE_PATH_LITERAL_RE.search(arguments)
+            sensitive = _find_sensitive_path_literal(arguments)
             if sensitive:
                 _emit(
                     "high",
                     "Kimlik doğrulamalı/API yanıtları önbelleğe önceden alınıyor",
-                    f"cache.addAll listesi hassas bir yol içeriyor ({sensitive.group(0)[:80]}). Kişisel veya "
+                    f"cache.addAll listesi hassas bir yol içeriyor ({sensitive[:80]}). Kişisel veya "
                     "oturuma bağlı yanıtlar Cache Storage'da kalır; ortak cihazda veya oturum kapandıktan sonra "
                     "okunabilir.",
                     stripped,
@@ -912,7 +971,7 @@ def audit_service_worker_inline(
             before = "\n".join(lines[max(0, idx - 12):idx + 1])
             around = "\n".join(lines[max(0, idx - 8):idx + 9])
             auth_context = AUTH_HEADER_RE.search(around)
-            api_context = SENSITIVE_PATH_LITERAL_RE.search(around)
+            api_context = _find_sensitive_path_literal(around)
             unchecked = not RESPONSE_CHECK_RE.search(before)
             if auth_context or api_context:
                 title = (
@@ -950,7 +1009,7 @@ def audit_service_worker_inline(
                     idx + 1,
                 )
 
-        if POSTMESSAGE_STAR_RE.search(line):
+        if _has_postmessage_star(line):
             _emit(
                 "low",
                 "postMessage hedef kökeni '*' olarak ayarlanmış",

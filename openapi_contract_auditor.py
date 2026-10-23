@@ -8,6 +8,7 @@ from typing import Any
 
 from project_analyzer import SKIP_DIRS, validate_project_path
 from finding_limits import INLINE_FINDING_LIMIT, PROJECT_FINDING_LIMIT, cap_findings, summarize_finding_groups
+from safe_file_read import read_text_bounded
 
 
 MAX_CONTRACT_BYTES = 2_000_000
@@ -120,12 +121,14 @@ def _parse_scalar(raw: str) -> Any:
                     k, v = pair.split(":", 1)
                     out[str(_parse_scalar(k)).strip()] = _parse_scalar(v)
             return out
-    if re.fullmatch(r"-?\d+", val):
+    unsigned = val[1:] if val.startswith("-") else val
+    if unsigned and unsigned.isdigit():
         try:
             return int(val)
         except ValueError:
             pass
-    if re.fullmatch(r"-?\d+\.\d+", val):
+    integer, dot, fraction = unsigned.partition(".")
+    if dot and integer and fraction and integer.isdigit() and fraction.isdigit() and "." not in fraction:
         try:
             return float(val)
         except ValueError:
@@ -239,6 +242,83 @@ def _parse_simple_yaml(text: str) -> dict[str, Any]:
     return parsed
 
 
+def _graphql_type_blocks(text: str) -> list[tuple[str, str, str]]:
+    """Extract GraphQL type bodies with forward-only delimiter scans."""
+    kinds = ("type", "input", "interface")
+    blocks: list[tuple[str, str, str]] = []
+    cursor = 0
+    while cursor < len(text):
+        candidates = [(text.find(kind, cursor), kind) for kind in kinds]
+        candidates = [(position, kind) for position, kind in candidates if position >= 0]
+        if not candidates:
+            break
+        found, kind = min(candidates)
+        before = text[found - 1] if found else ""
+        after_kind = found + len(kind)
+        if before == "_" or before.isalnum() or after_kind >= len(text) or not text[after_kind].isspace():
+            cursor = after_kind
+            continue
+        index = after_kind
+        while index < len(text) and text[index].isspace():
+            index += 1
+        if index >= len(text) or not (text[index] == "_" or "A" <= text[index] <= "Z" or
+                                      "a" <= text[index] <= "z"):
+            cursor = after_kind
+            continue
+        name_start = index
+        index += 1
+        while index < len(text) and (text[index] == "_" or "A" <= text[index] <= "Z" or
+                                     "a" <= text[index] <= "z" or "0" <= text[index] <= "9"):
+            index += 1
+        type_name = text[name_start:index]
+        if index < len(text) and text[index] == "{":
+            opening = index
+        elif index < len(text) and text[index].isspace():
+            opening = text.find("{", index)
+            if opening < 0:
+                break
+        else:
+            cursor = index
+            continue
+        closing = text.find("}", opening + 1)
+        if closing < 0:
+            break
+        blocks.append((kind, type_name, text[opening + 1:closing]))
+        cursor = closing + 1
+    return blocks
+
+
+def _graphql_field(line: str) -> tuple[str, str, str] | None:
+    """Parse ``name(args): Type @directives`` without adjacent wildcard regexes."""
+    if not line or not (line[0] == "_" or "A" <= line[0] <= "Z" or "a" <= line[0] <= "z"):
+        return None
+    index = 1
+    while index < len(line) and (line[index] == "_" or "A" <= line[index] <= "Z" or
+                                 "a" <= line[index] <= "z" or "0" <= line[index] <= "9"):
+        index += 1
+    field_name = line[:index]
+    while index < len(line) and line[index].isspace():
+        index += 1
+    if index < len(line) and line[index] == "(":
+        closing = line.find(")", index + 1)
+        if closing < 0:
+            return None
+        index = closing + 1
+    while index < len(line) and line[index].isspace():
+        index += 1
+    if index >= len(line) or line[index] != ":":
+        return None
+    index += 1
+    while index < len(line) and line[index].isspace():
+        index += 1
+    type_start = index
+    while index < len(line) and not line[index].isspace() and line[index] != "@":
+        index += 1
+    if index == type_start:
+        return None
+    return field_name, line[type_start:index], line[index:]
+
+
 def _looks_like_graphql(raw_content: str) -> bool:
     stripped = raw_content.strip()
     if stripped.startswith("{"):
@@ -253,11 +333,7 @@ def _looks_like_graphql(raw_content: str) -> bool:
 
 def _audit_graphql_sdl(raw_content: str, source_name: str) -> dict[str, Any]:
     cleaned = re.sub(r"#[^\n]*", "", raw_content)
-    type_blocks = re.findall(
-        r"\b(type|input|interface)\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s+[^{]*)?\{([^}]*)\}",
-        cleaned,
-        flags=re.DOTALL,
-    )
+    type_blocks = _graphql_type_blocks(cleaned)
     if not type_blocks:
         raise ApiContractAuditError("Geçerli bir GraphQL SDL şeması bulunamadı.")
 
@@ -271,13 +347,10 @@ def _audit_graphql_sdl(raw_content: str, source_name: str) -> dict[str, Any]:
             line = raw_line.strip()
             if not line:
                 continue
-            match = re.match(
-                r"^([A-Za-z_][A-Za-z0-9_]*)\s*(?:\([^)]*\))?\s*:\s*([^\s@]+)(.*)$",
-                line,
-            )
-            if not match:
+            field = _graphql_field(line)
+            if field is None:
                 continue
-            field_name, field_type, directives_tail = match.group(1), match.group(2), match.group(3)
+            field_name, field_type, directives_tail = field
             fields.append((field_name, field_type, directives_tail or ""))
         if kind == "type":
             object_types.setdefault(type_name, []).extend(fields)
@@ -737,10 +810,10 @@ def audit_project_api_contracts(
             if not (is_openapi_file or is_graphql_file):
                 continue
             try:
-                if file_path.stat().st_size > MAX_CONTRACT_BYTES or file_path.stat().st_size == 0:
-                    continue
-                content = file_path.read_text(encoding="utf-8", errors="strict")
-            except (OSError, UnicodeDecodeError):
+                content = read_text_bounded(file_path, MAX_CONTRACT_BYTES, errors="strict")
+            except UnicodeDecodeError:
+                continue
+            if content is None:
                 continue
             rel_name = str(file_path.relative_to(root))
             try:

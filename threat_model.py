@@ -175,7 +175,6 @@ _JS_OWNER_BLOCKLIST = {"axios", "http", "https", "client", "request", "fetch", "
                        "map", "cache", "headers", "params", "query", "session", "localstorage", "store", "config", "settings",
                        "this", "object", "array", "url", "searchparams", "formdata", "redis", "db", "knex"}
 _NEST_CONTROLLER_RE = re.compile(r"""@Controller\s*\(\s*(?:['"`]([^'"`]*)['"`])?""")
-_NEST_ROUTE_RE = re.compile(r"""@(Get|Post|Put|Patch|Delete|All|Head|Options)\s*\(\s*(?:['"`]([^'"`]*)['"`])?\s*\)\s*\n\s*(?:public\s+|private\s+|async\s+)*([A-Za-z_$][\w$]*)""")
 _URL_HOST_RE = re.compile(r"""['"`]https?://([A-Za-z0-9.-]{3,253})(?::\d+)?[/'"`?]""")
 _JS_IMPORT_LINE_RE = re.compile(r"""(?:from\s+['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]\s*\)|import\s+['"]([^'"]+)['"])""")
 _PY_IMPORT_LINE_RE = re.compile(r"^\s*(?:from\s+([A-Za-z_][\w.]*)\s+import\b|import\s+([A-Za-z_][\w.]*(?:\s*,\s*[A-Za-z_][\w.]*)*))")
@@ -185,6 +184,99 @@ _FETCH_RE = re.compile(r"(?<![\w$.])fetch\s*\(")
 _LOCAL_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "example.com", "example.org", "example.net"}
 _MANIFESTS = {"package.json", "requirements.txt", "pyproject.toml", "setup.py", "pipfile", "go.mod", "pom.xml",
               "build.gradle", "build.gradle.kts", "composer.json", "gemfile", "cargo.toml"}
+
+
+def _openapi_path_key(text: str) -> str | None:
+    """Parse one YAML path key without overlapping wildcard backtracking."""
+    cursor = 0
+    if cursor < len(text) and text[cursor] in "'\"":
+        cursor += 1
+    if cursor >= len(text) or text[cursor] != "/":
+        return None
+    start = cursor
+    while cursor < len(text) and text[cursor] not in {"'", '"', ":"}:
+        cursor += 1
+    path = text[start:cursor]
+    if cursor < len(text) and text[cursor] in "'\"":
+        cursor += 1
+    while cursor < len(text) and text[cursor].isspace():
+        cursor += 1
+    if cursor >= len(text) or text[cursor] != ":":
+        return None
+    cursor += 1
+    while cursor < len(text) and text[cursor].isspace():
+        cursor += 1
+    return path if cursor == len(text) else None
+
+
+_NEST_ROUTE_METHODS = ("Get", "Post", "Put", "Patch", "Delete", "All", "Head", "Options")
+_NEST_ROUTE_MODIFIERS = ("public", "private", "async")
+
+
+def _iter_nest_routes(text: str):
+    """Yield NestJS decorator routes with a forward-only source scan."""
+    cursor = 0
+    while (start := text.find("@", cursor)) >= 0:
+        method = next((name for name in _NEST_ROUTE_METHODS if text.startswith(name, start + 1)), None)
+        if method is None:
+            cursor = start + 1
+            continue
+        pos = start + 1 + len(method)
+        while pos < len(text) and text[pos].isspace():
+            pos += 1
+        if pos >= len(text) or text[pos] != "(":
+            cursor = start + 1
+            continue
+        pos += 1
+        while pos < len(text) and text[pos].isspace():
+            pos += 1
+
+        path = ""
+        if pos < len(text) and text[pos] in "'\"`":
+            pos += 1
+            path_start = pos
+            while pos < len(text) and text[pos] not in "'\"`":
+                pos += 1
+            if pos >= len(text):
+                cursor = start + 1
+                continue
+            path = text[path_start:pos]
+            pos += 1
+
+        while pos < len(text) and text[pos].isspace():
+            pos += 1
+        if pos >= len(text) or text[pos] != ")":
+            cursor = start + 1
+            continue
+        pos += 1
+        saw_newline = False
+        while pos < len(text) and text[pos].isspace():
+            saw_newline = saw_newline or text[pos] == "\n"
+            pos += 1
+        if not saw_newline:
+            cursor = start + 1
+            continue
+
+        while True:
+            modifier = next((name for name in _NEST_ROUTE_MODIFIERS if text.startswith(name, pos)), None)
+            if modifier is None:
+                break
+            end = pos + len(modifier)
+            if end >= len(text) or not text[end].isspace():
+                break
+            pos = end + 1
+            while pos < len(text) and text[pos].isspace():
+                pos += 1
+
+        if pos >= len(text) or text[pos] not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$":
+            cursor = start + 1
+            continue
+        handler_start = pos
+        pos += 1
+        while pos < len(text) and (text[pos].isalnum() or text[pos] in "_$"):
+            pos += 1
+        yield start, method, path, text[handler_start:pos]
+        cursor = pos
 
 
 def _js_handler_name(rest: str) -> str:
@@ -342,11 +434,11 @@ class ThreatModelCollector:
                 continue
             if not in_paths:
                 continue
-            key = re.match(r"""['"]?(/[^'":]*)['"]?\s*:\s*$""", stripped)
-            if key and (path is None or indent <= path_indent):
+            key = _openapi_path_key(stripped)
+            if key is not None and (path is None or indent <= path_indent):
                 if method:
                     self._route(method, path or "/", "?", relpath, method_line, "openapi")
-                path, path_indent, method = key.group(1), indent, None
+                path, path_indent, method = key, indent, None
                 continue
             m = re.match(r"(get|post|put|patch|delete|head|options)\s*:\s*$", stripped)
             if m and path is not None and indent > path_indent:
@@ -525,10 +617,10 @@ class ThreatModelCollector:
         if nest:
             controller = _NEST_CONTROLLER_RE.search(text)
             prefix = "/" + (controller.group(1) or "").strip("/") if controller else ""
-            for match in _NEST_ROUTE_RE.finditer(text):
-                path = "/".join(p for p in (prefix.rstrip("/"), (match.group(2) or "").strip("/")) if p) or "/"
-                self._route(match.group(1), path if path.startswith("/") else "/" + path, match.group(3), relpath,
-                            line_of(match.start()), "nestjs")
+            for route_start, method, route_path, handler in _iter_nest_routes(text):
+                path = "/".join(p for p in (prefix.rstrip("/"), route_path.strip("/")) if p) or "/"
+                self._route(method, path if path.startswith("/") else "/" + path, handler, relpath,
+                            line_of(route_start), "nestjs")
 
     # -- model --------------------------------------------------------------------
     def _service_of(self, relpath: str) -> str:

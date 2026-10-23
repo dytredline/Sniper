@@ -9,7 +9,7 @@ const end = app.indexOf("\nfunction labScenarioLabel(", start);
 assert.ok(start >= 0 && end > start);
 const renderSource = app.slice(start, end);
 
-test("tool cards distinguish runnable profiles from report-only and external methods", () => {
+test("Community tool cards omit unavailable and external-only methods", () => {
   const nodes = new Map();
   const $ = selector => {
     if (!nodes.has(selector)) nodes.set(selector, { innerHTML: "", textContent: "" });
@@ -28,19 +28,24 @@ test("tool cards distinguish runnable profiles from report-only and external met
         { id: "codeql", name: "CodeQL", kind: "SAST", license: "GitHub", summary: "Harici", formats: ["SARIF"], url: "https://example.test/codeql", workflows: [{ mode: "external", label: "Harici araç önerisi", routes: [] }] },
       ],
     },
+    toolingReadiness: { tools: [
+      { id: "trivy", profiles: [{ label: "Yerel sır profili", route: "/api/tool-runs/trivy-secret", runtime: "unavailable", action: "local_input_required", reason_code: "binary_unavailable" }] },
+      { id: "burp-suite", profiles: [{ label: "Kaydedilmiş rapor özeti", route: "/api/tool-reports/burp-sitemap/summary", runtime: "not_applicable", action: "report_only", reason_code: "no_local_scan" }] },
+      { id: "codeql", profiles: [{ label: "Harici araç önerisi", route: null, runtime: "not_applicable", action: "external_only", reason_code: "no_local_scan" }] },
+    ] },
   };
   vm.runInNewContext(`${renderSource}\nrenderTooling();`, { state, $, esc, document: { addEventListener() {} } });
   const html = nodes.get("#tool-card-grid").innerHTML;
   const cards = [...html.matchAll(/<article class="tool-card">([\s\S]*?)<\/article>/g)].map(match => match[1]);
-  assert.equal(cards.length, 3);
-  assert.match(cards[0], /Yerel sır profili/);
-  assert.match(cards[0], /\/api\/tool-runs\/trivy-secret/);
-  assert.match(cards[0], /Çalıştırma için gerekli ikili, izin ve kapsam/);
-  assert.match(cards[1], /Kaydedilmiş rapor özeti/);
-  assert.match(cards[1], /Öneri veya rapor özeti taramayı başlatmaz/);
-  assert.doesNotMatch(cards[1], /Çalıştırma için gerekli/);
-  assert.match(cards[2], /Harici araç önerisi/);
-  assert.match(cards[2], /Sniper içinde otomatik çalışmaz/);
-  assert.match(nodes.get("#tooling-summary").innerHTML, /SNIPER'DA TANIMLI AKIŞ/);
-  assert.match(nodes.get("#tooling-summary").innerHTML, />2<\/b>/);
+  assert.equal(cards.length, 1);
+  assert.match(cards[0], /Burp Suite/);
+  assert.match(cards[0], /Kaydedilmiş rapor özeti/);
+  assert.doesNotMatch(html, /Trivy|CodeQL|Ön koşul eksik|Harici araç önerisi/);
+  assert.equal(nodes.get("#tool-count-label").textContent, "1 kullanılabilir araç/yöntem");
+  assert.match(nodes.get("#tooling-summary").innerHTML, /COMMUNITY'DE GÖRÜNEN/);
+});
+
+test("Community hides the duplicate static tool launcher", () => {
+  const html = readFileSync(new URL("../static/index.html", import.meta.url), "utf8");
+  assert.match(html, /<details class="ui-tool-launcher" hidden>/);
 });

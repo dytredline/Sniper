@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from project_analyzer import MAX_FILE_BYTES
+from safe_file_read import read_text_bounded
 from tool_report_semgrep import MAX_FINDINGS
 
 
@@ -138,9 +139,9 @@ def filter_direct_requests_tls_findings(results: list[Any], input_dir: Path) -> 
             if not source_path.is_relative_to(root) or source_path.suffix != ".py":
                 raise ValueError("Semgrep raporu geçerli JSON değil.")
             if source_path not in cache:
-                if source_path.stat().st_size > MAX_FILE_BYTES:
+                source = read_text_bounded(source_path, MAX_FILE_BYTES, errors="strict")
+                if source is None:
                     raise ValueError("Semgrep raporu geçerli JSON değil.")
-                source = source_path.read_text(encoding="utf-8")
                 tree = ast.parse(source, filename="<local-snapshot>")
                 line_lengths = tuple(len(line.encode("utf-8")) for line in source.splitlines())
                 cache[source_path] = (_qualified_calls(tree), line_lengths)

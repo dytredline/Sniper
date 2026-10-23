@@ -47,7 +47,19 @@ _NESTED_CREDENTIAL_PREFIX_RE = re.compile(
 )
 _ENTITY_DOUBLE_QUOTE_RE = re.compile(r"(?i)&(?:quot|#0*34|#x0*22);")
 _ENTITY_SINGLE_QUOTE_RE = re.compile(r"(?i)&(?:apos|#0*39|#x0*27);")
-_FUNCTION_WRAPPER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_.]*\s*\(")
+
+
+def _function_wrapper_end(text: str, start: int) -> int | None:
+    """Return the end of ``identifier(`` using one forward-only pass."""
+    if start >= len(text) or text[start] not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_":
+        return None
+    cursor = start + 1
+    allowed = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_."
+    while cursor < len(text) and text[cursor] in allowed:
+        cursor += 1
+    while cursor < len(text) and text[cursor].isspace():
+        cursor += 1
+    return cursor + 1 if cursor < len(text) and text[cursor] == "(" else None
 
 
 def _nested_credential_value_end(text: str, start: int) -> int:
@@ -67,9 +79,9 @@ def _nested_credential_value_end(text: str, start: int) -> int:
                 return closer.end()
         return len(text)
 
-    function = _FUNCTION_WRAPPER_RE.match(text, start)
-    if function is not None:
-        return _nested_credential_value_end(text, function.end() - 1)
+    function_end = _function_wrapper_end(text, start)
+    if function_end is not None:
+        return _nested_credential_value_end(text, function_end - 1)
 
     if text[start] == chr(96):
         fence_length = 1
@@ -142,7 +154,7 @@ def _redact_nested_credential_text(text: str) -> str:
                 text[start] in (chr(34), chr(39), chr(96), "{", "[", "(")
                 or _ENTITY_DOUBLE_QUOTE_RE.match(text, start)
                 or _ENTITY_SINGLE_QUOTE_RE.match(text, start)
-                or _FUNCTION_WRAPPER_RE.match(text, start)
+                or _function_wrapper_end(text, start) is not None
             )
         ):
             pieces.append(text[cursor:start])

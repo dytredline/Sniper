@@ -115,7 +115,8 @@ test("authorized route opens consent form, while unknown and unavailable routes 
   assert.deepEqual(ui.clicks, ["open:open-nuclei-http-scan"]);
 
   const unavailable = setup("gitleaks", "/api/tool-runs/gitleaks", "local_input_required", "unavailable");
-  assert.match(unavailable.card, /disabled/);
+  assert.doesNotMatch(unavailable.card, /data-tool-route=/);
+  assert.doesNotMatch(unavailable.card, /gitleaks/);
   unavailable.click("/api/tool-runs/gitleaks", true);
   assert.deepEqual(unavailable.clicks, []);
 });

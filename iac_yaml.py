@@ -6,7 +6,6 @@ dönüştürülür ve toplam düğüm bütçesi aşılırsa ayrıştırma bırak
 """
 from __future__ import annotations
 
-import re
 from typing import Any
 
 try:  # PyYAML sistem paketinde var; yoksa YAML IaC denetimi eski desen kurallarına düşer
@@ -135,9 +134,76 @@ def load_all(text: str) -> list[Any]:
     return docs
 
 
-_HELM_LINE_ONLY = re.compile(r"^\s*\{\{-?.*-?\}\}\s*$")
-_HELM_EXPR = re.compile(r"\{\{-?.*?-?\}\}")
-_HELM_MULTILINE = re.compile(r"\{\{(?:(?!\}\}).)*\n(?:(?!\}\}).)*\}\}", re.S)
+def helm_action_spans(text: str) -> list[tuple[int, int, str]]:
+    """Return complete ``{{ ... }}`` actions with trim markers removed.
+
+    Searching always resumes after the previous closing delimiter. An
+    unterminated opener stops the scan because no later opener can have a
+    closing delimiter that the earlier opener would not also consume.
+    """
+    actions: list[tuple[int, int, str]] = []
+    cursor = 0
+    while cursor < len(text):
+        start = text.find("{{", cursor)
+        if start < 0:
+            break
+        closing = text.find("}}", start + 2)
+        if closing < 0:
+            break
+        body = text[start + 2:closing]
+        if body.startswith("-"):
+            body = body[1:]
+        if body.endswith("-"):
+            body = body[:-1]
+        end = closing + 2
+        actions.append((start, end, body))
+        cursor = end
+    return actions
+
+
+def helm_action_line(line: str) -> str | None:
+    """Return the body when the entire non-whitespace line is one action."""
+    stripped = line.strip()
+    if not stripped.startswith("{{") or not stripped.endswith("}}"):
+        return None
+    body = stripped[2:-2]
+    if body.startswith("-"):
+        body = body[1:]
+    if body.endswith("-"):
+        body = body[:-1]
+    return body
+
+
+def replace_helm_actions(text: str, replacement: str) -> str:
+    """Replace complete actions in one forward pass; leave malformed text intact."""
+    actions = helm_action_spans(text)
+    if not actions:
+        return text
+    out: list[str] = []
+    cursor = 0
+    for start, end, _body in actions:
+        out.extend((text[cursor:start], replacement))
+        cursor = end
+    out.append(text[cursor:])
+    return "".join(out)
+
+
+def mask_multiline_helm_actions(text: str) -> str:
+    """Blank complete multiline actions while preserving their newline count."""
+    out: list[str] = []
+    cursor = 0
+    changed = False
+    for start, end, _body in helm_action_spans(text):
+        action = text[start:end]
+        if "\n" not in action:
+            continue
+        out.extend((text[cursor:start], "\n" * action.count("\n")))
+        cursor = end
+        changed = True
+    if not changed:
+        return text
+    out.append(text[cursor:])
+    return "".join(out)
 
 
 def render_helm_lite(text: str) -> str:
@@ -145,13 +211,13 @@ def render_helm_lite(text: str) -> str:
     boşaltılır, satır içi ifadeler yer tutucuya çevrilir. Değerler bilinmediği için yalnız sabit yazılmış
     ayarlar denetlenebilir."""
     # Birden çok satıra yayılan ifadeler ({{/* yorum */}}, uzun include) satır sayısı korunarak boşaltılır.
-    text = _HELM_MULTILINE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
+    text = mask_multiline_helm_actions(text)
     out: list[str] = []
     for raw in text.split("\n"):
-        if _HELM_LINE_ONLY.match(raw):
+        if helm_action_line(raw) is not None:
             out.append("")
         elif "{{" in raw:
-            replaced = _HELM_EXPR.sub(HELM_PLACEHOLDER, raw)
+            replaced = replace_helm_actions(raw, HELM_PLACEHOLDER)
             # "anahtar: __X__ | yyy" gibi kalıntılarda bile tek dizge kalsın
             out.append(replaced.replace("{{", "").replace("}}", ""))
         else:

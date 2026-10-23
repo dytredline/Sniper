@@ -250,7 +250,7 @@
 
       <section class="view" data-view="tooling">
         <div class="page-intro"><div><p class="eyebrow">161 KONTROL İÇİN ARAÇ ZİNCİRİ</p><h1>Araç matrisi</h1><p>Her kontrol için uygun otomatik araçları, gerekli girdileri ve uzman doğrulaması gereken alanları görün.</p></div><button class="button secondary" data-action="new-lab" data-type="external_result">Harici sonuç kaydet</button></div>
-        <details class="ui-tool-launcher">
+        <details class="ui-tool-launcher" hidden>
           <summary><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#tools"></use></svg></span><span><strong>Araç işlemleri</strong><small>Önizlemeler ve yerel çalışma seçenekleri</small></span><span class="ui-icon ui-disclosure-arrow" aria-hidden="true"><svg><use href="/static/ui-icons.svg#arrow"></use></svg></span></summary>
           <div class="ui-tool-actions">
                 <button class="button secondary" data-action="open-trufflehog-preview">TruffleHog JSONL önizleme</button>
@@ -292,7 +292,7 @@
 <button class="button secondary" data-action="open-semgrep-trivy-compare">Semgrep/Trivy karşılaştırma</button></div>
         </details>
         <div class="tooling-summary" id="tooling-summary"></div>
-<section class="panel" id="trivy-vuln-local-panel" aria-labelledby="trivy-vuln-local-title">
+<section class="panel hidden" id="trivy-vuln-local-panel" aria-labelledby="trivy-vuln-local-title">
   <div class="panel-head"><div><p class="eyebrow">YEREL BAĞIMLILIK TARAMASI</p><h2 id="trivy-vuln-local-title">Trivy zafiyet taraması</h2></div></div>
   <p>Yalnız yerel proje kökündeki requirements.txt dosyası, sabitlenmiş çevrimdışı Trivy veritabanıyla taranır. Dış hedef taranmaz; ham bulgular gösterilmez.</p>
   <form id="trivy-vuln-local-form" class="form-grid">
@@ -311,7 +311,7 @@
     <p>Bu sayılar otomatik doğrulanmış güvenlik açığı hükmü değildir; uzman incelemesi gerekir.</p>
   </section>
 </section>
-<section class="panel" id="trivy-secret-panel" aria-labelledby="trivy-secret-title">
+<section class="panel hidden" id="trivy-secret-panel" aria-labelledby="trivy-secret-title">
   <div class="panel-head"><div><p class="eyebrow">YEREL SIR TARAMASI</p><h2 id="trivy-secret-title">Trivy yerel sır taraması</h2></div></div>
   <p>Hizmet kullanıcısının evindeki seçtiğiniz yerel proje, açık onayınızla sınırlandırılmış Trivy secret profiliyle taranır. Dış hedef, ham dosya, yol veya sır değeri sonuçta gösterilmez.</p>
   <form id="trivy-secret-form" class="form-grid">
@@ -329,7 +329,7 @@
     <p>Bu sayılar sırın geçerli olduğunu kanıtlamaz; ham eşleşme gösterilmez ve uzman incelemesi gerekir.</p>
   </section>
 </section>
-<section class="panel" id="trivy-image-archive-panel" aria-labelledby="trivy-image-archive-title">
+<section class="panel hidden" id="trivy-image-archive-panel" aria-labelledby="trivy-image-archive-title">
   <div class="panel-head"><div><p class="eyebrow">YEREL İMAJ TARAMASI</p><h2 id="trivy-image-archive-title">Trivy çevrimdışı imaj arşivi taraması</h2></div></div>
   <p>Yalnız hizmet kullanıcısının evindeki yerel proje kökünde bulunan, normal ve bağlantı olmayan .tar arşivini sabitlenmiş çevrimdışı Trivy veritabanıyla tarar. Docker soketine veya uzak kayda bağlanmaz; arşiv yolu ve ham bulgular sonuçta gösterilmez.</p>
   <form id="trivy-image-archive-form" class="form-grid">
@@ -349,7 +349,7 @@
     <p>Bu sayılar otomatik doğrulanmış güvenlik açığı hükmü değildir; uzman incelemesi gerekir.</p>
   </section>
 </section>
-<section class="panel" id="trivy-kubernetes-single-panel" aria-labelledby="trivy-kubernetes-single-title">
+<section class="panel hidden" id="trivy-kubernetes-single-panel" aria-labelledby="trivy-kubernetes-single-title">
   <div class="panel-head"><div><p class="eyebrow">YEREL YAPILANDIRMA TARAMASI</p><h2 id="trivy-kubernetes-single-title">Trivy tek Kubernetes manifesti taraması</h2></div></div>
   <p>Hizmet kullanıcısının evindeki proje kökünden açıkça seçtiğiniz tek .yaml veya .yml dosyası yerel Trivy ile denetlenir. Canlı kümeye bağlanmaz; ham manifest veya bulgu gösterilmez.</p>
   <form id="trivy-kubernetes-single-form" class="form-grid">
@@ -368,7 +368,7 @@
     <p>Bu sayılar otomatik doğrulanmış güvenlik açığı hükmü değildir; uzman incelemesi gerekir.</p>
   </section>
 </section>
-<section class="panel" id="trivy-kubernetes-batch-panel" aria-labelledby="trivy-kubernetes-batch-title">
+<section class="panel hidden" id="trivy-kubernetes-batch-panel" aria-labelledby="trivy-kubernetes-batch-title">
   <div class="panel-head"><div><p class="eyebrow">YEREL YAPILANDIRMA TARAMASI</p><h2 id="trivy-kubernetes-batch-title">Trivy Kubernetes manifest toplu taraması</h2></div></div>
   <p>Yalnız hizmet kullanıcısının evindeki proje kökünde bulunan, adını tek tek belirttiğiniz en fazla 8 YAML manifesti aynı yerel Trivy çalışmasında denetlenir. Canlı kümeye bağlanmaz ve ham bulguları göstermez.</p>
   <form id="trivy-kubernetes-batch-form" class="form-grid">
@@ -387,7 +387,7 @@
     <p>Bu sayılar otomatik doğrulanmış güvenlik açığı hükmü değildir; uzman incelemesi gerekir.</p>
   </section>
 </section>
-<section class="panel" id="trivy-dockerfile-config-panel" aria-labelledby="trivy-dockerfile-config-title">
+<section class="panel hidden" id="trivy-dockerfile-config-panel" aria-labelledby="trivy-dockerfile-config-title">
   <div class="panel-head"><div><p class="eyebrow">YEREL YAPILANDIRMA TARAMASI</p><h2 id="trivy-dockerfile-config-title">Trivy Dockerfile yapılandırma taraması</h2></div></div>
   <p>Yalnız hizmet kullanıcısının evindeki proje kökünde bulunan tek Dockerfile, yerel Trivy ile denetlenir. Dış hedef veya imaj taranmaz; ham dosya ve bulgular gösterilmez.</p>
   <form id="trivy-dockerfile-config-form" class="form-grid">
@@ -405,7 +405,7 @@
     <p>Bu sayılar otomatik doğrulanmış güvenlik açığı hükmü değildir; uzman incelemesi gerekir.</p>
   </section>
 </section>
-<section class="panel" id="trivy-terraform-config-panel" aria-labelledby="trivy-terraform-config-title">
+<section class="panel hidden" id="trivy-terraform-config-panel" aria-labelledby="trivy-terraform-config-title">
   <div class="panel-head"><div><p class="eyebrow">YEREL YAPILANDIRMA TARAMASI</p><h2 id="trivy-terraform-config-title">Trivy Terraform yapılandırma taraması</h2></div></div>
   <p>Hizmet kullanıcısının evindeki yerel proje kökünden açıkça seçilen tek .tf dosyası denetlenir. Terraform init/plan veya dış hedef taraması yapılmaz; ham dosya ve bulgular gösterilmez.</p>
   <form id="trivy-terraform-config-form" class="form-grid">
@@ -424,7 +424,7 @@
     <p>Bu sayılar otomatik doğrulanmış güvenlik açığı hükmü değildir; uzman incelemesi gerekir.</p>
   </section>
 </section>
-<section class="panel" id="trivy-npm-local-panel" aria-labelledby="trivy-npm-local-title">
+<section class="panel hidden" id="trivy-npm-local-panel" aria-labelledby="trivy-npm-local-title">
   <div class="panel-head"><div><p class="eyebrow">YEREL BAĞIMLILIK TARAMASI</p><h2 id="trivy-npm-local-title">Trivy npm kilit dosyası taraması</h2></div></div>
   <p>Yalnız hizmet kullanıcısının evindeki yerel proje kökündeki package-lock.json dosyası, sabitlenmiş çevrimdışı Trivy veritabanıyla taranır. Dış hedef taranmaz; ham bulgular gösterilmez.</p>
   <form id="trivy-npm-local-form" class="form-grid">
@@ -443,7 +443,7 @@
     <p>Bu sayılar otomatik doğrulanmış güvenlik açığı hükmü değildir; uzman incelemesi gerekir.</p>
   </section>
 </section>
-<section class="panel" id="npm-audit-active-panel" aria-labelledby="npm-audit-active-title">
+<section class="panel hidden" id="npm-audit-active-panel" aria-labelledby="npm-audit-active-title">
   <div class="panel-head"><div><p class="eyebrow">YEREL BAĞIMLILIK TARAMASI</p><h2 id="npm-audit-active-title">npm audit ile canlı kilit dosyası denetimi</h2></div></div>
   <p>Yalnız Sniper hizmet kullanıcısının evindeki bir projenin kök package-lock.json dosyası (npm v2/v3) geçici olarak kopyalanır. npm audit, paket adları ve sürümleri için resmî npm registry güvenlik bildirimlerini sorgular. Paket kurulmaz, düzeltme veya proje betiği çalıştırılmaz; dış site hedefi taranmaz. Sonuç yalnız toplu sayıları gösterir ve saklanmaz.</p>
   <form id="npm-audit-active-form" class="form-grid">
@@ -462,7 +462,7 @@
     <p>Bu toplu sayılar tek başına doğrulanmış sömürülebilirlik hükmü değildir; uzman incelemesi gerekir.</p>
   </section>
 </section>
-<section class="panel" id="osv-active-panel" aria-labelledby="osv-active-title">
+<section class="panel hidden" id="osv-active-panel" aria-labelledby="osv-active-title">
   <div class="panel-head"><div><p class="eyebrow">YEREL BAĞIMLILIK ANALİZİ</p><h2 id="osv-active-title">OSV-Scanner ile çevrimdışı npm kilit dosyası analizi</h2></div></div>
   <p>DGX hizmet kullanıcısının evindeki proje klasörü yolunu girin; bu tarayıcının çalıştığı bilgisayardaki dosya yolu değildir. Yalnız kök package-lock.json dosyasının geçici kopyası ve sabitlenmiş yerel OSV veritabanı incelenir. Tarama sırasında ağ bağlantısı kurmaz, paket veya proje betiği çalıştırmaz; dosya yolu ya da paket adları sonuçta gösterilmez.</p>
   <form id="osv-active-form" class="form-grid">
@@ -614,7 +614,7 @@
           <div class="responsive-table"><table><thead><tr><th>İş</th><th>Rota</th><th>Durum</th><th>Oluşturma</th><th>Sonuç</th><th></th></tr></thead><tbody id="jobs-panel-body"></tbody></table></div>
           <p id="jobs-panel-empty" class="muted">Henüz iş yok.</p>
         </section>
-        <section class="panel" id="joern-deep-panel" aria-labelledby="joern-deep-title"><div class="panel-head"><div><p class="eyebrow">DERİN ANALİZ</p><h2 id="joern-deep-title">Joern (C/C++, Java, Kotlin, PHP, Go, Ruby, C#)</h2></div></div>
+        <section class="panel hidden" id="joern-deep-panel" aria-labelledby="joern-deep-title"><div class="panel-head"><div><p class="eyebrow">DERİN ANALİZ</p><h2 id="joern-deep-title">Joern (C/C++, Java, Kotlin, PHP, Go, Ruby, C#)</h2></div></div>
           <p class="muted">Dosyalar arası veri akışı analizi; sabitlenmiş Joern 4.0.647 + JDK 21, iş kuyruğunda, en çok 6 GB bellek ve 15 dakika. Kaynak satır içeriği saklanmaz.</p>
           <form id="joern-deep-form" class="form-grid"><label class="full">Proje klasörü<input id="joern-deep-path" type="text"></label>
           <label class="checkbox-inline"><input id="joern-deep-scripting" type="checkbox"> JS/TS ve Python dahil (proje analizinin tamamlayıcısı; deneysel)</label>

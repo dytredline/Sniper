@@ -7,6 +7,7 @@ import stat
 
 import iac_engine
 import iac_yaml
+from safe_file_read import read_bytes_bounded
 
 MAX_FILES = 3000
 MAX_FILE_BYTES = 1_000_000
@@ -36,17 +37,25 @@ def scan_tree(root: Path, skip_dirs: set[str]) -> iac_engine.ProjectResults:
             if info.st_size > MAX_FILE_BYTES:
                 limitations.add("file-bytes")
                 continue
-            if count >= MAX_FILES or total + info.st_size > MAX_TOTAL_BYTES:
-                limitations.add("file" if count >= MAX_FILES else "total-bytes")
+            if count >= MAX_FILES:
+                limitations.add("file")
                 exhausted = True
                 break
             # Bütçe her okuma adayında tüketilir. YAML'ın Kubernetes belgesi çıkmaması, sınırsız sayıda
             # sıradan YAML dosyasının okunmasına izin vermemeli.
             count += 1
-            total += info.st_size
+            raw = read_bytes_bounded(path, MAX_FILE_BYTES, allow_empty=True)
+            if raw is None:
+                limitations.add("file-read")
+                continue
+            if total + len(raw) > MAX_TOTAL_BYTES:
+                limitations.add("total-bytes")
+                exhausted = True
+                break
+            total += len(raw)
             try:
-                text = path.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError):
+                text = raw.decode("utf-8", errors="strict")
+            except UnicodeDecodeError:
                 continue
             # Helm/kustomize parçalarında ilişki kesin değildir; dosya başına motor bunları ayrıca inceler.
             if "{{" in text or "apiVersion" not in text or "kind" not in text:

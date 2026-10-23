@@ -1001,16 +1001,12 @@ def _strip_php_delimiters(value: str) -> tuple[str, str] | None:
 
 
 # Düzenli ifade çıkarımı
-_CONCAT_TAIL_RE = re.compile(r"\s*(?:\+|%|\.format\b|[rRbBuUfF]{0,2}['\"])")
 _PY_RE_CALL = re.compile(
     r"\b(?:re|regex)\.(?:compile|match|search|fullmatch|sub|subn|findall|finditer|split)\s*\(\s*"
     r"(?P<prefix>[rRbBuUfF]{0,2})(?P<quote>'''|\"\"\"|'|\")"
 )
 _PY_VERBOSE_FLAG_RE = re.compile(r"\bre\.(?:X|VERBOSE)\b")
 _JS_REGEXP_CTOR = re.compile(r"\b(?:new\s+)?RegExp\s*\(\s*(?P<quote>['\"`])")
-_JS_REGEX_LITERAL = re.compile(
-    r"(?:[=(,:]|\breturn\b)\s*/(?![/*])(?P<body>(?:\\.|\[(?:\\.|[^\]\\\n])*\]|[^/\\\n\[])+)/(?P<flags>[a-z]*)"
-)
 _GO_REGEXP = re.compile(
     r"\bregexp\.(?:MustCompile|Compile|MatchString|Match|MustCompilePOSIX|CompilePOSIX)\s*\(\s*(?P<quote>[`\"])"
 )
@@ -1023,6 +1019,103 @@ _RUBY_REGEXP = re.compile(r"\bRegexp\.new\s*\(\s*(?P<quote>['\"])")
 _PHP_PREG = re.compile(r"\bpreg_(?:match_all|match|replace_callback|replace|split|grep)\s*\(\s*(?P<quote>['\"])")
 
 
+def _has_concat_tail(content: str, offset: int) -> bool:
+    """Return whether a literal is followed by concatenation or another literal."""
+    cursor = offset
+    while cursor < len(content) and content[cursor].isspace():
+        cursor += 1
+    if cursor < len(content) and content[cursor] in "+%":
+        return True
+    if content.startswith(".format", cursor):
+        end = cursor + len(".format")
+        if end == len(content) or not (content[end].isalnum() or content[end] == "_"):
+            return True
+    prefix = cursor
+    while prefix < len(content) and prefix < cursor + 2 and content[prefix] in "rRbBuUfF":
+        prefix += 1
+    return prefix < len(content) and content[prefix] in "'\""
+
+
+def _iter_js_regex_literals(content: str):
+    """Yield JavaScript regex literal bodies with a single forward-only scan."""
+    length = len(content)
+    cursor = 0
+    while cursor < length:
+        prefix_end = -1
+        char = content[cursor]
+        if char in "[=(,:":
+            prefix_end = cursor + 1
+        elif content.startswith("return", cursor):
+            before_ok = cursor == 0 or not (content[cursor - 1].isalnum() or content[cursor - 1] == "_")
+            word_end = cursor + len("return")
+            after_ok = word_end == length or not (content[word_end].isalnum() or content[word_end] == "_")
+            if before_ok and after_ok:
+                prefix_end = word_end
+        if prefix_end < 0:
+            cursor += 1
+            continue
+
+        slash = prefix_end
+        while slash < length and content[slash].isspace():
+            slash += 1
+        if slash >= length or content[slash] != "/" or (slash + 1 < length and content[slash + 1] in "/*"):
+            cursor = prefix_end
+            continue
+
+        body_start = slash + 1
+        scan = body_start
+        has_body = False
+        closed = False
+        while scan < length:
+            current = content[scan]
+            if current == "\n" or current == "\r":
+                break
+            if current == "\\":
+                if scan + 1 >= length or content[scan + 1] in "\r\n":
+                    break
+                has_body = True
+                scan += 2
+                continue
+            if current == "[":
+                class_cursor = scan + 1
+                while class_cursor < length:
+                    class_char = content[class_cursor]
+                    if class_char in "\r\n":
+                        break
+                    if class_char == "\\":
+                        if class_cursor + 1 >= length or content[class_cursor + 1] in "\r\n":
+                            break
+                        class_cursor += 2
+                        continue
+                    if class_char == "]":
+                        has_body = True
+                        scan = class_cursor + 1
+                        break
+                    class_cursor += 1
+                else:
+                    scan = length
+                    break
+                if scan == class_cursor + 1:
+                    continue
+                scan = class_cursor
+                break
+            if current == "/":
+                if has_body:
+                    flags_end = scan + 1
+                    while flags_end < length and "a" <= content[flags_end] <= "z":
+                        flags_end += 1
+                    yield body_start, content[body_start:scan]
+                    cursor = flags_end
+                    closed = True
+                break
+            has_body = True
+            scan += 1
+
+        if not closed:
+            newline = content.find("\n", max(scan, body_start))
+            cursor = length if newline < 0 else newline + 1
+
+
 def _extract_regex_literals(content: str, language: str) -> list[tuple[int, str, bool, str]]:
     """(konum, desen, verbose, motor) listesi döndürür; motor 'backtracking' veya 're2'."""
     found: list[tuple[int, str, bool, str]] = []
@@ -1032,7 +1125,7 @@ def _extract_regex_literals(content: str, language: str) -> list[tuple[int, str,
         if literal is None:
             return None
         value, end = literal
-        if _CONCAT_TAIL_RE.match(content, end):
+        if _has_concat_tail(content, end):
             return None  # birleştirilmiş/dinamik desen; parça analizi yanıltıcı olur
         return value, end
 
@@ -1059,8 +1152,8 @@ def _extract_regex_literals(content: str, language: str) -> list[tuple[int, str,
                 continue
             found.append((match.start(), _unescape_string(value), False, "backtracking"))
     if language == "js":
-        for match in _JS_REGEX_LITERAL.finditer(content):
-            found.append((match.start("body"), match.group("body"), False, "backtracking"))
+        for offset, body in _iter_js_regex_literals(content):
+            found.append((offset, body, False, "backtracking"))
 
     if _lang(language, "go"):
         for match in _GO_REGEXP.finditer(content):

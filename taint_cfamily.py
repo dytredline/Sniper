@@ -148,13 +148,170 @@ _CPP_STD_NUM = frozenset({"int", "long", "short", "unsigned", "size_t", "ssize_t
 # ---------------------------------------------------------------------------
 
 
+def _word_character(character: str) -> bool:
+    return character == "_" or character.isalnum()
+
+
+def _strip_c_comments(value: str, *, line_comments_each_line: bool = True) -> str:
+    """Remove closed block comments and line comments in one forward pass."""
+    output: list[str] = []
+    line_start = 0
+    while line_start < len(value):
+        newline = value.find("\n", line_start)
+        line_end = len(value) if newline < 0 else newline
+        remove_line_comment = line_comments_each_line or newline < 0 or newline == len(value) - 1
+        cursor = line_start
+        while cursor < line_end:
+            block_start = value.find("/*", cursor, line_end)
+            block_end = value.find("*/", block_start + 2, line_end) if block_start >= 0 else -1
+            if block_end < 0:
+                block_start = -1
+            comment_start = value.find("//", cursor, line_end) if remove_line_comment else -1
+            if block_start < 0 and comment_start < 0:
+                output.append(value[cursor:line_end])
+                break
+            if comment_start >= 0 and (block_start < 0 or comment_start < block_start):
+                output.append(value[cursor:comment_start])
+                break
+            output.append(value[cursor:block_start])
+            cursor = block_end + 2
+        if newline < 0:
+            break
+        output.append("\n")
+        line_start = newline + 1
+    return "".join(output)
+
+
+def _parse_defined_expression(expr: str) -> tuple[str, bool] | None:
+    cursor = 0
+    negated = cursor < len(expr) and expr[cursor] == "!"
+    if negated:
+        cursor += 1
+    while cursor < len(expr) and expr[cursor].isspace():
+        cursor += 1
+    if not expr.startswith("defined", cursor):
+        return None
+    cursor += len("defined")
+    while cursor < len(expr) and expr[cursor].isspace():
+        cursor += 1
+    if cursor < len(expr) and expr[cursor] == "(":
+        cursor += 1
+    while cursor < len(expr) and expr[cursor].isspace():
+        cursor += 1
+    start = cursor
+    while cursor < len(expr) and _word_character(expr[cursor]):
+        cursor += 1
+    if cursor == start:
+        return None
+    name = expr[start:cursor]
+    while cursor < len(expr) and expr[cursor].isspace():
+        cursor += 1
+    if cursor < len(expr) and expr[cursor] == ")":
+        cursor += 1
+    return (name, negated) if cursor == len(expr) else None
+
+
+def _parse_comparison(expr: str) -> tuple[str, str, str] | None:
+    def operand(cursor: int) -> tuple[str, int] | None:
+        start = cursor
+        if cursor < len(expr) and expr[cursor] == "-":
+            cursor += 1
+            digit_start = cursor
+            while cursor < len(expr) and expr[cursor].isdecimal():
+                cursor += 1
+            return (expr[start:cursor], cursor) if cursor > digit_start else None
+        while cursor < len(expr) and _word_character(expr[cursor]):
+            cursor += 1
+        return (expr[start:cursor], cursor) if cursor > start else None
+
+    left = operand(0)
+    if left is None:
+        return None
+    left_value, cursor = left
+    while cursor < len(expr) and expr[cursor].isspace():
+        cursor += 1
+    operator = expr[cursor:cursor + 2]
+    if operator not in {"==", "!="}:
+        return None
+    cursor += 2
+    while cursor < len(expr) and expr[cursor].isspace():
+        cursor += 1
+    right = operand(cursor)
+    if right is None:
+        return None
+    right_value, cursor = right
+    return (left_value, operator, right_value) if cursor == len(expr) else None
+
+
+def _parse_directive(directive: str) -> tuple[str, str] | None:
+    cursor = 0
+    while cursor < len(directive) and directive[cursor].isspace():
+        cursor += 1
+    if cursor >= len(directive) or directive[cursor] != "#":
+        return None
+    cursor += 1
+    while cursor < len(directive) and directive[cursor].isspace():
+        cursor += 1
+    start = cursor
+    while cursor < len(directive) and _word_character(directive[cursor]):
+        cursor += 1
+    if cursor == start:
+        return None
+    word = directive[start:cursor]
+    while cursor < len(directive) and directive[cursor].isspace():
+        cursor += 1
+    return word, directive[cursor:]
+
+
+def _parse_function_macro(value: str) -> tuple[str, str, str] | None:
+    if not value or not (value[0] == "_" or value[0].isascii() and value[0].isalpha()):
+        return None
+    cursor = 1
+    while cursor < len(value) and _word_character(value[cursor]):
+        cursor += 1
+    name = value[:cursor]
+    if cursor >= len(value) or value[cursor] != "(":
+        return None
+    close = value.find(")", cursor + 1)
+    if close < 0 or "(" in value[cursor + 1:close]:
+        return None
+    params = value[cursor + 1:close]
+    cursor = close + 1
+    while cursor < len(value) and value[cursor].isspace():
+        cursor += 1
+    return name, params, value[cursor:]
+
+
+def _simple_macro_value(value: str) -> bool:
+    if value and (value[0] == "_" or value[0].isascii() and value[0].isalpha()) \
+            and all(_word_character(character) for character in value[1:]):
+        return True
+    number = value[1:] if value.startswith("-") else value
+    if number and all(character.isdecimal() for character in number):
+        return True
+    prefix_length = 2 if value.startswith('L"') else 1 if value.startswith('"') else 0
+    if prefix_length == 0:
+        return False
+    cursor = prefix_length
+    while cursor < len(value):
+        character = value[cursor]
+        if character == '"':
+            return cursor == len(value) - 1
+        if character == "\\":
+            cursor += 1
+            if cursor >= len(value) or value[cursor] == "\n":
+                return False
+        cursor += 1
+    return False
+
+
 def _cond_value(kind: str, expr: str, defined: set[str] | None = None,
                 undefined: set[str] | None = None, values: dict[str, str] | None = None) -> bool | None:
     expr = expr.strip()
     defined = defined or set()
     undefined = undefined or set()
     values = values or {}
-    expr = re.sub(r"/\*.*?\*/|//.*$", "", expr).strip()
+    expr = _strip_c_comments(expr, line_comments_each_line=False).strip()
     if kind == "ifdef":
         return True if expr in defined else False if expr in undefined or expr in _FALSE_DEFINES else None
     if kind == "ifndef":
@@ -202,13 +359,13 @@ def _cond_value(kind: str, expr: str, defined: set[str] | None = None,
     if expr.startswith("!") and not expr.startswith("!="):
         val = _cond_value("if", expr[1:], defined, undefined, values)
         return None if val is None else not val
-    m = re.fullmatch(r"!?\s*defined\s*\(?\s*(\w+)\s*\)?", expr)
-    if m:
-        name = m.group(1)
+    defined_expr = _parse_defined_expression(expr)
+    if defined_expr is not None:
+        name, negated = defined_expr
         if name in defined:
-            return expr.lstrip().startswith("!") is False
+            return not negated
         if name in undefined or name in _FALSE_DEFINES:
-            return expr.lstrip().startswith("!")
+            return negated
     m = re.fullmatch(r"(\w+)", expr)
     if m:
         if m.group(1) in defined:
@@ -221,17 +378,18 @@ def _cond_value(kind: str, expr: str, defined: set[str] | None = None,
                 return None
         if m.group(1) in undefined or m.group(1) in _FALSE_DEFINES:
             return False
-    m = re.fullmatch(r"(\w+|-?\d+)\s*(==|!=)\s*(\w+|-?\d+)", expr)
-    if m:
+    comparison = _parse_comparison(expr)
+    if comparison is not None:
         def number(raw: str) -> int | None:
             value = values.get(raw, raw) if raw in defined else raw
             try:
                 return int(value, 0)
             except ValueError:
                 return 0 if raw in undefined else None
-        left, right = number(m.group(1)), number(m.group(3))
+        left_raw, operator, right_raw = comparison
+        left, right = number(left_raw), number(right_raw)
         if left is not None and right is not None:
-            return (left == right) if m.group(2) == "==" else (left != right)
+            return (left == right) if operator == "==" else (left != right)
     return None
 
 
@@ -262,9 +420,8 @@ def preprocess(text: str, external_defines: dict[str, str] | None = None,
                 nxt = text.find("\n", dend + 1)
                 dend = n if nxt < 0 else nxt
             directive = text[pos:dend].replace("\\\n", " ")
-            m = re.match(r"\s*#\s*(\w+)\s*(.*)", directive, re.S)
-            word = m.group(1) if m else ""
-            rest = m.group(2) if m else ""
+            parsed_directive = _parse_directive(directive)
+            word, rest = parsed_directive if parsed_directive is not None else ("", "")
             prev_active = active
             if word in ("if", "ifdef", "ifndef"):
                 val = _cond_value(word, rest, known_defined, known_undefined, macros)
@@ -291,21 +448,22 @@ def preprocess(text: str, external_defines: dict[str, str] | None = None,
                 top = stack.pop()
                 active = top[2]
             elif word == "define" and active:
-                fm = re.match(r"([A-Za-z_]\w*)\(([^()]*)\)\s*(.*)", rest.strip(), re.S)
-                if fm and function_macros is not None:
-                    params = tuple(x.strip() for x in fm.group(2).split(",") if x.strip())
-                    body = fm.group(3).strip()
+                parsed_function = _parse_function_macro(rest.strip())
+                if parsed_function is not None and function_macros is not None:
+                    macro_name, raw_params, raw_body = parsed_function
+                    params = tuple(x.strip() for x in raw_params.split(",") if x.strip())
+                    body = raw_body.strip()
                     if len(params) <= 8 and len(params) == len(set(params)) and all(
                             re.fullmatch(r"[A-Za-z_]\w*", x) for x in params) and body and len(body) <= 400 \
                             and "#" not in body and "__VA_ARGS__" not in body:
                         bt = core.tokenize(body, rust=False)
                         if 0 < len(bt) <= 96:
-                            function_macros[fm.group(1)] = (params, bt)
-                    known_defined.add(fm.group(1)); known_undefined.discard(fm.group(1))
+                            function_macros[macro_name] = (params, bt)
+                    known_defined.add(macro_name); known_undefined.discard(macro_name)
                 dm = re.match(r"(\w+)(\(?)\s*(.*)", rest.strip(), re.S)
                 if dm and not dm.group(2):
-                    body = re.sub(r"/\*.*?\*/|//.*$", "", dm.group(3), flags=re.M).strip()
-                    if re.fullmatch(r"[A-Za-z_]\w*|\"(?:[^\"\\]|\\.)*\"|L\"(?:[^\"\\]|\\.)*\"|-?\d+", body):
+                    body = _strip_c_comments(dm.group(3)).strip()
+                    if _simple_macro_value(body):
                         macros[dm.group(1)] = body
                     elif dm.group(1) in macros:
                         macros.pop(dm.group(1), None)
@@ -4742,7 +4900,7 @@ def _numeric_macros(files: dict[str, str]) -> dict[str, int]:
         if len(raw) > 20_000:
             break
         for m in _NUM_DEFINE_RE.finditer(text):
-            body = re.sub(r"/\*.*?\*/|//.*$", "", m.group(2)).strip()
+            body = _strip_c_comments(m.group(2), line_comments_each_line=False).strip()
             if body and re.fullmatch(r"[\w\s()+\-*/<]+", body):
                 raw.setdefault(m.group(1), body)
     out: dict[str, int] = {}

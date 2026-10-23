@@ -31,7 +31,7 @@ router.get('/user', async (req, res) => {
 
 router.get('/go', (req, res) => {
   const next = req.query.next as string;
-  if (next.startsWith('/') && !next.startsWith('//')) {
+  if (/^\/(?![\\/])[^\\]*$/.test(next)) {
     return res.redirect(next);
   }
   res.redirect(next); // EXPECT: REDIRECT

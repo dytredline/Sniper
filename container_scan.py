@@ -421,18 +421,68 @@ def _platform_variant() -> str | None:
     return {"armv6l": "v6", "armv7l": "v7", "armv8l": "v8"}.get(machine)
 
 
+def _open_regular_nofollow(path: Path, *, max_bytes: int | None = None) -> Any:
+    """Open an absolute/relative local path without following any component.
+
+    ``validate_image_path`` establishes policy containment, while this helper
+    establishes that the inode used afterwards is still the same kind of local
+    object.  Walking from ``/`` with directory descriptors also rejects an
+    intermediate directory swapped for a symlink after validation.
+    """
+    absolute = Path(os.path.abspath(os.fspath(path)))
+    parts = absolute.parts
+    if len(parts) < 2:
+        raise OSError("regular file path required")
+    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+    file_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
+    directory_fd = os.open(parts[0], directory_flags)
+    try:
+        for part in parts[1:-1]:
+            child_fd = os.open(part, directory_flags, dir_fd=directory_fd)
+            os.close(directory_fd)
+            directory_fd = child_fd
+        fd = os.open(parts[-1], file_flags, dir_fd=directory_fd)
+    finally:
+        os.close(directory_fd)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or (max_bytes is not None and info.st_size > max_bytes):
+            raise OSError("regular file size/type check failed")
+        return os.fdopen(fd, "rb")
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def _read_regular_nofollow(path: Path, max_bytes: int) -> bytes:
+    with _open_regular_nofollow(path, max_bytes=max_bytes) as handle:
+        data = handle.read(max_bytes + 1)
+    if len(data) > max_bytes:
+        raise OSError("regular file grew beyond read budget")
+    return data
+
+
 class _Source:
     """Arşiv (tar) ya da dizin içinden dosya okuma soyutlaması."""
 
     def __init__(self, path: Path) -> None:
         self.path = path
         self.tar: tarfile.TarFile | None = None
+        self._archive_stream: Any | None = None
         self.index: dict[str, tarfile.TarInfo] = {}
         self.plain_rootfs = False
-        if path.is_file():
+        try:
+            path_info = os.lstat(path)
+        except OSError as exc:
+            raise ContainerScanError("İmaj yolu okunamadı.") from exc
+        if stat.S_ISREG(path_info.st_mode):
             try:
-                self.tar = tarfile.open(path, mode="r:*")
+                self._archive_stream = _open_regular_nofollow(path)
+                self.tar = tarfile.open(fileobj=self._archive_stream, mode="r:*")
             except (tarfile.TarError, OSError) as exc:
+                if self._archive_stream is not None:
+                    self._archive_stream.close()
+                    self._archive_stream = None
                 raise ContainerScanError("İmaj dosyası tar arşivi olarak okunamadı.") from exc
             count = 0
             for member in self.tar:
@@ -444,6 +494,8 @@ class _Source:
                 name = _normalize_member(member.name)
                 if name and member.isreg():
                     self.index[name] = member
+        elif not stat.S_ISDIR(path_info.st_mode):
+            raise ContainerScanError("İmaj yolu sonradan değişti veya desteklenmeyen bir dosya türü.")
 
     def exists(self, name: str) -> bool:
         if self.tar is not None:
@@ -496,6 +548,26 @@ class _Source:
     def close(self) -> None:
         if self.tar is not None:
             self.tar.close()
+            self.tar = None
+        if self._archive_stream is not None:
+            self._archive_stream.close()
+            self._archive_stream = None
+
+    def reopen_archive(self) -> Any:
+        """Return a stream pinned to the archive inode opened by ``__init__``."""
+        if self._archive_stream is None:
+            raise ContainerScanError("İmaj arşivi doğrulanmış tanımlayıcıdan yeniden açılamadı.")
+        try:
+            fd = os.dup(self._archive_stream.fileno())
+            handle = os.fdopen(fd, "rb")
+            handle.seek(0)
+            return handle
+        except OSError as exc:
+            try:
+                os.close(fd)
+            except (OSError, UnboundLocalError):
+                pass
+            raise ContainerScanError("İmaj arşivi doğrulanmış tanımlayıcıdan yeniden açılamadı.") from exc
 
 
 _DIGEST_RE = re.compile(r"sha256:([0-9a-f]{64})\Z")
@@ -785,9 +857,9 @@ def load_image(path: Path) -> tuple[VirtualFS, dict[str, Any]]:
         elif not source.plain_rootfs and source.exists("manifest.json"):
             layers, meta = _docker_layers(source)
         elif source.tar is not None:  # tek katmanlı rootfs tar'ı (docker export)
+            handle = source.reopen_archive()
             source.close()
-            source.tar = None
-            with open(path, "rb") as handle:
+            with handle:
                 try:
                     layer = _open_layer_stream(handle)
                 except (tarfile.TarError, OSError) as exc:
@@ -2025,12 +2097,11 @@ def _read_dockerfile(value: str, allowed_roots: tuple[Path, ...] | None) -> tupl
     if raw.is_symlink():
         raise ContainerScanError("Dockerfile sembolik bağ olamaz.")
     path = validate_image_path(value, allowed_roots)
-    if not path.is_file() or path.stat().st_size > 1_000_000:
-        raise ContainerScanError("Dockerfile düzenli bir dosya olmalı ve 1 MB sınırını aşmamalı.")
     try:
-        return path, path.read_text(encoding="utf-8")
+        data = _read_regular_nofollow(path, 1_000_000)
+        return path, data.decode("utf-8")
     except (OSError, UnicodeDecodeError) as exc:
-        raise ContainerScanError("Dockerfile okunamadı veya UTF-8 değil.") from exc
+        raise ContainerScanError("Dockerfile düzenli, en çok 1 MB ve geçerli UTF-8 olmalı.") from exc
 
 
 def _utc_now() -> str:

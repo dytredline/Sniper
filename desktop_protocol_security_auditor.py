@@ -22,6 +22,61 @@ DESKTOP_FILENAMES = {
 }
 
 
+def _has_insecure_websocket_origin(content: str) -> bool:
+    """Recognize the small set of unsafe origin forms without a backtracking scan."""
+    folded = content.casefold()
+
+    for raw_line in content.splitlines(keepends=True):
+        line = raw_line.casefold()
+        check = line.find("checkorigin")
+        if check >= 0:
+            search_from = check + len("checkorigin")
+            while (returned := line.find("return", search_from)) >= 0:
+                before_ok = returned == 0 or not (line[returned - 1].isalnum() or line[returned - 1] == "_")
+                line_value = returned + len("return")
+                after_ok = line_value == len(line) or not (line[line_value].isalnum() or line[line_value] == "_")
+                if before_ok and after_ok:
+                    value = line_value
+                    while value < len(line) and line[value].isspace():
+                        value += 1
+                    true_end = value + len("true")
+                    if (
+                        line.startswith("true", value)
+                        and (true_end == len(line) or not (line[true_end].isalnum() or line[true_end] == "_"))
+                    ):
+                        return True
+                search_from = returned + len("return")
+
+    for key, operators, bracketed in (
+        ("origin", ":=", False),
+        ("origins", ":=", False),
+        ("allowed_origins", "=", True),
+    ):
+        cursor = 0
+        while (start := folded.find(key, cursor)) >= 0:
+            value = start + len(key)
+            while value < len(folded) and folded[value].isspace():
+                value += 1
+            if value >= len(folded) or folded[value] not in operators:
+                cursor = start + 1
+                continue
+            value += 1
+            while value < len(folded) and folded[value].isspace():
+                value += 1
+            if bracketed:
+                if value >= len(folded) or folded[value] != "[":
+                    cursor = start + 1
+                    continue
+                value += 1
+                while value < len(folded) and folded[value].isspace():
+                    value += 1
+            if value + 2 < len(folded) and folded[value] in "'\"" and folded[value + 1] == "*" \
+                    and folded[value + 2] == folded[value]:
+                return True
+            cursor = start + 1
+    return False
+
+
 def _make_finding(
     severity: str,
     category: str,
@@ -420,13 +475,7 @@ def audit_realtime_and_binary_protocols(
                 "CWE-319",
                 "SNIPER-CRYP-02",
             )
-        if (
-            re.search(
-                r"(?i)(?:CheckOrigin[^\n]*return\s+true|origins?\s*[:=]\s*['\"]\*['\"]|allowed_origins\s*=\s*\[\s*['\"]\*['\"])",
-                raw_content,
-            )
-            or "origin" not in raw_content.casefold()
-        ):
+        if _has_insecure_websocket_origin(raw_content) or "origin" not in raw_content.casefold():
             add_proto_finding(
                 "high",
                 "web_hardening",

@@ -34,7 +34,7 @@ _NJK_AUTOESCAPE_OFF_RE = re.compile(r"\{%-?\s*autoescape\s+false\s*-?%\}(.*?)\{%
 # kaçış tırnakları da kodladığı için dizeden çıkamaz; yalnız tırnak dışı konumlar raporlanır.
 _PUG_SCRIPT_LINE_RE = re.compile(r"^([ \t]*)script(?:[#.][\w-]+)*(?:\([^)\n]*\))?(\.?)[ \t]*(.*)$", re.M)
 _PUG_ESC_INLINE_RE = re.compile(r"#\{([^}\n]*)\}")
-_SCRIPT_BLOCK_RE = re.compile(r"<script\b(?![^>]*\bsrc\s*=)(?![^>]*type\s*=\s*[\"']?(?:text/(?:template|x-template|html)|application/(?:ld\+)?json))[^>]*>(.*?)</script\s*>", re.S | re.I)
+_SCRIPT_BLOCK_RE = re.compile(r"<script\b(?![^>]*\bsrc\s*=)(?![^>]*type\s*=\s*[\"']?(?:text/(?:template|x-template|html)|application/(?:ld\+)?json))[^>]*>(.*?)</script\b[^>]*>", re.S | re.I)
 _EJS_ESC_RE = re.compile(r"<%=(.*?)[-_]?%>", re.S)
 _HBS_ESC_RE = re.compile(r"(?<!\{)\{\{(?!\{)~?([^{}]*?)~?\}\}(?!\})")
 _STRING_RE = re.compile(r"'(?:\\.|[^'\\\n])*'|\"(?:\\.|[^\"\\\n])*\"|`(?:\\.|[^`\\])*`")

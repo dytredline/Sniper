@@ -3367,6 +3367,7 @@ const TOOL_CARD_DESTINATIONS = Object.freeze({
   "/api/tool-reports/dependency-remediation-plan": { panel: "advanced-tool-panel", flow: "dependency-plan" },
   "/api/tool-reports/dependabot/summary": { action: "open-dependabot-alerts-preview" },
   "/api/tool-reports/dependabot/offline-sync": { panel: "advanced-tool-panel", flow: "dependabot-sync" },
+  "/api/tool-runs/joern-deep": { panel: "joern-deep-panel" },
   "/api/tool-reports/ssllabs-host/summary": { action: "open-ssllabs-preview" },
   "/api/tool-reports/ssllabs/cache-contract": { panel: "completed-backlog-panel", route: "/api/tool-reports/ssllabs/cache-contract" },
   "/api/tool-runs/openssl-x509-loopback": { action: "open-openssl-loopback" },
@@ -3400,14 +3401,66 @@ const TOOL_CARD_DESTINATIONS = Object.freeze({
   "/api/zero-trust-mesh/audit": { panel: "completed-backlog-panel", route: "/api/zero-trust-mesh/audit" },
 });
 
+const TOOL_SPECIFIC_PANELS = Object.freeze([
+  "trivy-vuln-local-panel",
+  "trivy-secret-panel",
+  "trivy-image-archive-panel",
+  "trivy-kubernetes-single-panel",
+  "trivy-kubernetes-batch-panel",
+  "trivy-dockerfile-config-panel",
+  "trivy-terraform-config-panel",
+  "trivy-npm-local-panel",
+  "npm-audit-active-panel",
+  "osv-active-panel",
+  "joern-deep-panel",
+]);
+
 function toolCardProfileAvailable(profile) {
-  return profile && profile.runtime !== "unavailable" &&
-    ["native", "authorization_required", "local_input_required", "report_only"].includes(profile.action);
+  if (!profile) return false;
+  if (profile.action === "report_only") return true;
+  return profile.runtime === "precheck_passed" &&
+    ["native", "authorization_required", "local_input_required"].includes(profile.action);
+}
+
+function toolingReadinessMissing() {
+  return !state.toolingReadiness || !Array.isArray(state.toolingReadiness.tools);
+}
+
+function safeFallbackToolProfiles(tool) {
+  const modes = {
+    built_in: { runtime: "precheck_passed", action: "native", reason_code: "catalog_built_in_fallback", execution_service: "sniper_serving" },
+    report_import: { runtime: "not_applicable", action: "report_only", reason_code: "catalog_report_fallback", execution_service: "not_managed" },
+  };
+  return (tool?.workflows || []).flatMap(workflow => {
+    const fallback = modes[workflow.mode];
+    if (!fallback) return [];
+    return (workflow.routes || []).filter(route => typeof route === "string" && route.startsWith("/api/"))
+      .map(route => ({ mode: workflow.mode, label: workflow.label, route, ...fallback }));
+  });
+}
+
+function effectiveToolReadinessTools() {
+  if (!toolingReadinessMissing()) return state.toolingReadiness.tools;
+  return (state.tooling?.tools || []).map(tool => ({ id: tool.id, profiles: safeFallbackToolProfiles(tool) }));
+}
+
+function renderToolSpecificPanels(profiles) {
+  if (typeof document === "undefined") return;
+  const visiblePanels = new Set(profiles.filter(toolCardProfileAvailable).map(profile =>
+    TOOL_CARD_DESTINATIONS[profile.route || ""]?.panel).filter(Boolean));
+  TOOL_SPECIFIC_PANELS.forEach(panelId => {
+    document.getElementById?.(panelId)?.classList?.toggle("hidden", !visiblePanels.has(panelId));
+  });
 }
 
 function openToolCardRoute(route) {
   const destination = TOOL_CARD_DESTINATIONS[route];
-  const profile = (state.toolingReadiness?.tools || []).flatMap(tool => tool.profiles || [])
+  // Sunucu readiness sağladığında onu doğrudan kullan; katalog fallback'ini
+  // yalnız readiness bütünüyle alınamadığında üret.
+  const readinessTools = state.toolingReadiness && Array.isArray(state.toolingReadiness.tools)
+    ? state.toolingReadiness.tools
+    : (state.tooling?.tools || []).map(tool => ({ id: tool.id, profiles: safeFallbackToolProfiles(tool) }));
+  const profile = readinessTools.flatMap(tool => tool.profiles || [])
     .find(item => item.route === route);
   if (!destination || !toolCardProfileAvailable(profile)) return false;
   if (destination.view) {
@@ -3476,7 +3529,14 @@ function renderTooling() {
   const tooling = state.tooling;
   if (!tooling) return;
   const toolIndex = new Map(tooling.tools.map(tool => [tool.id, tool]));
-  const readinessIndex = new Map((state.toolingReadiness?.tools || []).map(tool => [tool.id, tool.profiles || []]));
+  const readinessMissing = toolingReadinessMissing();
+  const effectiveReadinessTools = effectiveToolReadinessTools();
+  const readinessIndex = new Map(effectiveReadinessTools.map(tool => [tool.id, tool.profiles || []]));
+  const visibleProfilesByTool = new Map([...readinessIndex].map(([toolId, profiles]) =>
+    [toolId, profiles.filter(toolCardProfileAvailable)]));
+  const visibleTools = tooling.tools.filter(tool => (visibleProfilesByTool.get(tool.id) || []).length > 0);
+  const visibleToolIds = new Set(visibleTools.map(tool => tool.id));
+  const visibleProfiles = [...visibleProfilesByTool.values()].flat();
   const pinIndex = new Map((state.toolingReadiness?.binary_pins || []).map(pin => [pin.tool === "opengrep" ? "semgrep" : pin.tool, pin]));
   const pinText = pin => {
     const name = `${pin.tool || ""} ${pin.version || ""}`.trim();
@@ -3499,34 +3559,37 @@ function renderTooling() {
   const metrics = [
     ["KONTROL EŞLEMESİ", summary.control_count || 0, "Tüm metodoloji maddeleri"],
     ["KATEGORİ", summary.category_count || 0, "Web, API, kod ve altyapı"],
-    ["ARAÇ / YÖNTEM", summary.tool_count || 0, "Tek araç yerine birleşik zincir"],
-    ["SNIPER'DA TANIMLI AKIŞ", summary.integrated_workflow_tool_count || 0, "Çalışma anındaki uygunluk ayrıca doğrulanır"],
+    ["COMMUNITY'DE GÖRÜNEN", visibleTools.length, "Hazır araçlar ve rapor içe aktarma yöntemleri"],
+    ["KULLANILABİLİR AKIŞ", visibleProfiles.length, "Çalışma zamanı ön koşulu geçen veya yalnız rapor alan akışlar"],
   ];
   $("#tooling-summary").innerHTML = metrics.map(([label, value, note]) => `<article><small>${esc(label)}</small><b>${esc(value)}</b><span>${esc(note)}</span></article>`).join("");
-  $("#tooling-policy").innerHTML = `<div><span>✓</span><p><b>Doğrulanabilir sonuç ilkesi</b><small>${esc(tooling.policy.native)} ${esc(tooling.policy.external)} ${esc(tooling.policy.completion)}</small></p></div><button class="button secondary" data-action="new-lab" data-type="external_result">Harici sonuç kaydet</button>`;
-  $("#tool-count-label").textContent = `${tooling.tools.length} araç/yöntem`;
+  const readinessWarning = readinessMissing
+    ? `<div class="error-message" role="alert">Araç uygunluk durumu alınamadı. Yalnız yerleşik ve rapor içe aktarma akışları gösteriliyor.</div>`
+    : "";
+  $("#tooling-policy").innerHTML = `<div><span>✓</span><p><b>Doğrulanabilir sonuç ilkesi</b><small>${esc(tooling.policy.native)} ${esc(tooling.policy.external)} ${esc(tooling.policy.completion)}</small></p></div><button class="button secondary" data-action="new-lab" data-type="external_result">Harici sonuç kaydet</button>${readinessWarning}`;
+  $("#tool-count-label").textContent = `${visibleTools.length} kullanılabilir araç/yöntem`;
   renderTaintEngineStatus(state.toolingReadiness?.taint_engine);
-  $("#tool-card-grid").innerHTML = tooling.tools.map(tool => {
-    const profiles = readinessIndex.get(tool.id);
-    const readinessHtml = profiles
-      ? `<div class="tool-formats" aria-label="Çalışma zamanı ön koşulları">${profiles.map(profile => `<span title="${esc(profile.route || profile.reason_code)}">${esc(profile.label)}: ${esc(readinessText(profile))}</span>`).join("")}</div>`
-      : `<small>Çalışma zamanı durumu alınamadı.</small>`;
+  renderToolSpecificPanels(effectiveReadinessTools.flatMap(tool => tool.profiles || []));
+  $("#tool-card-grid").innerHTML = visibleTools.map(tool => {
+    const profiles = visibleProfilesByTool.get(tool.id) || [];
+    const visibleRoutes = new Set(profiles.map(profile => profile.route).filter(Boolean));
+    const workflows = (tool.workflows || []).filter(workflow =>
+      (workflow.routes || []).some(route => visibleRoutes.has(route)));
+    const readinessHtml = `<div class="tool-formats" aria-label="Çalışma zamanı ön koşulları">${profiles.map(profile => `<span title="${esc(profile.route || profile.reason_code)}">${esc(profile.label)}: ${esc(readinessText(profile))}</span>`).join("")}</div>`;
     const pin = pinIndex.get(tool.id);
-    const pinHtml = pin
+    const hasRunnableProfile = profiles.some(profile => profile.action !== "report_only");
+    const pinHtml = pin && hasRunnableProfile
       ? `<div class="tool-formats" aria-label="İkili bütünlüğü"><span title="${esc(pin.provenance || pin.reason_code || "")}">${esc(pinText(pin))}</span></div>`
       : "";
-    const actionsHtml = profiles
-      ? profiles.filter(profile => Object.hasOwn(TOOL_CARD_DESTINATIONS, profile.route || "") &&
-          ["native", "authorization_required", "local_input_required", "report_only"].includes(profile.action))
-        .map(profile => {
-          const destination = TOOL_CARD_DESTINATIONS[profile.route];
-          const label = destination.view ? "Hedefleri aç" : profile.action === "report_only" ? "Rapor önizlemesini aç" : "Formu aç";
-          return `<button type="button" class="button secondary" data-tool-route="${esc(profile.route)}" aria-label="${esc(profile.label)}: ${label}" ${profile.runtime === "unavailable" ? "disabled" : ""}>${esc(profile.label)} · ${label}</button>`;
-        }).join("")
-      : "";
-    return `<article class="tool-card"><div class="tool-card-head"><span>${esc(tool.kind)}</span><b>${esc(tool.license)}</b></div><h3>${esc(tool.name)}</h3><p>${esc(tool.summary)}</p><div class="tool-formats">${tool.formats.map(format => `<span>${esc(format)}</span>`).join("")}</div><div class="tool-formats" aria-label="Sniper akışları">${(tool.workflows || []).map(workflow => `<span title="${esc((workflow.routes || []).join(", ") || "Sniper içinde otomatik çalışmaz")}">${esc(workflow.label)}</span>`).join("")}</div>${readinessHtml}${pinHtml}<div class="tool-card-actions">${actionsHtml}</div><small>${esc(tool.workflows?.some(workflow => ["built_in", "local", "authorized"].includes(workflow.mode)) ? "Çalıştırma için gerekli ikili, izin ve kapsam çalışma anında doğrulanır." : "Öneri veya rapor özeti taramayı başlatmaz.")}</small><a href="${esc(tool.url)}" target="_blank" rel="noopener noreferrer">Resmî sayfa →</a></article>`;
+    const actionsHtml = profiles.filter(profile => Object.hasOwn(TOOL_CARD_DESTINATIONS, profile.route || ""))
+      .map(profile => {
+        const destination = TOOL_CARD_DESTINATIONS[profile.route];
+        const label = destination.view ? "Hedefleri aç" : profile.action === "report_only" ? "Rapor önizlemesini aç" : "Formu aç";
+        return `<button type="button" class="button secondary" data-tool-route="${esc(profile.route)}" aria-label="${esc(profile.label)}: ${label}">${esc(profile.label)} · ${label}</button>`;
+      }).join("");
+    return `<article class="tool-card"><div class="tool-card-head"><span>${esc(tool.kind)}</span><b>${esc(tool.license)}</b></div><h3>${esc(tool.name)}</h3><p>${esc(tool.summary)}</p><div class="tool-formats">${tool.formats.map(format => `<span>${esc(format)}</span>`).join("")}</div><div class="tool-formats" aria-label="Sniper akışları">${workflows.map(workflow => `<span title="${esc((workflow.routes || []).filter(route => visibleRoutes.has(route)).join(", "))}">${esc(workflow.label)}</span>`).join("")}</div>${readinessHtml}${pinHtml}<div class="tool-card-actions">${actionsHtml}</div><small>${esc(hasRunnableProfile ? "Çalıştırma için gerekli izin, kapsam ve girdiler çalışma anında ayrıca doğrulanır." : "Rapor özeti içe aktarma işlemi tarama başlatmaz.")}</small><a href="${esc(tool.url)}" target="_blank" rel="noopener noreferrer">Resmî sayfa →</a></article>`;
   }).join("");
-  $("#tool-matrix-body").innerHTML = tooling.categories.map(category => `<tr><td><b>${esc(category.title)}</b><small>${esc(category.reference)}</small></td><td>${Number(category.control_count)}</td><td><span class="coverage-chip">${esc(category.coverage)}</span></td><td><div class="tool-tags">${category.tool_ids.map(toolId => `<span>${esc(toolIndex.get(toolId)?.name || toolId)}</span>`).join("")}</div></td><td>${esc(category.required_input)}</td></tr>`).join("");
+  $("#tool-matrix-body").innerHTML = tooling.categories.map(category => `<tr><td><b>${esc(category.title)}</b><small>${esc(category.reference)}</small></td><td>${Number(category.control_count)}</td><td><span class="coverage-chip">${esc(category.coverage)}</span></td><td><div class="tool-tags">${category.tool_ids.filter(toolId => visibleToolIds.has(toolId)).map(toolId => `<span>${esc(toolIndex.get(toolId)?.name || toolId)}</span>`).join("")}</div></td><td>${esc(category.required_input)}</td></tr>`).join("");
 }
 
 function labScenarioLabel(type) {

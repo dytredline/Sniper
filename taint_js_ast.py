@@ -37,7 +37,7 @@ import taint_models
 
 APP_DIR = Path(__file__).resolve().parent
 PARSER_PATH = APP_DIR / "vendor" / "babel-parser" / "index.js"
-PARSER_SHA256 = "82d72e197e27bf909ae10ffc8d1a969aeb94fe96ec96c4e9cb685a0a8229e40c"
+PARSER_SHA256 = "f6e920862db6ceb7f5521d12300dd6e5ceb8ef8e52198e7d4dccf431258116eb"
 BRIDGE_PATH = APP_DIR / "taint_js_bridge.cjs"
 BRIDGE_SHA256 = "fd95e94b1b7e87c01e560c86b41c3e6f03d00b0b1a5b613258fc79eb09304585"
 PARSE_TIMEOUT = 20.0
@@ -5824,9 +5824,12 @@ class JsScope:
                         return [(n, _JS_ALL) for n in _guard_names(args[0])], []
                 if last == "startsWith":
                     # Sabit önek ancak ana makineyi sabitliyorsa (https://alan/…, tek '/' ile göreli yol) SSRF/
-                    # yönlendirme için güvenlidir; 'http' / 'https://' gibi şema öneki her konağa izin verir.
+                    # yönlendirme için güvenlidir. Yalnız ``startsWith('/')`` kontrolü ``/\\host`` değerini de
+                    # kabul eder; tarayıcı bunu ağ-yolu başvurusu olarak harici konağa çözebilir. Bu yüzden çıplak
+                    # '/' (ve dinamik önekler) URL hedefini temizlemez; en az bir sabit güvenli ikinci karakter ya
+                    # da tam eşleşen bir doğrulayıcı gerekir.
                     literal = _string_value(args[0]) if args else None
-                    kinds = tf._PREFIX_KINDS if literal is None or _FIXED_HOST_PREFIX_RE.match(literal) \
+                    kinds = tf._PREFIX_KINDS if literal not in {None, "/"} and _FIXED_HOST_PREFIX_RE.match(literal) \
                         else tf._PREFIX_KINDS - {"ssrf", "redirect"}
                     return [(n, kinds) for n in _guard_names(owner)], []
             if name in {"Number.isInteger", "Number.isSafeInteger", "Number.isFinite", "isFinite"} and args:

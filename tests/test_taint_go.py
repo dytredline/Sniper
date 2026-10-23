@@ -4,6 +4,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -169,6 +170,24 @@ if __name__ == "__main__":
 
 
 class JoernFastEngineMatchTests(unittest.TestCase):
+    def test_large_go_mod_keeps_bounded_prefix_for_fast_engine(self):
+        import joern_active
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "goapp"
+            root.mkdir()
+            source = root / "main.go"
+            source.write_text("package main\n", encoding="utf-8")
+            module_line = "module example.com/large\n"
+            (root / "go.mod").write_text(module_line + ("x" * 25_000), encoding="utf-8")
+            with mock.patch.object(g, "analyze_files", return_value={}) as analyze:
+                joern_active.annotate_fast_engine_matches(root, {"go": [source]}, [])
+
+        files, language = analyze.call_args.args
+        self.assertEqual(language, "go")
+        self.assertTrue(files["go.mod"].startswith(module_line))
+        self.assertEqual(len(files["go.mod"]), 20_000)
+
     def test_joern_findings_are_annotated_when_fast_engine_agrees(self):
         import joern_active
 

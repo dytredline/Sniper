@@ -50,6 +50,66 @@ def _line_number_for_offset(content: str, offset: int) -> int:
     return content.count("\n", 0, max(0, offset)) + 1
 
 
+_TERRAFORM_STORAGE_HEADER_RE = re.compile(
+    r'\bresource\s+"(aws_db_instance|aws_ebs_volume|aws_rds_cluster)"\s+"[^"]+"\s*\{',
+    re.IGNORECASE,
+)
+_K8S_VERBS_RE = re.compile(r"verbs", re.IGNORECASE)
+
+
+def _iter_terraform_storage_blocks(content: str):
+    """İlk `}` ile biten Terraform depolama bloklarını ileri yönlü tara."""
+    cursor = 0
+    while (header := _TERRAFORM_STORAGE_HEADER_RE.search(content, cursor)) is not None:
+        close = content.find("}", header.end())
+        if close < 0:
+            return
+        yield header.start(), header.group(1), content[header.end():close], content[header.start():close + 1]
+        cursor = close + 1
+
+
+def _iter_k8s_wildcard_verbs(content: str):
+    for found in _K8S_VERBS_RE.finditer(content):
+        pos = found.end()
+        while pos < len(content) and content[pos].isspace():
+            pos += 1
+        if pos >= len(content) or content[pos] != ":":
+            continue
+        pos += 1
+        saw_line_break = False
+        while pos < len(content) and content[pos].isspace():
+            saw_line_break = saw_line_break or content[pos] in "\r\n"
+            pos += 1
+
+        if pos < len(content) and content[pos] == "[":
+            pos += 1
+            while pos < len(content) and content[pos].isspace():
+                pos += 1
+            if pos + 2 >= len(content) or content[pos] not in "'\"" or content[pos + 1] != "*" \
+                    or content[pos + 2] != content[pos]:
+                continue
+            pos += 3
+            while pos < len(content) and content[pos].isspace():
+                pos += 1
+            if pos >= len(content) or content[pos] != "]":
+                continue
+        elif saw_line_break and pos < len(content) and content[pos] == "-":
+            pos += 1
+            while pos < len(content) and content[pos].isspace():
+                pos += 1
+            if pos + 2 >= len(content) or content[pos] not in "'\"" or content[pos + 1] != "*" \
+                    or content[pos + 2] != content[pos]:
+                continue
+        else:
+            continue
+
+        line_start = content.rfind("\n", 0, found.start()) + 1
+        line_end = content.find("\n", found.start())
+        if line_end < 0:
+            line_end = len(content)
+        yield found.start(), content[line_start:line_end].strip() or "verbs: ['*']"
+
+
 def _make_cloud_finding(
     *,
     severity: str,
@@ -350,22 +410,17 @@ def audit_cloud_iam_and_k8s_rbac(
             )
         )
 
-    for res_match in re.finditer(
-        r'resource\s+"(aws_db_instance|aws_ebs_volume|aws_rds_cluster)"\s+"[^"]+"\s*\{([^}]*)\}',
-        raw_content,
-        re.DOTALL,
-    ):
-        block_body = res_match.group(2)
+    for resource_start, resource_type, block_body, resource_text in _iter_terraform_storage_blocks(raw_content):
         if not re.search(r"\b(?:storage_encrypted|encrypted)\s*=\s*true\b", block_body, re.IGNORECASE):
-            line_no = _line_number_for_offset(raw_content, res_match.start())
-            snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else res_match.group(0).splitlines()[0]
+            line_no = _line_number_for_offset(raw_content, resource_start)
+            snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else resource_text.splitlines()[0]
             _add(
                 _make_cloud_finding(
                     severity="high",
                     category="cryptography",
-                    title=f"Terraform {res_match.group(1)} kaynağında durağan veri şifrelemesi tanımlanmamış",
+                    title=f"Terraform {resource_type} kaynağında durağan veri şifrelemesi tanımlanmamış",
                     description=(
-                        f"{res_match.group(1)} kaynağında encrypted/storage_encrypted = true ayarı "
+                        f"{resource_type} kaynağında encrypted/storage_encrypted = true ayarı "
                         "bulunmuyor; veriler şifrelenmemiş olarak depolanabilir."
                     ),
                     evidence=snippet,
@@ -440,12 +495,9 @@ def audit_cloud_iam_and_k8s_rbac(
             )
         )
 
-    k8s_wildcard_verbs_re = re.compile(
-        r"(?im)(?:verbs\s*:\s*\[\s*[\"']\*[\"']\s*\]|verbs\s*:\s*\n\s*-\s*[\"']\*[\"'])"
-    )
-    for match in k8s_wildcard_verbs_re.finditer(raw_content):
-        line_no = _line_number_for_offset(raw_content, match.start())
-        snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else match.group(0)
+    for verbs_start, verbs_text in _iter_k8s_wildcard_verbs(raw_content):
+        line_no = _line_number_for_offset(raw_content, verbs_start)
+        snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else verbs_text
         _add(
             _make_cloud_finding(
                 severity="critical",
@@ -494,7 +546,9 @@ def audit_cloud_iam_and_k8s_rbac(
             )
 
     # 7. Kubernetes ServiceAccount & Network Isolation
-    automount_re = re.compile(r"(?im)^\s*automountServiceAccountToken\s*:\s*true\b")
+    # YAML indentation is horizontal.  Using ``\s*`` after ``^`` can retry across
+    # every following blank line and become quadratic on newline-heavy input.
+    automount_re = re.compile(r"(?im)^[ \t]*automountServiceAccountToken[ \t]*:[ \t]*true\b")
     for match in automount_re.finditer(raw_content):
         line_no = _line_number_for_offset(raw_content, match.start())
         snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else match.group(0)
@@ -520,10 +574,10 @@ def audit_cloud_iam_and_k8s_rbac(
         )
 
     workload_match = re.search(
-        r"(?im)^kind\s*:\s*(Pod|Deployment|StatefulSet|DaemonSet|Job)\b",
+        r"(?im)^[ \t]*kind[ \t]*:[ \t]*(Pod|Deployment|StatefulSet|DaemonSet|Job)\b",
         raw_content,
     )
-    has_network_policy = bool(re.search(r"(?im)^kind\s*:\s*NetworkPolicy\b", raw_content))
+    has_network_policy = bool(re.search(r"(?im)^[ \t]*kind[ \t]*:[ \t]*NetworkPolicy\b", raw_content))
     if workload_match and not has_network_policy:
         line_no = _line_number_for_offset(raw_content, workload_match.start())
         snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else workload_match.group(0)

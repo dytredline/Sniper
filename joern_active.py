@@ -602,8 +602,12 @@ def annotate_fast_engine_matches(root: Path, sources: dict[str, list[Path]], fin
         mod = root / "go.mod"
         if language == "go" and mod.is_file() and not mod.is_symlink():
             try:
-                files["go.mod"] = mod.read_text(encoding="utf-8", errors="replace")[:20_000]
-            except OSError:
+                # Eski davranış ilk 20.000 Unicode karakteri kullanıyordu.
+                # Dört bayt/karakter + son kod noktası payı, dosyanın tamamını
+                # okumadan aynı karakter bütçesini korur.
+                raw = _read_regular_prefix(mod, 20_000 * 4 + 3)
+                files["go.mod"] = raw.decode("utf-8", errors="replace")[:20_000]
+            except (OSError, JoernUnavailable):
                 pass
         try:
             results = taint_goruby.analyze_files(files, language)
@@ -888,6 +892,30 @@ def _read_regular(path: Path, limit: int) -> tuple[bytes, os.stat_result]:
         if not stat.S_ISREG(info.st_mode) or info.st_size > limit:
             raise JoernUnavailable("Joern kurulum manifesti geçersiz.")
         return os.read(fd, limit + 1), info
+    finally:
+        os.close(fd)
+
+
+def _read_regular_prefix(path: Path, limit: int) -> bytes:
+    """Read at most ``limit`` bytes from a regular, non-symlink file.
+
+    Unlike :func:`_read_regular`, a larger file is accepted because callers
+    explicitly need a bounded prefix rather than the complete file.
+    """
+    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode):
+            raise JoernUnavailable("Joern girdisi normal dosya değil.")
+        chunks: list[bytes] = []
+        remaining = max(0, limit)
+        while remaining:
+            chunk = os.read(fd, min(65_536, remaining))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        return b"".join(chunks)
     finally:
         os.close(fd)
 

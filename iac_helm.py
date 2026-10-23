@@ -58,11 +58,45 @@ class _Unknown:
 
 
 UNKNOWN = _Unknown()
-_ACTION = re.compile(r"\{\{-?(.*?)-?\}\}", re.S)
-_CONTROL = re.compile(r"^\s*\{\{-?\s*(if|else if|else|end|with|range|define|block)\b(.*?)-?\}\}\s*$")
-_COMMENT_LINE = re.compile(r"^\s*\{\{-?\s*/\*.*\*/\s*-?\}\}\s*$")
-_ONLY_ACTION = re.compile(r"^\s*\{\{-?.*-?\}\}\s*$")
-_VAR_ASSIGN_LINE = re.compile(r"^\s*\{\{-?\s*(\$[A-Za-z_]\w*)\s*:=\s*(.*?)\s*-?\}\}\s*$")
+_CONTROL_KINDS = ("else if", "if", "else", "end", "with", "range", "define", "block")
+
+
+def _only_action(line: str) -> bool:
+    return iac_yaml.helm_action_line(line) is not None
+
+
+def _comment_line(line: str) -> bool:
+    body = iac_yaml.helm_action_line(line)
+    if body is None:
+        return False
+    stripped = body.strip()
+    return stripped.startswith("/*") and stripped.endswith("*/")
+
+
+def _var_assignment(line: str) -> tuple[str, str] | None:
+    body = iac_yaml.helm_action_line(line)
+    if body is None or ":=" not in body:
+        return None
+    name, expression = body.split(":=", 1)
+    name = name.strip()
+    if not re.fullmatch(r"\$[A-Za-z_]\w*", name):
+        return None
+    return name, expression.strip()
+
+
+def _control(line: str) -> tuple[str, str] | None:
+    body = iac_yaml.helm_action_line(line)
+    if body is None:
+        return None
+    stripped = body.strip()
+    for kind in _CONTROL_KINDS:
+        if not stripped.startswith(kind):
+            continue
+        end = len(kind)
+        if end < len(stripped) and (stripped[end] == "_" or stripped[end].isalnum()):
+            continue
+        return kind, stripped[end:]
+    return None
 
 
 _SafeLoader = (getattr(yaml, "CSafeLoader", None) or yaml.SafeLoader) if yaml is not None else None
@@ -251,32 +285,32 @@ def _yaml_block(value: Any, indent: int) -> list[str] | None:
 def _render_inline(line: str, scope: dict) -> list[str]:
     """Satır içi eylemler. ``anahtar: {{ toYaml X | nindent N }}`` çok satıra açılır."""
     if scope.get("uncertain"):
-        return [""] if _ONLY_ACTION.match(line) else [_ACTION.sub(PH, line).replace("{{", "").replace("}}", "")]
-    actions = list(_ACTION.finditer(line))
+        return [""] if _only_action(line) else [iac_yaml.replace_helm_actions(line, PH).replace("{{", "").replace("}}", "")]
+    actions = iac_yaml.helm_action_spans(line)
     if len(actions) == 1:
-        value = evaluate(actions[0].group(1), scope)
+        value = evaluate(actions[0][2], scope)
         if isinstance(value, tuple) and value[0] == "__INDENT__":
             inner = value[3]
             payload = inner[1] if isinstance(inner, tuple) and inner and inner[0] == "__TOYAML__" else inner
             block = _yaml_block(payload, value[2]) if not isinstance(payload, str) else \
                 [(" " * value[2] + x) for x in payload.split("\n")]
-            prefix = line[:actions[0].start()]
-            if block is not None and not line[actions[0].end():].strip():
+            prefix = line[:actions[0][0]]
+            if block is not None and not line[actions[0][1]:].strip():
                 if value[1] == "nindent":
                     return ([prefix.rstrip()] if prefix.strip() else []) + block
                 if block:
                     return [prefix + block[0].lstrip()] + block[1:]
                 return [prefix.rstrip()]
-            return [_ACTION.sub(PH, line)]
+            return [iac_yaml.replace_helm_actions(line, PH)]
     out = line
-    for match in reversed(actions):
-        value = evaluate(match.group(1), scope)
+    for start, end, body in reversed(actions):
+        value = evaluate(body, scope)
         text = _scalar_text(value) if not isinstance(value, tuple) else None
         if value is UNKNOWN or text is None:
             text = PH
         elif text and re.search(r"[:#{}\[\],&*!|>'\"%@`]|^\s|\s$", text) and not text.startswith('"'):
             text = json.dumps(text)
-        out = out[:match.start()] + text + out[match.end():]
+        out = out[:start] + text + out[end:]
     return [out.replace("{{", "").replace("}}", "")]
 
 
@@ -314,7 +348,7 @@ def render(text: str, values: dict, *, _choices: dict[int, bool] | None = None,
     root = {"Values": values, "Release": {}, "Chart": {}}
     lines = text.split("\n")
     # Birden çok satıra yayılan eylemler eski yaklaşımla boşaltılır (satır sayısı korunur).
-    joined = iac_yaml._HELM_MULTILINE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
+    joined = iac_yaml.mask_multiline_helm_actions(text)
     lines = joined.split("\n")
     out: list[str] = []
     mapping: list[int] = []
@@ -350,19 +384,19 @@ def render(text: str, values: dict, *, _choices: dict[int, bool] | None = None,
         while i < len(lines):
             raw = lines[i]
             number = i + 1
-            if _COMMENT_LINE.match(raw):
+            if _comment_line(raw):
                 i += 1
                 continue
-            assignment = _VAR_ASSIGN_LINE.match(raw)
+            assignment = _var_assignment(raw)
             if assignment:
                 if active():
                     target = stack[-1].setdefault("vars", {}) if stack else root_vars
-                    target[assignment.group(1)] = evaluate(assignment.group(2), scope())
+                    target[assignment[0]] = evaluate(assignment[1], scope())
                 i += 1
                 continue
-            control = _CONTROL.match(raw)
+            control = _control(raw)
             if control:
-                kind, arg = control.group(1), control.group(2)
+                kind, arg = control
                 if kind in ("if",):
                     parent_active = active()
                     names, expr = _binding_expr(arg)
@@ -420,10 +454,10 @@ def render(text: str, values: dict, *, _choices: dict[int, bool] | None = None,
                     # gövdeyi topla (iç içe yapılar dahil) ve öğe başına işle
                     depth, j = 1, i + 1
                     while j < len(lines) and depth:
-                        c = _CONTROL.match(lines[j])
-                        if c and c.group(1) in ("if", "with", "range", "define", "block"):
+                        c = _control(lines[j])
+                        if c and c[0] in ("if", "with", "range", "define", "block"):
                             depth += 1
-                        elif c and c.group(1) == "end":
+                        elif c and c[0] == "end":
                             depth -= 1
                         j += 1
                     body = list(enumerate(lines[i + 1:j - 1], start=i + 2))
@@ -450,7 +484,7 @@ def render(text: str, values: dict, *, _choices: dict[int, bool] | None = None,
                 i += 1
                 continue
             if active():
-                if _ONLY_ACTION.match(raw) and "toYaml" not in raw and "indent" not in raw:
+                if _only_action(raw) and "toYaml" not in raw and "indent" not in raw:
                     i += 1  # yalnız eylemden oluşan satır (include, template …): eski davranış gibi boş
                     continue
                 emit([(number, raw)], scope())
@@ -541,15 +575,15 @@ def _render_body(body: list[tuple[int, str]], stack: list[dict], emit, scope, ac
     base = len(stack)
     while k < len(local_lines):
         raw = local_lines[k]
-        assignment = _VAR_ASSIGN_LINE.match(raw)
+        assignment = _var_assignment(raw)
         if assignment:
             if active() and stack:
-                stack[-1].setdefault("vars", {})[assignment.group(1)] = evaluate(assignment.group(2), scope())
+                stack[-1].setdefault("vars", {})[assignment[0]] = evaluate(assignment[1], scope())
             k += 1
             continue
-        control = _CONTROL.match(raw)
+        control = _control(raw)
         if control:
-            kind, arg = control.group(1), control.group(2)
+            kind, arg = control
             if kind == "if":
                 parent_active = active()
                 names, expr = _binding_expr(arg)
@@ -604,10 +638,10 @@ def _render_body(body: list[tuple[int, str]], stack: list[dict], emit, scope, ac
             elif kind == "range":
                 depth, end = 1, k + 1
                 while end < len(local_lines) and depth:
-                    nested = _CONTROL.match(local_lines[end])
-                    if nested and nested.group(1) in ("if", "with", "range", "define", "block"):
+                    nested = _control(local_lines[end])
+                    if nested and nested[0] in ("if", "with", "range", "define", "block"):
                         depth += 1
-                    elif nested and nested.group(1) == "end":
+                    elif nested and nested[0] == "end":
                         depth -= 1
                     end += 1
                 nested_body = list(zip(numbers[k + 1:end - 1], local_lines[k + 1:end - 1]))
@@ -632,7 +666,7 @@ def _render_body(body: list[tuple[int, str]], stack: list[dict], emit, scope, ac
                 stack.pop()
             k += 1
             continue
-        if active() and not (_ONLY_ACTION.match(raw) and "toYaml" not in raw and "indent" not in raw):
+        if active() and not (_only_action(raw) and "toYaml" not in raw and "indent" not in raw):
             emit([(numbers[k], raw)], scope())
         k += 1
     del stack[base:]

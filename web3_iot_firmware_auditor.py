@@ -238,6 +238,126 @@ def audit_smart_contract_inline(
     }
 
 
+def _named_c_calls(line: str, names: tuple[str, ...]):
+    """Yield simple named calls without suffix-scanning regex backtracking."""
+    for start, character in enumerate(line):
+        if start and line[start - 1] in "_0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ":
+            continue
+        if character not in "_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ":
+            continue
+        for name in names:
+            if not line.startswith(name, start):
+                continue
+            cursor = start + len(name)
+            while cursor < len(line) and line[cursor].isspace():
+                cursor += 1
+            if cursor < len(line) and line[cursor] == "(":
+                yield start, name, cursor
+
+
+def _next_character_positions(line: str, character: str) -> list[int]:
+    missing = len(line)
+    positions = [missing] * (missing + 1)
+    next_position = missing
+    for index in range(missing - 1, -1, -1):
+        if line[index] == character:
+            next_position = index
+        positions[index] = next_position
+    return positions
+
+
+def _unsafe_overflow_call(line: str) -> str | None:
+    unsafe = ("gets", "strcpy", "strcat", "sprintf", "vsprintf")
+    scanners = ("scanf", "sscanf", "fscanf")
+    calls = list(_named_c_calls(line, unsafe + scanners))
+    if not calls:
+        return None
+    next_close = _next_character_positions(line, ")")
+    missing = len(line)
+    next_unbounded_format = [missing] * (missing + 1)
+    next_position = missing
+    for index in range(missing - 1, -1, -1):
+        if line.startswith('"%s"', index):
+            next_position = index
+        next_unbounded_format[index] = next_position
+    for _start, name, opening in calls:
+        if name in unsafe:
+            return name
+        if next_unbounded_format[opening + 1] < next_close[opening + 1]:
+            return 'scanf("%s")'
+    return None
+
+
+def _identifier_between(line: str, start: int, end: int) -> bool:
+    while start < end and line[start].isspace():
+        start += 1
+    while end > start and line[end - 1].isspace():
+        end -= 1
+    if start >= end or not (line[start] == "_" or line[start].isascii() and line[start].isalpha()):
+        return False
+    return all(character == "_" or character.isalnum() for character in line[start + 1:end])
+
+
+def _has_variable_format_call(line: str) -> bool:
+    calls = list(_named_c_calls(line, ("printf", "fprintf", "syslog", "snprintf")))
+    if not calls:
+        return False
+    next_comma = _next_character_positions(line, ",")
+    next_close = _next_character_positions(line, ")")
+    missing = len(line)
+    identifier_cache: dict[tuple[int, int], bool] = {}
+
+    def identifier(start: int, end: int) -> bool:
+        key = (start, end)
+        if key not in identifier_cache:
+            identifier_cache[key] = _identifier_between(line, start, end)
+        return identifier_cache[key]
+
+    for _start, name, opening in calls:
+        argument_start = opening + 1
+        if name == "printf":
+            close = next_close[argument_start]
+            if close < missing and next_comma[argument_start] >= close and identifier(argument_start, close):
+                return True
+            continue
+        first_comma = next_comma[argument_start]
+        if first_comma >= missing or first_comma == argument_start:
+            continue
+        if name in {"fprintf", "syslog"}:
+            final_start = first_comma + 1
+        else:
+            second_comma = next_comma[first_comma + 1]
+            if second_comma >= missing or second_comma == first_comma + 1:
+                continue
+            final_start = second_comma + 1
+        close = next_close[final_start]
+        if close < missing and next_comma[final_start] >= close and identifier(final_start, close):
+            return True
+    return False
+
+
+def _has_wildcard_topic_acl(line: str) -> bool:
+    for start, character in enumerate(line):
+        if character not in "tT" or line[start:start + 5].lower() != "topic":
+            continue
+        if start and (line[start - 1] == "_" or line[start - 1].isalnum()):
+            continue
+        cursor = start + 5
+        if cursor >= len(line) or not line[cursor].isspace():
+            continue
+        while cursor < len(line) and line[cursor].isspace():
+            cursor += 1
+        for action in ("readwrite", "write"):
+            if line[cursor:cursor + len(action)].lower() == action:
+                cursor += len(action)
+                break
+        while cursor < len(line) and line[cursor].isspace():
+            cursor += 1
+        if cursor < len(line) and line[cursor] == "#":
+            return True
+    return False
+
+
 def _scan_iot_firmware_text(
     raw_content: str,
     rel_file: str,
@@ -249,12 +369,9 @@ def _scan_iot_firmware_text(
         if not stripped or stripped.startswith("//") or stripped.startswith("#"):
             continue
 
-        overflow_match = re.search(
-            r"(?<![A-Za-z0-9_])(?:(gets|strcpy|strcat|sprintf|vsprintf)\s*\(|(?:s?scanf|fscanf)\s*\([^\n)]*\"%s\")",
-            raw_line,
-        )
-        if overflow_match:
-            fn_name = overflow_match.group(1) or "scanf(\"%s\")"
+        overflow_call = _unsafe_overflow_call(raw_line)
+        if overflow_call:
+            fn_name = overflow_call
             title = "Gömülü C/C++ kodunda klasik bellek taşması (Buffer Overflow) fonksiyonu"
             key = (title, rel_file, line_no)
             if key not in seen_keys:
@@ -274,12 +391,7 @@ def _scan_iot_firmware_text(
                     )
                 )
 
-        if re.search(
-            r"(?<![A-Za-z0-9_])(?:printf\s*\(\s*[A-Za-z_]\w*\s*\)"
-            r"|(?:fprintf|syslog)\s*\(\s*[^,]+,\s*[A-Za-z_]\w*\s*\)"
-            r"|snprintf\s*\(\s*[^,]+,\s*[^,]+,\s*[A-Za-z_]\w*\s*\))",
-            raw_line,
-        ):
+        if _has_variable_format_call(raw_line):
             title = "Gömülü C/C++ kodunda Biçim Dizgesi (Format String) zafiyeti"
             key = (title, rel_file, line_no)
             if key not in seen_keys:
@@ -339,7 +451,7 @@ def _scan_iot_firmware_text(
                     )
                 )
 
-        if re.search(r"(?i)\btopic\s+(?:readwrite|write)?\s*#", raw_line):
+        if _has_wildcard_topic_acl(raw_line):
             title = "MQTT ACL yapılandırmasında aşırı yetkili joker konu (topic readwrite #)"
             key = (title, rel_file, line_no)
             if key not in seen_keys:

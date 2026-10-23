@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any
 
 import legacy_basis
+from project_analyzer import ProjectRejected, validate_project_path
+from safe_file_read import read_text_bounded
 
 
 SEVERITY_RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1, "info": 0}
@@ -224,13 +226,15 @@ def _enclosing_names(project_root: Path | None, relpath: str, line: int) -> set[
     if project_root is None or not relpath or line < 1:
         return set()
     try:
-        path = (project_root / relpath).resolve()
-        path.relative_to(project_root.resolve())
-        if not path.is_file() or path.stat().st_size > 2_000_000:
-            return set()
-        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        resolved_root = project_root.resolve(strict=True)
+        path = (resolved_root / relpath).resolve(strict=True)
+        path.relative_to(resolved_root)
     except (OSError, ValueError):
         return set()
+    content = read_text_bounded(path, 2_000_000)
+    if content is None:
+        return set()
+    lines = content.splitlines()
     names: set[str] = set()
     for text in reversed(lines[: min(line, len(lines))]):
         m = _DEF_RE.search(text)
@@ -259,7 +263,11 @@ def _route_for_flow(routes: list[dict[str, Any]], relpath: str, line: int, names
     return None
 
 
-def route_flow_chains(project_audit: dict[str, Any] | None) -> list[dict[str, Any]]:
+def route_flow_chains(
+    project_audit: dict[str, Any] | None,
+    *,
+    allow_project_file_lookup: bool = False,
+) -> list[dict[str, Any]]:
     """Proje analizindeki doğrulanmış (istek kaynaklı) veri akışlarını, onları taşıyan HTTP rotasına ve korunma
     durumuna bağlar: giriş (rota, kimlik doğrulama) → akış (kaynak → hedef) → etki. Rota bulunamayan akış zincire
     girmez (kanıt yoksa tahmin yok)."""
@@ -269,8 +277,14 @@ def route_flow_chains(project_audit: dict[str, Any] | None) -> list[dict[str, An
     routes = [r for r in (inventory.get("routes") or []) if isinstance(r, dict) and r.get("file")]
     if not routes:
         return []
-    root_text = str(project_audit.get("project_path") or "")
-    project_root = Path(root_text) if root_text else None
+    project_root: Path | None = None
+    if allow_project_file_lookup:
+        root_text = str(project_audit.get("project_path") or "")
+        if root_text:
+            try:
+                project_root = validate_project_path(root_text)
+            except ProjectRejected:
+                project_root = None
     chains: list[dict[str, Any]] = []
     seen: set[tuple[str, str, int]] = set()
     for finding in project_audit.get("findings") or []:
@@ -333,6 +347,11 @@ def correlate_attack_paths(
     mobile_audit: dict[str, Any] | None = None,
     findings: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    # Yalnız Store'dan kimliğiyle geri okunan denetimler için kaynak dosyaya
+    # başvurulur. HTTP payload'ı içindeki inline project_audit nesnesi veri
+    # korelasyonunda kullanılabilir, fakat kendi project_path/source_file
+    # alanlarıyla hizmet hesabının diskini okuma yetkisi kazanamaz.
+    project_audit_from_store = False
     if store is not None:
         if scan is None and scan_id:
             if scan_id == "latest" and hasattr(store, "list_scans"):
@@ -352,6 +371,7 @@ def correlate_attack_paths(
                     )
             elif hasattr(store, "get_project_audit"):
                 project_audit = store.get_project_audit(project_audit_id)
+            project_audit_from_store = isinstance(project_audit, dict)
         if engagement is None and engagement_id and hasattr(store, "get_engagement"):
             engagement = store.get_engagement(engagement_id)
         if dependency_report is None and hasattr(store, "dependency_security"):
@@ -385,7 +405,10 @@ def correlate_attack_paths(
     sources = legacy_basis.source_labels(scan=scan, project_audit=project_audit, engagement=engagement,
                                          findings=findings, mobile_audit=mobile_audit)
     legacy_basis.require_sources(sources)  # 23. tur: veri yoksa "A notu" yerine 400
-    route_chains = route_flow_chains(project_audit)
+    route_chains = route_flow_chains(
+        project_audit,
+        allow_project_file_lookup=project_audit_from_store,
+    )
 
     attack_chains: list[dict[str, Any]] = []
     nodes: list[dict[str, Any]] = []

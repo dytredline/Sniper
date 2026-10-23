@@ -92,6 +92,20 @@ _SECRET_REDACT_RE = re.compile(
     r"hf_[A-Za-z0-9]{8,}|r8_[A-Za-z0-9]{8,}|gsk_[A-Za-z0-9]{8,})\b"
 )
 
+_SYSTEM_PROMPT_EXPOSURE_RE = re.compile(
+    r"(?:(?:NEXT_PUBLIC_|VITE_|REACT_APP_)[A-Z0-9_]*SYSTEM_PROMPT|"
+    r"(?:export\s+const|window\.|localStorage\.setItem\([^)]*)\s*(?:SYSTEM_PROMPT|systemPrompt)|"
+    r"\bSYSTEM_PROMPT\s*[:=]\s*[\"'][^\"']{8,}[\"'])",
+    re.IGNORECASE,
+)
+_LLM_OUTPUT_ASSIGNMENT_MARKERS = (
+    "response.choices",
+    "chat.completions.create",
+    "messages.create",
+    "generate_content",
+    ".invoke(",
+)
+
 
 def calculate_score(findings: list[dict[str, Any]]) -> tuple[int, str]:
     score, grade, _counts = _scanner_calculate_score(findings)
@@ -162,6 +176,39 @@ def _make_llm_finding(
 
 def _line_number_for_offset(content: str, offset: int) -> int:
     return content.count("\n", 0, max(0, offset)) + 1
+
+
+def _system_prompt_exposure_lines(lines: list[str]):
+    """Yield at most one match per source line without a greedy line prefix."""
+    for line_no, source_line in enumerate(lines, 1):
+        match = _SYSTEM_PROMPT_EXPOSURE_RE.search(source_line)
+        if match is not None and "#" not in source_line[:match.start()]:
+            yield line_no, match
+
+
+def _assigned_llm_output_name(source_line: str) -> str | None:
+    """Return the assignment target when an LLM-result marker follows it."""
+    positions = [source_line.find(marker) for marker in _LLM_OUTPUT_ASSIGNMENT_MARKERS]
+    positions = [position for position in positions if position >= 0]
+    if not positions:
+        return None
+    prefix = source_line[: min(positions)]
+    cursor = 0
+    while True:
+        equals = prefix.find("=", cursor)
+        if equals < 0:
+            return None
+        end = equals
+        while end > 0 and prefix[end - 1].isspace():
+            end -= 1
+        start = end
+        while start > 0 and (prefix[start - 1] == "_" or prefix[start - 1].isalnum()):
+            start -= 1
+        name = prefix[start:end]
+        if name and (name[0] == "_" or name[0].isascii() and name[0].isalpha()) \
+                and all(character == "_" or character.isascii() and character.isalnum() for character in name):
+            return name
+        cursor = equals + 1
 
 
 def _extract_call_block(content: str, start_idx: int, max_chars: int = 1200) -> str:
@@ -292,14 +339,8 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                 )
             )
 
-    sys_prompt_exposure_re = re.compile(
-        r"(?im)^[^\n#]*(?:(?:NEXT_PUBLIC_|VITE_|REACT_APP_)[A-Z0-9_]*SYSTEM_PROMPT|"
-        r"(?:export\s+const|window\.|localStorage\.setItem\([^)]*)\s*(?:SYSTEM_PROMPT|systemPrompt)|"
-        r"\bSYSTEM_PROMPT\s*[:=]\s*[\"'][^\"']{8,}[\"'])"
-    )
-    for match in sys_prompt_exposure_re.finditer(raw_content):
-        line_no = _line_number_for_offset(raw_content, match.start())
-        snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else match.group(0)
+    for line_no, match in _system_prompt_exposure_lines(lines):
+        snippet = lines[line_no - 1]
         is_frontend_context = (
             ext in FRONTEND_EXTENSIONS
             or any(prefix in snippet for prefix in ("NEXT_PUBLIC_", "VITE_", "REACT_APP_", "window.", "export const"))
@@ -396,12 +437,10 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
         "generated_code",
         "generated_sql",
     }
-    for assign_match in re.finditer(
-        r"\b([A-Za-z_][A-Za-z0-9_]*)\s*=\s*[^\n]*(?:response\.choices|chat\.completions\.create|"
-        r"messages\.create|generate_content|\.invoke\()",
-        raw_content,
-    ):
-        llm_output_vars.add(assign_match.group(1))
+    for source_line in lines:
+        assigned_name = _assigned_llm_output_name(source_line)
+        if assigned_name is not None:
+            llm_output_vars.add(assigned_name)
 
     var_union = "|".join(re.escape(v) for v in sorted(llm_output_vars))
     llm_expr = rf"(?:response\.choices[^\n,)]*|(?:{var_union})(?:\.[A-Za-z0-9_\[\].]+)?)"

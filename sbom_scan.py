@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import sbom_formats
+from safe_file_read import read_bytes_bounded
 
 FORMAT = "sniper-sbom-scan-v1"
 CATEGORY = "sbom_component"
@@ -178,10 +179,9 @@ def scan_sbom(path_value: str, *, osv_root: Path | None = None,
 
     started = time.monotonic()
     path = validate_sbom_path(path_value, allowed_roots)
-    try:
-        data = path.read_bytes()
-    except OSError as exc:
-        raise SbomScanError("SBOM dosyası okunamadı.") from exc
+    data = read_bytes_bounded(path, sbom_formats.MAX_SBOM_BYTES)
+    if data is None:
+        raise SbomScanError("SBOM dosyası okunamadı.")
     try:
         parsed = sbom_formats.parse_sbom_bytes(data, path.name)
     except sbom_formats.SbomError as exc:

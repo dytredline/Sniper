@@ -26,6 +26,8 @@ import re
 import zipfile
 from typing import Any, Iterable
 
+from safe_file_read import read_bytes_bounded, read_text_bounded
+
 VERDICT_LABELS = {
     "reachable": "Erişilebilir: açıklı fonksiyon kodda kullanılıyor",
     "imported_not_called": "İçe aktarılmış ama açıklı fonksiyon kullanılmıyor",
@@ -2400,11 +2402,12 @@ def cargo_dependency_aliases(root: Path, skip_dirs: Iterable[str]) -> dict[str, 
             if seen > 200:
                 break
             try:
-                if not path.is_file() or path.stat().st_size > 2_000_000:
+                text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                if text is None:
                     continue
                 import tomllib
 
-                data = tomllib.loads(path.read_text(encoding="utf-8", errors="replace"))
+                data = tomllib.loads(text)
             except (OSError, ValueError, UnicodeError):
                 continue
             if not isinstance(data, dict):
@@ -2451,9 +2454,10 @@ def npm_dependency_aliases(root: Path, skip_dirs: Iterable[str]) -> dict[str, se
             if seen > 200:
                 break
             try:
-                if not path.is_file() or path.stat().st_size > 2_000_000:
+                text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                if text is None:
                     continue
-                data = json.loads(path.read_text(encoding="utf-8", errors="replace"))
+                data = json.loads(text)
             except (OSError, ValueError, UnicodeError):
                 continue
             if not isinstance(data, dict):
@@ -2481,22 +2485,25 @@ def bundler_autorequired(root: Path) -> dict[str, dict[str, Any]]:
 
     Döner: gem adı (küçük harf) → Gemfile konumu. ``Bundler.require`` bulunamazsa boş (kanıt yok)."""
     gemfile = root / "Gemfile"
-    try:
-        if not gemfile.is_file() or gemfile.is_symlink():
-            return {}
-        boot_files = [root / "config" / "application.rb", root / "config" / "boot.rb", root / "config.ru",
-                      root / "app.rb", root / "config" / "environment.rb"]
-        if not any(f.is_file() and not f.is_symlink() and "Bundler.require" in f.read_text(encoding="utf-8", errors="replace")
-                   for f in boot_files):
-            return {}
-        out: dict[str, dict[str, Any]] = {}
-        for line_no, line in enumerate(gemfile.read_text(encoding="utf-8", errors="replace").splitlines(), start=1):
-            match = _GEM_RE.match(line)
-            if match and not re.search(r"require\s*:\s*false|:require\s*=>\s*false", line):
-                out.setdefault(match.group(1).casefold(), {"file": "Gemfile", "line": line_no, "via": "bundler"})
-        return out
-    except OSError:
+    gemfile_text = read_text_bounded(gemfile, 2_000_000, allow_empty=True)
+    if gemfile_text is None:
         return {}
+    boot_files = [root / "config" / "application.rb", root / "config" / "boot.rb", root / "config.ru",
+                  root / "app.rb", root / "config" / "environment.rb"]
+    bundler_boot = False
+    for boot_file in boot_files:
+        boot_text = read_text_bounded(boot_file, _MAX_FILE_BYTES, allow_empty=True)
+        if boot_text is not None and "Bundler.require" in boot_text:
+            bundler_boot = True
+            break
+    if not bundler_boot:
+        return {}
+    out: dict[str, dict[str, Any]] = {}
+    for line_no, line in enumerate(gemfile_text.splitlines(), start=1):
+        match = _GEM_RE.match(line)
+        if match and not re.search(r"require\s*:\s*false|:require\s*=>\s*false", line):
+            out.setdefault(match.group(1).casefold(), {"file": "Gemfile", "line": line_no, "via": "bundler"})
+    return out
 
 
 def composer_namespaces(root: Path) -> dict[str, set[str]]:
@@ -2504,9 +2511,10 @@ def composer_namespaces(root: Path) -> dict[str, set[str]]:
     out: dict[str, set[str]] = {}
     lock = root / "composer.lock"
     try:
-        if not lock.is_file() or lock.is_symlink() or lock.stat().st_size > 20_000_000:
+        lock_text = read_text_bounded(lock, 20_000_000, allow_empty=True)
+        if lock_text is None:
             return {}
-        data = json.loads(lock.read_text(encoding="utf-8", errors="replace"))
+        data = json.loads(lock_text)
     except (OSError, ValueError):
         return {}
     for key in ("packages", "packages-dev"):
@@ -2545,12 +2553,13 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
         try:
             resolved = path.resolve(strict=True)
             resolved.relative_to(root_resolved)
-            if resolved in requirement_files or not resolved.is_file():
+            if resolved in requirement_files:
                 return found
-            size = resolved.stat().st_size
-            if size > 1_000_000 or requirement_bytes + size > 8_000_000:
+            raw = read_bytes_bounded(resolved, 1_000_000, allow_empty=True)
+            if raw is None or requirement_bytes + len(raw) > 8_000_000:
                 return found
-            text = resolved.read_text(encoding="utf-8", errors="replace")
+            size = len(raw)
+            text = raw.decode("utf-8", errors="replace")
         except (OSError, ValueError):
             return found
         requirement_files.add(resolved)
@@ -2584,11 +2593,12 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
             if path.is_symlink():
                 continue
             try:
-                if not path.is_file() or path.stat().st_size > 2_000_000:
-                    continue
                 if lowered == "package.json":
                     seen += 1
-                    data = json.loads(path.read_text(encoding="utf-8", errors="replace"))
+                    text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                    if text is None:
+                        continue
+                    data = json.loads(text)
                     for key in ("dependencies", "devDependencies", "optionalDependencies", "peerDependencies"):
                         if isinstance(data.get(key), dict):
                             names.update(
@@ -2603,7 +2613,10 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                     import tomllib
 
                     seen += 1
-                    data = tomllib.loads(path.read_text(encoding="utf-8", errors="replace"))
+                    text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                    if text is None:
+                        continue
+                    data = tomllib.loads(text)
                     if isinstance(data, dict):
                         for section_name in ("packages", "dev-packages"):
                             section = data.get(section_name)
@@ -2619,7 +2632,10 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                     seen += 1
                     parser = configparser.ConfigParser(interpolation=None)
                     try:
-                        parser.read_string(path.read_text(encoding="utf-8", errors="replace"))
+                        text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                        if text is None:
+                            continue
+                        parser.read_string(text)
                     except configparser.Error:
                         continue
 
@@ -2659,7 +2675,10 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                     seen += 1
                     parser = configparser.ConfigParser(interpolation=None)
                     try:
-                        parser.read_string(path.read_text(encoding="utf-8", errors="replace"))
+                        text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                        if text is None:
+                            continue
+                        parser.read_string(text)
                     except configparser.Error:
                         continue
                     for section in parser.sections()[:1_000]:
@@ -2679,10 +2698,16 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                                 names.add(match.group(1).casefold().replace("_", "-"))
                 elif lowered == "setup.py":
                     seen += 1
-                    names.update(_setup_py_direct(path.read_text(encoding="utf-8", errors="replace")))
+                    text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                    if text is None:
+                        continue
+                    names.update(_setup_py_direct(text))
                 elif lowered == "noxfile.py":
                     seen += 1
-                    nox_names, includes = _noxfile_direct(path.read_text(encoding="utf-8", errors="replace"))
+                    text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                    if text is None:
+                        continue
+                    nox_names, includes = _noxfile_direct(text)
                     names.update(nox_names)
                     for raw_relative in includes[:100]:
                         relative = raw_relative.strip().strip("'\"")
@@ -2693,7 +2718,10 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
 
                     seen += 1
                     try:
-                        data = yaml.safe_load(path.read_text(encoding="utf-8", errors="replace"))
+                        text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                        if text is None:
+                            continue
+                        data = yaml.safe_load(text)
                     except yaml.YAMLError:
                         continue
                     dependencies = data.get("dependencies") if isinstance(data, dict) else None
@@ -2725,7 +2753,10 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                     import tomllib
 
                     seen += 1
-                    data = tomllib.loads(path.read_text(encoding="utf-8", errors="replace"))
+                    text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                    if text is None:
+                        continue
+                    data = tomllib.loads(text)
                     if not isinstance(data, dict):
                         continue
 
@@ -2795,23 +2826,30 @@ def direct_dependencies(root: Path, skip_dirs: Iterable[str]) -> set[str]:
                                 for specs in list(extras.values())[:1_000]:
                                     add_specs(specs)
                 elif path.suffix.casefold() == ".py" and script_files < 1_000 and script_bytes < 8_000_000:
-                    size = path.stat().st_size
-                    if size <= 1_000_000 and script_bytes + size <= 8_000_000:
+                    raw = read_bytes_bounded(path, 1_000_000, allow_empty=True)
+                    if raw is not None and script_bytes + len(raw) <= 8_000_000:
+                        size = len(raw)
                         script_files += 1
                         script_bytes += size
-                        text = path.read_text(encoding="utf-8", errors="replace")
+                        text = raw.decode("utf-8", errors="replace")
                         if "# /// script" in text:
                             seen += 1
                             names.update(_pep723_direct(text))
                 elif lowered == "go.mod":
                     seen += 1
-                    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+                    text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                    if text is None:
+                        continue
+                    for line in text.splitlines():
                         match = re.match(r"^\s*(?:require\s+)?([a-z0-9.-]+\.[a-z]{2,}/[^\s]+)\s+v", line)
                         if match and "// indirect" not in line:
                             names.add(match.group(1).casefold())
                 elif lowered in _MORE_DIRECT_MANIFESTS or lowered.endswith((".csproj", ".fsproj", ".vbproj")):
                     seen += 1
-                    names.update(_direct_from_manifest(lowered, path.read_text(encoding="utf-8", errors="replace")))
+                    text = read_text_bounded(path, 2_000_000, allow_empty=True)
+                    if text is None:
+                        continue
+                    names.update(_direct_from_manifest(lowered, text))
             except (OSError, ValueError, UnicodeError):
                 continue
             if seen > 200:
@@ -2860,11 +2898,8 @@ def build_usage_index(root: Path, skip_dirs: Iterable[str], *, packages_hint: se
             seen += 1
             if seen > _MAX_FILES:
                 break
-            try:
-                if not path.is_file() or path.stat().st_size > _MAX_FILE_BYTES:
-                    continue
-                text = path.read_text(encoding="utf-8", errors="replace")
-            except OSError:
+            text = read_text_bounded(path, _MAX_FILE_BYTES, allow_empty=True)
+            if text is None:
                 continue
             relpath = path.relative_to(root).as_posix()
             if mention_patterns:
@@ -3226,12 +3261,10 @@ def jvm_config_mentions(root: Path, tokens: dict[str, set[str]], skip_dirs: Iter
             seen += 1
             if seen > _MAX_FILES or len(found) == len(tokens):
                 return found
-            try:
-                if path.stat().st_size > _MAX_FILE_BYTES:
-                    continue
-                text = path.read_text(encoding="utf-8", errors="replace").casefold()
-            except OSError:
+            raw_text = read_text_bounded(path, _MAX_FILE_BYTES, allow_empty=True)
+            if raw_text is None:
                 continue
+            text = raw_text.casefold()
             pending = {pkg: toks for pkg, toks in tokens.items() if pkg not in found and any(t in text for t in toks)}
             if not pending:
                 continue
@@ -3256,8 +3289,8 @@ def npm_tool_mentions(root: Path, packages: Iterable[str]) -> dict[str, dict[str
     found: dict[str, dict[str, Any]] = {}
     manifest = root / "package.json"
     try:
-        if manifest.is_file() and not manifest.is_symlink():
-            text = manifest.read_text(encoding="utf-8", errors="replace")
+        text = read_text_bounded(manifest, 2_000_000, allow_empty=True)
+        if text is not None:
             scripts = json.loads(text).get("scripts")
             if isinstance(scripts, dict):
                 lines = text.splitlines()
@@ -3312,12 +3345,10 @@ def cli_tool_mentions(root: Path, packages: Iterable[str], skip_dirs: Iterable[s
             seen += 1
             if seen > 2000 or len(found) == len(names):
                 return found
-            try:
-                if path.stat().st_size > _MAX_FILE_BYTES:
-                    continue
-                lines = path.read_text(encoding="utf-8", errors="replace").casefold().splitlines()
-            except OSError:
+            text = read_text_bounded(path, _MAX_FILE_BYTES, allow_empty=True)
+            if text is None:
                 continue
+            lines = text.casefold().splitlines()
             rel = path.relative_to(root).as_posix()
             for line_no, line in enumerate(lines, start=1):
                 if line.lstrip().startswith("#"):

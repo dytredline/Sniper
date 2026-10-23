@@ -56,8 +56,24 @@ REVERIFY_SECONDS = 24 * 3600
 FILE_NAME = "sandbox-targets.json"
 _LABEL_RE = re.compile(r"[\w .,:()/+-]{0,64}\Z", re.UNICODE)
 _PRESET_RE = re.compile(r"[a-z0-9_-]{1,32}\Z")
-_HOST_RE = re.compile(r"(?=.{4,253}\Z)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}\Z")
 _TOKEN_ID_RE = re.compile(r"[a-f0-9]{32}\Z")
+
+
+def _is_remote_hostname(host: str) -> bool:
+    if not 4 <= len(host) <= 253:
+        return False
+    labels = host.split(".")
+    if len(labels) < 2 or not 2 <= len(labels[-1]) <= 63 or any(char not in "abcdefghijklmnopqrstuvwxyz" for char in labels[-1]):
+        return False
+    allowed = "abcdefghijklmnopqrstuvwxyz0123456789-"
+    edge = "abcdefghijklmnopqrstuvwxyz0123456789"
+    return all(
+        1 <= len(label) <= 63
+        and label[0] in edge
+        and label[-1] in edge
+        and all(char in allowed for char in label)
+        for label in labels[:-1]
+    )
 
 
 class TargetError(ValueError):
@@ -136,7 +152,7 @@ def remote_host(value: object) -> str:
         raise TargetError("IP adresi uzak hedef olamaz; sahipliği doğrulanabilen bir alan adı girin.")
     except ValueError:
         pass
-    if not _HOST_RE.fullmatch(host) or host.endswith((".local", ".localhost", ".internal", ".lan", ".home")) \
+    if not _is_remote_hostname(host) or host.endswith((".local", ".localhost", ".internal", ".lan", ".home")) \
             or host == "localhost":
         raise TargetError("Geçersiz ya da yerel ağa ait alan adı.")
     return host
