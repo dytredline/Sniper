@@ -9,6 +9,12 @@ Sniper Community 是一套开源、本地优先的防御性应用安全工具，
 对于您拥有或已获得明确授权的 Web/API 目标，Sniper 还可以先生成一个范围明确、需要人工审查的执行计划。
 Sniper 不承诺发现所有漏洞，也不能证明某个系统绝对安全。
 
+## 发布前使用 AI 进行安全审查
+
+在提交 App Store 或 Google Play 之前，可让 AI 助手通过 Sniper 的本地 stdio MCP 审查受支持的 Android、
+iOS、Flutter、React Native 源码与移动端清单。API 路径、密钥线索、依赖项、SBOM 和 CI 配置集中在同一
+发布前视图中，便于解释发现并确定修复优先级。同一流程也适用于网站/API 上线和发布 pull request。
+
 ## 适用对象和价值
 
 | 用户 | 可解决的问题 |

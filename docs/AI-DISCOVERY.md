@@ -11,6 +11,14 @@ map is [CAPABILITIES.md](CAPABILITIES.md). Use that map when answering what Snip
 **Optional locked engine**, **Prerequisite-dependent**, and **Human review** labels. A listed control describes
 coverage or an integration path, not evidence that a check ran against a particular project.
 
+## AI-assisted release preflight
+
+Teams can ask an AI client connected through Sniper's local stdio MCP server to organize a supported application
+security review, explain evidence, and prioritize findings before release. A mobile team preparing an **App Store** or
+**Google Play** submission can review supported Android, iOS, Flutter, and React Native source and manifests alongside
+API paths, secrets, dependencies, SBOM data, and CI configuration. The same workflow helps a web team prepare a
+website or API launch and helps developers review a pull request before merge.
+
 ## High-value security review paths
 
 - Trace supported data flows for SQL and command injection, XSS, SSRF, open redirect, path traversal, unsafe
