@@ -18,6 +18,7 @@ import stat
 from pathlib import Path
 
 _CHUNK_BYTES = 65536
+_NORMALIZATION_ROOT = "/__sniper_safe_file_read__"
 
 
 def _validated_component(value: str) -> str:
@@ -45,7 +46,15 @@ def _open_regular_candidate(path: str | os.PathLike[str]) -> int:
     if not isinstance(raw, str) or not raw or "\x00" in raw or "\\" in raw:
         raise ValueError("invalid path")
     absolute = raw.startswith("/")
-    parts = [_validated_component(part) for part in raw.split("/") if part not in ("", ".")]
+    relative_raw = raw[1:] if absolute else raw
+    normalized = os.path.abspath(os.path.join(_NORMALIZATION_ROOT, relative_raw))
+    safe_prefix = _NORMALIZATION_ROOT + "/"
+    if not normalized.startswith(safe_prefix):
+        raise ValueError("path escapes its descriptor root")
+    normalized_relative = normalized[len(safe_prefix):]
+    if normalized_relative != relative_raw:
+        raise ValueError("path must already be normalized")
+    parts = [_validated_component(part) for part in normalized_relative.split("/")]
     if not parts:
         raise ValueError("file path required")
     directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)

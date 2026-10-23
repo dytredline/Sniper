@@ -25,6 +25,7 @@ MAX_RELATIVE_PATH_BYTES = 4096
 MAX_READ_BYTES = 1_000_000_000
 DEFAULT_MAX_ENTRIES = 100_000
 DEFAULT_MAX_DEPTH = 64
+_RELATIVE_NORMALIZATION_ROOT = "/__sniper_project_relative__"
 
 _DIR_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
 _FILE_FLAGS = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC
@@ -104,14 +105,17 @@ class ProjectTree:
             raise ProjectTreeError("Proje kökü mutlak bir metin yolu olmalı.")
         if len(os.fsencode(raw)) > MAX_RELATIVE_PATH_BYTES or not raw.startswith("/"):
             raise ProjectTreeError("Proje kökü mutlak bir metin yolu olmalı.")
-        if raw != "/":
-            raw_components = raw.split("/")[1:]
+        normalized_root = os.path.abspath(raw)
+        if normalized_root != raw or not normalized_root.startswith("/"):
+            raise ProjectTreeError("Proje kökü normalleştirilmiş mutlak bir yol olmalı.")
+        if normalized_root != "/":
+            raw_components = normalized_root.split("/")[1:]
             if not raw_components:
                 raise ProjectTreeError("Proje kökü normalleştirilmiş mutlak bir yol olmalı.")
             components = [_validated_component(part) for part in raw_components]
         else:
             components = []
-        self.root = Path(raw)
+        self.root = Path(normalized_root)
         self._root_components = tuple(components)
         self._root_fd: int | None = None
 
@@ -173,7 +177,14 @@ class ProjectTree:
             raise ProjectTreeError("Göreli proje yolu geçersiz.")
         if len(os.fsencode(raw)) > MAX_RELATIVE_PATH_BYTES:
             raise ProjectTreeError("Göreli proje yolu çok uzun.")
-        parts = tuple(_validated_component(part) for part in raw.split("/"))
+        normalized = os.path.abspath(os.path.join(_RELATIVE_NORMALIZATION_ROOT, raw))
+        safe_prefix = _RELATIVE_NORMALIZATION_ROOT + "/"
+        if not normalized.startswith(safe_prefix):
+            raise ProjectTreeError("Göreli proje yolu proje kökünden çıkamaz.")
+        normalized_relative = normalized[len(safe_prefix):]
+        if normalized_relative != raw:
+            raise ProjectTreeError("Göreli proje yolu normalleştirilmiş olmalı.")
+        parts = tuple(_validated_component(part) for part in normalized_relative.split("/"))
         return parts
 
     def _duplicate_root(self) -> int:
