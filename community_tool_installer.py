@@ -50,6 +50,29 @@ def _regular_file(path: Path) -> bool:
         return False
 
 
+def _regular_executable(path: Path) -> bool:
+    try:
+        mode = path.lstat().st_mode
+    except OSError:
+        return False
+    return stat.S_ISREG(mode) and bool(mode & 0o111)
+
+
+def _reject_symlink_components(root: Path, relative: PurePosixPath) -> None:
+    """Reject an existing symlink anywhere below an already trusted install root."""
+    current = root
+    for part in relative.parts:
+        current = current / part
+        try:
+            mode = current.lstat().st_mode
+        except FileNotFoundError:
+            return
+        except OSError as exc:
+            raise InstallError("Runtime destination cannot be inspected") from exc
+        if stat.S_ISLNK(mode):
+            raise InstallError("Runtime destination cannot contain a symbolic link")
+
+
 def _sha256(path: Path) -> str:
     if not _regular_file(path):
         raise InstallError(f"Artifact is not a regular file: {path.name}")
@@ -118,11 +141,16 @@ def _obtain_artifact(spec: dict[str, Any], target: Path, cache_dir: Path | None)
         raise InstallError("Tool artifacts must use HTTPS")
 
     cached = cache_dir / asset_name if cache_dir is not None else None
+    if cached is not None and not _regular_file(cached):
+        raise InstallError(f"{asset_name} is absent from the offline cache")
     try:
         with target.open("xb") as destination:
-            if cached is not None and _regular_file(cached):
-                with cached.open("rb") as source:
-                    _copy_limited(source, destination, maximum)
+            if cached is not None:
+                try:
+                    with cached.open("rb") as source:
+                        _copy_limited(source, destination, maximum)
+                except OSError as exc:
+                    raise InstallError(f"{asset_name} cannot be read from the offline cache") from exc
             else:
                 request = Request(url, headers={"User-Agent": "Sniper-Community-tool-installer/1.0"})
                 try:
@@ -224,24 +252,33 @@ def install_profile(
 ) -> dict[str, Any]:
     if not accept_licenses:
         raise InstallError("Third-party license acceptance is required")
-    lock = load_lock(Path(lock_path))
+    lock_file = Path(lock_path)
+    lock = load_lock(lock_file)
+    lock_sha256 = _sha256(lock_file)
     selected = lock["profiles"].get(profile)
     if not isinstance(selected, list) or not selected or any(not isinstance(item, str) for item in selected):
         raise InstallError(f"Unknown or invalid tool profile: {profile}")
     platform_key = platform_key or current_platform_key()
 
     root_input = Path(install_root).expanduser()
-    if root_input.exists() and root_input.is_symlink():
+    if root_input.is_symlink():
         raise InstallError("Runtime install root cannot be a symbolic link")
     root = root_input.resolve()
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     os.chmod(root, 0o700)
-    cache = Path(cache_dir).expanduser().resolve() if cache_dir is not None else None
-    if cache is not None and (not cache.is_dir() or cache.is_symlink()):
-        raise InstallError("Artifact cache must be a regular directory")
+    cache: Path | None = None
+    if cache_dir is not None:
+        cache_input = Path(cache_dir).expanduser()
+        if cache_input.is_symlink() or not cache_input.is_dir():
+            raise InstallError("Artifact cache must be a regular directory")
+        cache = cache_input.resolve()
 
     manifest = _existing_manifest(root)
     records = manifest["tools"]
+    recorded_lock_sha = manifest.get("lock_sha256")
+    if records and recorded_lock_sha != lock_sha256:
+        raise InstallError("Existing runtime install manifest does not match the tool lock")
+    manifest["lock_sha256"] = lock_sha256
     installed: list[str] = []
     already_installed: list[str] = []
 
@@ -258,12 +295,20 @@ def install_profile(
             raise InstallError(f"{tool_id} has an invalid locked SHA-256")
         destination_rel = _safe_relative(tool.get("destination"), "destination")
         binary_rel = _safe_relative(tool.get("binary"), "binary path")
+        installed_binary_rel = destination_rel / binary_rel
+        _reject_symlink_components(root, installed_binary_rel)
         destination = root.joinpath(*destination_rel.parts)
         binary = destination.joinpath(*binary_rel.parts)
         record = records.get(tool_id)
         if destination.exists():
-            if not isinstance(record, dict) or not _regular_file(binary) \
+            if not isinstance(record, dict) or not _regular_executable(binary) \
+                    or record.get("platform") != platform_key \
+                    or record.get("version") != tool.get("version") \
+                    or record.get("license") != tool.get("license") \
                     or record.get("artifact_sha256") != expected_archive \
+                    or record.get("binary") != str(installed_binary_rel) \
+                    or record.get("env_binary") != tool.get("env_binary") \
+                    or record.get("env_sha256") != tool.get("env_sha256") \
                     or record.get("binary_sha256") != _sha256(binary):
                 raise InstallError(f"Existing {tool_id} runtime is untracked or modified")
             already_installed.append(tool_id)
@@ -282,6 +327,7 @@ def install_profile(
             _extract_locked_member(artifact_path, artifact, staged_binary)
             binary_sha = _sha256(staged_binary)
             destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            _reject_symlink_components(root, destination_rel.parent)
             os.replace(component, destination)
 
         records[tool_id] = {
@@ -289,7 +335,7 @@ def install_profile(
             "license": tool.get("license"),
             "platform": platform_key,
             "artifact_sha256": expected_archive,
-            "binary": str(destination_rel / binary_rel),
+            "binary": str(installed_binary_rel),
             "binary_sha256": binary_sha,
             "env_binary": tool.get("env_binary"),
             "env_sha256": tool.get("env_sha256"),

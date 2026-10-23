@@ -162,6 +162,34 @@ def test_launcher_rejects_mismatched_request_and_plan_before_claim(monkeypatch, 
     assert claimed == []
 
 
+def test_worker_inherits_verified_runtime_bindings(monkeypatch, runtime_store) -> None:
+    store, _target, _engagement = runtime_store
+    launcher = CommunityScanLauncher(store, queue=RecordingQueue(), actor=ADMIN)
+    captured: dict = {}
+
+    class WorkerProcess:
+        returncode = 0
+
+        @staticmethod
+        def communicate(_request):
+            return json.dumps({"status": 200, "body": {"ok": True}}).encode("utf-8"), None
+
+    def popen(_command, **kwargs):
+        captured.update(kwargs["env"])
+        return WorkerProcess()
+
+    monkeypatch.setattr("mcp_community_runtime.subprocess.Popen", popen)
+    with monkeypatch.context() as scoped:
+        scoped.setenv("SNIPER_NUCLEI_BINARY", "/verified/community/nuclei")
+        scoped.setenv("SNIPER_NUCLEI_SHA256", "a" * 64)
+        status, body = launcher._run_worker("/api/nuclei/http-scans", {}, ADMIN, SimpleNamespace())
+
+    assert (status, body) == (200, {"ok": True})
+    assert captured["SNIPER_NUCLEI_BINARY"] == "/verified/community/nuclei"
+    assert captured["SNIPER_NUCLEI_SHA256"] == "a" * 64
+    assert captured["SNIPER_DATA_DIR"] == str(Path(store.path).parent)
+
+
 def _mcp_payload(result: dict) -> dict:
     return json.loads(result["content"][0]["text"])
 

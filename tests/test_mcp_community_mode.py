@@ -12,6 +12,7 @@ from unittest import mock
 
 import ai_triage
 import mcp_triage_server
+import tool_runtime_autodiscover
 from scanner import normalize_target
 from storage import Store
 from tests.test_finding_tracking_collab import finding, make_audit, tracked_ids
@@ -182,6 +183,72 @@ class MCPCommunityModeTests(unittest.TestCase):
         self.assertTrue((xdg_data / "sniper-community" / "sniper.db").is_file())
         self.assertEqual((xdg_data / "sniper-community").stat().st_mode & 0o777, 0o700)
         self.assertEqual((xdg_data / "sniper-community" / "sniper.db").stat().st_mode & 0o777, 0o600)
+        serve.assert_called_once()
+
+    def test_community_cli_binds_verified_runtimes_before_server_start(self) -> None:
+        xdg_data = self.root / "runtime-xdg"
+        observed: list[tuple[dict, str]] = []
+
+        def discover(**kwargs):
+            observed.append((kwargs, os.environ.get("SNIPER_DATA_DIR", "")))
+            os.environ["SNIPER_NUCLEI_BINARY"] = "/verified/community/nuclei"
+            return {"format": "sniper-runtime-autodiscover-v1", "bound_tool_count": 1}
+
+        with mock.patch.dict(os.environ, {
+            "SNIPER_DB_PATH": "",
+            "SNIPER_DATA_DIR": "",
+            "XDG_DATA_HOME": str(xdg_data),
+            "SNIPER_MCP_MODE": "",
+            "SNIPER_MCP_TOKEN_FILE": "",
+        }), mock.patch.object(
+            tool_runtime_autodiscover,
+            "autodiscover_and_bind_runtimes",
+            side_effect=discover,
+        ) as bind, mock.patch.object(mcp_triage_server.TriageMCPServer, "serve") as serve:
+            self.assertEqual(mcp_triage_server.main(["--mode", "community"]), 0)
+
+        expected_data = xdg_data / "sniper-community"
+        bind.assert_called_once_with(apply_env=True, persist=True)
+        self.assertEqual(observed, [(
+            {"apply_env": True, "persist": True},
+            str(expected_data),
+        )])
+        serve.assert_called_once()
+
+    def test_community_cli_discards_partial_bindings_when_discovery_fails(self) -> None:
+        xdg_data = self.root / "failed-runtime-xdg"
+
+        def fail_discovery(**_kwargs):
+            os.environ["SNIPER_NUCLEI_BINARY"] = "/unverified/partial/nuclei"
+            raise ValueError("invalid manifest")
+
+        with mock.patch.dict(os.environ, {
+            "SNIPER_DB_PATH": "",
+            "SNIPER_DATA_DIR": "",
+            "XDG_DATA_HOME": str(xdg_data),
+            "SNIPER_MCP_MODE": "",
+            "SNIPER_MCP_TOKEN_FILE": "",
+            "SNIPER_NUCLEI_BINARY": "",
+        }), mock.patch.object(
+            tool_runtime_autodiscover,
+            "autodiscover_and_bind_runtimes",
+            side_effect=fail_discovery,
+        ), mock.patch.object(mcp_triage_server.TriageMCPServer, "serve") as serve:
+            self.assertEqual(mcp_triage_server.main(["--mode", "community"]), 0)
+            self.assertEqual(os.environ["SNIPER_NUCLEI_BINARY"], "")
+
+        serve.assert_called_once()
+
+    def test_authenticated_cli_does_not_autodiscover_community_runtimes(self) -> None:
+        with mock.patch.object(
+            tool_runtime_autodiscover,
+            "autodiscover_and_bind_runtimes",
+        ) as bind, mock.patch.object(mcp_triage_server.TriageMCPServer, "serve") as serve:
+            self.assertEqual(mcp_triage_server.main([
+                "--mode", "authenticated", "--db", str(self.store.path),
+            ]), 0)
+
+        bind.assert_not_called()
         serve.assert_called_once()
 
 
