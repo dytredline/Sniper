@@ -102,6 +102,7 @@ class OpenSSLX509LoopbackAPITests(unittest.TestCase):
     def tls_server(self, cert='ip'):
         pem, key = self.certificates[cert]
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.minimum_version = ssl.TLSVersion.TLSv1_2
         ctx.load_cert_chain(str(pem), str(key))
         self.tls = ThreadingHTTPServer(('127.0.0.1', 0), _QuietHandler)
         self.tls.daemon_threads = True

@@ -331,7 +331,9 @@ class JobsHttpTests(unittest.TestCase):
         raise AssertionError(job)
 
     def test_job_runs_same_route_logic_and_logs(self):
-        project = Path(self.temp.name) / "proj"
+        project_temp = tempfile.TemporaryDirectory(dir=Path.home())
+        self.addCleanup(project_temp.cleanup)
+        project = Path(project_temp.name) / "proj"
         project.mkdir()
         document = {"bomFormat": "CycloneDX", "components": []}
         # Süreç içi yol (sahte fonksiyon alt süreçte geçerli olmaz); alt süreç yolu

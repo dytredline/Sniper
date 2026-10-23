@@ -51,7 +51,11 @@ function getNode(id) {
     closest(selector) { return selector === '#' + id ? this : null; },
   };
   if (id === 'schemathesis-junit-copy-sha256') {
-    item.textContent = html.slice(info.end).split('</button>', 1)[0].replace(/<[^>]*>/g, '').trim();
+    const buttonText = html.slice(info.end).split('</button>', 1)[0];
+    if (buttonText.includes('<') || buttonText.includes('>')) {
+      throw new Error('copy button label must be plain text');
+    }
+    item.textContent = buttonText.trim();
   }
   nodes.set(id, item);
   return item;
