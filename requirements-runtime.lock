@@ -1,2 +1,4 @@
 # Runtime security dependency lock. Update this file and the runtime contract together.
 cryptography==41.0.7
+packaging==26.3
+PyYAML==6.0.3

@@ -21,7 +21,7 @@ from http.server import ThreadingHTTPServer
 import server
 import playwright_authorized as pwa
 from storage import Store
-from tool_sandbox import SandboxUnavailable, chromium_dir
+from tool_sandbox import SandboxUnavailable, chromium_dir, require_authorized_renderer_sandbox
 
 
 class PlaywrightAuthorizedAPITests(unittest.TestCase):
@@ -123,7 +123,12 @@ class PlaywrightAuthorizedAPITests(unittest.TestCase):
                    "target": f"http://127.0.0.1:{fixture.server_address[1]}", "paths": ["/"],
                    "timeout_s": 5, "reflection_probe": False, "screenshot": False,
                    "ignore_https_errors": False}
-        with mock.patch.dict(os.environ, {"SNIPER_SANDBOX_LAUNCH": "direct"}):
+        with mock.patch.dict(os.environ, {"SNIPER_SANDBOX_LAUNCH": "direct"}), \
+                mock.patch.object(
+                    server,
+                    "run_playwright_authorized",
+                    side_effect=SandboxUnavailable("chromium_setuid_sandbox_missing"),
+                ):
             status, body = self.post("/api/tool-runs/playwright-authorized", payload)
         self.assertEqual(status, 503, body)
         self.assertIn("chromium_setuid_sandbox_missing", body["error"])
@@ -168,12 +173,21 @@ class PlaywrightAuthorizedContractTests(unittest.TestCase):
         self.assertNotIn("chromiumSandbox: false", authorized)
         self.assertIn("chromiumSandbox: false", legacy)
 
+    def test_renderer_sandbox_contract_rejects_a_missing_setuid_helper(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="pw-missing-setuid-") as temporary:
+            with self.assertRaisesRegex(SandboxUnavailable, "^chromium_setuid_sandbox_missing$"):
+                require_authorized_renderer_sandbox(Path(temporary))
+
 
 class PlaywrightAuthorizedRuntimeTests(unittest.TestCase):
     def test_loopback_runtime_fails_closed_when_renderer_sandbox_prerequisite_is_absent(self) -> None:
         # Pinli Chromium ağacında setuid helper sonradan kurulursa bu makineye özgü eksik-önkoşul
         # kanıtı artık geçerli değildir; o durumda ayrı başarılı runtime testi gerekir.
-        if (chromium_dir() / "chrome-sandbox").exists():
+        try:
+            browser_dir = chromium_dir()
+        except SandboxUnavailable as exc:
+            self.skipTest(f"Bu mimaride pinli Chromium runtime yok: {exc}")
+        if (browser_dir / "chrome-sandbox").exists():
             self.skipTest("Chromium setuid sandbox mevcut; başarılı yetkili runtime kanıtı gerekli")
         requests = []
 

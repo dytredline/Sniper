@@ -10,13 +10,18 @@ import unittest
 
 
 APP = Path(__file__).resolve().parents[1]
-PIN = "cryptography==41.0.7"
+RUNTIME_PINS = {
+    "cryptography==41.0.7",
+    "packaging==26.3",
+    "PyYAML==6.0.3",
+}
 
 
 class RuntimeCryptoDependencyTests(unittest.TestCase):
-    def test_runtime_lock_and_container_install_the_exact_crypto_version(self) -> None:
+    def test_runtime_lock_and_container_install_exact_runtime_dependencies(self) -> None:
         lock = (APP / "requirements-runtime.lock").read_text(encoding="utf-8").splitlines()
-        self.assertIn(PIN, [line.strip() for line in lock if line.strip() and not line.startswith("#")])
+        observed = {line.strip() for line in lock if line.strip() and not line.startswith("#")}
+        self.assertTrue(RUNTIME_PINS.issubset(observed), RUNTIME_PINS - observed)
         dockerfile = (APP / "Dockerfile").read_text(encoding="utf-8")
         self.assertIn("COPY requirements-runtime.lock", dockerfile)
         self.assertIn("pip install", dockerfile)
