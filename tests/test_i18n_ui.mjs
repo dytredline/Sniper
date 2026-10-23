@@ -8,6 +8,13 @@ const require = createRequire(import.meta.url);
 const STATIC = new URL('../static/', import.meta.url);
 const source = fs.readFileSync(new URL('i18n.js', STATIC), 'utf8');
 const dictionaryText = fs.readFileSync(new URL('i18n-en.tsv', STATIC), 'utf8');
+const dictionaryTexts = new Map([
+  ['/i18n-en.tsv?v=1', dictionaryText],
+  ...['ja', 'ko', 'zh-CN'].map((locale) => [
+    `/i18n-${locale}.tsv?v=1`,
+    fs.readFileSync(new URL(`i18n-${locale}.tsv`, STATIC), 'utf8'),
+  ]),
+]);
 
 // --- Asgari DOM (jsdom yok): metin/öğe düğümleri, öznitelikler, closest, TreeWalker, MutationObserver kaydı ---
 class FakeText {
@@ -54,7 +61,7 @@ function makeDocument() {
   return doc;
 }
 
-function load({ storage, lang } = {}) {
+function load({ storage, lang, fetchImpl } = {}) {
   const document = makeDocument();
   const observers = [];
   class MutationObserver { constructor(cb) { this.cb = cb; observers.push(this); } observe() { this.active = true; } disconnect() { this.active = false; } }
@@ -64,7 +71,9 @@ function load({ storage, lang } = {}) {
     localStorage: storage === 'throws'
       ? { getItem() { throw new Error('engelli'); }, setItem() { throw new Error('engelli'); } }
       : { data: new Map(lang ? [['sniper.lang', lang]] : []), getItem(k) { return this.data.get(k) ?? null; }, setItem(k, v) { this.data.set(k, v); } },
-    fetch: async () => ({ ok: true, text: async () => dictionaryText }),
+    fetch: fetchImpl || (async (url) => dictionaryTexts.has(url)
+      ? ({ ok: true, text: async () => dictionaryTexts.get(url) })
+      : ({ ok: false, status: 404, text: async () => '' })),
     confirm: (m) => { dialogs.push(m); return true; },
     alert: (m) => { dialogs.push(m); },
   };
@@ -101,6 +110,63 @@ test('İngilizceye geçiş metin düğümlerini, öznitelikleri ve <html lang> d
   assert.equal(label.childNodes[0].nodeValue, '  Proje klasörü\n  ');
   assert.equal(input.getAttribute('placeholder'), 'Alan adı ara…');
   assert.equal(submit.getAttribute('value'), 'Kaydet');
+});
+
+test('Japonca, Korece ve Basitleştirilmiş Çince paketleri seçilir; eksik girdiler İngilizceye düşer', async () => {
+  const expected = new Map([
+    ['ja', ['スキャンレポート', '保存']],
+    ['ko', ['스캔 보고서', '저장']],
+    ['zh-CN', ['扫描报告', '保存']],
+  ]);
+  for (const [locale, [report, save]] of expected) {
+    const { document, i18n } = load();
+    const title = new FakeElement('h1').append('Tarama raporu');
+    const button = new FakeElement('button', { title: 'Kaydet' }).append('Kaydet');
+    const fallback = new FakeElement('p').append('Gerçek kişisel veri veya sır eklemeyin.');
+    document.documentElement.append(title, button, fallback);
+    await i18n.setLang(locale);
+    assert.equal(i18n.lang, locale);
+    assert.equal(document.documentElement.getAttribute('lang'), locale);
+    assert.equal(title.textContent, report);
+    assert.equal(button.textContent, save);
+    assert.equal(button.getAttribute('title'), save);
+    assert.equal(fallback.textContent, 'Do not add real personal data or secrets.');
+  }
+  const { i18n } = load();
+  await i18n.setLang('zh-Hans');
+  assert.equal(i18n.lang, 'zh-CN');
+});
+
+test('Türkçe biçimlenmiş tarihler seçili CJK dilinin tarih düzenine çevrilir', async () => {
+  const expected = new Map([
+    ['ja', '2026年9月19日 13:00'],
+    ['ko', '2026년 9월 19일 13:00'],
+    ['zh-CN', '2026年9月19日 13:00'],
+  ]);
+  for (const [locale, date] of expected) {
+    const { i18n } = load();
+    await i18n.setLang(locale);
+    assert.equal(i18n.t('19 Eyl 2026 13:00'), date);
+  }
+});
+
+test('hızlı dil değişiminde son seçim kazanır; geç tamamlanan sözlük eski dili geri getirmez', async () => {
+  const fetchImpl = async (url) => {
+    const delay = url.includes('i18n-ja') ? 30 : url.includes('i18n-ko') ? 1 : 0;
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return dictionaryTexts.has(url)
+      ? { ok: true, text: async () => dictionaryTexts.get(url) }
+      : { ok: false, status: 404, text: async () => '' };
+  };
+  const { document, i18n } = load({ fetchImpl });
+  const save = new FakeElement('button').append('Kaydet');
+  document.documentElement.append(save);
+  const first = i18n.setLang('ja');
+  const second = i18n.setLang('ko');
+  await Promise.all([first, second]);
+  assert.equal(i18n.lang, 'ko');
+  assert.equal(document.documentElement.getAttribute('lang'), 'ko');
+  assert.equal(save.textContent, '저장');
 });
 
 test('kod, pre, textarea içeriği ve translate="no" alanları çevrilmez; textarea placeholder çevrilir', async () => {

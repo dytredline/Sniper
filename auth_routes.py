@@ -12,8 +12,11 @@ from urllib.parse import urlsplit
 import auth
 import request_context
 
-LOGIN_ASSETS = frozenset({"login.html", "login.js", "app.css", "auth.css", "i18n.js", "i18n-en.tsv",
-                          "ui-refresh.css", "ui-icons.svg"})  # Codex arayüzü: giriş sayfası stili ve simgeleri
+LOGIN_ASSETS = frozenset({
+    "login.html", "login.js", "app.css", "auth.css", "i18n.js",
+    "i18n-en.tsv", "i18n-ja.tsv", "i18n-ko.tsv", "i18n-zh-CN.tsv",
+    "ui-refresh.css", "ui-icons.svg",
+})  # Girişten önce dil paketleri, stil ve simgeler yüklenebilir.
 
 
 def manager() -> auth.AuthManager:

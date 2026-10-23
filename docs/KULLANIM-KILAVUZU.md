@@ -347,13 +347,16 @@ Triyaj kararları sonraki analizlere taşınır. Risk kabulünün süresi dolunc
 - "Alanlara göre durum" tablosu, her alan için en önemli 5 madde ve önerilen eylem.
 - Sayılar tek kaynaktan hesaplanır; kötü amaçlı paket iki kaynakta görünse de bir kez sayılır.
 
-**İngilizce ve PDF:**
-- `?lang=en` İngilizce rapor verir.
+**Yerelleştirme ve PDF:**
+- `?lang=en`, `?lang=ja`, `?lang=zh-CN` veya `?lang=ko` HTML raporu seçilen dilde verir.
+- İngilizce tam temel sözlüktür. Japonca, Basitleştirilmiş Çince ve Korece başlangıç paketlerinde henüz
+  çevrilmemiş ayrıntılar İngilizceye düşer; kod, dosya yolu ve kanıt değerleri çevrilmez.
 - `?format=pdf` PDF verir: pinli Chromium, bwrap yalıtımı, ağsız, JavaScript kapalı. Sınırlar: HTML 8 MB,
   PDF 25 MB, varsayılan 60 sn (`SNIPER_PDF_TIMEOUT_SECONDS`).
 - PDF, tarama raporu için de vardır.
 
-**Arayüz dili:** Başlıktaki seçiciyle Türkçe ya da İngilizce seçilir.
+**Arayüz dili:** Başlıktaki seçiciyle Türkçe, İngilizce, Japonca, Basitleştirilmiş Çince veya Korece seçilir.
+Yeni dil paketlerinin bağımsız güncellenmesi için [LOCALIZATION.md](LOCALIZATION.md) sözleşmesine bakın.
 
 **CSP:** Rapor sayfalarının CSP'sinde `unsafe-inline` yoktur; yalnız stil özetleri izinlidir.
 

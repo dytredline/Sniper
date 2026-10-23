@@ -1,0 +1,354 @@
+# sniper-i18n/1	zh-CN
+S	Tarama raporu	扫描报告
+S	Yönetici özeti	执行摘要
+S	Kaydet	保存
+S	Kapat	关闭
+S	Taramayı başlat	开始扫描
+S	Analizi başlat	开始分析
+S	Proje klasörü	项目文件夹
+S	Hedef seçin	选择目标
+S	Kritik	严重
+S	Yüksek	高
+S	Orta	中
+S	Düşük	低
+S	Tamamlandı	已完成
+S	Bekliyor	等待中
+S	Hata	错误
+S	Oturum aç	登录
+S	Kullanıcı adı	用户名
+S	Parola	密码
+S	Giriş yap	登录
+S	Doğrula	验证
+S	Genel bakış	概览
+S	Hedefler	目标
+S	Uygulama analizi	应用分析
+S	Bulgu takibi	发现项跟踪
+S	Portföy ve SLA	资产组合与 SLA
+S	Manuel test	手动测试
+S	Araç matrisi	工具矩阵
+S	Güvenlik laboratuvarı	安全实验室
+S	Raporlar	报告
+S	İşlem geçmişi	操作历史
+S	Zamanlanmış taramalar	计划扫描
+S	Bildirimler	通知
+S	Güvenli profil	安全配置
+S	Yerel ve düşük etkili	本地、低影响
+S	Yerel servis etkin	本地服务已启用
+S	Yeni hedef	新建目标
+S	İçeriğe geç	跳到内容
+S	Menüyü aç	打开菜单
+S	Menüyü kapat	关闭菜单
+S	Ana menü	主菜单
+S	ÇALIŞMA ALANI	工作区
+S	YÖNETİM	管理
+S	SON DURUM	最新状态
+S	Varlık sağlığı	资产健康状况
+S	BULGU DAĞILIMI	发现项分布
+S	Açık riskler	未解决风险
+S	Tüm hedefler →	所有目标 →
+S	Henüz ölçüm yok	暂无测量数据
+S	ORTALAMA GÜVENLİK PUANI	平均安全评分
+S	Güvenli tarama ilkesi	安全扫描策略
+S	Önem	严重性
+S	Dosya	文件
+S	Durum	状态
+S	Analiz	分析
+S	Araçlar	工具
+S	Ayarlar	设置
+S	Evet	是
+S	Hayır	否
+P	İstek {0} durum koduyla başarısız oldu.	请求失败，状态码为 {0}。
+P	{0} bulgu	{0} 个发现项
+S	Hızlı erişim	快速访问
+S	Alan adı ara…	搜索域名…
+S	Denetlenecek tek bir dosyanın içeriğini yapıştırın	粘贴要审计的单个文件内容
+S	Rapor geçmişi sayfaları	报告历史页面
+S	Kaç gün önce	多少天前
+S	değiştirmek için yazın	输入内容以更改
+S	Alan adları, uygulama yolları, roller ve API'ler	域名、应用路径、角色和 API
+S	Üçüncü taraflar, üretim ödeme akışı, sosyal mühendislik…	第三方、生产支付流程、社会工程…
+S	Kişisel veri, parola, erişim anahtarı veya ham günlük eklemeyin.	请勿添加个人数据、密码、访问密钥或原始日志。
+S	Ham günlük, kimlik bilgisi veya gerçek veri eklemeyin.	请勿添加原始日志、凭据或真实数据。
+S	Manuel sızma testi çalışma alanı	手动渗透测试工作区
+S	Gözlem, kapsam, kullanılan test hesabı ve sonuç…	观察结果、范围、所用测试账户和结论…
+S	İstek numarası, ekran görüntüsü adı, maskeli yanıt veya kayıt hash'i…	请求编号、截图名称、脱敏响应或记录哈希…
+S	A01:2021 Yetkilendirme Hataları	A01:2021 访问控制失效
+S	Yapılan düzeltme, sürüm, yeniden test sonucu veya risk kabul gerekçesi…	已实施的修复、版本、复测结果或风险接受理由…
+S	Önem derecesi filtresi	严重性筛选器
+S	Yama sürümü mevcut açık uyarı sayısı	修复版本上仍未解决的安全公告数量
+S	Yapılandırma sorunu kritikliği dağılımı	配置问题严重性分布
+S	Sniper — Yerel güvenlik stüdyosu	Sniper — 本地安全工作室
+S	YEREL GÜVENLİK STÜDYOSU	本地安全工作室
+S	Sniper, düşük etkili kontroller yapar. DoS trafiği veya parola listesi çalıştırmaz.	Sniper 执行低影响检查，不会产生 DoS 流量，也不会运行密码字典。
+S	BAĞIMSIZ GÜVENLİK GÖRÜNÜMÜ	独立安全视图
+S	Riskleri erken görün,	尽早发现风险，
+S	kontrol sizde kalsın.	始终由您掌控。
+S	Eklediğiniz web varlıklarında temel güvenlik kontrollerini tek merkezden yönetin ve iyileştirmeleri ölçün.	从一个中心管理已添加 Web 资产的基础安全检查，并衡量改进成效。
+S	En fazla 3 GET isteği, sömürü yok, parola denemesi yok.	最多 3 个 GET 请求，不利用漏洞，不尝试密码。
+S	KAPSAM YÖNETİMİ	范围管理
+S	Web adresini ekleyin; alan adı sahiplik dosyası veya ayrı doğrulama adımı gerekmez.	添加 Web 地址；无需域名所有权文件或单独的验证步骤。
+S	Web varlığı	Web 资产
+S	İlk hedefinizi ekleyin	添加第一个目标
+S	Web adresini kaydettikten sonra güvenli temel taramayı doğrudan başlatabilirsiniz.	保存 Web 地址后即可直接启动安全基线扫描。
+S	ANALİZLER ARASI	跨分析
+S	Bulgular satır kaymasına dayanıklı parmak iziyle analizler arasında eşleşir: yeni, açık, düzelen, yeniden açılan. Yanlış alarm ve risk kabulü kararları sonraki analizlere taşınır; bastırılan bulgular gizlenmez.	发现项通过可抵抗行号变化的指纹在多次分析间匹配：新增、未解决、已修复、重新打开。误报和风险接受决定会延续到后续分析；被抑制的发现项不会隐藏。
+S	Uygulama güvenliği analizi	应用安全分析
+S	Ürettiğiniz uygulamanın gerçek kaynaklarını kriptografi, sorgu güvenliği, SSRF, QR, bağımlılık, günlükleme, sır ve port yüzeyi açısından inceleyin.	从密码学、查询安全、SSRF、QR、依赖项、日志记录、机密和端口暴露面等方面检查应用的真实源代码。
+S	Proje klasörünü yerelde incele	在本地检查项目文件夹
+S	Kaynak kod yerel makinenin dışına çıkmaz. Sır değerleri ve kaynak satırları rapora kopyalanmaz; yalnız kural, dosya ve satır numarası saklanır.	源代码不会离开本机。机密值和源代码行不会复制到报告中；仅保存规则、文件和行号。
+S	Kayıtlı kapsam	已保存范围
+S	Tümünü dahil ederek	包含全部
+S	Yalnız atlananlar	仅已跳过项
+S	Yalnız değişenler (git)	仅变更项（git）
+S	Tarama kapsamı	扫描范围
+S	varsayılan	默认
+S	Varsayılan olarak atlanan dizin ve dosyaları dahil et. Seçim, proje yolu alan tüm yerel taramalara (uygulama analizi, Joern, Semgrep, denetçiler) uygulanır.	包含默认跳过的目录和文件。此选择适用于所有接收项目路径的本地扫描（应用分析、Joern、Semgrep、审计器）。
+S	Vendor / üçüncü taraf	供应商／第三方
+S	node_modules, venv, .venv — uzun sürebilir	node_modules、venv、.venv — 可能耗时较长
+S	Derleme çıktıları	构建产物
+S	Üretilmiş / küçültülmüş	已生成／已压缩
+S	kayıplı çözülür, satır numaraları korunur	有损解码，保留行号
+S	Sınırlar	限制
+S	Toplam bütçe	总预算
+S	Dosya sayısı	文件数
+S	Tümünü dahil et	全部包含
+S	Varsayılana dön	恢复默认值
+S	Kapsamı kaydet	保存范围
+S	SORGULANABİLİR YEREL KAYIT	可查询的本地记录
+S	Analizleri karşılaştır	比较分析
+S	Henüz uygulama analizi yok	尚无应用分析
+S	İlk proje klasörünü incelettiğinizde doğrulanabilir bulgular burada saklanır.	首次检查项目文件夹后，可验证的发现项将保存在此处。
+S	GÜVEN VE ÖLÇÜM	信任与度量
+S	Doğruluk panosu	准确性面板
+S	PAKET A · YEREL TEDARİK ZİNCİRİ	软件包 A · 本地供应链
+S	SBOM ve bağımlılık açıkları	SBOM 与依赖漏洞
+S	CycloneDX SBOM üret	生成 CycloneDX SBOM
+S	Trivy / OSV JSON dosyası	Trivy / OSV JSON 文件
+S	Biçim	格式
+S	Otomatik algıla	自动检测
+S	Yerel raporu içe aktar	导入本地报告
+S	Kayıtlı SBOM farkı	已保存的 SBOM 差异
+S	Aynı projenin iki kayıtlı anlık görüntüsünü seçin. Yalnız değişim sayıları gösterilir; paket listesi ve ham belge açılmaz.	选择同一项目的两个已保存快照。仅显示变更数量；不会打开软件包列表和原始文档。
+S	Önceki SBOM	较早的 SBOM
+S	Önceki kaydı seçin	选择较早的记录
+S	Sonraki kaydı seçin	选择较新的记录
+S	Farkı göster	显示差异
+S	Çıkarılan	已移除
+S	Sürümü değişen	版本已变更
+S	Açık	未解决
+S	Paket / sürüm	软件包／版本
+S	Düzeltme	修复版本
+S	Henüz bağımlılık bulgusu yok	尚无依赖项发现
+S	SBOM üretin veya daha önce oluşturulmuş güvenilir Trivy/OSV JSON raporunu yerelden içe aktarın.	生成 SBOM，或从本地导入此前创建的可信 Trivy/OSV JSON 报告。
+S	PROFESYONEL ÇALIŞMA ALANI	专业工作区
+S	Manuel sızma testi	手动渗透测试
+S	OWASP WSTG kapsamını, test kanıtlarını ve uzman bulgularını tek dosyada yönetin.	在一个文件中管理 OWASP WSTG 范围、测试证据和专家发现。
+S	18 ana kategori + özel protokoller · 158–161 kontrol adımı	18 个主要类别和专用协议 · 158–161 个检查步骤
+S	Kimlik, yetki, oturum, enjeksiyon, sunucu, veri, iş mantığı, istemci, API, altyapı, tedarik zinciri, dayanıklılık ve olay müdahalesi.	身份、授权、会话、注入、服务器、数据、业务逻辑、客户端、API、基础设施、供应链、韧性和事件响应。
+S	Denetim oluştur	创建审计
+S	İlk manuel denetiminizi oluşturun	创建第一次手动审计
+S	Önce kayıtlı bir hedef seçin, kapsam ve test sınırlarını tanımlayın.	先选择已保存的目标，再定义范围和测试边界。
+S	YÜKSEK ETKİLİ TESTLER İÇİN GÜVENLİ HAZIRLIK	高影响测试的安全准备
+S	Kapasite ve hesap kilitlenme kontrollerini ağ trafiği üretmeden planlayın; yetkili harici testlerin yalnızca maskeli sonucunu kaydedin.	在不产生网络流量的情况下规划容量和账户锁定检查；仅记录已授权外部测试的脱敏结果。
+S	Yerel planlama modu · 0 ağ isteği	本地规划模式 · 0 个网络请求
+S	Bu bölüm saldırı çalıştırmaz. Üretim ortamında otomatik kapasite veya parola denemesi oluşturulamaz; acil durdurma eşikleri planın zorunlu parçasıdır.	此部分不会发起攻击。生产环境中不能创建自动容量测试或密码尝试；紧急停止阈值是计划的必填部分。
+S	TRAFİK KAPALI	流量已关闭
+S	Kapasite planı	容量计划
+S	Hedef hız, süre, gecikme ve hata eşiğinden tahmini istek hacmi ile eşzamanlılık hesaplayın.	根据目标速率、持续时间、延迟和错误阈值计算预计请求量与并发量。
+S	Üretim ortamı reddedilir	拒绝生产环境
+S	Gecikme ve hata durdurma eşiği	延迟与错误停止阈值
+S	Plan oluştur	创建计划
+S	SENTETİK HESAP	合成账户
+S	Kilitlenme planı	锁定计划
+S	Parola veya gerçek kullanıcı bilgisi almadan deneme sayısı, aralık ve beklenen kilit süresini planlayın.	无需获取密码或真实用户信息，即可规划尝试次数、间隔和预期锁定时长。
+S	En fazla 10 kontrollü adım	最多 10 个受控步骤
+S	Denemeler arasında en az 5 saniye	每次尝试至少间隔 5 秒
+S	Parola listesi alanı bulunmaz	没有密码列表字段
+S	MASKELİ KANIT	脱敏证据
+S	Harici sonuç kaydı	外部结果记录
+S	Kuruluşun ayrı ve yetkili aracıyla yapılan testin özetini ham günlük ya da veri taşımadan kaydedin.	记录由组织独立授权工具执行的测试摘要，不携带原始日志或数据。
+S	Kanıt hash’i zorunlu	必须提供证据哈希
+S	Ham günlük ve kimlik bilgisi yok	无原始日志和凭据
+S	Sniper tarafından üretilen istek: 0	Sniper 生成的请求数：0
+S	Sonuç kaydet	保存结果
+S	Laboratuvar dosyaları	实验室文件
+S	Henüz laboratuvar kaydı yok	尚无实验室记录
+S	İlk güvenli planınızı oluşturduğunuzda hesaplanan tahminler burada görünür.	创建第一个安全计划后，计算出的估算值会显示在此处。
+S	161 KONTROL İÇİN ARAÇ ZİNCİRİ	面向 161 项检查的工具链
+S	Her kontrol için uygun otomatik araçları, gerekli girdileri ve uzman doğrulaması gereken alanları görün.	查看每项检查适用的自动化工具、所需输入以及需要专家验证的部分。
+S	Harici sonuç kaydet	保存外部结果
+S	Araç işlemleri	工具操作
+S	Önizlemeler ve yerel çalışma seçenekleri	预览与本地工作选项
+S	TruffleHog JSONL önizleme	TruffleHog JSONL 预览
+S	Yerel Git geçmişi sır taraması	本地 Git 历史机密扫描
+S	Yerel dosyalarda sır taraması	本地文件机密扫描
+S	SARIF önizleme	SARIF 预览
+S	Schemathesis JUnit XML önizleme	Schemathesis JUnit XML 预览
+S	Schemathesis onaylı yerel API testi	Schemathesis 已批准本地 API 测试
+S	Playwright JSON önizleme	Playwright JSON 预览
+S	k6 kayıtlı klasik JSON özeti	k6 已保存经典 JSON 摘要
+S	k6 machine-readable v1 özeti	k6 机器可读 v1 摘要
+S	SIEM ECS JSONL kanıt özeti	SIEM ECS JSONL 证据摘要
+S	Nuclei JSONL önizleme	Nuclei JSONL 预览
+S	Nuclei HTTP taraması	Nuclei HTTP 扫描
+S	Burp Site-map XML önizleme	Burp Site-map XML 预览
+S	Nmap XML önizleme	Nmap XML 预览
+S	testssl.sh flat JSON önizleme	testssl.sh flat JSON 预览
+S	Yerel testssl.sh tam TLS taraması	本地 testssl.sh 完整 TLS 扫描
+S	Gitleaks native JSON önizleme	Gitleaks 原生 JSON 预览
+S	Yerel Gitleaks sır taraması	本地 Gitleaks 机密扫描
+S	Dependabot Alerts JSON önizleme	Dependabot Alerts JSON 预览
+S	npm audit v2 JSON önizleme	npm audit v2 JSON 预览
+S	Trivy native JSON önizleme	Trivy 原生 JSON 预览
+S	ZAP traditional JSON önizleme	ZAP traditional JSON 预览
+S	ZAP hedef aktif taraması	ZAP 目标主动扫描
+S	ZAP izinli site bağlantı keşfi	ZAP 已授权站点链接发现
+S	SSL Labs Host JSON önizleme	SSL Labs Host JSON 预览
+S	OpenSSL sertifika önizleme	OpenSSL 证书预览
+S	OpenSSL yerel TLS sertifika doğrulaması	OpenSSL 本地 TLS 证书验证
+S	Yerel Semgrep kod taraması	本地 Semgrep 代码扫描
+S	Semgrep CLI --json önizleme	Semgrep CLI --json 预览
+S	Semgrep/Trivy karşılaştırma	Semgrep/Trivy 比较
+S	YEREL BAĞIMLILIK TARAMASI	本地依赖项扫描
+S	Trivy zafiyet taraması	Trivy 漏洞扫描
+S	Yerel proje klasörü	本地项目文件夹
+S	Sonuç grubu	结果组
+S	Önem dağılımı	严重性分布
+S	Bu sayılar otomatik doğrulanmış güvenlik açığı hükmü değildir; uzman incelemesi gerekir.	这些数量不代表已自动验证的漏洞结论；需要专家复核。
+S	Trivy yerel sır taraması	Trivy 本地机密扫描
+S	Olası sır bulgusu	潜在机密发现
+S	Bu sayılar sırın geçerli olduğunu kanıtlamaz; ham eşleşme gösterilmez ve uzman incelemesi gerekir.	这些数量不能证明机密有效；不会显示原始匹配内容，并且需要专家复核。
+S	YEREL İMAJ TARAMASI	本地镜像扫描
+S	Trivy çevrimdışı imaj arşivi taraması	Trivy 离线镜像归档扫描
+S	Proje kökündeki imaj arşivi dosya adı	项目根目录中的镜像归档文件名
+S	Trivy tek Kubernetes manifesti taraması	Trivy 单个 Kubernetes 清单扫描
+S	Proje kökündeki YAML manifest dosya adı	项目根目录中的 YAML 清单文件名
+S	Yapılandırma bulgusu	配置发现
+S	Trivy Kubernetes manifest toplu taraması	Trivy Kubernetes 清单批量扫描
+S	Proje kökündeki manifest dosya adları, her satıra bir tane	项目根目录中的清单文件名，每行一个
+S	Trivy Dockerfile yapılandırma taraması	Trivy Dockerfile 配置扫描
+S	Trivy Terraform yapılandırma taraması	Trivy Terraform 配置扫描
+S	Proje kökündeki .tf dosya adı	项目根目录中的 .tf 文件名
+S	Trivy npm kilit dosyası taraması	Trivy npm 锁文件扫描
+S	npm audit ile canlı kilit dosyası denetimi	使用 npm audit 实时审计锁文件
+S	NPM AUDIT V2 JSON ÖNİZLEME	NPM AUDIT V2 JSON 预览
+S	TRIVY NATIVE JSON ÖNİZLEME	TRIVY 原生 JSON 预览
+S	Şema sürümü	架构版本
+S	Sınıf dağılımı	类别分布
+S	Kritiklik dağılımı	严重性分布
+S	Tespit sayıları	检测数量
+S	ZAP TRADITIONAL JSON ÖNİZLEME	ZAP TRADITIONAL JSON 预览
+S	Site sayısı	站点数量
+S	Uyarı türü sayısı	警报类型数量
+S	Örnek sayısı	样本数量
+S	Risk dağılımı	风险分布
+S	Denetimler yükleniyor	正在加载审计
+S	Toplu kanıtı bağla	关联汇总证据
+S	Sniper için yerel ZAP pasif kontrolü	Sniper 本地 ZAP 被动检查
+S	Yerel pasif kontrolü çalıştır	运行本地被动检查
+S	Pasif ZAP kontrolü tamamlandı.	ZAP 被动检查已完成。
+S	Uyarı türü	警报类型
+S	Örnek	示例
+S	Seçilen hedef	所选目标
+S	Seçilen denetim	所选审计
+S	Yetki referansı	授权依据
+S	Kapsam notları	范围说明
+S	Dışlamalar	排除项
+S	Değerlendirme durumu	评估状态
+S	Endpoint sayısı	端点数量
+S	Güven ve kimlik	信任与身份
+S	Başlangıç (UTC)	开始时间（UTC）
+S	Bitiş (UTC)	结束时间（UTC）
+S	Kalan gün	剩余天数
+S	Özet SHA-256	摘要 SHA-256
+S	Doğrulamayı başlat	开始验证
+S	OPENSSL SERTİFİKA KANITI	OPENSSL 证书证据
+S	Kaydedilmiş sertifika geçerliliğini incele	检查已保存证书的有效期
+S	OpenSSL x509 çıktısı	OpenSSL x509 输出
+S	Geçerliliği göster	显示有效期
+S	Dosya:satır	文件:行
+S	Severity dağılımı	严重性分布
+S	SEMGREP / TRIVY KARŞILAŞTIRMA	SEMGREP / TRIVY 比较
+S	Yerel Semgrep ve Trivy raporlarını karşılaştır	比较本地 Semgrep 和 Trivy 报告
+S	Özetleri oluştur	生成摘要
+S	Semgrep özet	Semgrep 摘要
+S	Trivy özet	Trivy 摘要
+S	Sniper — Giriş	Sniper — 登录
+S	Doğrulama kodu (6 hane)	验证码（6 位）
+S	MCP KONTROL DÜZLEMİ	MCP 控制平面
+S	Hedef yetkisi bekleyen işler	等待目标授权的任务
+S	Yenile	刷新
+S	Araç/profil	工具／配置文件
+S	Normalize hedef	规范化目标
+S	İsteyen	请求者
+S	Oluşturulma	创建时间
+S	İnsan onayı	人工批准
+S	MCP kuyruğu alınamadı.	无法获取 MCP 队列。
+P	İstek tamamlanamadı ({0})	请求未能完成（{0}）
+P	{0} hedefi için yetkim var	我已获得目标 {0} 的授权
+S	Onayla	批准
+S	Reddet	拒绝
+S	İptal	取消
+S	İstek onaylanamadı.	无法批准请求。
+S	Tarama isteği reddedildi.	扫描请求已拒绝。
+S	Elle devir kaydı kapatıldı.	人工交接记录已关闭。
+S	Tarama işi iptal edildi.	扫描任务已取消。
+S	İstek iptal edilemedi.	无法取消请求。
+S	Bekleyen veya çalışan iş yok.	没有等待中或运行中的任务。
+P	{0} iş insan hedef yetkisi bekliyor; {1} elle devir; {2} iş çalışıyor.	{0} 个任务等待人工目标授权；{1} 个人工交接；{2} 个任务正在运行。
+S	Bu public DNS hedefinin HTTPS:443 değerlendirmesi için Qualys SSL Labs üçüncü taraf hizmetine gönderilmesine ve bu değerlendirmeye yetkim var	我授权将此公共 DNS 目标发送到第三方 Qualys SSL Labs 服务进行 HTTPS:443 评估，并确认我有权执行此评估
+S	Bu kök originde inline şemadaki GET/POST/PUT/PATCH/DELETE operasyonlarına (POST/DELETE dahil) sınırlı istek gönderilmesine yetkim var	我有权向此根源站内联架构中的 GET/POST/PUT/PATCH/DELETE 操作（包括 POST/DELETE）发送有限请求
+S	Bu hedefte gösterilen sabit kapsamlı taramaya yetkim var	我有权对该目标执行所示的固定范围扫描
+S	İnsan yetki beyanı SHA-256 makbuzuyla kaydedildi; araç için onay kaydı hazırlandı.	人工授权声明已连同 SHA-256 回执保存；已为该工具准备批准记录。
+S	Claude Code, Codex gibi kodlama ajanları bulguları MCP sunucusu (scripts/sniper-mcp) ya da dosya paketiyle (cli_reports.py triage export) inceleyip öneri gönderir. Öneriler bulgu durumunu değiştirmez; kabul ettiğinizde bulgu takibine ve denetim kaydına "AI önerisiyle" notuyla yazılır. Bağlama: docs/AI-TRIYAJ.md.	Claude Code、Codex 等编码代理通过 MCP 服务器（scripts/sniper-mcp）或文件包（cli_reports.py triage export）检查发现项并提交建议。建议不会改变发现项状态；接受建议后，会以“根据 AI 建议”的备注写入发现项跟踪和审计日志。配置说明：docs/AI-TRIYAJ.md。
+S	Bağımlılık analizi	依赖项分析
+S	Bağımlılık açıkları, IaC yanlış yapılandırmaları, container imajları ve sırlar.	依赖漏洞、IaC 错误配置、容器镜像和机密。
+S	Bağımlılık bulgusu bulunamadı.	未找到依赖项发现。
+S	Bağımlılık bulgusu durumu güncellendi.	依赖项发现状态已更新。
+S	Bağımlılık bulgusu güncellendi	依赖项发现已更新
+S	Bağımlılık envanteri	依赖项清单
+S	Bağımlılık envanteri (CycloneDX SBOM)	依赖项清单（CycloneDX SBOM）
+S	Bağımlılık güvenliği (OSV-Scanner, çevrimdışı)	依赖项安全（OSV-Scanner，离线）
+S	Bağımlılık iyileştirme planı	依赖项修复计划
+S	Bağımlılık raporu içe aktarıldı	依赖项报告已导入
+S	Bağımlılık uyarıları	依赖项警报
+S	Bağımlılık ve sürüm bildirimi	依赖项与版本披露
+S	Bağımlılık zafiyet erişilebilirlik (Reachability) analizi	依赖漏洞可达性分析
+S	Bağımlılıklar	依赖项
+S	Başarısız	失败
+S	Başarısız eşikler	未通过的阈值
+S	Başarısız tarama	失败的扫描
+S	Analiz başarısız oldu.	分析失败。
+S	Araç bağlama başarısız oldu.	工具关联失败。
+S	Bağlantı hatası oluştu.	发生连接错误。
+S	CSRF doğrulaması başarısız; sayfayı yenileyip yeniden deneyin.	CSRF 验证失败；请刷新页面后重试。
+S	Denetimler yüklenemedi	无法加载审计
+S	Kontroller yüklenemedi	无法加载检查项
+S	Kontroller yükleniyor…	正在加载检查项…
+S	Dosya okuma hatası.	文件读取错误。
+S	Dosya okunamadı: izin veya yol hatası.	无法读取文件：权限或路径错误。
+S	Doğrulama başarısız.	验证失败。
+S	Doğrulama kodu hatalı.	验证码不正确。
+S	Giriş başarısız.	登录失败。
+S	Giriş etkin değil.	登录功能未启用。
+S	Giriş etkin değil; Sniper yerel erişimle açık. Ana sayfaya yönlendiriliyorsunuz.	登录功能未启用；Sniper 对本地访问开放。正在跳转到主页。
+S	Girişi etkinleştir	启用登录
+S	Giriş zaten etkin.	登录功能已启用。
+S	Diğer tüm oturumları kapat	注销其他所有会话
+S	Eşzamanlı oturumlar	并发会话
+S	Açık onay gerekli	需要明确批准
+S	Açık tarama yetkisi onayı gerekli.	需要明确确认扫描授权。
+S	Açık yerel tarama ve kanıt bağlama onayı gerekli.	需要明确批准本地扫描和证据关联。
+S	Açık yetki ve aktif tarama onayı gerekli.	需要明确授权和主动扫描批准。
+S	Bu hedef için yazılı yetkim var	我拥有对此目标的书面授权
+S	Bu işlem için yetkiniz yok.	您无权执行此操作。
+S	Kaydetmek için onay kutusunu işaretleyin.	请勾选批准框以保存。
+S	Etkin denetim (yetki ve kapsam kayıtlı)	有效审计（已记录授权和范围）
+S	Etkin ve yetkili denetim seçin	选择有效且已授权的审计
+S	Etkin, yetkili ve maskeli kanıt onaylı denetim gerekli.	需要有效、已授权且批准使用脱敏证据的审计。
+S	Konteyner ayrıcalıklı (root) kullanıcıyla çalışıyor	容器正以特权（root）用户运行
+S	Konteyner içine docker.sock soketi bağlanmış	容器中挂载了 docker.sock 套接字
+S	Konteyner taban imajı sabitlenmemiş (:latest)	容器基础镜像未固定（:latest）
+S	Konteyner, Kubernetes ve CI/CD güvenliği	容器、Kubernetes 与 CI/CD 安全
+S	Konteyner/Pod ana makine ağ uzayını (hostNetwork) paylaşıyor	容器／Pod 共享主机网络命名空间（hostNetwork）
+S	Konteyner/Pod privileged (tam yetkili) modda çalışıyor	容器／Pod 以 privileged（完全特权）模式运行

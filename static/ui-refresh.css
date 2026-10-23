@@ -18,6 +18,16 @@
 }
 html { scroll-padding-top: 108px; }
 body { font-size: 14px; line-height: 1.5; background: #f4f7f8; }
+html:is([lang="ja"],[lang="ko"],[lang="zh-CN"]) body {
+  font-family: Inter, "Noto Sans CJK JP", "Noto Sans CJK KR", "Noto Sans CJK SC", system-ui, sans-serif;
+  line-break: strict;
+}
+html:is([lang="ja"],[lang="ko"],[lang="zh-CN"]) :is(.hero-row h1,.page-intro h1) {
+  font-family: inherit; letter-spacing: 0; line-height: 1.18; overflow-wrap: anywhere;
+}
+html:is([lang="ja"],[lang="ko"],[lang="zh-CN"]) :is(.nav-item,.button,.mini-button,.text-button,.ui-quick-link,.panel-head) {
+  word-break: normal; overflow-wrap: anywhere;
+}
 button, input, select, textarea { font-family: inherit; }
 button, a, input, textarea, select, summary { -webkit-tap-highlight-color: transparent; }
 button, a { touch-action: manipulation; }
@@ -78,7 +88,7 @@ button, a { touch-action: manipulation; }
 .top-actions { gap: 17px; min-width: 0; }
 .lang-switch { gap: 7px; }
 .lang-switch-label { display: inline-flex; }
-.lang-switch select { border-radius: 8px; padding: 8px 10px; background: #f7f9fa; font-size: 11px; }
+.lang-switch select { width: auto; min-width: 108px; border-radius: 8px; padding: 8px 10px; background: #f7f9fa; font-size: 11px; }
 .service-status { font-size: 11px; white-space: nowrap; }
 .service-status i { box-shadow: 0 0 0 4px #1db77b14; }
 .button, .mini-button, .text-button, .icon-button {
@@ -536,7 +546,7 @@ pre { max-width: 100%; overflow-x: auto; }
   .crumb { display: none; }
   .top-actions { margin-left: auto; }
   .top-actions .button { padding: 9px 12px; min-height: 40px; font-size: 11px; }
-  .lang-switch select { max-width: 92px; padding: 8px 6px; }
+  .lang-switch select { min-width: 0; width: min(104px,28vw); max-width: 104px; padding: 8px 6px; }
   .lang-switch-label { display: none; }
   .hero-row { grid-template-columns: 1fr; gap: 22px; padding: 27px 25px; border-radius: 18px; }
   .hero-row h1 { font-size: 31px; line-height: 1.15; }
