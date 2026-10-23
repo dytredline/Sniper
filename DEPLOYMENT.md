@@ -35,9 +35,15 @@ install the exact runtime dependency lock:
 python3 -m venv .venv
 . .venv/bin/activate
 python3 -m pip install -r requirements-runtime.lock
-python3 .github/scripts/validate-community-release.py --scan-release-tree
+python3 .github/scripts/validate-community-release.py
+sha256sum --check COMMUNITY-SOURCE-MANIFEST.sha256
 python3 scripts/sniper-mcp --help
 ```
+
+The plain validator is appropriate for a Git checkout, which also contains
+`.git` and may contain local caches. Use `--scan-release-tree` only on a freshly
+assembled source directory as shown under **Source release assembly** below;
+that stricter mode rejects every unlisted runtime artifact.
 
 Start the loopback web service with a new data directory:
 

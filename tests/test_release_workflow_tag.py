@@ -75,6 +75,10 @@ class TestCommunityRelease(unittest.TestCase):
             self.assertEqual(built.returncode, 0, built.stderr)
             self.assertFalse((output / "RELEASE.json").exists())
             self.assertEqual((output / "COMMUNITY_VERSION").read_text(encoding="utf-8").strip(), "1.0.0")
+            self.assertEqual(
+                (output / "COMMUNITY-RELEASE-LIMITATIONS.md").read_text(encoding="utf-8"),
+                (ROOT / "COMMUNITY-RELEASE-LIMITATIONS.md").read_text(encoding="utf-8"),
+            )
 
             version_text = (output / "version.py").read_text(encoding="utf-8")
             self.assertIn('__version__ = "1.0.0"', version_text)
