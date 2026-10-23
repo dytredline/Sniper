@@ -479,6 +479,32 @@ def _is_installed_live_db(path: Path) -> bool:
         return True
 
 
+def _bind_community_runtimes(db_path: Path) -> dict[str, Any] | None:
+    """Bind verified checkout runtimes without making optional engines a server prerequisite."""
+    data_dir = db_path.expanduser().resolve(strict=False).parent
+    os.environ["SNIPER_DATA_DIR"] = str(data_dir)
+    prior = {key: value for key, value in os.environ.items() if key.startswith("SNIPER_")}
+    try:
+        from tool_runtime_autodiscover import autodiscover_and_bind_runtimes
+
+        result = autodiscover_and_bind_runtimes(apply_env=True, persist=True)
+        if not isinstance(result, dict) or result.get("format") != "sniper-runtime-autodiscover-v1" \
+                or type(result.get("bound_tool_count")) is not int:
+            raise ValueError("invalid runtime discovery result")
+    except Exception as exc:
+        # Discovery is optional, but a partial/invalid result must not leave new
+        # tool bindings in the MCP process or the worker environment.
+        for key in tuple(os.environ):
+            if key.startswith("SNIPER_") and key not in prior:
+                os.environ.pop(key, None)
+        for key, value in prior.items():
+            os.environ[key] = value
+        _log(f"Community araç çalışma zamanı kullanılamıyor: {type(exc).__name__}")
+        return None
+    _log(f"Community araç çalışma zamanı: {result['bound_tool_count']} motor bağlı")
+    return result
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="sniper-mcp", description="Sniper triyaj MCP sunucusu (stdio)")
     parser.add_argument("--db", default=None,
@@ -519,6 +545,8 @@ def main(argv: list[str] | None = None) -> int:
     except (OSError, ValueError) as exc:
         _log(f"Community veritabanı açılamadı: {type(exc).__name__}")
         return 2
+    if mode == COMMUNITY_MODE:
+        _bind_community_runtimes(db_path)
     user = None
     if args.token_file:
         try:

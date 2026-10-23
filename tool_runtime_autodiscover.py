@@ -15,9 +15,15 @@ import re
 import stat
 import tempfile
 import threading
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
+from community_tool_installer import (
+    INSTALL_MANIFEST,
+    InstallError,
+    current_platform_key,
+    load_lock,
+)
 from tool_pins import PINS
 from tool_runtime_readiness import runtime_readiness_payload
 
@@ -28,6 +34,7 @@ _BIND_LOCK = threading.Lock()
 PINS_FILE = "runtime-bindings-pins.json"
 PINS_FORMAT = "sniper-runtime-bindings-pins-v1"
 _MAX_PINS_BYTES = 64_000
+_MAX_INSTALL_MANIFEST_BYTES = 1_000_000
 
 
 def _pins_path() -> Path | None:
@@ -150,6 +157,114 @@ def _first_valid_dir(candidates: list[Path]) -> Path | None:
     return None
 
 
+def _safe_relative_path(value: Any) -> PurePosixPath | None:
+    if not isinstance(value, str) or not value or len(value) > 512:
+        return None
+    relative = PurePosixPath(value)
+    if relative.is_absolute() or not relative.parts \
+            or any(part in {"", ".", ".."} for part in relative.parts):
+        return None
+    return relative
+
+
+def _load_secure_install_manifest(root: Path) -> dict[str, Any] | None:
+    """Read an owner-controlled installer manifest without following a leaf symlink."""
+    path = root / INSTALL_MANIFEST
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
+    except OSError:
+        return None
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_mode & 0o022:
+            return None
+        raw = os.read(fd, _MAX_INSTALL_MANIFEST_BYTES + 1)
+    finally:
+        os.close(fd)
+    if not raw or len(raw) > _MAX_INSTALL_MANIFEST_BYTES:
+        return None
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _trusted_runtime_member(root: Path, relative: PurePosixPath) -> Path | None:
+    """Resolve a runtime member only when every existing component is non-symlink."""
+    try:
+        if root.resolve(strict=True) != root.absolute() or not _is_regular_dir(root):
+            return None
+    except OSError:
+        return None
+    current = root
+    for part in relative.parts:
+        current = current / part
+        try:
+            if stat.S_ISLNK(current.lstat().st_mode):
+                return None
+        except OSError:
+            return None
+    return current if _is_regular_file(current, executable=True) else None
+
+
+def _verified_community_runtimes(
+    app_dir: Path, roots: list[Path]
+) -> dict[str, tuple[Path, str]]:
+    """Bind installer-managed Community tools only when lock and manifest provenance agree."""
+    lock_path = app_dir / "COMMUNITY-TOOLS.lock.json"
+    lock_digest = _sha256_file(lock_path)
+    if lock_digest is None:
+        return {}
+    try:
+        lock = load_lock(lock_path)
+        platform_key = current_platform_key()
+    except InstallError:
+        return {}
+    selected = lock.get("profiles", {}).get("local")
+    if not isinstance(selected, list) or any(not isinstance(item, str) for item in selected):
+        return {}
+
+    verified: dict[str, tuple[Path, str]] = {}
+    for root in roots:
+        if len(verified) == len(selected):
+            break
+        manifest = _load_secure_install_manifest(root)
+        if manifest is None or manifest.get("schema") != lock.get("schema") \
+                or manifest.get("lock_sha256") != lock_digest:
+            continue
+        records = manifest.get("tools")
+        if not isinstance(records, dict):
+            continue
+        for tool_id in selected:
+            if tool_id in verified:
+                continue
+            tool = lock.get("tools", {}).get(tool_id)
+            record = records.get(tool_id)
+            if not isinstance(tool, dict) or not isinstance(record, dict):
+                continue
+            artifact = tool.get("platforms", {}).get(platform_key)
+            destination = _safe_relative_path(tool.get("destination"))
+            binary_rel = _safe_relative_path(tool.get("binary"))
+            if not isinstance(artifact, dict) or destination is None or binary_rel is None:
+                continue
+            installed_rel = destination / binary_rel
+            if record.get("platform") != platform_key \
+                    or record.get("version") != tool.get("version") \
+                    or record.get("license") != tool.get("license") \
+                    or record.get("artifact_sha256") != artifact.get("sha256") \
+                    or record.get("binary") != str(installed_rel) \
+                    or record.get("env_binary") != tool.get("env_binary") \
+                    or record.get("env_sha256") != tool.get("env_sha256"):
+                continue
+            binary = _trusted_runtime_member(root, installed_rel)
+            digest = _sha256_file(binary) if binary is not None else None
+            if digest is None or digest != record.get("binary_sha256"):
+                continue
+            verified[tool_id] = (binary, digest)
+    return verified
+
+
 def _read_systemd_dropin_defaults(dropin_dir: Path) -> dict[str, str]:
     discovered: dict[str, str] = {}
     if not _is_regular_dir(dropin_dir):
@@ -207,6 +322,8 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
     if env_portable:
         portable_roots.insert(0, Path(env_portable))
 
+    community_runtimes = _verified_community_runtimes(app_dir, portable_roots)
+
     dropin_defaults = _read_systemd_dropin_defaults(
         home / ".config" / "systemd" / "user" / "sniper.service.d"
     )
@@ -215,51 +332,21 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
     tool_results: list[dict[str, Any]] = []
 
     # 1. Opengrep / Semgrep
-    opengrep_bin = _first_valid_file(
-        ([Path(dropin_defaults["SNIPER_OPENGREP_BINARY"])] if "SNIPER_OPENGREP_BINARY" in dropin_defaults else [])
-        + [r / "opengrep-1.30.1" / "opengrep" for r in portable_roots]
-        + [home / ".local" / "bin" / "opengrep", Path("/usr/local/bin/opengrep"), Path("/usr/bin/opengrep")],
-        executable=True,
-    )
-    semgrep_bin = _first_valid_file(
-        ([Path(dropin_defaults["SNIPER_SEMGREP_BINARY"])] if "SNIPER_SEMGREP_BINARY" in dropin_defaults else [])
-        + [r / "semgrep" / "bin" / "semgrep" for r in portable_roots]
-        + [r / "semgrep-1.180.0" / "bin" / "semgrep" for r in portable_roots]
-        + [r / "semgrep-1.93.0" / "bin" / "semgrep" for r in portable_roots]
-        + [home / ".local" / "bin" / "semgrep", Path("/usr/local/bin/semgrep"), Path("/usr/bin/semgrep")],
-        executable=True,
-    )
-    semgrep_rules = _first_valid_file(
-        ([Path(dropin_defaults["SNIPER_SEMGREP_RULES"])] if "SNIPER_SEMGREP_RULES" in dropin_defaults else [])
-        + [r / "semgrep" / "rules" / "no-eval.yaml" for r in portable_roots]
-        + [r / "semgrep-1.180.0-smoke" / "rules" / "no-eval.yaml" for r in portable_roots]
-        + [r / "semgrep-1.93.0" / "sniper-local-rules.yml" for r in portable_roots],
-        executable=False,
-    )
-    opengrep_sha = _sha256_file(opengrep_bin) if opengrep_bin else None
+    opengrep_runtime = community_runtimes.get("opengrep")
+    opengrep_bin = opengrep_runtime[0] if opengrep_runtime else None
+    opengrep_sha = opengrep_runtime[1] if opengrep_runtime else None
     if opengrep_bin and opengrep_sha:
         bindings["SNIPER_OPENGREP_BINARY"] = str(opengrep_bin)
         bindings["SNIPER_OPENGREP_SHA256"] = opengrep_sha
-    elif semgrep_bin and semgrep_rules:
-        bindings["SNIPER_SEMGREP_BINARY"] = str(semgrep_bin)
-        semgrep_sha = _sha256_file(semgrep_bin)
-        if semgrep_sha:
-            bindings["SNIPER_SEMGREP_SHA256"] = semgrep_sha
-        bindings["SNIPER_SEMGREP_RULES"] = str(semgrep_rules)
     tool_results.append({
         "id": "semgrep",
-        "bound": bool((opengrep_bin and opengrep_sha) or (semgrep_bin and semgrep_rules)),
-        "mode": "pinned_opengrep_or_semgrep_rulepack",
+        "bound": bool(opengrep_bin and opengrep_sha),
+        "mode": "locked_community_opengrep",
     })
 
     # 2. Trivy binary; the offline vulnerability DB is an optional, separately pinned input.
-    trivy_bin = _first_valid_file(
-        ([Path(dropin_defaults["SNIPER_TRIVY_BINARY"])] if "SNIPER_TRIVY_BINARY" in dropin_defaults else [])
-        + [r / "trivy" / "trivy" for r in portable_roots]
-        + [r / "trivy-0.75.0" / "trivy" for r in portable_roots]
-        + [home / ".local" / "bin" / "trivy", Path("/usr/local/bin/trivy"), Path("/usr/bin/trivy")],
-        executable=True,
-    )
+    trivy_runtime = community_runtimes.get("trivy")
+    trivy_bin = trivy_runtime[0] if trivy_runtime else None
     trivy_cache = _first_valid_dir(
         ([Path(dropin_defaults["SNIPER_TRIVY_VULN_CACHE_DIR"])] if "SNIPER_TRIVY_VULN_CACHE_DIR" in dropin_defaults else [])
         + [r / "trivy-db" / "cache" for r in portable_roots]
@@ -271,7 +358,7 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
         trivy_db_sha = _sha256_file(trivy_cache / "db" / "trivy.db")
     if trivy_bin:
         bindings["SNIPER_TRIVY_BINARY"] = str(trivy_bin)
-        trivy_sha = _sha256_file(trivy_bin)
+        trivy_sha = trivy_runtime[1]
         if trivy_sha:
             bindings["SNIPER_TRIVY_BINARY_SHA256"] = trivy_sha
             bindings["SNIPER_TRIVY_SHA256"] = trivy_sha
@@ -285,16 +372,11 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
     })
 
     # 3. Gitleaks
-    gitleaks_bin = _first_valid_file(
-        ([Path(dropin_defaults["SNIPER_GITLEAKS_BINARY"])] if "SNIPER_GITLEAKS_BINARY" in dropin_defaults else [])
-        + [r / "gitleaks" / "gitleaks" for r in portable_roots]
-        + [r / "gitleaks-8.30.1-stdlib" / "gitleaks" for r in portable_roots]
-        + [home / ".local" / "bin" / "gitleaks", Path("/usr/local/bin/gitleaks"), Path("/usr/bin/gitleaks")],
-        executable=True,
-    )
+    gitleaks_runtime = community_runtimes.get("gitleaks")
+    gitleaks_bin = gitleaks_runtime[0] if gitleaks_runtime else None
     if gitleaks_bin:
         bindings["SNIPER_GITLEAKS_BINARY"] = str(gitleaks_bin)
-        gitleaks_sha = _sha256_file(gitleaks_bin)
+        gitleaks_sha = gitleaks_runtime[1]
         if gitleaks_sha:
             bindings["SNIPER_GITLEAKS_SHA256"] = gitleaks_sha
     tool_results.append({
@@ -304,16 +386,11 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
     })
 
     # 4. TruffleHog
-    trufflehog_bin = _first_valid_file(
-        ([Path(dropin_defaults["SNIPER_TRUFFLEHOG_BINARY"])] if "SNIPER_TRUFFLEHOG_BINARY" in dropin_defaults else [])
-        + [r / "trufflehog" / "trufflehog" for r in portable_roots]
-        + [r / "trufflehog-3.99.0-unpacked" / "trufflehog" for r in portable_roots]
-        + [home / ".local" / "bin" / "trufflehog", Path("/usr/local/bin/trufflehog"), Path("/usr/bin/trufflehog")],
-        executable=True,
-    )
+    trufflehog_runtime = community_runtimes.get("trufflehog")
+    trufflehog_bin = trufflehog_runtime[0] if trufflehog_runtime else None
     if trufflehog_bin:
         bindings["SNIPER_TRUFFLEHOG_BINARY"] = str(trufflehog_bin)
-        trufflehog_sha = _sha256_file(trufflehog_bin)
+        trufflehog_sha = trufflehog_runtime[1]
         if trufflehog_sha:
             bindings["SNIPER_TRUFFLEHOG_SHA256"] = trufflehog_sha
     tool_results.append({
@@ -340,14 +417,9 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
     })
 
     # 6. Nuclei
-    nuclei_bin = _first_valid_file(
-        ([Path(dropin_defaults["SNIPER_NUCLEI_BINARY"])] if "SNIPER_NUCLEI_BINARY" in dropin_defaults else [])
-        + [r / "nuclei" / "nuclei" for r in portable_roots]
-        + [r / "nuclei-3.11.1" / "nuclei" for r in portable_roots]
-        + [home / ".local" / "bin" / "nuclei", Path("/usr/local/bin/nuclei"), Path("/usr/bin/nuclei")],
-        executable=True,
-    )
-    nuclei_sha = _sha256_file(nuclei_bin) if nuclei_bin else None
+    nuclei_runtime = community_runtimes.get("nuclei")
+    nuclei_bin = nuclei_runtime[0] if nuclei_runtime else None
+    nuclei_sha = nuclei_runtime[1] if nuclei_runtime else None
     if nuclei_bin and nuclei_sha:
         bindings["SNIPER_NUCLEI_BINARY"] = str(nuclei_bin)
         bindings["SNIPER_NUCLEI_SHA256"] = nuclei_sha
@@ -562,12 +634,7 @@ def portable_bundle_manifest() -> dict[str, Any]:
     roots = [app_dir / "runtimes", Path.home() / ".local" / "state" / "sniper-tool-runtimes"]
     if configured_root:
         roots.insert(0, Path(configured_root).expanduser())
-
-    def bundle_present(*relatives: str) -> bool:
-        return all(any(
-            (root / relative).exists() and not (root / relative).is_symlink()
-            for root in roots
-        ) for relative in relatives)
+    verified = _verified_community_runtimes(app_dir, roots)
 
     components = [
         {
@@ -590,7 +657,7 @@ def portable_bundle_manifest() -> dict[str, Any]:
             "requires_docker": False,
             "approx_size_mb": 95,
             "ready_on_this_host": ready_by_tool.get("nuclei", False),
-            "bundle_present": bundle_present("nuclei-3.11.1/nuclei"),
+            "bundle_present": "nuclei" in verified,
         },
         {
             "id": "trivy",
@@ -601,7 +668,7 @@ def portable_bundle_manifest() -> dict[str, Any]:
             "requires_docker": False,
             "approx_size_mb": 160,
             "ready_on_this_host": ready_by_tool.get("trivy", False),
-            "bundle_present": bundle_present("trivy-0.75.0/trivy"),
+            "bundle_present": "trivy" in verified,
         },
         {
             "id": "gitleaks",
@@ -612,7 +679,7 @@ def portable_bundle_manifest() -> dict[str, Any]:
             "requires_docker": False,
             "approx_size_mb": 18,
             "ready_on_this_host": ready_by_tool.get("gitleaks", False),
-            "bundle_present": bundle_present("gitleaks-8.30.1-stdlib/gitleaks"),
+            "bundle_present": "gitleaks" in verified,
         },
         {
             "id": "trufflehog",
@@ -623,7 +690,7 @@ def portable_bundle_manifest() -> dict[str, Any]:
             "requires_docker": False,
             "approx_size_mb": 85,
             "ready_on_this_host": ready_by_tool.get("trufflehog", False),
-            "bundle_present": bundle_present("trufflehog-3.99.0-unpacked/trufflehog"),
+            "bundle_present": "trufflehog" in verified,
         },
         {
             "id": "semgrep",
@@ -634,65 +701,7 @@ def portable_bundle_manifest() -> dict[str, Any]:
             "requires_docker": False,
             "approx_size_mb": 140,
             "ready_on_this_host": ready_by_tool.get("semgrep", False),
-            "bundle_present": bundle_present("opengrep-1.30.1/opengrep"),
-        },
-        {
-            "id": "osv-scanner",
-            "name": "OSV-Scanner 2.7.0 + Çevrimdışı npm Zafiyet Veritabanı",
-            "bundle_relpath": "runtimes/osv-scanner/ + runtimes/osv-db/",
-            "packaging_type": "single_static_binary_and_offline_db",
-            "requires_separate_install": False,
-            "requires_docker": False,
-            "approx_size_mb": 45,
-            "ready_on_this_host": ready_by_tool.get("osv-scanner", False),
-            "bundle_present": bundle_present("osv-scanner/osv-scanner", "osv-db/NPM-OFFLINE-DB-MANIFEST-v2.json"),
-        },
-        {
-            "id": "testssl",
-            "name": "testssl.sh 3.2.4 (Taşınabilir TLS / Şifre Takımı Denetleyici)",
-            "bundle_relpath": "runtimes/testssl-3.2.4/testssl.sh",
-            "packaging_type": "portable_script_bundle",
-            "requires_separate_install": False,
-            "requires_docker": False,
-            "approx_size_mb": 5,
-            "ready_on_this_host": ready_by_tool.get("testssl", False),
-            "bundle_present": bundle_present("testssl-3.2.4/testssl.sh"),
-        },
-        {
-            "id": "npm-audit",
-            "name": "Taşınabilir Node.js 22 + npm CLI (Canlı Kilit Dosyası Denetimi)",
-            "bundle_relpath": "runtimes/node-v22.23.4/",
-            "packaging_type": "portable_node_runtime",
-            "requires_separate_install": False,
-            "requires_docker": False,
-            "approx_size_mb": 110,
-            "ready_on_this_host": ready_by_tool.get("npm-audit", False),
-            "bundle_present": bundle_present("node-v22.23.4/bin/node"),
-        },
-        {
-            "id": "owasp-zap",
-            "name": "OWASP ZAP 2.17.0 + Taşınabilir OpenJDK 17 (Pasif / Spider / İzinli Aktif)",
-            "bundle_relpath": "runtimes/zap-2.17.0-arm64/ (ZAP_2.17.0 + java17)",
-            "packaging_type": "portable_java_and_zap_runtime",
-            "requires_separate_install": False,
-            "requires_docker": False,
-            "approx_size_mb": 420,
-            "ready_on_this_host": ready_by_tool.get("owasp-zap", False),
-            "bundle_present": bundle_present("zap-2.17.0-arm64/zap/zap-2.17.0.jar"),
-        },
-        {
-            "id": "nmap",
-            "name": "Nmap 7.94 (Sınırlandırılmış TCP Port ve Hafif Servis Sürüm Taraması)",
-            "bundle_relpath": "tools/nmap-7.94/bin/nmap",
-            "packaging_type": "portable_binary_or_system_package",
-            "requires_separate_install": False,
-            "requires_docker": False,
-            "approx_size_mb": 25,
-            "ready_on_this_host": ready_by_tool.get("nmap", False),
-            "bundle_present": any(
-                path.is_file() and not path.is_symlink()
-                for path in (Path("/usr/bin/nmap"), Path("/usr/local/bin/nmap"))
-            ),
+            "bundle_present": "opengrep" in verified,
         },
     ]
 
@@ -702,7 +711,10 @@ def portable_bundle_manifest() -> dict[str, Any]:
 
     return {
         "format": "sniper-portable-bundle-manifest-v1",
-        "zero_setup_supported": all(bool(component["bundle_present"]) for component in components),
+        "zero_setup_supported": all(
+            bool(component["bundle_present"]) and bool(component["ready_on_this_host"])
+            for component in components
+        ),
         "requires_manual_env_configuration": False,
         "requires_docker_for_core_and_local_tools": False,
         "installer_command": (
