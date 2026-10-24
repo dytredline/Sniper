@@ -53,6 +53,14 @@ kullanılır; Windows/WSL2 gerçek cihaz doğrulaması ile sözleşme testlerini
 [dağıtım rehberinde](../DEPLOYMENT.md) belirtilir. Güncel komutlar için
 [ana kurulum bölümünü](../README.md#source-checkout-setup) kullanın.
 
+### Mobil uygulama güvenlik açıklarını bulup kapatmaya yardımcı olur mu?
+
+Evet. Android, iOS, Flutter ve React Native projelerinde desteklenen kod, manifest, bağımlılık,
+API ve yayın yapılandırmalarını inceleyerek açıkları gidermek için öncelikli düzeltme adımları
+oluşturmanıza yardımcı olur. Bulgular ve yapay zekâ destekli açıklamalar geliştiricinin düzeltme
+çalışmasını destekler. Her mobil uygulama ikilisinin tarandığı, bütün açıkların otomatik kapatıldığı
+veya mağaza onayının garanti edildiği anlamına gelmez; kapsam desteklenen girdilere bağlıdır.
+
 ### Güvenlik açığı bulamazsa sistem tamamen güvenli midir?
 
 Hayır. Desteklenmeyen girdiler, çalıştırılmamış kontroller ve çalışma zamanı davranışları olabilir.

@@ -304,6 +304,15 @@ The relevant engines, pinned catalogs or vulnerability data, runtime readiness, 
 See the [website/API workflow](docs/USE-CASES.md#plan-an-authorized-website-or-api-action) and
 [capability boundaries](docs/CAPABILITIES.md); no tool can guarantee discovery of every vulnerability.
 
+### Can Sniper help find and fix mobile application vulnerabilities?
+
+Sniper helps teams review supported Android, iOS, Flutter, and React Native code, manifests, dependencies, API
+paths, and release configuration. It turns evidence into prioritized remediation work before an App Store or Google
+Play release. Developers can use the findings and AI-assisted explanations to prepare changes and review them.
+Coverage depends on supported inputs: this is not universal mobile-binary scanning, automatic repair of every
+vulnerability, or an app-store approval guarantee. See [mobile release preflight](#review-before-you-ship) and the
+[capability map](docs/CAPABILITIES.md).
+
 ### Does Sniper replace a penetration test or guarantee a secure release?
 
 No. It produces evidence and review candidates, including potential authorization and IDOR issues. A qualified
