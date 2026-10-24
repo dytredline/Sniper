@@ -47,11 +47,15 @@ sonra uygulanır. [MCP rehberi](COMMUNITY-MCP.md) güven sınırlarını ve kuru
 ### Windows, macOS ve Linux üzerinde kullanılabilir mi?
 
 Python 3.12 test edilen yorumlayıcıdır. Tam yerel beş motorlu kurulum Linux ARM64 ve x86-64 üzerinde
-desteklenir. macOS Apple Silicon için Docker Desktop beş motor profili doğrulanmıştır; yerel macOS
-kaynak kurulumu deneysel ve çekirdek özelliklerle sınırlıdır. Windows'ta WSL2 veya Linux konteynerleri
-kullanılır; Windows/WSL2 gerçek cihaz doğrulaması ile sözleşme testlerinin sınırı
-[dağıtım rehberinde](../DEPLOYMENT.md) belirtilir. Güncel komutlar için
-[ana kurulum bölümünü](../README.md#source-checkout-setup) kullanın.
+desteklenir. **macOS Apple Silicon üzerinde hem yerel kaynak kurulumu (`python3 scripts/setup-community --core-only`)
+hem de beş motorlu Docker Desktop profili (`./scripts/deploy-community-tools --accept-third-party-licenses`)
+gerçek macOS donanımında test edilmiş, doğrulanmış ve desteklenmektedir** (macOS kurulumu deneysel değildir).
+Yerel macOS kurulumu `.venv`, yerleşik SAST/SCA/IaC analizörlerini, `sniper-mcp`, `sniper-project-audit` ve
+yerel loopback web arayüzünü doğrudan çalıştırır; beş isteğe bağlı motor ise Docker Desktop profili ile
+kullanılır. Windows'ta WSL2 veya Linux konteynerleri kullanılır; Windows/WSL2 sözleşme testlerinin sınırı
+[dağıtım rehberinde](../DEPLOYMENT.md) ve macOS doğrulama kanıtları [doğrulama kayıtlarında](../VALIDATION.md)
+ve [macOS doğrulama ve taranan depolar raporunda](SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md) belirtilir.
+Güncel komutlar için [ana kurulum bölümünü](../README.md#source-checkout-setup) kullanın.
 
 ### Mobil uygulama güvenlik açıklarını bulup kapatmaya yardımcı olur mu?
 
@@ -77,6 +81,8 @@ bir yapay zekâ istemcisi, seçilen kod parçalarını veya bulguları kendi mod
 ## Kaynaklar, lisans ve güvenli kullanım
 
 - [Kaynak kod ve sürümler](https://github.com/dytredline/Sniper)
+- [macOS Apple Silicon kurulum doğrulaması ve Sniper ile taranan 8 açık kaynak depo raporu](SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md)
+- [Doğrulama kanıtları (macOS yerel + Docker Desktop)](../VALIDATION.md) ve [dağıtım rehberi](../DEPLOYMENT.md)
 - [Kullanım senaryoları](USE-CASES.md) ve [yetenekler](CAPABILITIES.md)
 - [İsteğe bağlı motorlar](COMMUNITY-TOOLS.md): Nuclei, Trivy, Gitleaks, TruffleHog ve Opengrep; kurulum, lisans ve hazırlık kontrollerine tabidir.
 - [Apache-2.0 lisansı](../LICENSE), [katkı rehberi](../CONTRIBUTING.md) ve [yazılıma atıf bilgileri](../CITATION.cff)

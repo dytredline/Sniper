@@ -127,10 +127,12 @@ The installer verifies complete artifacts before extraction and does not execute
 [COMMUNITY-TOOLS.md](COMMUNITY-TOOLS.md) for the rootless and prepared-offline procedures.
 
 The full native five-engine setup is Linux-only. Native Windows is rejected and should use WSL2 or Docker Desktop's
-Linux containers. macOS has an experimental `--core-only` source path without the five engines. The default container
-is also core-only; `scripts/build-community-tools-image --accept-third-party-licenses` selects the separate,
-license-gated five-engine Linux target. These profiles are contract-tested, but this release does not claim a real
-Windows/macOS host execution. Exact commands and limitations are in [DEPLOYMENT.md](../DEPLOYMENT.md).
+Linux containers. On macOS (Apple Silicon), both the native `--core-only` source setup (`python3 scripts/setup-community --core-only`)
+and the license-gated five-engine Docker Desktop profile (`./scripts/deploy-community-tools --accept-third-party-licenses`)
+are supported and verified on real macOS hardware. The default container is core-only;
+`scripts/build-community-tools-image --accept-third-party-licenses` selects the separate, license-gated five-engine
+Linux target. Windows/WSL2 container profiles are contract-tested. Exact commands and limitations are in
+[DEPLOYMENT.md](../DEPLOYMENT.md) and [VALIDATION.md](../VALIDATION.md).
 
 ## Using Sniper with an AI client
 

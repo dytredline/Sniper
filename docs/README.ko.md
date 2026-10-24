@@ -77,10 +77,12 @@ SBOM, CI 구성을 하나의 출시 전 화면에서 보고 발견 사항 설명
 
 ## 설치
 
-테스트된 인터프리터는 Python 3.12입니다. Community v1의 전체 네이티브 설치와 선택형 엔진 5개는
-Linux ARM64/x86-64에서만 지원됩니다. Windows 네이티브 설치는 지원하지 않으며 macOS는 실험적인
-`--core-only` 소스 설치만 제공합니다. Windows/macOS Docker Desktop과 WSL2용 Linux 컨테이너 프로필은
-제공되고 계약 테스트를 통과했지만 실제 Windows/macOS 호스트 실행 증거는 아직 없습니다. 지원되는 저장소 루트에서 다음을 실행합니다.
+테스트된 인터프리터는 Python 3.12입니다. Community v1의 전체 네이티브 5개 선택형 엔진 설치는
+Linux ARM64/x86-64에서 지원됩니다. macOS(Apple Silicon)에서는 네이티브 `--core-only` 소스 설치
+(`python3 scripts/setup-community --core-only`)와 Docker Desktop 5개 엔진 프로필
+(`./scripts/deploy-community-tools --accept-third-party-licenses`)이 모두 실제 macOS 장비에서 검증되었으며
+정식 지원됩니다. Windows 네이티브 설치는 지원하지 않으며 WSL2 또는 Docker Desktop의 Linux 컨테이너를
+사용합니다(자세한 검증 증거는 [VALIDATION.md](../VALIDATION.md) 및 [DEPLOYMENT.md](../DEPLOYMENT.md) 참조). 지원되는 저장소 루트에서 다음을 실행합니다.
 
 ```bash
 python3 scripts/setup-community --accept-third-party-licenses

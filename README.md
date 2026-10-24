@@ -114,11 +114,11 @@ human review.
 
 ## Source-checkout setup
 
-On macOS Apple Silicon, the five-engine Community profile is verified with Docker Desktop; use the checked
-`deploy-community-tools` command below to build, start, and verify it. Python 3.12 is the tested interpreter for
-source-checkout use. The complete native Community v1 setup and its five locked optional engines are supported on
-Linux ARM64 and Linux x86-64. Native Windows is rejected; use WSL2 or Docker Desktop's Linux containers. The native
-macOS source setup remains experimental and core-only; Windows/WSL2 remains contract-tested rather than
+On macOS Apple Silicon, **both** the native source setup (`python3 scripts/setup-community --core-only`) and the
+five-engine Docker Desktop profile (`./scripts/deploy-community-tools --accept-third-party-licenses`) are supported
+and verified on real macOS hardware. Python 3.12 is the tested interpreter for source-checkout use. The complete native
+Community v1 setup and its five locked optional engines are supported on Linux ARM64 and Linux x86-64. Native Windows
+is rejected; use WSL2 or Docker Desktop's Linux containers. Windows/WSL2 remains contract-tested rather than
 real-host-tested. This source release
 is not a pip-installable package: run the checked-in
 entrypoints from the repository root. The rootless setup command creates `.venv`, installs the exact-version runtime
@@ -133,7 +133,7 @@ The flag confirms that you reviewed the third-party licenses recorded in `COMMUN
 accepts them implicitly. Use `--wheelhouse` and `--tool-cache-dir` for prepared offline inputs. Setup does not open a
 database, start the web service, or run a scan.
 
-For Linux core-only setup, or the experimental macOS source path without optional engines, use:
+For Linux or macOS native core-only source setup without the optional Linux engine binaries, use:
 
 ```bash
 python3 scripts/setup-community --core-only
@@ -247,6 +247,25 @@ Security Maintainer: **Gökçe Baran Karakamış** ([@dytredline](https://github
 [SUPPORT.md](SUPPORT.md), public changes are recorded in [CHANGELOG.md](CHANGELOG.md), and research attribution is
 available in [CITATION.cff](CITATION.cff).
 
+### Gökçe Baran Karakamış — macOS Kurulum Doğrulaması ve Sniper ile Taranan Depolar Raporu
+
+**Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline)) tarafından gerçekleştirilen **macOS (Apple Silicon) gerçek donanım kurulum ve çalışma doğrulaması** (hem yerel kaynak kurulumu `python3 scripts/setup-community --core-only` hem de 5 motorlu Docker Desktop kurulumu `./scripts/deploy-community-tools --accept-third-party-licenses`) ile **Sniper** tarafından taranan **8 açık kaynak deponun** ayrıntılı kanıt denetimi, yanlış pozitif ayrımı ve saldırı zinciri (*chaining*) analizi aşağıda özetlenmiş ve tam rapor olarak [docs/SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md](docs/SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md) ve [VALIDATION.md](VALIDATION.md) belgelerinde yayınlanmıştır.
+
+> **Önemli Metodoloji ve Sorumlu Bildirim Notu:** Statik analizde tehlikeli bir fonksiyonun (`exec`, `pickle.loads`, `subprocess.Popen`) veya CI/CD deseninin varlığı tek başına doğrulanmış bir ürün CVE'si anlamına gelmez. Bir bulgunun istismar edilebilir açık sayılması için varsayılan/desteklenen dağıtımda **erişilebilirlik**, **güven sınırı (trust boundary) aşımı** ve **saldırgan önkoşulları** birlikte kanıtlanmalıdır. Koordine güvenlik bildirimi (Coordinated Vulnerability Disclosure / CVE-GHSA) süreci devam eden projelere ait bulgular, sorumlu bildirim ilkeleri gereği yamalar yayınlanana kadar bu halka açık listede paylaşılmamaktadır.
+
+| Repo | Sniper SAST / IaC / SCA Özeti | Doğrulanmış Kaynak Kanıtı (Gerçek vs. Yanlış Pozitif) | Tek Başına Kritiklik | Bulgular Birleşiyor mu? (Saldırı Zinciri / Chaining) | Birlikte (Zincir) Kritiklik ve Yayın Durumu |
+| :--- | :--- | :--- | :---: | :--- | :--- |
+| **1. `autogpt`** | `93` eşik aşan (`2K / 39Y`); `142` triyaj | **2 kritik SQLi (`obj.execute`), JWT ve FastAPI `Security()` tamamen yanlış pozitif**; `jobstore_backfill.py` `pickle.loads` + Compose sabit parola + Root Dockerfile gerçek | **Düşük / Orta** | **KOŞULLU HİPOTEZ:** Yalnızca saldırgan DB `apscheduler_jobs` tablosuna yazma erişimi kazanırsa `pickle.loads` + Root konteyner birleşir | **ORTA / YÜKSEK (Koşullu)** *(Doğrulanmış doğrudan açık yok; derinlemesine savunma sertleştirmesi)* |
+| **2. `zitadel`** | `67` eşik aşan (`8K / 42Y`); `286` triyaj | **8 kritik SQLi/`exec` tamamen yanlış pozitif**; `deploy/compose/` altında 3 `docker.sock` bağlaması ve dokümantasyon örneğinde `TLS_REJECT=0` gerçek | **Düşük / Orta** | **HAYIR (Farklı Örnekler):** `docker.sock` (`deploy/compose/`) ile `TLS_REJECT=0` (`apps/docs/...`) farklı compose dosyalarındadır | **DÜŞÜK / ORTA** *(Geliştirme/örnek dağıtım sertleştirmesi; ürün CVE'si değil)* |
+| **3. `nextcloud-mcp`** | `59` eşik aşan (`SAST 1K/6Y`, `IaC 7Y`, `SCA 5K/40Y`) | **`token_utils.py` JWT ve `login_flow.py:192` `poll_endpoint` SSRF %100 yanlış pozitif** (`initiate()` satır 130 `_rewrite_to_nextcloud_host` ile origin'i sabitler); `pact.yml` `pull_request` + `same-repo` korumalı | **Düşük / Orta (SCA)** | **HAYIR:** Tüm birinci-parti SAST/CI bulguları ya yanlış pozitif ya da `same-repo` korumalıdır; yalnız `uv.lock` SCA kayıtları mevcuttur | **DÜŞÜK / ORTA (SCA)** *(Doğrulanmış birinci-parti kod açığı yok)* |
+| **4. `mcpjam-inspector`** | `122` eşik aşan (`SAST 12K/8Y`, `SCA 6K/96Y`) | **20 K/Y SAST bulgusunun 18'i (%90) yanlış pozitif** (14 JSDoc yorumu, 2 `.d.ts`, 2 UI etiketi); 2'si kasıtlı `new Function` / E2B; `pr-preview.yml` `same-repo` korumalı | **Düşük / Orta** | **HAYIR:** Dış fork PR'lar engellendiği için dış saldırgan CI/CD zinciri oluşmaz; aynı-repo dal adı interpolasyonu sertleştirilmelidir | **DÜŞÜK / ORTA** *(İç CI sertleştirmesi ve SCA güncellemesi)* |
+| **5. `codebase-memory-mcp`** | `32` eşik aşan (`SAST 17K/7Y`, `SCA 8Y`) | **24 K/Y SAST bulgusunun tamamı (%100) yanlış pozitif veya kontrollü iç çağrı** (`store.c` statik DDL, `c_lsp.h` yorum, `mcp.c` `git` argv); `http_server.c` `localhost` CORS/Host korumalı | **Düşük** | **HAYIR:** `http_server.c` yabancı origin'lere CORS başlığı dönmez ve DNS rebinding'i reddeder | **DÜŞÜK** *(Doğrulanmış birinci-parti kod açığı yok)* |
+| **6. `gitlab-mcp-server`** | `5` eşik aşan (`0K / 4Y`) | `recorder.go` ve `make.go` yanlış pozitif; `GITLAB_MCP_SKIP_TLS_VERIFY=true` yalnızca kullanıcı seçerse aktif | **Düşük** | **HAYIR:** Birleşen bulgu yoktur | **DÜŞÜK** *(Opsiyonel ayar)* |
+| **7. `apktool-mcp`** | `16` eşik aşan (`SAST 1 Orta`, `SCA 4K / 12Y`) | SAST gizlilik uyarıları yanlış pozitif; **`uv.lock` içinde 4 kritik, 12 yüksek SCA bağımlılık kaydı var** | **Düşük / Orta (SCA)** | **HAYIR:** Doğrulanmış birinci-parti kod zinciri yoktur; bağımlılık güncellemeleri incelenmelidir | **DÜŞÜK / ORTA (SCA)** *(SAST temiz, SCA kayıtları mevcut)* |
+| **8. `jadx-mcp`** | `32` eşik aşan (`SAST 3 Orta`, `SCA 6K / 26Y`) | Doğrulanmış kritik/yüksek SAST açığı yok; **`uv.lock` içinde 6 kritik, 26 yüksek SCA bağımlılık kaydı var** | **Düşük / Orta (SCA)** | **HAYIR:** Doğrulanmış birinci-parti kod zinciri yoktur; bağımlılık güncellemeleri incelenmelidir | **DÜŞÜK / ORTA (SCA)** *(SAST kritik/yüksek yok, SCA kayıtları mevcut)* |
+
+Her deponun dosya/satır düzeyindeki tam kanıt incelemesi ve macOS doğrulama detayları için: [docs/SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md](docs/SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md).
+
 ## Validation and tests
 
 See [VALIDATION.md](VALIDATION.md) for the public capability summary, the latest reproducible Community validation
@@ -295,6 +314,14 @@ The [capability map](docs/CAPABILITIES.md) distinguishes built-in checks from op
 Yes. The CLI and local web interface do not require an AI client. An optional MCP client can connect to its own
 model provider; that provider's availability, privacy rules, and fees are separate from Sniper's source license.
 Local hardware and optional third-party tools also have their own requirements.
+
+### Can Sniper be used on Windows, macOS, and Linux?
+
+Yes. Python 3.12 is the tested interpreter. The full native five-engine setup is supported on Linux ARM64 and x86-64.
+On **macOS (Apple Silicon)**, both the native source setup (`python3 scripts/setup-community --core-only`) and the
+five-engine Docker Desktop profile (`./scripts/deploy-community-tools --accept-third-party-licenses`) are verified on
+real macOS hardware and supported (not experimental). On Windows, use WSL2 or Linux containers via Docker Desktop; see
+the [deployment guide](DEPLOYMENT.md) and [validation evidence](VALIDATION.md) for platform details.
 
 ### Can Sniper scan a website for vulnerabilities?
 

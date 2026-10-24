@@ -70,9 +70,11 @@ SHA-256；AI 必须把原样计划展示给用户。只有用户在同一对话�
 
 ## 安装
 
-经过测试的解释器为 Python 3.12。Community v1 的完整原生安装和五个可选引擎仅支持 Linux ARM64/x86-64。
-不支持 Windows 原生安装；macOS 仅提供实验性的 `--core-only` 源码安装。面向 Windows/macOS Docker Desktop
-和 WSL2 的 Linux 容器配置已经提供并通过契约测试，但本版本尚无真实 Windows/macOS 主机运行证据。在受支持的仓库根目录运行：
+经过测试的解释器为 Python 3.12。Community v1 的完整原生五引擎安装支持 Linux ARM64/x86-64。
+在 macOS（Apple Silicon）上，原生 `--core-only` 源码安装（`python3 scripts/setup-community --core-only`）与
+Docker Desktop 五引擎配置（`./scripts/deploy-community-tools --accept-third-party-licenses`）均已在真实
+macOS 主机上完成验证并受支持。不支持 Windows 原生安装，请使用 WSL2 或 Docker Desktop 的 Linux 容器
+（详见 [VALIDATION.md](../VALIDATION.md) 与 [DEPLOYMENT.md](../DEPLOYMENT.md)）。在受支持的仓库根目录运行：
 
 ```bash
 python3 scripts/setup-community --accept-third-party-licenses

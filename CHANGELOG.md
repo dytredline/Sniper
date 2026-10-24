@@ -5,8 +5,9 @@ Community releases.
 
 ## Unreleased
 
-- Added a verified macOS Apple Silicon + Docker Desktop setup path for the five license-gated local engines, with
-  health/readiness checks and a persistent project volume. The native macOS source setup remains core-only.
+- Verified both the macOS Apple Silicon native `--core-only` source setup and the macOS Apple Silicon + Docker Desktop
+  setup path for the five license-gated local engines, with health/readiness checks, persistent project volume, and
+  end-to-end local SAST audit verification.
 - Added an explicit project-import command for macOS folders that Docker Desktop cannot bind-mount, without changing
   the original project or accepting an existing target name.
 - Fixed the local Nuclei template invocation so the pinned Nuclei binary recognizes the verified template while
@@ -26,7 +27,7 @@ Community releases.
 - Added the loopback web interface and manual command-line entrypoints.
 - Added deterministic Community source assembly with SHA-256 manifests and fail-closed release validation.
 - Added a one-command rootless setup plus a SHA-256-locked installer for the supported local third-party tool profile.
-- Added a Linux core-only setup, an experimental macOS core-only source path, and a fail-closed Windows-native
+- Added a Linux and macOS core-only source setup and a fail-closed Windows-native
   refusal with WSL2/Docker guidance.
 - Added separate `community-core` and license-gated `community-tools` container targets for Docker Desktop/WSL2;
   the optional target installs exactly the five SHA-256-locked engines and never executes them during the build.

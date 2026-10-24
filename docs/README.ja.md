@@ -82,10 +82,12 @@ SHA-256 を返し、AI はその計画をそのまま人に提示します。人
 
 テスト済みのインタープリターは Python 3.12 です。リポジトリのルートで次を実行します。
 
-Community v1 の完全なネイティブセットアップと 5 つの任意エンジンは、Linux ARM64／x86-64 のみを
-サポートします。Windows ネイティブはサポートされません。macOS では `--core-only` の実験的な
-ソースセットアップのみ利用できます。Windows/macOS の Docker Desktop と WSL2 向けには Linux コンテナ
-プロファイルを提供し、契約テストを行っていますが、実ホストでのリリース検証はまだ行っていません。
+Community v1 の完全なネイティブ 5 エンジンセットアップは Linux ARM64／x86-64 をサポートします。
+macOS（Apple Silicon）では、ネイティブの `--core-only` ソースセットアップ
+（`python3 scripts/setup-community --core-only`）と、Docker Desktop を用いた 5 エンジンプロファイル
+（`./scripts/deploy-community-tools --accept-third-party-licenses`）の両方が実機で検証・サポートされています。
+Windows ネイティブはサポートされず、WSL2 または Docker Desktop の Linux コンテナを使用します
+（詳細は [VALIDATION.md](../VALIDATION.md) および [DEPLOYMENT.md](../DEPLOYMENT.md) を参照してください）。
 
 ```bash
 python3 scripts/setup-community --accept-third-party-licenses

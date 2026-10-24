@@ -210,6 +210,6 @@ def setup_community(
     }
     if core_only:
         result["optional_tools"] = {"status": "skipped", "reason": "core_only"}
-        result["support_level"] = "supported" if platform_system == "linux" else "experimental"
-        result["platform_tested"] = platform_system == "linux"
+        result["support_level"] = "supported" if platform_system in {"linux", "darwin"} else "experimental"
+        result["platform_tested"] = platform_system in {"linux", "darwin"}
     return result

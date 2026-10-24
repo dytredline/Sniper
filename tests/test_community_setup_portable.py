@@ -108,8 +108,8 @@ def test_core_only_darwin_keeps_standard_bin_python(
     result = setup.setup_community(root, venv_dir=environment, core_only=True)
 
     assert result["tools_profile"] == "core"
-    assert result["support_level"] == "experimental"
-    assert result["platform_tested"] is False
+    assert result["support_level"] == "supported"
+    assert result["platform_tested"] is True
     assert setup._trusted_venv_python(environment) == python
 
 
