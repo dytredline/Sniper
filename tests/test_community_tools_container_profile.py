@@ -104,8 +104,10 @@ def test_compose_override_requires_acceptance_and_preserves_loopback_and_volumes
         "host_ip": "127.0.0.1",
     }]
     assert {item["target"] for item in sniper["volumes"]} == {
-        "/var/lib/sniper", "/var/lib/sniper-integrity", "/var/lib/sniper-secrets",
+        "/app/projects", "/var/lib/sniper", "/var/lib/sniper-integrity", "/var/lib/sniper-secrets",
     }
+    assert any(item["source"] == "sniper_projects" and item["target"] == "/app/projects"
+               for item in sniper["volumes"])
 
 
 def test_default_dockerfile_target_stays_core_and_tools_target_is_license_gated() -> None:
