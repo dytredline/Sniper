@@ -129,6 +129,7 @@ class TestNucleiActiveApi(unittest.TestCase):
             "while [ \"$#\" -gt 0 ]; do\n"
             "  if [ \"$1\" = '-t' ]; then template=$2; shift 2; else shift; fi\n"
             "done\n"
+            "case \"$template\" in *.yaml) ;; *) exit 7;; esac\n"
             f"if grep -q ATTACKER \"$template\"; then printf attacked > {marker}; fi\n"
             "printf '%s\\n' '{\"template-id\":\"sniper-local-powered-by-v1\","
             "\"type\":\"http\",\"info\":{\"severity\":\"info\"}}'\n",

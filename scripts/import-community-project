@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""Copy one explicitly selected Mac project into Sniper's persistent Docker volume."""
+
+from __future__ import annotations
+
+import argparse
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+
+
+ROOT = Path(__file__).resolve().parents[1]
+COMPOSE = ["docker", "compose", "-f", "docker-compose.yml"]
+SAFE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
+
+
+def validate_source(raw: str) -> Path:
+    source = Path(raw).expanduser()
+    if source.is_symlink() or not source.is_dir():
+        raise ValueError("Kaynak, mevcut ve sembolik bağ olmayan bir proje klasörü olmalı.")
+    source = source.resolve(strict=True)
+    if source in {Path("/"), Path.home().resolve(), Path.home().resolve() / "Documents",
+                  Path.home().resolve() / "Downloads", Path.home().resolve() / "Desktop"}:
+        raise ValueError("Geniş bir dizin yerine belirli bir proje klasörü seçin.")
+    return source
+
+
+def validate_name(raw: str) -> str:
+    if not SAFE_NAME.fullmatch(raw) or raw in {".", ".."}:
+        raise ValueError("Proje adı 1-64 karakter olmalı; yalnız harf, rakam, nokta, _ ve - kullanılabilir.")
+    return raw
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("project", help="Mac'teki tek proje klasörü")
+    parser.add_argument("--name", help="Konteyner içindeki proje adı; varsayılan klasör adıdır")
+    args = parser.parse_args(argv)
+    try:
+        source = validate_source(args.project)
+        name = validate_name(args.name or source.name)
+    except ValueError as exc:
+        parser.error(str(exc))
+
+    target = f"/app/projects/{name}"
+    env = dict(os.environ)
+    # This command does not build or accept third-party licenses. The base
+    # Compose file addresses the same already-running service and volume.
+    env.setdefault("GRAFANA_ADMIN_PASSWORD", "import-only-placeholder")
+
+    def run(*args: str, capture: bool = False) -> subprocess.CompletedProcess[str]:
+        return subprocess.run([*COMPOSE, *args], cwd=ROOT, env=env, check=False,
+                              text=True, capture_output=capture)
+
+    active = run("ps", "-q", "sniper", capture=True)
+    if active.returncode != 0 or not active.stdout.strip():
+        print("Önce beş motorlu Sniper Docker hizmetini başlatın.", file=sys.stderr)
+        return 1
+    absent = run("exec", "-T", "sniper", "test", "!", "-e", target, capture=True)
+    if absent.returncode != 0:
+        print(f"Bu proje adı zaten kullanılıyor: {target}; başka bir --name seçin.", file=sys.stderr)
+        return 1
+
+    # Docker Desktop may not be allowed to bind-mount macOS Documents. The CLI
+    # reads this explicitly named directory and copies it into a named volume.
+    copied = run("cp", str(source), f"sniper:{target}")
+    if copied.returncode != 0:
+        print(f"Kopyalama tamamlanmadı. {target} içinde kısmi kopya kalmış olabilir; "
+              "yeniden denemeden önce onu inceleyin.", file=sys.stderr)
+        return 1
+    owned = run("exec", "-T", "-u", "root", "sniper", "chown", "-R", "--no-dereference",
+                "sniper:sniper", target)
+    checked = run("exec", "-T", "sniper", "python", "-c",
+                  "import sys; from project_analyzer import validate_project_path; "
+                  "validate_project_path(sys.argv[1])", target)
+    if owned.returncode != 0 or checked.returncode != 0:
+        print(f"Kopya oluşturuldu ancak proje doğrulanamadı: {target}", file=sys.stderr)
+        return 1
+    print(f"Proje hazır: {target}")
+    print("Kaynak dosyalar Docker'ın kalıcı sniper_projects birimine kopyalandı; "
+          "Mac'teki özgün klasör değiştirilmedi.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

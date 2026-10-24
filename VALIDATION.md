@@ -68,6 +68,24 @@ requires a post-merge main CI and CodeQL run before a release tag is created; PR
 These numbers describe this exact snapshot. Future commits can legitimately change test totals, and optional-engine
 availability varies by host.
 
+## macOS Docker verification — 2026-10-24
+
+The five-engine Community image was built on an Apple Silicon Mac with Docker Desktop after explicit acceptance of
+the engines' separate open-source licenses. Sniper started on loopback and reported healthy. Runtime prechecks passed
+for the pinned Nuclei loopback, Trivy local-secret, Gitleaks, TruffleHog filesystem, and Opengrep local-code profiles.
+The Turkish web dashboard and tool matrix opened in a browser on the same Mac.
+
+A synthetic test project was copied from a macOS Documents checkout into the persistent Docker project volume and
+remained accessible after the service was recreated. Local API smoke checks completed for all five engines. Opengrep
+reported the two deliberately planted SQL-injection fixture findings; the other profiles completed against their
+bounded local fixtures or loopback target. A real Nuclei binary regression test exercised positive and negative
+loopback header cases. No external website was scanned.
+
+The full source test runner executed in a Linux test container on that Mac: **2,826 unittest tests passed with zero
+failures/errors; 203 pytest tests passed, one skipped; 432 Node tests passed**. The Docker-backed macOS route is the
+validated five-engine route; this result does not claim that the separate native macOS source setup or every one of
+the 161 methodology controls is automated.
+
 ## Run the same public checks
 
 Use Python 3.12 and the pinned dependency locks:

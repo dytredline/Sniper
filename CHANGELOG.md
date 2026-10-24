@@ -5,6 +5,12 @@ Community releases.
 
 ## Unreleased
 
+- Added a verified macOS Apple Silicon + Docker Desktop setup path for the five license-gated local engines, with
+  health/readiness checks and a persistent project volume. The native macOS source setup remains core-only.
+- Added an explicit project-import command for macOS folders that Docker Desktop cannot bind-mount, without changing
+  the original project or accepting an existing target name.
+- Fixed the local Nuclei template invocation so the pinned Nuclei binary recognizes the verified template while
+  preserving the open-file identity check; added a real-binary regression test.
 - Clarified IDOR (CWE-639), missing-authorization (CWE-862), and authorized manual penetration-testing support across
   the public README, AI discovery index, use cases, capability map, and localized introductions, with validation
   guidance for separate test identities, roles, and synthetic objects.

@@ -141,6 +141,12 @@ def run_nuclei_loopback(target: str) -> dict:
         try:
             with tempfile.TemporaryDirectory(prefix="sniper_nuclei_") as temp:
                 report = Path(temp) / "report.jsonl"
+                # Nuclei filters -t inputs by filename extension.  A bare
+                # /proc/self/fd/<n> is therefore ignored even though its
+                # contents are valid YAML.  Keep the verified descriptor as
+                # the source, but give the child a private .yaml pathname.
+                template_link = Path(temp) / "local-powered-by.yaml"
+                template_link.symlink_to(f"/proc/self/fd/{template_fd}")
                 environment = {
                     "HOME": temp,
                     "TMPDIR": temp,
@@ -151,7 +157,7 @@ def run_nuclei_loopback(target: str) -> dict:
                 }
                 command = [
                     f"/proc/self/fd/{binary_fd}", "-u", loopback_url,
-                    "-t", f"/proc/self/fd/{template_fd}",
+                    "-t", str(template_link),
                     "-jsonl", "-silent", "-nc", "-or", "-ot", "-duc", "-ni", "-dr",
                     "-no-stdin", "-pt", "http", "-c", "1", "-rl", "1", "-timeout", "2",
                     "-retries", "0",

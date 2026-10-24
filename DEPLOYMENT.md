@@ -13,7 +13,8 @@ database.
 | Linux x86-64 | Locked artifacts are provided; GitHub CI validates the source/container path |
 | Windows native | Not supported in v1; setup fails before creating an environment and directs users to WSL2 or Docker |
 | macOS native | Experimental core-only source setup with `--core-only`; no locked native engine artifacts and no real-host release evidence |
-| Docker Desktop / WSL2 | Linux core and explicit five-engine container profiles are provided and contract-tested; real Windows/macOS host execution is not part of this release evidence |
+| macOS Apple Silicon + Docker Desktop | Five-engine Linux container profile verified on a real Mac; native macOS remains core-only |
+| Docker Desktop on Windows / WSL2 | Linux container profiles and contracts are provided; real Windows host execution is not part of this evidence |
 
 The default container runs the Sniper web application and does not bundle the five separately licensed optional
 engines. The distinct `community-tools` build target installs exactly the five Linux artifacts in
@@ -112,6 +113,36 @@ SNIPER_ACCEPT_THIRD_PARTY_LICENSES=1 docker compose \
 
 Review `COMMUNITY-TOOLS.lock.json` before setting the acknowledgement. The exact host run remains operator evidence;
 the release gate validates the plans, merged Compose model, architecture mapping, and fail-closed acknowledgement.
+
+### Verified macOS five-engine path
+
+On Apple Silicon with Docker Desktop running, use the checked-in helper from the repository root after reviewing the
+five separate open-source licenses in `COMMUNITY-TOOLS.lock.json`:
+
+```bash
+./scripts/deploy-community-tools --accept-third-party-licenses
+```
+
+This builds the digest-locked `community-tools` image, starts only Sniper on `127.0.0.1:8787`, and fails unless the
+Nuclei loopback, Trivy local secret, Gitleaks, TruffleHog filesystem, and Opengrep local-code profiles all pass their
+runtime prechecks. The helper creates a mode-`0600` `.env` with a random Grafana password only when that file is absent;
+it never replaces an existing `.env`. It does not start monitoring or run a scan. The five binaries do not supply
+Nuclei's separate broad template catalog, Trivy's offline vulnerability database, or the other prerequisite-dependent
+tools; those profiles continue to show unavailable until their own verified inputs exist.
+
+Docker Desktop can be denied macOS Documents/Downloads bind mounts even when the terminal can read those folders.
+Instead of broadening Docker's filesystem access, explicitly copy one chosen project into the persistent
+`sniper_projects` volume:
+
+```bash
+./scripts/import-community-project /absolute/path/to/project --name project-name
+```
+
+Then enter `/app/projects/project-name` in Sniper's local-project forms. The copy can include sensitive source files,
+so choose the directory deliberately. Import never changes the Mac original and refuses to overwrite an existing
+project name. The project copy persists across container restarts and `docker compose down`; include this volume in
+your data handling and backups. This is a source snapshot, not a live sync. Re-import under a new name after source
+changes, or use a Docker Desktop file-sharing bind mount only after explicitly granting that folder access.
 
 `scripts/deploy.sh` creates a mode-`0600` `.env` file with a random local
 Grafana password when one does not already exist. It does not print the

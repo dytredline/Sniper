@@ -15,6 +15,9 @@ services:
       # 127.0.0.1'e yayımlanması içindir. Bu değeri genel arayüz yayınına kopyalamayın.
       SNIPER_ALLOW_UNAUTHENTICATED_REMOTE: "1"
     volumes:
+      # macOS Documents/Downloads may be inaccessible to Docker Desktop bind mounts.
+      # Explicitly imported source snapshots live in this private, persistent volume.
+      - sniper_projects:/app/projects
       - sniper_data:/var/lib/sniper
       - sniper_integrity:/var/lib/sniper-integrity
       - sniper_secrets:/var/lib/sniper-secrets
@@ -63,6 +66,7 @@ services:
       - prometheus
 
 volumes:
+  sniper_projects:
   sniper_data:
   sniper_integrity:
   sniper_secrets:

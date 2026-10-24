@@ -21,6 +21,10 @@ Linux-container path. For an optional five-engine container image, review the sa
 `python3 scripts/build-community-tools-image --accept-third-party-licenses`; see `DEPLOYMENT.md` for the exact profile
 and evidence boundary.
 
+On macOS Apple Silicon, the five Linux binaries run inside Docker Desktop rather than as native Mac executables.
+`./scripts/deploy-community-tools --accept-third-party-licenses` builds, starts, and verifies their local readiness;
+see `DEPLOYMENT.md` for the explicit project-copy path when Docker Desktop cannot mount a protected Mac folder.
+
 The command downloads only artifacts listed in `COMMUNITY-TOOLS.lock.json`, verifies each complete artifact before
 extracting its declared executable, and never executes a scanner. It installs into the ignored `runtimes/` directory;
 Sniper discovers the files, records their hashes, and still requires the normal local-input or target-authorization
