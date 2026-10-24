@@ -1,6 +1,8 @@
 # Sniper Community
 
-**English** | [日本語](docs/README.ja.md) | [简体中文](docs/README.zh-CN.md) | [한국어](docs/README.ko.md)
+**English** | [Türkçe](docs/README.tr.md) | [日本語](docs/README.ja.md) | [简体中文](docs/README.zh-CN.md) | [한국어](docs/README.ko.md)
+
+[Project overview at ConverserAI](https://converserai.com/#sniper) · [Capabilities](docs/CAPABILITIES.md) · [Setup](#source-checkout-setup) · [Frequently asked questions](#frequently-asked-questions)
 
 Sniper Community is an open-source, local-first defensive application-security toolkit for people who build, own,
 or review applications, APIs, and websites. It helps teams examine supported source code through static application
@@ -10,6 +12,11 @@ authorized web target, Sniper can also prepare a bounded runtime action for huma
 an AI client over local stdio MCP, to a person through the CLI, or in the loopback web interface.
 
 ## Review before you ship
+
+**Find website security weaknesses with a powerful, open-source toolkit.** Combine authorized website and API
+scanning with local code and dependency review, then turn findings into a prioritized remediation plan. External
+scans require the relevant engines, data, readiness checks, and explicit scope approval; they are not an unrestricted
+scan service. See the [website and API review path](docs/USE-CASES.md#plan-an-authorized-website-or-api-action).
 
 Ask an AI assistant to review your application before release. Through Sniper's local stdio MCP workflow, the AI can
 guide a supported security review, explain findings with code evidence, and help prioritize remediation while the
@@ -273,6 +280,52 @@ python3 scripts/run_all_tests.py
 
 Some optional engines require separately installed, pinned local tools. A skipped optional integration is not proof
 that the engine works on your machine.
+
+## Frequently asked questions
+
+### What is Sniper Community?
+
+Sniper Community is an Apache-2.0 open-source application-security toolkit for authorized source-code, dependency,
+SBOM, container, infrastructure, website, and API review. It combines local analyzers and saved-report workflows
+with a CLI, loopback web interface, and optional AI-assisted review through Model Context Protocol (MCP).
+The [capability map](docs/CAPABILITIES.md) distinguishes built-in checks from optional engines and manual review.
+
+### Can I use Sniper without an AI subscription?
+
+Yes. The CLI and local web interface do not require an AI client. An optional MCP client can connect to its own
+model provider; that provider's availability, privacy rules, and fees are separate from Sniper's source license.
+Local hardware and optional third-party tools also have their own requirements.
+
+### Can Sniper scan a website for vulnerabilities?
+
+Yes, for websites and APIs you own or are explicitly authorized to assess. Supported workflows prepare bounded
+external-target actions, combine web and TLS evidence with local source analysis, and produce reviewable findings.
+The relevant engines, pinned catalogs or vulnerability data, runtime readiness, and human approval must be in place.
+See the [website/API workflow](docs/USE-CASES.md#plan-an-authorized-website-or-api-action) and
+[capability boundaries](docs/CAPABILITIES.md); no tool can guarantee discovery of every vulnerability.
+
+### Can Sniper help find and fix mobile application vulnerabilities?
+
+Sniper helps teams review supported Android, iOS, Flutter, and React Native code, manifests, dependencies, API
+paths, and release configuration. It turns evidence into prioritized remediation work before an App Store or Google
+Play release. Developers can use the findings and AI-assisted explanations to prepare changes and review them.
+Coverage depends on supported inputs: this is not universal mobile-binary scanning, automatic repair of every
+vulnerability, or an app-store approval guarantee. See [mobile release preflight](#review-before-you-ship) and the
+[capability map](docs/CAPABILITIES.md).
+
+### Does Sniper replace a penetration test or guarantee a secure release?
+
+No. It produces evidence and review candidates, including potential authorization and IDOR issues. A qualified
+reviewer must validate material findings, test runtime controls within an authorized scope, and decide what to fix.
+A clean scan is not a security certification. See the [validation evidence](VALIDATION.md).
+
+### Where are the official source and installation instructions?
+
+The source repository is [dytredline/Sniper](https://github.com/dytredline/Sniper). Start with the
+[source-checkout setup](#source-checkout-setup) and [deployment guide](DEPLOYMENT.md) for your platform.
+The project is introduced on [ConverserAI](https://converserai.com/#sniper); the repository remains the source of
+truth for capabilities, platform support, license terms, and release evidence. Use [CITATION.cff](CITATION.cff)
+when citing the software in research or published work.
 
 ## License
 
