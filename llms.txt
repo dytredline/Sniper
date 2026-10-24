@@ -57,6 +57,7 @@ python3 scripts/setup-community --accept-third-party-licenses
 
 ## Localized introductions
 
+- [Türkçe](docs/README.tr.md): Turkish introduction, use cases, frequently asked questions, and source links.
 - [日本語](docs/README.ja.md): Japanese introduction and responsible-use summary.
 - [简体中文](docs/README.zh-CN.md): Simplified Chinese introduction and responsible-use summary.
 - [한국어](docs/README.ko.md): Korean introduction and responsible-use summary.
@@ -64,6 +65,10 @@ python3 scripts/setup-community --accept-third-party-licenses
 
 ## Evidence, safety, and governance
 
+- [Canonical source repository](https://github.com/dytredline/Sniper): authoritative source, release documentation, and license.
+- [Project overview at ConverserAI](https://converserai.com/#sniper): public introduction and repository link.
+- [Frequently asked questions](README.md#frequently-asked-questions): cost, AI requirements, validation limits, and installation sources.
+- [Software citation](CITATION.cff): author, license, source repository, and version metadata for attribution.
 - [Validation evidence](VALIDATION.md): reproducible test snapshot and evidence limits.
 - [Security policy](SECURITY.md): private vulnerability reporting and authorized research rules.
 - [Deployment](DEPLOYMENT.md): Linux, experimental macOS core-only, Docker Desktop/WSL2, loopback binding, and source-manifest verification.
