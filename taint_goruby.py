@@ -2671,8 +2671,6 @@ class GoAnalyzer(_FuncBase):
                 self.ct_safe = True
         if method in _GO_SQL_METHODS and self._db_receiver(segs, recv_type):
             index = _GO_SQL_METHODS[method]
-            if index == 0 and len(spans) >= 2 and self._is_context_span(spans[0]):
-                index = 1
             if method in ("Select", "Get") and recv_type != "db" and not self._db_name(segs):
                 return
             if index < len(spans) and self._stringish(spans[index]):
@@ -2903,8 +2901,6 @@ class GoAnalyzer(_FuncBase):
             return None
         if method in _GO_SQL_WRITE_METHODS:
             index = _GO_SQL_WRITE_METHODS[method]
-            if index == 0 and len(spans) >= 2 and self._is_context_span(spans[0]):
-                index = 1
             if index < len(spans):
                 text = self._sql_text(spans[index])
                 m = _SQL_WRITE_RE.match(text)
@@ -2914,8 +2910,6 @@ class GoAnalyzer(_FuncBase):
                     return None
         if method in _GO_SQL_READ_METHODS:
             index = _GO_SQL_READ_METHODS[method]
-            if index == 0 and len(spans) >= 2 and self._is_context_span(spans[0]):
-                index = 1
             if index < len(spans):
                 text = self._sql_text(spans[index])
                 m = _SQL_READ_RE.match(text)
@@ -2923,22 +2917,6 @@ class GoAnalyzer(_FuncBase):
                     stored = self.proj.stored_for(m.group(1).lower(), self._read_cols(text))
                     return stored if stored else None
         return None
-
-    def _is_context_span(self, span: tuple[int, int]) -> bool:
-        """pgx/pgxpool vb. ilk argümanı context.Context olduğunda SQL metni 1. indekstedir."""
-        x, y = span
-        toks = [t for t in self.toks[x:y] if t.kind != "nl"]
-        if not toks:
-            return False
-        if len(toks) == 1 and toks[0].kind == "id":
-            ident = toks[0].value
-            if ident.lower() in ("ctx", "context", "bgctx", "reqctx"):
-                return True
-            raw_type = self.types.get(ident) or self.decl_types.get(ident, "")
-            if isinstance(raw_type, str) and "context" in raw_type.lower():
-                return True
-        text = "".join(t.value for t in toks)
-        return text.endswith((".Context()", "context.Background()", "context.TODO()"))
 
     def _has_string_part(self, span: tuple[int, int]) -> bool:
         x, y = span
@@ -3335,11 +3313,6 @@ class GoProject(_ProjectBase):
             return self.by_dir.get(d, {}).get(method, []) or self.slot_funcs(self.slot(("var", d, method)), arity)
         if method:
             candidates = self.methods.get(method, [])
-            if candidates and arity is not None:
-                candidates = [
-                    f for f in candidates
-                    if (len(f.params) == arity if f.variadic is None else arity >= f.variadic)
-                ]
             if candidates:
                 return self.conservative_methods(candidates)
             if not candidates and arity is not None:

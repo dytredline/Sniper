@@ -481,10 +481,7 @@ _SERVER_JS_RE = re.compile(
 
 # Genel dedektör: parola özetleri sır değildir; örnek/belge dosyalarındaki değerler örnektir.
 _PASSWORD_HASH_RE = re.compile(r"^(?:\$(?:argon2(?:id|i|d)?|2[abxy]|scrypt|pbkdf2(?:-sha\d+)?|[156])\$|pbkdf2_sha\d+\$|bcrypt\$)")
-_GENERIC_EXTRA_PLACEHOLDER_RE = re.compile(
-    r"(?i)fixme|change[_\-]?(?:me|it)|not[_\-]?a[_\-]?secret|no[_\-]?api[_\-]?key|"
-    r"not[_\-]?used[_\-]?at[_\-]?runtime|build[_\-]?only"
-)
+_GENERIC_EXTRA_PLACEHOLDER_RE = re.compile(r"(?i)fixme|change[_\-]?(?:me|it)|not[_\-]?a[_\-]?secret")
 _EXAMPLE_FILE_RE = re.compile(r"(?i)(?:\.(?:example|sample|template|dist|tmpl)$|(?:^|/)(?:docs?|docs_src)/)")
 
 _GENERIC_NAME_HINT_RE = re.compile(
@@ -494,10 +491,7 @@ _GENERIC_NAME_HINT_RE = re.compile(
 _GENERIC_NAME_EXCLUDE_RE = re.compile(
     r"(?i)(?:url|uri|endpoint|path|file|filename|name|field|label|type|length|len|regex|"
     r"pattern|placeholder|header|prompt|hint|message|msg|policy|expiry|expires|ttl|count|"
-    r"id|prefix|format|min|max|required|enabled|validator|"
-    r"(?:prompt|completion|total|max|input|output|cached|reasoning|num)[_\-]?tokens?|"
-    r"token[_\-]?(?:count|usage|limit|budget)s?|"
-    r"^no[_\-]?api[_\-]?key)$"
+    r"id|prefix|format|min|max|required|enabled|validator)$"
 )
 _GENERIC_ASSIGN_RE = re.compile(
     r"(?P<name>[A-Za-z_][A-Za-z0-9_.\-]{0,80})[\"']?\s*(?::=|=>|=|:)\s*"

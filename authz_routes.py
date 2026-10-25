@@ -28,8 +28,7 @@ MUTATING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 _AUTH_NAME_RE = re.compile(
     r"(?i)(auth|login|logged|signed_?in|jwt|token|passport|session_?user|guard|verify_?(user|token|jwt|session|admin|role)"
     r"|permission|role|admin|staff|superuser|ensure|is_?user|acl|authori[sz]|restrict|private|protect|require_?user"
-    r"|current_?user|check_?user|get_?user(?:_?id)?|user_?id|get_?request_?context|is_?member|is_?owner"
-    r"|user_passes_test|requires?_|access_?required|api_?key|principal|identity"
+    r"|current_?user|check_?user|is_?member|is_?owner|user_passes_test|requires?_|access_?required|api_?key|principal|identity"
     r"|allows\.requires|moderator|IsAtleast|has_?access)"
 )
 # Kimlikle ilgisiz ara katmanlar (adında "protect", "token" geçse bile).
@@ -64,9 +63,7 @@ _PY_INLINE_AUTH_RE = re.compile(
     r"|abort\(\s*40[13]|PermissionDenied|status_code\s*=\s*40[13]|HTTP_40[13]|redirect\([^)]*login"
     r"|session\s*\[\s*['\"](user|uid|user_id|userid|username|logged_in|loggedin|login|auth)"
     r"|session\.get\(\s*['\"](user|uid|user_id|userid|username|logged_in|loggedin|login|auth)|check_auth|require_login"
-    r"|\bauthenticate\w*\(|\b_?authori[sz]e\w*\("
-    r"|\b(?:check|verify|require|ensure|assert)_?(?:permission|auth|access|role|member|owner)\w*\("
-    r"|return\s[^\n]*\b40[13]\b)"
+    r"|\bauthenticate\w*\(|return\s[^\n]*\b40[13]\b)"
 )
 _PY_ROUTE_ATTRS = frozenset({"get", "post", "put", "patch", "delete", "route", "api_route"})
 _PY_LOOKUP_ATTRS = frozenset({
@@ -352,14 +349,11 @@ def _class_signal_text(node: ast.ClassDef, lines: list[str] | None) -> str:
 
 def _has_auth_depends(node: ast.AST) -> bool:
     for sub in ast.walk(node):
-        if isinstance(sub, ast.Call):
-            dep_kind = _dotted(sub.func).rsplit(".", 1)[-1]
-            if dep_kind in {"Depends", "Security"} and sub.args:
-                dep_target = _dotted(sub.args[0])
-                if dep_kind == "Security" and dep_target and not _NOT_AUTH_RE.search(dep_target):
-                    return True
-                if _is_auth_name(dep_target):
-                    return True
+        if isinstance(sub, ast.Call) and _dotted(sub.func).rsplit(".", 1)[-1] in {"Depends", "Security"} and sub.args:
+            if _is_auth_name(_dotted(sub.args[0])):
+                return True
+        if isinstance(sub, ast.Call) and _dotted(sub.func).rsplit(".", 1)[-1] in {"Depends", "Security"} and not sub.args:
+            continue
     return False
 
 
@@ -492,7 +486,7 @@ def _py_routes(relpath: str, tree: ast.Module, project: _Project) -> list[Route]
         for sub in ast.walk(func):
             if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Name) and sub.func.id in module_funcs and sub.func.id != getattr(func, "name", ""):
                 callee = module_funcs[sub.func.id]
-                if _py_function_protection(callee, None)[0]:
+                if _py_function_protection(callee, None)[0] and callee.decorator_list:
                     return True
         return False
 
@@ -509,8 +503,6 @@ def _py_routes(relpath: str, tree: ast.Module, project: _Project) -> list[Route]
                 protection, public = _py_function_protection(node, decorator)
                 if protection is None and not public and router_protected(router):
                     protection = "router"
-                if protection is None and not public and callee_protected(node):
-                    protection = "inline"
                 route = Route(relpath, node.lineno, "flask/fastapi", methods, path, node.name, protection, public, group=group)
                 routes.append(route)
             elif is_django_views and node.args.args and node.args.args[0].arg == "request" and not node.name.startswith("_") \

@@ -2776,15 +2776,16 @@ class CBody(BodyAnalyzer):
                     "wsprintfA", "wsprintfW", "wsprintf", "asprintf", "vasprintf") and len(ranges) >= 2:
             fi = _FMT.get(name, 1)
             add = EMPTY
-            fmt_lit = self._fmt_lit(ranges[fi]) if fi < len(ranges) else ""
+            fmt_lit = self._lit(ranges[fi]) if fi < len(ranges) and ranges[fi][1] - ranges[fi][0] == 1 else ""
             for t in (self.fmt_arg_taints(fmt_lit, taints[fi + 1:]) if fmt_lit else taints[fi + 1:]):
                 add = add | t
             if fi < len(ranges):
-                if fmt_lit and self.fixed_host_literal(fmt_lit):
+                fa, fb = ranges[fi]
+                if fb - fa == 1 and toks[fa].kind == "str" and self.fixed_host_literal(toks[fa].text):
                     add = core.with_host(add)
-                if fmt_lit and _SRC_EXT_RE.search(fmt_lit.strip()):
+                if fb - fa == 1 and toks[fa].kind == "str" and _SRC_EXT_RE.search(toks[fa].text.strip()):
                     self.var_info.setdefault(self.base_ident(*ranges[0]), {})["srcpath"] = True
-                add = add | (taints[fi] if not fmt_lit else EMPTY)
+                add = add | (taints[fi] if not (fb - fa == 1 and toks[fa].kind == "str") else EMPTY)
             dst_name = self.base_ident(*ranges[0])
             self._note_deps(dst_name, ranges[min(fi, len(ranges) - 1)][0], ranges[-1][1], replace=True)
             cap = self.container_cap(ranges[0])
@@ -2912,22 +2913,6 @@ class CBody(BodyAnalyzer):
             if toks[j].kind == "str":
                 return toks[j].text
         return ""
-
-    def _fmt_lit(self, r: tuple[int, int]) -> str:
-        """Sabit biçim dizgesi (ardışık C dizge sabitleri ve PRI* biçim makroları dahil)."""
-        a, b = r
-        toks = self.toks[a:b]
-        if not toks:
-            return ""
-        parts: list[str] = []
-        for t in toks:
-            if t.kind == "str":
-                parts.append(t.text)
-            elif t.kind == "id" and re.match(r"^PRI[diouxX]\w*$", t.text):
-                parts.append('"d"')
-            else:
-                return ""
-        return " ".join(parts)
 
     def _lit_or_id(self, r: tuple[int, int]) -> str:
         a, b = r
