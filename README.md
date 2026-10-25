@@ -117,9 +117,9 @@ human review.
 On macOS Apple Silicon, **both** the native source setup (`python3 scripts/setup-community --core-only`) and the
 five-engine Docker Desktop profile (`./scripts/deploy-community-tools --accept-third-party-licenses`) are supported
 and verified on real macOS hardware. Python 3.12 is the tested interpreter for source-checkout use. The complete native
-Community v1 setup and its five locked optional engines are supported on Linux ARM64 and Linux x86-64. Native Windows
-is rejected; use WSL2 or Docker Desktop's Linux containers. Windows/WSL2 remains contract-tested rather than
-real-host-tested. This source release
+Community v1 setup and its five locked optional engines are supported on Linux ARM64 and Linux x86-64. On Windows,
+Sniper supports the native `--core-only` source setup (`python3 scripts/setup-community --core-only`), WSL2, and
+Docker Desktop's Linux containers. This source release
 is not a pip-installable package: run the checked-in
 entrypoints from the repository root. The rootless setup command creates `.venv`, installs the exact-version runtime
 dependencies and the locked local tool profile, then verifies the real MCP and project-audit help entrypoints without
@@ -133,7 +133,7 @@ The flag confirms that you reviewed the third-party licenses recorded in `COMMUN
 accepts them implicitly. Use `--wheelhouse` and `--tool-cache-dir` for prepared offline inputs. Setup does not open a
 database, start the web service, or run a scan.
 
-For Linux or macOS native core-only source setup without the optional Linux engine binaries, use:
+For Linux, macOS, or Windows native core-only source setup without the optional Linux engine binaries, use:
 
 ```bash
 python3 scripts/setup-community --core-only
@@ -320,8 +320,9 @@ Local hardware and optional third-party tools also have their own requirements.
 Yes. Python 3.12 is the tested interpreter. The full native five-engine setup is supported on Linux ARM64 and x86-64.
 On **macOS (Apple Silicon)**, both the native source setup (`python3 scripts/setup-community --core-only`) and the
 five-engine Docker Desktop profile (`./scripts/deploy-community-tools --accept-third-party-licenses`) are verified on
-real macOS hardware and supported (not experimental). On Windows, use WSL2 or Linux containers via Docker Desktop; see
-the [deployment guide](DEPLOYMENT.md) and [validation evidence](VALIDATION.md) for platform details.
+real macOS hardware and supported (not experimental). On **Windows**, Sniper supports the native `--core-only` source
+setup (`python3 scripts/setup-community --core-only`), WSL2, and Linux containers via Docker Desktop; see the
+[deployment guide](DEPLOYMENT.md) and [validation evidence](VALIDATION.md) for platform details.
 
 ### Can Sniper scan a website for vulnerabilities?
 

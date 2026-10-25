@@ -46,9 +46,10 @@ python3 scripts/setup-community --accept-third-party-licenses
 ```
 
 - Runtime baseline: Python 3.12; locked optional-tool artifacts cover Linux ARM64 and x86-64.
-- Native Windows is not supported; use WSL2 or Docker Desktop's Linux containers. On macOS (Apple Silicon), both the
-  native `--core-only` source setup (`python3 scripts/setup-community --core-only`) and the five-engine Docker Desktop
-  profile (`./scripts/deploy-community-tools --accept-third-party-licenses`) are supported and real-host verified.
+- On macOS (Apple Silicon), both the native `--core-only` source setup (`python3 scripts/setup-community --core-only`)
+  and the five-engine Docker Desktop profile (`./scripts/deploy-community-tools --accept-third-party-licenses`) are
+  supported and real-host verified. On Windows, Sniper supports the native `--core-only` source setup, WSL2, and
+  Docker Desktop's Linux containers.
 - The default container is core-only. The separate five-engine target is built with
   `python3 scripts/build-community-tools-image --accept-third-party-licenses`; it is license-gated and does not run scanners during the build.
 - [README](README.md): setup, MCP quick start, manual operation, and responsible-use boundaries.
@@ -72,7 +73,7 @@ python3 scripts/setup-community --accept-third-party-licenses
 - [Software citation](CITATION.cff): author, license, source repository, and version metadata for attribution.
 - [Validation evidence](VALIDATION.md): reproducible test snapshot and evidence limits.
 - [Security policy](SECURITY.md): private vulnerability reporting and authorized research rules.
-- [Deployment](DEPLOYMENT.md): Linux, supported macOS core-only and Docker Desktop five-engine setup, WSL2, loopback binding, and source-manifest verification.
+- [Deployment](DEPLOYMENT.md): Linux, macOS (native core-only and Docker Desktop five-engine setup), Windows (native core-only, WSL2, and Docker Desktop), loopback binding, and source-manifest verification.
 - [License](LICENSE): Apache License 2.0 for Sniper Community; third-party licenses remain applicable.
 
 Sniper findings and clean results are advisory, not proof that a system is secure. Use external-target features only with explicit authorization, review AI suggestions, and independently reproduce material findings before remediation decisions.

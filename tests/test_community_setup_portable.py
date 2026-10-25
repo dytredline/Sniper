@@ -44,19 +44,24 @@ def _probe(command: list[str], environment: Path) -> subprocess.CompletedProcess
     )
 
 
-def test_core_only_windows_fails_closed_before_any_command(
+def test_core_only_windows_keeps_scripts_python_without_posix_exec_bit(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    root, environment, _python = _repo(tmp_path, windows=True)
+    root, environment, python = _repo(tmp_path, windows=True)
     monkeypatch.setattr(setup, "_platform_system", lambda: "Windows")
-    monkeypatch.setattr(
-        setup.subprocess,
-        "run",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("command started")),
-    )
 
-    with pytest.raises(setup.SetupError, match="Native Windows.*WSL2 or Docker"):
-        setup.setup_community(root, venv_dir=environment, core_only=True)
+    def run(command, **_kwargs):
+        if [str(item) for item in command][1:3] == ["-I", "-c"]:
+            return _probe(command, environment)
+        return subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(setup.subprocess, "run", run)
+    result = setup.setup_community(root, venv_dir=environment, core_only=True)
+
+    assert result["tools_profile"] == "core"
+    assert result["support_level"] == "supported"
+    assert result["platform_tested"] is False
+    assert setup._trusted_venv_python(environment) == python
 
 
 def test_full_profile_windows_fails_with_actionable_route_before_any_command(
@@ -70,7 +75,7 @@ def test_full_profile_windows_fails_with_actionable_route_before_any_command(
         lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("command started")),
     )
 
-    with pytest.raises(setup.SetupError, match="Native Windows.*WSL2 or Docker"):
+    with pytest.raises(setup.SetupError, match="requires Linux.*--core-only.*WSL2/Docker"):
         setup.setup_community(
             root,
             venv_dir=environment,

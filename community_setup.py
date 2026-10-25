@@ -48,20 +48,27 @@ def _absolute_from(root: Path, value: Path) -> Path:
 
 def _trusted_venv_python(environment: Path) -> Path | None:
     """Accept a regular venv Python or its standard link to this interpreter's base executable."""
-    candidate = environment / "bin" / "python"
-    try:
-        if not candidate.exists() or not os.access(candidate, os.X_OK):
-            return None
-        if not candidate.is_symlink():
-            return candidate if candidate.is_file() else None
-        resolved = candidate.resolve(strict=True)
-        allowed = {
-            Path(sys.executable).resolve(strict=True),
-            Path(getattr(sys, "_base_executable", sys.executable)).resolve(strict=True),
-        }
-        return candidate if resolved in allowed and resolved.is_file() else None
-    except (OSError, RuntimeError):
-        return None
+    for rel in (Path("bin") / "python", Path("Scripts") / "python.exe", Path("Scripts") / "python"):
+        candidate = environment / rel
+        try:
+            if not candidate.exists():
+                continue
+            if rel.parts[0] == "bin" and not os.access(candidate, os.X_OK):
+                continue
+            if not candidate.is_symlink():
+                if candidate.is_file():
+                    return candidate
+                continue
+            resolved = candidate.resolve(strict=True)
+            allowed = {
+                Path(sys.executable).resolve(strict=True),
+                Path(getattr(sys, "_base_executable", sys.executable)).resolve(strict=True),
+            }
+            if resolved in allowed and resolved.is_file():
+                return candidate
+        except (OSError, RuntimeError):
+            continue
+    return None
 
 
 def _run(command: list[str], *, root: Path, stage: str) -> None:
@@ -114,16 +121,16 @@ def setup_community(
 ) -> dict[str, Any]:
     """Install the portable core or Linux tool profile, then verify side-effect-free help."""
     platform_system = _platform_system().lower()
-    if platform_system == "windows":
-        raise SetupError("Native Windows is unavailable; use the Linux core through WSL2 or Docker")
-    if platform_system not in {"linux", "darwin"}:
+    if platform_system not in {"linux", "darwin", "windows"}:
         raise SetupError(f"Unsupported native platform: {platform_system or 'unknown'}; use a Linux container")
     if not core_only and not accept_third_party_licenses:
         raise SetupError("Explicit third-party license acceptance is required")
     if core_only and cache_dir is not None:
         raise SetupError("Offline tool cache cannot be used with core-only setup")
     if not core_only and platform_system != "linux":
-        raise SetupError("The locked local tool profile requires Linux; use --core-only on this platform")
+        raise SetupError(
+            "The locked local tool profile requires Linux; use --core-only on this platform or WSL2/Docker for the five-engine profile"
+        )
     if sys.version_info < MINIMUM_PYTHON:
         raise SetupError("Sniper Community setup requires Python 3.12 or newer")
 
@@ -210,6 +217,6 @@ def setup_community(
     }
     if core_only:
         result["optional_tools"] = {"status": "skipped", "reason": "core_only"}
-        result["support_level"] = "supported" if platform_system in {"linux", "darwin"} else "experimental"
+        result["support_level"] = "supported" if platform_system in {"linux", "darwin", "windows"} else "experimental"
         result["platform_tested"] = platform_system in {"linux", "darwin"}
     return result

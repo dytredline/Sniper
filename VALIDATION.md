@@ -33,7 +33,7 @@ tree.
 | Python pytest modules | 204 passed |
 | JavaScript/Node tests | 432 passed, 0 failed |
 | CJK real-browser layout | PASS — Turkish, English, Japanese, Simplified Chinese, and Korean at desktop and mobile viewports (10/10) |
-| Platform setup policy | PASS — Linux full/core paths, supported macOS core-only source path, and fail-closed Windows/unknown-native routes covered by runtime tests and real-host verification |
+| Platform setup policy | PASS — Linux full/core paths, supported macOS and Windows core-only source paths, and fail-closed unknown-native routes covered by runtime tests and real-host verification |
 | Optional-tools container profile | PASS — exact five-tool target, explicit license gate, Linux architecture selection, loopback port, and three volumes contract-tested; optional image download/build not performed locally |
 | Publication secret-name boundary | PASS — deployment `.env`, field-key records, key files, and image archives are excluded before read and rejected by release-tree validation |
 | Locked tool installer smoke | PASS — five Linux ARM64 Community tools installed and reverified from an offline cache; no scanner executed |

@@ -15,9 +15,9 @@ For a new checkout, `python3 scripts/setup-community --accept-third-party-licens
 It does not start the server or execute a scanner. Prepared offline Python wheels and tool artifacts can be supplied
 with `--wheelhouse` and `--tool-cache-dir`.
 
-The source core can be prepared without optional tools on Linux or macOS with
-`python3 scripts/setup-community --core-only` (supported and verified on both Linux and macOS Apple Silicon). Native Windows is intentionally rejected; use WSL2 or Docker Desktop's
-Linux-container path. For an optional five-engine container image, review the same lock-file licenses and run
+The source core can be prepared without optional tools on Linux, macOS, or Windows with
+`python3 scripts/setup-community --core-only`. For the five optional Linux engines on Windows or macOS, use WSL2 or
+Docker Desktop's Linux-container path. For an optional five-engine container image, review the same lock-file licenses and run
 `python3 scripts/build-community-tools-image --accept-third-party-licenses`; see `DEPLOYMENT.md` for the exact profile
 and evidence boundary.
 

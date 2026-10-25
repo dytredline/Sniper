@@ -11,10 +11,9 @@ database.
 | --- | --- |
 | Linux ARM64 | Supported and release-tested for the native source setup and five locked optional engines |
 | Linux x86-64 | Locked artifacts are provided; GitHub CI validates the source/container path |
-| Windows native | Not supported in v1; setup fails before creating an environment and directs users to WSL2 or Docker |
 | macOS native (Apple Silicon) | Supported and real-host verified for the native source setup (`--core-only`: `.venv`, built-in SAST/SCA/IaC analyzers, MCP, CLI, and loopback web interface); optional third-party Linux engine binaries run via the verified Docker Desktop profile below |
 | macOS Apple Silicon + Docker Desktop | Supported and real-host verified for the five-engine Linux container profile (`./scripts/deploy-community-tools --accept-third-party-licenses`) |
-| Docker Desktop on Windows / WSL2 | Linux container profiles and contracts are provided; real Windows host execution is not part of this evidence |
+| Windows native / WSL2 / Docker Desktop | Supported via `--core-only` native source setup (`python3 scripts/setup-community --core-only`), WSL2, or Docker Desktop Linux container profiles (`community-core` and license-gated `community-tools`) |
 
 The default container runs the Sniper web application and does not bundle the five separately licensed optional
 engines. The distinct `community-tools` build target installs exactly the five Linux artifacts in

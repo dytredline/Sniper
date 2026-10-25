@@ -27,8 +27,7 @@ Community releases.
 - Added the loopback web interface and manual command-line entrypoints.
 - Added deterministic Community source assembly with SHA-256 manifests and fail-closed release validation.
 - Added a one-command rootless setup plus a SHA-256-locked installer for the supported local third-party tool profile.
-- Added a Linux and macOS core-only source setup and a fail-closed Windows-native
-  refusal with WSL2/Docker guidance.
+- Added a Linux, macOS, and Windows core-only source setup plus WSL2/Docker Desktop guidance for the five-engine Linux container profile.
 - Added separate `community-core` and license-gated `community-tools` container targets for Docker Desktop/WSL2;
   the optional target installs exactly the five SHA-256-locked engines and never executes them during the build.
 - Added Japanese, Simplified Chinese, and Korean interface language packs with English fallback and desktop/mobile
