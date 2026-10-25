@@ -417,6 +417,10 @@ _JSON_CAPABLE_SOURCE_RE = re.compile(
 _ALL_KINDS = frozenset(SINK_KINDS)
 _GENERIC_SANITIZER_RE = re.compile(r"sanitiz|escape|clean|strip_control|purify|xss|validat", re.IGNORECASE)
 _LOG_MASK_RE = re.compile(r"mask|redact|hash|hmac|anonymi[sz]|pseudonymi[sz]|tokeni[sz]|encrypt|obfuscat", re.IGNORECASE)
+_URL_ORIGIN_SANITIZER_RE = re.compile(
+    r"(?:^|_)(?:rewrite_?(?:url_?)?(?:to_?\w*_?host|origin|host)|pin_?(?:url_?)?(?:host|origin)|enforce_?(?:same_?)?(?:origin|host))(?:\b|_)",
+    re.IGNORECASE,
+)
 
 
 def _named_sanitizer_kinds(name: str) -> frozenset[str] | None:
@@ -431,6 +435,8 @@ def _named_sanitizer_kinds(name: str) -> frozenset[str] | None:
     if lowered in {"encodeuricomponent", "encodeuri", "urllib.parse.quote", "quote", "quote_plus", "urllib.parse.quote_plus"}:
         return frozenset({"log", "html", "command", "ssrf_partial"})
     last = lowered.rsplit(".", 1)[-1]
+    if _URL_ORIGIN_SANITIZER_RE.search(last):
+        return frozenset({"ssrf", "ssrf_partial", "redirect"})
     if _LOG_MASK_RE.search(last):
         return frozenset({"log"})
     if _GENERIC_SANITIZER_RE.search(last):
@@ -4508,7 +4514,20 @@ class _PyScope:
             self._emit("log", name, line, _union(*args))
         elif last in _PY_SQL_METHODS and base:
             if args:
-                self._emit("sql", name, line, args[0])
+                first_arg = node.args[0] if node.args else None
+                is_structured_arg = isinstance(first_arg, (ast.Dict, ast.List, ast.DictComp, ast.ListComp)) or (
+                    isinstance(first_arg, ast.Name)
+                    and (self.shapes.get(first_arg.id) in {"dict", "list"} or first_arg.id in self.dict_fields)
+                )
+                is_non_db_base = bool(
+                    re.search(
+                        r"(?:^|\.)(?:block|agent|tool|task|job|workflow|step|action|runner|plugin|pipeline|graph)s?$",
+                        base,
+                        re.IGNORECASE,
+                    )
+                )
+                if not (last == "execute" and (is_structured_arg or is_non_db_base)):
+                    self._emit("sql", name, line, args[0])
         elif name in {"text", "sqlalchemy.text", "sql.text"} and args:
             self._emit("sql", name, line, args[0])
         elif name in {"os.system", "os.popen", "subprocess.getoutput", "subprocess.getstatusoutput", "commands.getoutput"} and args:
