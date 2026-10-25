@@ -107,10 +107,21 @@ PII_TAXONOMY: dict[str, str] = {
 # Belirli belirteçlerden sonra gelince PII anlamı taşımayan parçalar
 # (ör. health_check, fingerprint_sha256).
 _TOKEN_BLOCK_NEXT: dict[str, set[str]] = {
-    "health": {"check", "checks", "checker", "z", "status", "probe", "endpoint", "monitor",
-               "url", "port", "service", "ok", "route", "handler"},
+    "health": {
+        "check", "checks", "checker", "z", "status", "probe", "endpoint", "monitor",
+        "url", "port", "service", "ok", "route", "handler", "result", "results",
+        "report", "summary", "state", "info", "response", "payload", "ping",
+        "ready", "readiness", "liveness", "metric", "metrics", "score", "data",
+    },
     "fingerprint": {"sha256", "sha1", "sha", "md5", "hash", "hex"},
     "address": {"space", "family", "book"},
+}
+
+_TOKEN_BLOCK_PREV: dict[str, set[str]] = {
+    "health": {
+        "service", "system", "server", "app", "node", "cluster", "db", "database",
+        "container", "tool", "mcp", "worker", "engine", "runtime", "api", "host",
+    },
 }
 
 _IDENT_RE = re.compile(r"[A-Za-z][A-Za-z0-9_]{0,63}")
@@ -212,6 +223,9 @@ def _identifier_categories(identifier: str) -> list[str]:
                 continue
             blocked = _TOKEN_BLOCK_NEXT.get(key)
             if blocked and index + width < total and parts[index + width] in blocked:
+                continue
+            blocked_prev = _TOKEN_BLOCK_PREV.get(key)
+            if blocked_prev and index > 0 and parts[index - 1] in blocked_prev:
                 continue
             categories.append(category)
             index += width

@@ -469,9 +469,100 @@ def _rules_present(rules: tuple, folded: str) -> tuple:
 _JS_COOKIE_CALL = re.compile(r"\b(?:res|response|reply|ctx\.cookies)\.(?:cookie|set|setCookie)\s*\(")
 DYNAMIC_CODE_SUFFIXES = frozenset({
     ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".vue", ".svelte", ".html", ".htm",
-    ".php", ".rb", ".pl", ".pm", ".lua", ".sh", ".bash", ".zsh", ".ps1", ".groovy", ".kts", ".java", ".cs", ".go",
+    ".php", ".rb", ".pl", ".pm", ".lua", ".sh", ".bash", ".zsh", ".ps1", ".groovy", ".kts",
 })
 JS_FAMILY_SUFFIXES = frozenset({".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".vue", ".svelte", ".html", ".htm", ".json"})
+_SLASH_COMMENT_SUFFIXES = frozenset({
+    ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".vue", ".svelte",
+    ".go", ".java", ".c", ".cpp", ".cc", ".cxx", ".h", ".hpp", ".rs",
+    ".cs", ".kt", ".kts", ".php", ".sol", ".groovy", ".scala", ".swift", ".dart",
+})
+_HASH_COMMENT_SUFFIXES = frozenset({
+    ".rb", ".pl", ".pm", ".sh", ".bash", ".zsh", ".ps1", ".php", ".yaml", ".yml", ".toml", ".conf",
+})
+_LLM_TOKEN_METRIC_RE = re.compile(
+    r"(?i)\b(?:(?:prompt|completion|total|max|input|output|cached|reasoning|num)[_-]?tokens?|token[_-]?(?:count|usage|limit|budget)s?|tokens[_-]?used)\b"
+)
+_BENIGN_SECRET_LITERAL_RE = re.compile(
+    r"(?i)^(?:placeholder.*|changeme.*|your[_\s-].*|example.*|dummy.*|no[_-]?api[_-]?key.*|"
+    r"not[_-]?used[_-]?at[_-]?runtime|build[_-]?only|oauth\s+client\s+secret.*|<[^>]+>|\$\{[^}]+\}|\{\{[^}]+\}\})$"
+)
+_SQL_CONTEXT_LINE_RE = re.compile(
+    r"(?i)(?:\b(?:SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|JOIN|INTO|VALUES|CREATE|ALTER|DROP|TABLE|SET|UNION)\b"
+    r"|\b(?:db|sql|conn|connection|cursor|cur|stmt|pool|tx|session|engine|knex|sequelize|prisma|repo|store)\s*(?:\.\w+)?\s*\.\s*(?:execute|query)\s*\()"
+)
+
+
+def _non_python_code_only_lines(text: str, suffix: str) -> list[str]:
+    """Blank line/block comments in non-Python source files while preserving line count and column positions."""
+    has_slash = suffix in _SLASH_COMMENT_SUFFIXES
+    has_hash = suffix in _HASH_COMMENT_SUFFIXES
+    if not has_slash and not has_hash:
+        return text.splitlines()
+    out: list[str] = []
+    n = len(text)
+    i = 0
+    in_block_comment = False
+    in_quote: str | None = None
+    buf: list[str] = []
+    while i < n:
+        ch = text[i]
+        if ch == "\n":
+            out.append("".join(buf))
+            buf = []
+            if in_quote in ('"', "'"):
+                in_quote = None
+            i += 1
+            continue
+        if in_block_comment:
+            if ch == "*" and i + 1 < n and text[i + 1] == "/":
+                buf.append("  ")
+                in_block_comment = False
+                i += 2
+            else:
+                buf.append(" ")
+                i += 1
+            continue
+        if in_quote is not None:
+            if ch == "\\" and i + 1 < n:
+                buf.append(ch)
+                if text[i + 1] != "\n":
+                    buf.append(text[i + 1])
+                    i += 2
+                    continue
+            elif ch == in_quote:
+                in_quote = None
+            buf.append(ch)
+            i += 1
+            continue
+        if ch in ('"', "'", "`"):
+            in_quote = ch
+            buf.append(ch)
+            i += 1
+            continue
+        if has_slash and ch == "/" and i + 1 < n:
+            nxt = text[i + 1]
+            if nxt == "/":
+                while i < n and text[i] != "\n":
+                    buf.append(" ")
+                    i += 1
+                continue
+            if nxt == "*":
+                buf.append("  ")
+                in_block_comment = True
+                i += 2
+                continue
+        if has_hash and ch == "#":
+            while i < n and text[i] != "\n":
+                buf.append(" ")
+                i += 1
+            continue
+        buf.append(ch)
+        i += 1
+    if buf or text.endswith("\n"):
+        if buf:
+            out.append("".join(buf))
+    return out
 
 
 def _python_code_only_lines(text: str) -> list[str]:
@@ -1602,7 +1693,7 @@ def _analyze_project(
         ),
         (
             "data_query", "high", "SQL sorgusunda veri birleştirme",
-            re.compile(r"(?i)(execute|query)\s*\(\s*(f[\"']|[^\n]*(\.format\(|\+))"),
+            re.compile(r"(?i)(?<![A-Za-z0-9_])(execute|query)\s*\(\s*(f[\"']|[^\n]*(\.format\(|\+))"),
             "SQL çağrısında biçimlendirme/birleştirme görüldü; sorgu değeri kaydedilmedi.",
             "Hazır sorgu ve parametre bağlama kullanın; tablo/sütun adlarını allowlist ile seçin.",
             "CWE-89",
@@ -1851,6 +1942,10 @@ def _analyze_project(
                                 re.search(r"(api_?key|client_?secret|private_?key|password|passwd)$", variable)
                                 and isinstance(value, ast.Constant) and isinstance(value.value, (str, bytes))
                                 and len(value.value) >= 8
+                                and not (
+                                    isinstance(value.value, str)
+                                    and _BENIGN_SECRET_LITERAL_RE.match(value.value.strip())
+                                )
                             ):
                                 add(
                                     "secrets", "high", "Kaynak kodda sabit sır olasılığı", path, node.lineno,
@@ -1892,7 +1987,10 @@ def _analyze_project(
                             "Kabuk yorumlaması etkin bir komut çağrısı görüldü.",
                             "Argüman dizisi kullanın, shell modunu kapatın ve izin verilen komutları sınırlandırın.", "CWE-78",
                         )
-                    if name.endswith((".execute", ".query")) and node.args:
+                    if name.endswith((".execute", ".query")) and node.args and not re.search(
+                        r"(?:^|\.)(?:block|agent|tool|task|job|workflow|step|action|runner|plugin|pipeline|graph)s?\.(?:execute|query)$",
+                        name,
+                    ):
                         query = node.args[0]
                         if (isinstance(query, (ast.JoinedStr, ast.BinOp)) and not _is_constant_expr(query)) or (
                             isinstance(query, ast.Call) and dotted_name(query.func).endswith(".format")
@@ -2058,7 +2156,12 @@ def _analyze_project(
                         )
                     if name in {"builtins.print", "print", "sys.stdout.write", "sys.stderr.write"} or any(part in name for part in ("logger.", "logging.")):
                         argument_names = {dotted_name(child).casefold() for argument in node.args for child in ast.walk(argument)}
-                        if any(re.search(r"password|token|secret|authorization", item) for item in argument_names):
+                        sensitive_arg_names = {
+                            item for item in argument_names
+                            if re.search(r"password|token|secret|authorization", item)
+                            and not _LLM_TOKEN_METRIC_RE.search(item)
+                        }
+                        if sensitive_arg_names:
                             add(
                                 "logging", "medium", "Günlüğe hassas veri yazma olasılığı", path, node.lineno,
                                 "Hassas alan değişkeni günlük çağrısına veriliyor; değer kaydedilmedi.",
@@ -2074,6 +2177,10 @@ def _analyze_project(
                             "Varsayılan JSONSerializer'ı kullanın (Django 4.1'de PickleSerializer kaldırıldı); SECRET_KEY'i gizli tutun.",
                             "CWE-502",
                         )
+            has_verified_jwt_in_file = bool(
+                re.search(r"(?i)\b(?:jwt\.decode|PyJWKClient|get_signing_key|jwk)\b", text)
+                and not re.search(r"(?i)(?:verify\s*=\s*false|verify_signature[\"']?\s*[:=]\s*false|algorithms\s*[:=]\s*\[[^\]]*[\"']none[\"'])", text)
+            )
             python_rules = tuple(rule for rule in _rules_present(extra_line_rules, _fold_for_literals(lower))
                                  if rule[2] not in NON_PYTHON_RULE_TITLES)
             # Uygulanabilir kural yoksa dizge/yorum maskelemesi (tokenize) gereksiz.
@@ -2081,6 +2188,13 @@ def _analyze_project(
             for line_number, line in enumerate(python_code_lines, 1):
                 for category, severity, title, pattern, evidence, recommendation, reference in python_rules:
                     if per_rule_count.get(title, 0) >= 4 or not pattern.search(line):
+                        continue
+                    if (
+                        title == "JWT imza doğrulaması devre dışı veya alg:none izni"
+                        and has_verified_jwt_in_file
+                        and re.search(r"(?i)jwt\.get_unverified_header\s*\(", line)
+                        and not re.search(r"(?i)jwt\.get_unverified_claims\s*\(", line)
+                    ):
                         continue
                     per_rule_count[title] = per_rule_count.get(title, 0) + 1
                     add(category, severity, title, path, line_number, evidence, recommendation, reference)
@@ -2090,20 +2204,44 @@ def _analyze_project(
             signals.add("detection_rules")
         else:
             has_origin_check = bool(origin_check_pattern.search(text))
+            has_verified_jwt_in_file = bool(
+                re.search(r"(?i)\b(?:jwt\.decode|PyJWKClient|get_signing_key|jwk|jwtVerify)\b", text)
+                and not re.search(r"(?i)(?:verify\s*=\s*false|verify_signature[\"']?\s*[:=]\s*false|algorithms\s*[:=]\s*\[[^\]]*[\"']none[\"'])", text)
+            )
             folded = _fold_for_literals(lower)
-            active_rules = tuple(
+            active_rules = () if normalized_name.endswith(".d.ts") else tuple(
                 rule for rule in _rules_present(line_rules, folded)
                 if not (rule[2] in SOLIDITY_RULE_TITLES and suffix != ".sol")
                 and not (rule[2] in ELECTRON_RULE_TITLES and suffix not in JS_FAMILY_SUFFIXES)
                 and not (rule[2] == C_OVERFLOW_RULE_TITLE and suffix not in C_FAMILY_SUFFIXES)
             )
-            check_postmessage = not has_origin_check and "addeventlistener" in folded
-            source_lines = text.splitlines() if active_rules or check_postmessage else []
+            check_postmessage = not normalized_name.endswith(".d.ts") and not has_origin_check and "addeventlistener" in folded
+            raw_source_lines = text.splitlines() if active_rules or check_postmessage else []
+            source_lines = _non_python_code_only_lines(text, suffix) if active_rules or check_postmessage else []
             for line_number, line in enumerate(source_lines, 1):
+                raw_line_text = raw_source_lines[line_number - 1] if line_number - 1 < len(raw_source_lines) else line
                 for category, severity, title, pattern, evidence, recommendation, reference in active_rules:
                     if per_rule_count.get(title, 0) >= 4 or not pattern.search(line):
                         continue
-                    if title == DOM_XSS_RULE_TITLE and _dom_sink_is_safe(source_lines, line_number - 1):
+                    if title == DOM_XSS_RULE_TITLE and _dom_sink_is_safe(raw_source_lines, line_number - 1):
+                        continue
+                    if (
+                        title == "JWT imza doğrulaması devre dışı veya alg:none izni"
+                        and has_verified_jwt_in_file
+                        and re.search(r"(?i)jwt\.get_unverified_header\s*\(", line)
+                        and not re.search(r"(?i)jwt\.get_unverified_claims\s*\(", line)
+                    ):
+                        continue
+                    if title == "SQL sorgusunda veri birleştirme" and not _SQL_CONTEXT_LINE_RE.search(raw_line_text):
+                        continue
+                    if title == "Kaynak kodda sabit sır olasılığı":
+                        m_sec = re.search(
+                            r"(?i)\b(?:api[_-]?key|client[_-]?secret|private[_-]?key|password|passwd)\b\s*[:=]\s*[\"']([^\"']{8,})[\"']",
+                            line,
+                        )
+                        if m_sec and _BENIGN_SECRET_LITERAL_RE.match(m_sec.group(1).strip()):
+                            continue
+                    if title == "Günlüğe hassas veri yazma olasılığı" and not pattern.search(_LLM_TOKEN_METRIC_RE.sub("", line)):
                         continue
                     if title == "Dinamik kod çalıştırma" and suffix not in DYNAMIC_CODE_SUFFIXES:
                         continue  # YAML/JSON/belge içindeki "exec(" metni kod değildir (ör. SEMVER.exec)
@@ -2441,6 +2579,10 @@ def _analyze_project(
                 signals.add("container_iac")
             # İfade yalnız run:/script: (kabuk veya github-script) içinde enjeksiyon riski taşır;
             # env:/with:/concurrency içinde kullanmak önerilen güvenli yoldur.
+            has_checkout = bool(re.search(r"(?i)\buses\s*:\s*[\"']?actions/checkout\b", text)) if is_cicd else False
+            has_same_repo_guard = bool(re.search(r"head\.repo\.full_name\s*==\s*github\.repository", text)) if is_cicd else False
+            has_prt_trigger = bool(re.search(r"\bpull_request_target\b", text)) if is_cicd else False
+            has_pr_trigger = bool(re.search(r"\bpull_request\b(?!_target)", text)) if is_cicd else False
             script_indent: int | None = None
             for line_number, raw_line in enumerate(text.splitlines(), 1):
                 indent = len(raw_line) - len(raw_line.lstrip())
@@ -2507,18 +2649,33 @@ def _analyze_project(
                     )
                 if is_cicd:
                     if re.search(r"\bpull_request_target\b", raw_line):
+                        prt_severity = "high" if has_checkout else "low"
                         add(
-                            "supplychain", "high", "CI/CD iş akışında riskli pull_request_target tetikleyicisi",
+                            "supplychain", prt_severity, "CI/CD iş akışında riskli pull_request_target tetikleyicisi",
                             path, line_number,
                             "İş akışında ayrıcalıklı bağlamda çalışan pull_request_target tetikleyicisi görüldü.",
                             "Çatal (fork) PR kodunu pull_request_target içinde doğrudan çalıştırmayın; salt okunur pull_request tetikleyicisini tercih edin.",
                             "CWE-829",
                         )
+                    if (
+                        has_pr_trigger
+                        and has_checkout
+                        and not has_same_repo_guard
+                        and re.search(r"(?i)\bruns-on\s*:[^\n#]*\bself-hosted\b", raw_line)
+                    ):
+                        add(
+                            "supplychain", "high", "CI/CD iş akışında self-hosted runner üzerinde çatal (fork) PR kodu çalıştırma riski",
+                            path, line_number,
+                            "pull_request tetikleyicili iş akışının depo kökeni kısıtlaması olmadan self-hosted runner üzerinde çalıştığı ve PR kodunu checkout ettiği görüldü.",
+                            "Self-hosted runner işlerinde github.event.pull_request.head.repo.full_name == github.repository koşulunu zorunlu kılın veya ephemeral GitHub-hosted runner kullanın.",
+                            "CWE-829",
+                        )
                     # Yalnız saldırganın serbest metin olarak denetleyebildiği alanlar
                     # (GitHub Security Lab listesi); sha/number/id gibi değerler enjekte edilemez.
                     if in_script and _has_untrusted_gha_expression(raw_line):
+                        gha_severity = "low" if (has_same_repo_guard and not has_prt_trigger) else "critical"
                         add(
-                            "supplychain", "critical", "CI/CD iş akışında güvenilmeyen etkinlik verisiyle komut enjeksiyonu riski",
+                            "supplychain", gha_severity, "CI/CD iş akışında güvenilmeyen etkinlik verisiyle komut enjeksiyonu riski",
                             path, line_number,
                             "CI/CD betiğinde github.event alanının doğrudan ${{ ... }} ile komut satırına yerleştirildiği görüldü.",
                             "Güvenilmeyen etkinlik alanlarını doğrudan run satırına yazmayın; önce ortam değişkenine (env:) atayıp kabukta tırnak içinde okuyun.",

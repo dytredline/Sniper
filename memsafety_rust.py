@@ -129,13 +129,21 @@ def analyze_text(text: str, path: str) -> list[memsafety_c.MemFinding]:
         if ".min(" in length or "min(" in length or ".len()" in length or length.isdigit() or \
                 "size_of" in length:
             return True
+        if bases and not any(
+            re.search(
+                rf"\b{re.escape(b)}\.len\(\)|\b{re.escape(b)}\[[^\]]*\.\.|\b{re.escape(b)}(:\w+)?=&?\w+\[[^\]]*\.\.",
+                body_txt,
+            )
+            for b in bases
+        ):
+            return False
         var = re.split(r"[^\w]", length)[0] if length else ""
         if not var:
             return False
         if re.search(rf"\b{re.escape(var)}(:\w+)?=[^;]*(\.min\(|min\(|\.len\(\)|size_of)", body_txt):
             return True
-        if re.search(rf"\b{re.escape(var)}(<=|<|>=|>|==)", body_txt) or \
-                re.search(rf"(<=|<|>=|>|==)[&*]?{re.escape(var)}\b", body_txt):
+        if re.search(rf"\b{re.escape(var)}(<=|<|>=|>|==)(?!0\b)", body_txt) or \
+                re.search(rf"(?<!\b0)(<=|<|>=|>|==)[&*]?{re.escape(var)}\b", body_txt):
             return True
         if re.search(rf"assert!?\([^;]*\b{re.escape(var)}\b", body_txt):
             return True
