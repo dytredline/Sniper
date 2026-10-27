@@ -489,8 +489,31 @@ _BENIGN_SECRET_LITERAL_RE = re.compile(
 )
 _SQL_CONTEXT_LINE_RE = re.compile(
     r"(?i)(?:\b(?:SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|JOIN|INTO|VALUES|CREATE|ALTER|DROP|TABLE|SET|UNION)\b"
-    r"|\b(?:db|sql|conn|connection|cursor|cur|stmt|pool|tx|session|engine|knex|sequelize|prisma|repo|store)\s*(?:\.\w+)?\s*\.\s*(?:execute|query)\s*\()"
+    r"|\b(?:db|sql|conn|connection|cursor|cur|stmt|pool|tx|session|engine|knex|sequelize|prisma|repo|store)\s*\.(?:\w+\s*\.)?\s*(?:execute|query)\s*\()"
 )
+_JWT_INSECURE_OPTION_RE = re.compile(
+    r"(?i)(?:verify\s*=\s*false|verify_signature[\"']?\s*[:=]\s*false)"
+)
+_JWT_ALGORITHMS_OPEN_RE = re.compile(r"(?i)algorithms\s*[:=]\s*\[")
+_JWT_NONE_LITERAL_RE = re.compile(r"(?i)[\"']none[\"']")
+
+
+def _jwt_none_algorithm(text: str) -> bool:
+    """Find a quoted none algorithm before the next ']' without rescanning a long list."""
+    offset = 0
+    while match := _JWT_ALGORITHMS_OPEN_RE.search(text, offset):
+        close = text.find("]", match.end())
+        end = len(text) if close == -1 else close
+        if _JWT_NONE_LITERAL_RE.search(text, match.end(), end):
+            return True
+        if close == -1:
+            return False
+        offset = close + 1
+    return False
+
+
+def _has_unsafe_jwt_option(text: str) -> bool:
+    return bool(_JWT_INSECURE_OPTION_RE.search(text)) or _jwt_none_algorithm(text)
 
 
 def _non_python_code_only_lines(text: str, suffix: str) -> list[str]:
@@ -1574,7 +1597,6 @@ def _analyze_project(
             "crypto", "high", "JWT imza doğrulaması devre dışı veya alg:none izni",
             re.compile(
                 r"(?i)(verify_signature[\"']?\s*[:=]\s*false"
-                r"|algorithms\s*[:=]\s*\[[^\]]*[\"']none[\"']"
                 r"|jwt\.decode\s*\([^\n]*verify\s*=\s*false"
                 r"|jwt\.get_unverified_(?:claims|header)\s*\()"
             ),
@@ -2179,7 +2201,7 @@ def _analyze_project(
                         )
             has_verified_jwt_in_file = bool(
                 re.search(r"(?i)\b(?:jwt\.decode|PyJWKClient|get_signing_key|jwk)\b", text)
-                and not re.search(r"(?i)(?:verify\s*=\s*false|verify_signature[\"']?\s*[:=]\s*false|algorithms\s*[:=]\s*\[[^\]]*[\"']none[\"'])", text)
+                and not _has_unsafe_jwt_option(text)
             )
             python_rules = tuple(rule for rule in _rules_present(extra_line_rules, _fold_for_literals(lower))
                                  if rule[2] not in NON_PYTHON_RULE_TITLES)
@@ -2187,7 +2209,12 @@ def _analyze_project(
             python_code_lines = _python_code_only_lines(text) if python_rules else ()
             for line_number, line in enumerate(python_code_lines, 1):
                 for category, severity, title, pattern, evidence, recommendation, reference in python_rules:
-                    if per_rule_count.get(title, 0) >= 4 or not pattern.search(line):
+                    if per_rule_count.get(title, 0) >= 4:
+                        continue
+                    if not pattern.search(line) and not (
+                        title == "JWT imza doğrulaması devre dışı veya alg:none izni"
+                        and _jwt_none_algorithm(line)
+                    ):
                         continue
                     if (
                         title == "JWT imza doğrulaması devre dışı veya alg:none izni"
@@ -2206,7 +2233,7 @@ def _analyze_project(
             has_origin_check = bool(origin_check_pattern.search(text))
             has_verified_jwt_in_file = bool(
                 re.search(r"(?i)\b(?:jwt\.decode|PyJWKClient|get_signing_key|jwk|jwtVerify)\b", text)
-                and not re.search(r"(?i)(?:verify\s*=\s*false|verify_signature[\"']?\s*[:=]\s*false|algorithms\s*[:=]\s*\[[^\]]*[\"']none[\"'])", text)
+                and not _has_unsafe_jwt_option(text)
             )
             folded = _fold_for_literals(lower)
             active_rules = () if normalized_name.endswith(".d.ts") else tuple(
@@ -2221,7 +2248,12 @@ def _analyze_project(
             for line_number, line in enumerate(source_lines, 1):
                 raw_line_text = raw_source_lines[line_number - 1] if line_number - 1 < len(raw_source_lines) else line
                 for category, severity, title, pattern, evidence, recommendation, reference in active_rules:
-                    if per_rule_count.get(title, 0) >= 4 or not pattern.search(line):
+                    if per_rule_count.get(title, 0) >= 4:
+                        continue
+                    if not pattern.search(line) and not (
+                        title == "JWT imza doğrulaması devre dışı veya alg:none izni"
+                        and _jwt_none_algorithm(line)
+                    ):
                         continue
                     if title == DOM_XSS_RULE_TITLE and _dom_sink_is_safe(raw_source_lines, line_number - 1):
                         continue

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import time
+import tempfile
 import unittest
+from pathlib import Path
 
 import ai_llm_security_auditor as ai_llm
 import api_spec_routes
+import project_analyzer
 
 
 LINEAR_BUDGET_SECONDS = 0.10
@@ -62,6 +65,57 @@ class CodeQLRegexBlockerTests(unittest.TestCase):
         self.assertIn("Users.get", qualified)
         self.assertNotIn("MissingColon.ignored", qualified)
         self.assertIn("list_users", bare)
+
+    def test_jwt_algorithm_scan_is_linear_on_unclosed_lists(self) -> None:
+        source = "algorithms:[" * 20_000 + "x"
+        self.assertFalse(self.assert_fast(
+            "JWT algorithm scan",
+            lambda: project_analyzer._has_unsafe_jwt_option(source),
+        ))
+
+    def test_jwt_algorithm_scan_preserves_unsafe_option_detection(self) -> None:
+        cases = (
+            ("algorithms: ['HS256', 'none']", True),
+            ("algorithms=['HS256', 'none'", True),
+            ("algorithms: ['HS256'] then 'none'", False),
+            ("algorithms: ['HS256'] algorithms: ['none']", True),
+            ("verify = false", True),
+            ("verify_signature: false", True),
+            ("algorithms: ['HS256']", False),
+        )
+        for source, expected in cases:
+            with self.subTest(source=source):
+                self.assertEqual(project_analyzer._has_unsafe_jwt_option(source), expected)
+
+    def test_sql_context_scan_is_linear_on_whitespace(self) -> None:
+        source = "db" + " " * 30_000 + "!"
+        self.assertIsNone(self.assert_fast(
+            "SQL context scan",
+            lambda: project_analyzer._SQL_CONTEXT_LINE_RE.search(source),
+        ))
+
+    def test_sql_context_scan_preserves_query_calls(self) -> None:
+        for source in ("db.execute(q)", "db.cursor.execute(q)", "db . cursor . query (q)"):
+            with self.subTest(source=source):
+                self.assertIsNotNone(project_analyzer._SQL_CONTEXT_LINE_RE.search(source))
+        self.assertIsNone(project_analyzer._SQL_CONTEXT_LINE_RE.search("db.cursor.close(q)"))
+
+    def test_jwt_none_line_rule_remains_active_in_python_and_javascript(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve() / "project"
+            root.mkdir()
+            (root / "app.py").write_text(
+                "jwt.decode(token, key, algorithms=['none'])\n", encoding="utf-8"
+            )
+            (root / "app.js").write_text("const algorithms = ['none'];\n", encoding="utf-8")
+            findings = project_analyzer.analyze_project(
+                str(root), allowed_roots=(root.parent,),
+            )["findings"]
+        detected = {
+            item["file"] for item in findings
+            if item["title"] == "JWT imza doğrulaması devre dışı veya alg:none izni"
+        }
+        self.assertEqual(detected, {"app.py", "app.js"})
 
 
 if __name__ == "__main__":
