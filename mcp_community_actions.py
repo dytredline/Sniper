@@ -44,11 +44,15 @@ COMMUNITY_TOOLS: list[dict[str, Any]] = [
     {
         "name": "list_community_capabilities",
         "description": "Community MCP ürün eylemlerinin gerçek readiness durumunu listeler; eylem çalıştırmaz.",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False,
+                        "idempotentHint": True, "openWorldHint": False},
         "inputSchema": {"type": "object", "additionalProperties": False, "properties": {}},
     },
     {
         "name": "community_job_status",
         "description": "Bağlı Sniper iş kuyruğundaki bir işin güvenli durum özetini döndürür.",
+        "annotations": {"readOnlyHint": True, "destructiveHint": False,
+                        "idempotentHint": True, "openWorldHint": False},
         "inputSchema": {
             "type": "object",
             "additionalProperties": False,
@@ -62,6 +66,8 @@ COMMUNITY_TOOLS: list[dict[str, Any]] = [
             "Community ürün eylemini çalıştırmadan süreli, tek kullanımlık ve tam normalize parametrelere "
             "SHA-256 bağlı bir plan hazırlar."
         ),
+        "annotations": {"readOnlyHint": False, "destructiveHint": False,
+                        "idempotentHint": False, "openWorldHint": False},
         "inputSchema": {
             "type": "object",
             "additionalProperties": False,
@@ -91,6 +97,8 @@ COMMUNITY_TOOLS: list[dict[str, Any]] = [
             "Önceden hazırlanan planı yalnız kullanıcı sohbet onayı tam true ve plan SHA-256 eşleşiyorsa bir kez "
             "yürütür."
         ),
+        "annotations": {"readOnlyHint": False, "destructiveHint": True,
+                        "idempotentHint": False, "openWorldHint": True},
         "inputSchema": {
             "type": "object",
             "additionalProperties": False,
