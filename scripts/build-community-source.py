@@ -39,6 +39,10 @@ EXCLUDED_NAMES_CASEFOLD = frozenset(name.casefold() for name in EXCLUDED_NAMES)
 INTERNAL_EVALUATION_PATHS = frozenset({
     "docs/advisories",
     "docs/SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md",
+    "docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md",
+    "docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md",
+    "docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.zh-CN.md",
+    "docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ko.md",
     "docs/sniper-2-evaluation.md",
     "docs/olcum",
     "scripts/ai_triage_eval.py",
@@ -824,7 +828,7 @@ def _transform_public_readme(text: str) -> str:
     """Remove maintainer disclosure work from the assembled product README."""
     return _replace_pattern(
         text,
-        r"^### Gökçe Baran Karakamış — macOS Kurulum Doğrulaması.*?(?=^## Validation and tests)",
+        r"^### Gökçe Baran Karakamış — (?:macOS Kurulum Doğrulaması|macOS Hardware Validation).*?(?=^## Validation and tests)",
         (
             "### Independent validation\n\n"
             "Community release claims are limited to the reproducible checks in "
@@ -852,13 +856,61 @@ def _transform_public_readme_tr(text: str) -> str:
     )
 
 
+def _transform_public_readme_ja(text: str) -> str:
+    """Remove maintainer disclosure work from the assembled Japanese README."""
+    return _replace_pattern(
+        text,
+        r"^### Gökçe Baran Karakamış — macOS 実機検証.*?(?=^## 検証とテスト)",
+        (
+            "### 独立した検証\n\n"
+            "Community リリースの主張は [VALIDATION.md](../VALIDATION.md) の再現可能なチェックに限定されます。"
+            "メンテナーの脆弱性調査および協調的開示作業は、製品ソースアーカイブには含まれません。\n\n"
+        ),
+        expected=1,
+        relative="docs/README.ja.md",
+    )
+
+
+def _transform_public_readme_zh_cn(text: str) -> str:
+    """Remove maintainer disclosure work from the assembled Simplified Chinese README."""
+    return _replace_pattern(
+        text,
+        r"^### Gökçe Baran Karakamış — macOS 真机安装验证.*?(?=^## 验证与测试)",
+        (
+            "### 独立验证\n\n"
+            "Community 版本声明仅限于 [VALIDATION.md](../VALIDATION.md) 中的可复现检查。"
+            "维护者漏洞研究与协调披露工作不会随产品源码归档一起分发。\n\n"
+        ),
+        expected=1,
+        relative="docs/README.zh-CN.md",
+    )
+
+
+def _transform_public_readme_ko(text: str) -> str:
+    """Remove maintainer disclosure work from the assembled Korean README."""
+    return _replace_pattern(
+        text,
+        r"^### Gökçe Baran Karakamış — macOS 실장비 설치 검증.*?(?=^## 검증 및 테스트)",
+        (
+            "### 독립 검증\n\n"
+            "Community 릴리스 주장은 [VALIDATION.md](../VALIDATION.md)의 재현 가능한 검사로 제한됩니다. "
+            "메인테이너 취약점 연구 및 조정된 공개 작업은 제품 소스 아카이브와 함께 배포되지 않습니다.\n\n"
+        ),
+        expected=1,
+        relative="docs/README.ko.md",
+    )
+
+
 def _apply_artifact_transform(relative: Path, text: str) -> str:
     transforms = {
         "Dockerfile": _transform_dockerfile,
         "README.md": _transform_public_readme,
         "data_retention.py": _transform_data_retention,
         "docs/KULLANIM-KILAVUZU.md": _transform_user_guide,
+        "docs/README.ja.md": _transform_public_readme_ja,
+        "docs/README.ko.md": _transform_public_readme_ko,
         "docs/README.tr.md": _transform_public_readme_tr,
+        "docs/README.zh-CN.md": _transform_public_readme_zh_cn,
         "mcp_triage_server.py": _transform_mcp_community_wording,
         "report_renderers.py": _transform_report_renderers,
         "server.py": _transform_server,

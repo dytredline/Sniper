@@ -80,14 +80,14 @@ and verified on a real Apple Silicon Mac:
      entrypoints natively on macOS.
    - Initialized an isolated local SQLite data directory on macOS, started the loopback web interface, and executed a
      real local project audit (`audit_id: prj_162d09c47587`, `baseline_id: prj_497a1c478d97`) against a local Python
-     smoke project, confirming end-to-end native macOS detection (`[critical] Doğrulanmış veri akışı: istek girdisi SQL
-     sorgusuna ulaşıyor (SQL enjeksiyonu)` at `app.py:4`) and notification persistence.
+     smoke project, confirming end-to-end native macOS detection (`[critical] Verified data flow: request input reaches SQL
+     query (SQL injection)` at `app.py:4`) and notification persistence.
 
 2. **macOS Apple Silicon + Docker Desktop five-engine profile (`./scripts/deploy-community-tools --accept-third-party-licenses`):**
    - The five-engine Community image was built on the same Apple Silicon Mac with Docker Desktop after explicit
      acceptance of the engines' separate open-source licenses. Sniper started on loopback and reported healthy. Runtime
      prechecks passed for the pinned Nuclei loopback, Trivy local-secret, Gitleaks, TruffleHog filesystem, and Opengrep
-     local-code profiles. The Turkish web dashboard and tool matrix opened in a browser on the same Mac.
+     local-code profiles. The web dashboard and tool matrix opened in a browser on the same Mac.
    - A synthetic test project was copied from a macOS Documents checkout into the persistent Docker project volume and
      remained accessible after the service was recreated. Local API smoke checks completed for all five engines.
      Opengrep reported the two deliberately planted SQL-injection fixture findings; the other profiles completed against
@@ -98,8 +98,9 @@ The full source test runner executed in a Linux test container on that Mac: **2,
 failures/errors; 203 pytest tests passed, one skipped; 432 Node tests passed**. Both the native macOS `--core-only`
 source route and the Docker-backed five-engine route are verified and supported on macOS; this result does not claim
 that every one of the 161 methodology controls is automated. See also
-[docs/SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md](docs/SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md) for the
-Turkish macOS verification summary and open-source repository audit report.
+[docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md](docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md) and
+[docs/advisories/README.md](docs/advisories/README.md) for the complete macOS verification summary, the 8 scanned
+open-source repositories audit report, and the 11 verified vulnerabilities discovered by Sniper.
 
 ## Run the same public checks
 
