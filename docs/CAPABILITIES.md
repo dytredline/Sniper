@@ -474,16 +474,16 @@ yazılı kapsam, zaman aralığı, hız sınırı, veri işleme ve durdurma koş
 | --- | --- |
 | Community metadata/yayın yüzeyi | PASS — 43 gerekli yayın dosyası |
 | Deterministik kaynak oluşturma ve release-tree taraması | PASS |
-| Python `unittest` launcher | 2.812 test, 0 hata, 0 başarısızlık |
-| Python `pytest` modülleri | 204 geçti |
-| JavaScript/Node testleri | 432 geçti, 0 başarısızlık |
-| Kilitli araç kurulumu smoke | PASS — Linux ARM64 için beş araç çevrimdışı cache'den kurulup yeniden doğrulandı; tarayıcı çalıştırılmadı |
-| Tek komut çevrimdışı setup smoke | PASS — parse edilebilir JSON, beş köken-bağlı araç ve iki gerçek help entrypoint |
+| Python `unittest` launcher | 3.077 test, 0 hata, 0 başarısızlık |
+| Python `pytest` modülleri | 337 geçti |
+| JavaScript/Node testleri | 517 geçti, 0 başarısızlık |
+| Kilitli araç kurulumu smoke | PASS — Linux ARM64 için yedi araç çevrimdışı cache'den kurulup yeniden doğrulandı; tarayıcı çalıştırılmadı |
+| Tek komut çevrimdışı setup smoke | PASS — parse edilebilir JSON, yedi köken-bağlı araç ve iki gerçek help entrypoint |
 | Beş dilli gerçek Chromium düzeni | PASS — masaüstü/mobil 10/10 görünüm |
 | Platform ve yayın-sırrı kapıları | PASS — Linux/macOS/Windows politika yolları ile `.env`/anahtar dışlama sözleşmeleri |
 | Compose yapılandırması | Varsayılan ve lisans-kapılı tools override yerelde PASS |
-| Community container build | Önceki main core build PASS; bu aday başlığı için yeni PR CI bekleniyor |
-| CodeQL | PR #7 Actions, JavaScript/TypeScript ve Python işleri PASS; dal ve PR ref'lerinde açık alarm 0 |
+| Community container build | PASS — son birleştirilmiş kaynak, ağ kullanmadan doğrulanmış R66 runtime'a yerleştirildi; imaj sağlıklı duruma ulaştı |
+| CodeQL | Yayınlanmış main tabanı Actions, JavaScript/TypeScript ve Python için PASS; v1.1.0 PR #19 yeni CI/CodeQL geçişi tamamlanmadan etiketlenmez |
 
 Bu sayılar ürünün bulduğu açık sayısı değildir ve yalnız o kaynak anlık görüntüsü/fixture'ları için geçerlidir.
 Gelecek commitler test toplamlarını değiştirebilir; bir motorun CI'da veya başka mimaride atlanması o motora ilişkin
