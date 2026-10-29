@@ -153,6 +153,39 @@ CWE_VECTOR_TABLE: dict[str, str] = {
     "CWE-269": _PRIV_LOCAL,
     "CWE-276": _FILE_PERMS,
     "CWE-732": _FILE_PERMS,
+    "CWE-426": _PRIV_LOCAL,
+    "CWE-427": _PRIV_LOCAL,
+    # İş mantığı / bütünlük / istemci sınırları (Dalga 78–103)
+    "CWE-190": "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H",
+    "CWE-252": "AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+    "CWE-359": _SECRET_STORAGE,
+    "CWE-384": "AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N",
+    "CWE-472": "AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N",
+    "CWE-522": _SECRET_STORAGE,
+    "CWE-523": _WEAK_CRYPTO,
+    "CWE-598": _INFO_LEAK,
+    "CWE-668": "AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N",
+    "CWE-749": "AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:H",
+    "CWE-915": _AUTHZ,
+    "CWE-939": "AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:L/A:N",
+    "CWE-1395": _SUPPLY,
+    # Bellek güvenliği, NoSQL, başlık/istek kaçakçılığı ve kötü amaçlı paketler (Dalga 157)
+    "CWE-943": _FULL_RCE,
+    "CWE-113": _XSS,
+    "CWE-134": _FULL_RCE,
+    "CWE-416": _FULL_RCE,
+    "CWE-415": _FULL_RCE,
+    "CWE-119": _FULL_RCE,
+    "CWE-120": _FULL_RCE,
+    "CWE-787": _FULL_RCE,
+    "CWE-125": "AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:H",
+    "CWE-401": _DOS,
+    "CWE-506": _FULL_RCE,
+    "CWE-501": _AUTHZ,
+    "CWE-444": "AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:N",
+    "CWE-345": _AUTH_BYPASS,
+    "CWE-346": _AUTH_BYPASS,
+    "CWE-530": "AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
 }
 
 # Sniper kategori → temsilî CWE (CWE bilgisi yoksa kullanılır).
@@ -167,7 +200,33 @@ CATEGORY_CWE_FALLBACK: dict[str, str] = {
     "data": "CWE-200",
     "errors": "CWE-209",
     "supplychain": "CWE-1104",
+    "dependency": "CWE-1104",
+    "dependencies": "CWE-1104",
+    "components": "CWE-1104",
     "authentication": "CWE-287",
+    "secrets": "CWE-798",
+    "crypto": "CWE-327",
+    "authorization": "CWE-862",
+    "authz": "CWE-862",
+    "ssrf": "CWE-918",
+    "command_data": "CWE-78",
+    "data_query": "CWE-89",
+    "business": "CWE-841",
+    "availability": "CWE-400",
+    "logging": "CWE-778",
+    "ai_llm": "CWE-77",
+    "database_rls": "CWE-862",
+    "cloud_iam": "CWE-269",
+    "zero_trust": "CWE-319",
+    "browser_extension": "CWE-79",
+    "desktop_security": "CWE-78",
+    "web3": "CWE-841",
+    "iot_firmware": "CWE-798",
+    "host_cis": "CWE-250",
+    "dos_resilience": "CWE-400",
+    "mobile_security": "CWE-312",
+    "iac": "CWE-16",
+    "container": "CWE-250",
 }
 
 SEVERITY_VECTOR_FALLBACK: dict[str, str] = {
@@ -272,11 +331,22 @@ def build_cvss40_vector(cvss31_vector: str, *, attack_requirements: str = "N") -
 
 def _candidate_cwes(finding: dict[str, Any]) -> list[str]:
     found: list[str] = []
-    for field in ("cwe", "reference"):
+    for field in ("cwe", "cwe_id", "reference"):
         value = finding.get(field)
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+            cwe = f"CWE-{value}"
+            if cwe not in found:
+                found.append(cwe)
+            continue
         if isinstance(value, (list, tuple)):
             value = " ".join(str(v) for v in value)
         if not isinstance(value, str):
+            continue
+        stripped = value.strip()
+        if stripped.isdigit() and int(stripped) > 0:
+            cwe = f"CWE-{int(stripped)}"
+            if cwe not in found:
+                found.append(cwe)
             continue
         for number in _CWE_RE.findall(value):
             cwe = f"CWE-{int(number)}"
@@ -490,7 +560,7 @@ def prioritize_findings(
                 "title": str(finding.get("title") or "Bulgu"),
                 "severity": finding.get("severity"),
                 "category": finding.get("category"),
-                "cwe": finding.get("cwe"),
+                "cwe": finding.get("cwe") if finding.get("cwe") is not None else finding.get("cwe_id"),
                 "control_id": finding.get("control_id"),
                 "file": finding.get("file"),
                 "line": finding.get("line"),
@@ -544,4 +614,77 @@ def prioritize_findings(
         "mean_cvss31": round(sum(scores) / len(scores), 1) if scores else 0.0,
         "sla_policy": policy,
         "cvss40_note": CVSS40_NOTE,
+    }
+
+
+_CISA_EXPOSURE_MAP: dict[str, str] = {
+    "open": "internet",
+    "internet": "internet",
+    "public": "internet",
+    "controlled": "internal",
+    "internal": "internal",
+    "restricted": "internal",
+    "small": "local",
+    "local": "local",
+    "private": "local",
+}
+
+_CISA_ACTION_TIER_MAP: dict[str, str] = {
+    "Act": "ACT_IMMEDIATELY_24H",
+    "Attend": "ATTEND_SLA_7D",
+    "Track*": "TRACK_STAR_14D",
+    "Track": "TRACK_ROUTINE_30D",
+}
+
+
+def evaluate_cisa_ssvc_decisions(
+    findings: list[dict[str, Any]],
+    *,
+    exposure: str = "open",
+) -> dict[str, Any]:
+    """CISA SSVC (Stakeholder-Specific Vulnerability Categorization) karar matrisini hesaplar."""
+    raw_exp = str(exposure or "open").strip().lower()
+    mapped_exposure = _CISA_EXPOSURE_MAP.get(raw_exp, "internet")
+
+    normalized_findings: list[dict[str, Any]] = []
+    for item in findings or []:
+        if not isinstance(item, dict):
+            continue
+        norm = dict(item)
+        if not norm.get("cwe"):
+            norm["cwe"] = norm.get("reference") or norm.get("cwe_id") or norm.get("rule_id") or "CWE-200"
+        raw_expl = str(norm.get("exploitation") or "").strip().lower()
+        if raw_expl not in EXPLOITATION_VALUES:
+            expl_status = str(norm.get("exploitability") or norm.get("exploitation_status") or "").strip().lower()
+            sev = str(norm.get("severity") or "").strip().lower()
+            if expl_status in {"proven_exploitable", "active", "weaponized", "kev"} or norm.get("kev") is True:
+                norm["exploitation"] = "active"
+            elif expl_status in {"poc", "proof_of_concept", "likely_exploitable"} or sev in {"critical", "kritik"}:
+                norm["exploitation"] = "poc"
+            else:
+                norm["exploitation"] = "none"
+        normalized_findings.append(norm)
+
+    if not normalized_findings:
+        empty_summary = {decision: 0 for decision in ("Act", "Attend", "Track*", "Track")}
+        return {
+            "format": "sniper-cisa-ssvc-decision-matrix/1",
+            "exposure": raw_exp,
+            "decision_count": 0,
+            "summary": empty_summary,
+            "decisions": [],
+        }
+
+    base = prioritize_findings(normalized_findings, exposure=mapped_exposure)
+    for decision_item in base["prioritized_findings"]:
+        ssvc_dec = str(decision_item.get("ssvc_decision") or "Track")
+        decision_item["cisa_action_tier"] = _CISA_ACTION_TIER_MAP.get(ssvc_dec, "TRACK_ROUTINE_30D")
+        decision_item["exposure"] = raw_exp
+
+    return {
+        "format": "sniper-cisa-ssvc-decision-matrix/1",
+        "exposure": raw_exp,
+        "decision_count": len(base["prioritized_findings"]),
+        "summary": base["ssvc_summary"],
+        "decisions": base["prioritized_findings"],
     }

@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import selectors
+import shutil
 import signal
 import stat
 import subprocess
@@ -38,14 +39,14 @@ class GitHistoryExecution(RuntimeError):
     pass
 
 
-MAX_FILES = 5_000
-MAX_ENTRIES = 10_000
-MAX_TOTAL_BYTES = 100_000_000
-MAX_FILE_BYTES = 25_000_000
-MAX_OUTPUT_BYTES = 2_000_000
-MAX_RECORDS = 500
+MAX_FILES = int(os.environ.get("SNIPER_GIT_HISTORY_MAX_FILES", "5000"))
+MAX_ENTRIES = int(os.environ.get("SNIPER_GIT_HISTORY_MAX_ENTRIES", "10000"))
+MAX_TOTAL_BYTES = int(os.environ.get("SNIPER_GIT_HISTORY_MAX_TOTAL_BYTES", "100000000"))
+MAX_FILE_BYTES = int(os.environ.get("SNIPER_GIT_HISTORY_MAX_FILE_BYTES", "25000000"))
+MAX_OUTPUT_BYTES = int(os.environ.get("SNIPER_GIT_HISTORY_MAX_OUTPUT_BYTES", "2000000"))
+MAX_RECORDS = int(os.environ.get("SNIPER_GIT_HISTORY_MAX_RECORDS", "500"))
 MAX_LINE_BYTES = 64_000
-TIMEOUT_SECONDS = 90.0
+TIMEOUT_SECONDS = float(os.environ.get("SNIPER_GIT_HISTORY_TIMEOUT_SECONDS", "90.0"))
 
 
 def _regular_executable(path: Path) -> bool:
@@ -187,12 +188,15 @@ def _copy_regular_at(
     expected: os.stat_result | None = None,
 ) -> None:
     try:
+        max_file_bytes = int(os.environ.get("SNIPER_GIT_HISTORY_MAX_FILE_BYTES", str(MAX_FILE_BYTES)) or str(MAX_FILE_BYTES))
+        max_total_bytes = int(os.environ.get("SNIPER_GIT_HISTORY_MAX_TOTAL_BYTES", str(MAX_TOTAL_BYTES)) or str(MAX_TOTAL_BYTES))
+        max_files = int(os.environ.get("SNIPER_GIT_HISTORY_MAX_FILES", str(MAX_FILES)) or str(MAX_FILES))
         before = expected or os.stat(name, dir_fd=source_parent_fd, follow_symlinks=False)
         if not stat.S_ISREG(before.st_mode):
             raise GitHistoryInvalid("Git meta verisi normal olmayan bir girdi içeriyor.")
-        if before.st_size > MAX_FILE_BYTES or budget["bytes"] + before.st_size > MAX_TOTAL_BYTES:
+        if before.st_size > max_file_bytes or budget["bytes"] + before.st_size > max_total_bytes:
             raise GitHistoryInvalid("Git meta verisi bayt sınırını aşıyor.")
-        if budget["files"] >= MAX_FILES:
+        if budget["files"] >= max_files:
             raise GitHistoryInvalid("Git meta verisi dosya sınırını aşıyor.")
         source_fd = os.open(name, _FILE_FLAGS, dir_fd=source_parent_fd)
         try:
@@ -263,8 +267,9 @@ def _copy_tree_at(
                 for entry in entries:
                     if entry.name in ("", ".", "..") or "/" in entry.name or "\x00" in entry.name:
                         raise GitHistoryInvalid("Git meta verisi geçersiz bir girdi içeriyor.")
+                    max_entries = int(os.environ.get("SNIPER_GIT_HISTORY_MAX_ENTRIES", str(MAX_ENTRIES)) or str(MAX_ENTRIES))
                     budget["entries"] += 1
-                    if budget["entries"] > MAX_ENTRIES:
+                    if budget["entries"] > max_entries:
                         raise GitHistoryInvalid("Git meta verisi çok fazla girdi içeriyor.")
                     st = entry.stat(follow_symlinks=False)
                     target = dest / entry.name
@@ -326,6 +331,9 @@ def _stage_pinned(
         packed = _entry_stat(root_fd, "packed-refs")
         if packed is not None:
             _copy_regular_at(root_fd, "packed-refs", dest_git / "packed-refs", budget, packed)
+        shallow = _entry_stat(root_fd, "shallow")
+        if shallow is not None and stat.S_ISREG(shallow.st_mode):
+            _copy_regular_at(root_fd, "shallow", dest_git / "shallow", budget, shallow)
         for name in ("refs", "objects"):
             _copy_tree_at(root_fd, name, dest_git / name, budget, logical_prefix=name)
         if os.path.lexists(dest_git / "objects/info/alternates") or os.path.lexists(dest_git / "commondir"):
@@ -376,6 +384,12 @@ def _kill_group(process: subprocess.Popen[bytes]) -> None:
 
 
 def _bounded_stdout(command: list[str], env: dict[str, str], cwd: Path, pass_fds: tuple[int, ...] = ()) -> bytes:
+    timeout_sec = float(
+        os.environ.get("SNIPER_GIT_HISTORY_TIMEOUT_SECONDS")
+        or os.environ.get("SNIPER_GIT_HISTORY_TIMEOUT")
+        or str(TIMEOUT_SECONDS)
+    )
+    max_output_bytes = int(os.environ.get("SNIPER_GIT_HISTORY_MAX_OUTPUT_BYTES", str(MAX_OUTPUT_BYTES)) or str(MAX_OUTPUT_BYTES))
     try:
         process = subprocess.Popen(
             command, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
@@ -386,7 +400,7 @@ def _bounded_stdout(command: list[str], env: dict[str, str], cwd: Path, pass_fds
         raise GitHistoryExecution("TruffleHog başlatılamadı.") from exc
     output = bytearray()
     selector = selectors.DefaultSelector()
-    deadline = time.monotonic() + TIMEOUT_SECONDS
+    deadline = time.monotonic() + timeout_sec
     try:
         assert process.stdout is not None
         selector.register(process.stdout, selectors.EVENT_READ)
@@ -401,7 +415,7 @@ def _bounded_stdout(command: list[str], env: dict[str, str], cwd: Path, pass_fds
             if not chunk:
                 break
             output.extend(chunk)
-            if len(output) > MAX_OUTPUT_BYTES:
+            if len(output) > max_output_bytes:
                 raise GitHistoryExecution("TruffleHog çıktısı sınırı aştı.")
         remaining = deadline - time.monotonic()
         if remaining <= 0 or process.wait(timeout=remaining) != 0:
@@ -417,10 +431,11 @@ def _bounded_stdout(command: list[str], env: dict[str, str], cwd: Path, pass_fds
 
 
 def _summarize(raw: bytes) -> dict[str, Any]:
+    max_records = int(os.environ.get("SNIPER_GIT_HISTORY_MAX_RECORDS", str(MAX_RECORDS)) or str(MAX_RECORDS))
     try:
         text = raw.decode("utf-8", errors="strict")
         lines = text.splitlines() if text.strip() else []
-        if len(lines) > MAX_RECORDS:
+        if len(lines) > max_records:
             raise ValueError("Çok fazla kayıt")
         records: list[dict[str, Any]] = []
         for line in lines:
@@ -457,6 +472,41 @@ def run_local_trufflehog_git_history(project_path: str) -> dict[str, Any]:
         git_tree.close()
 
 
+def _graft_staged_head_only(staged_root: Path, git_bin: Path, env: dict[str, str]) -> bool:
+    """In disposable staged `.git`, graft `HEAD` as a shallow root and strip promisor markers."""
+    try:
+        proc = subprocess.run(
+            [str(git_bin), "-C", str(staged_root), "rev-parse", "--verify", "HEAD"],
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        head_sha = (proc.stdout or "").strip()
+        if proc.returncode != 0 or not re.fullmatch(r"[0-9a-fA-F]{40,64}", head_sha):
+            return False
+        dest_git = staged_root / ".git"
+        (dest_git / "shallow").write_text(f"{head_sha}\n", encoding="utf-8")
+        (dest_git / "packed-refs").unlink(missing_ok=True)
+        for sub in ("tags", "remotes"):
+            shutil.rmtree(dest_git / "refs" / sub, ignore_errors=True)
+        heads_dir = dest_git / "refs" / "heads"
+        shutil.rmtree(heads_dir, ignore_errors=True)
+        heads_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        (heads_dir / "main").write_text(f"{head_sha}\n", encoding="utf-8")
+        (dest_git / "HEAD").write_text("ref: refs/heads/main\n", encoding="utf-8")
+        pack_dir = dest_git / "objects" / "pack"
+        if pack_dir.is_dir():
+            for promisor_file in pack_dir.glob("*.promisor"):
+                promisor_file.unlink(missing_ok=True)
+        return True
+    except OSError:
+        return False
+
+
 def _run_verified(git_tree: ProjectTree, trufflehog: VerifiedExecutable) -> dict[str, Any]:
     git_bin = Path("/usr/bin/git")
     if not _regular_executable(git_bin):
@@ -485,7 +535,32 @@ def _run_verified(git_tree: ProjectTree, trufflehog: VerifiedExecutable) -> dict
                 "--no-update", "--no-verification", "--results=unverified",
                 "--json", "--concurrency=1",
             ]
-            return _summarize(_bounded_stdout(argv, env, staged_root, (trufflehog.fd,)))
+            max_depth = os.environ.get("SNIPER_TRUFFLEHOG_GIT_MAX_DEPTH", "").strip()
+            if max_depth and max_depth.isdigit():
+                argv.append(f"--max-depth={max_depth}")
+            try:
+                return _summarize(_bounded_stdout(argv, env, staged_root, (trufflehog.fd,)))
+            except GitHistoryExecution:
+                pack_dir = staged_root / ".git" / "objects" / "pack"
+                has_promisor = pack_dir.is_dir() and any(p.name.endswith(".promisor") for p in pack_dir.iterdir())
+                is_shallow = (staged_root / ".git" / "shallow").is_file()
+                if not (has_promisor or is_shallow):
+                    raise
+                for depth_try in ("15", "5", "1"):
+                    retry_argv = [a for a in argv if not a.startswith("--max-depth=")] + [f"--max-depth={depth_try}"]
+                    try:
+                        summary = _summarize(_bounded_stdout(retry_argv, env, staged_root, (trufflehog.fd,)))
+                        summary["effective_max_depth"] = int(depth_try)
+                        return summary
+                    except GitHistoryExecution:
+                        continue
+                if _graft_staged_head_only(staged_root, git_bin, env):
+                    retry_argv = [a for a in argv if not a.startswith("--max-depth=")] + ["--max-depth=1"]
+                    summary = _summarize(_bounded_stdout(retry_argv, env, staged_root, (trufflehog.fd,)))
+                    summary["effective_max_depth"] = 1
+                    summary["promisor_head_graft"] = True
+                    return summary
+                raise
         finally:
             temporary.cleanup()
     finally:

@@ -62,7 +62,7 @@ CWE_CLASSES: dict[str, frozenset[str]] = {
                                             "242", "415", "416", "676", "680", "787", "788", "805", "806",
                                             # 26. tur: dizi indeksi (taint memory_index), off-by-one, öbek dışı/kaydırılmış
                                             # işaretçinin serbest bırakılması, ayırma/serbest bırakma uyumsuzluğu
-                                            "129", "193", "590", "761", "762")},
+                                            "129", "130", "193", "562", "590", "761", "762")},
     "134": frozenset({"fmt"}),
 }
 # CodeQL kural adı (dil/ önekinden sonra) → sınıf.
@@ -115,8 +115,13 @@ class EvalError(ValueError):
 def sniper_classes(reference: str | None) -> frozenset[str]:
     if not isinstance(reference, str):
         return frozenset()
-    match = _CWE_RE.fullmatch(reference.strip())
-    return CWE_CLASSES.get(match.group(1), frozenset()) if match else frozenset()
+    text = reference.strip()
+    match = _CWE_RE.fullmatch(text) or _CWE_RE.search(text)
+    if match:
+        return CWE_CLASSES.get(match.group(1), frozenset())
+    if text.isdigit():
+        return CWE_CLASSES.get(text, frozenset())
+    return frozenset()
 
 
 def codeql_classes(rule_id: str) -> frozenset[str]:
@@ -417,7 +422,7 @@ def sniper_items(project: str, findings: list[dict[str, Any]], *, verified_only:
             rows.append((project, str(finding.get("file", "")), finding.get("line"), frozenset({"iac"}),
                          str(finding.get("title", ""))))
             continue
-        classes = sniper_classes(finding.get("reference"))
+        classes = sniper_classes(finding.get("reference") or finding.get("cwe") or finding.get("cwe_id"))
         if len(classes) > 1:
             flow = finding.get("taint_flow")
             sink = str(flow.get("sink_kind") or "").casefold() if isinstance(flow, dict) else ""
@@ -805,7 +810,7 @@ def annotate_confidence(findings: list[dict[str, Any]], environ: dict[str, str] 
             continue
         if not latest or not isinstance(latest.get("classes"), dict):
             continue
-        classes = sniper_classes(finding.get("reference"))
+        classes = sniper_classes(finding.get("reference") or finding.get("cwe") or finding.get("cwe_id"))
         if len(classes) > 1:
             flow = finding.get("taint_flow")
             sink = str(flow.get("sink_kind") or "").casefold() if isinstance(flow, dict) else ""
@@ -839,7 +844,8 @@ _CORROBORATION_CATEGORY_CLASSES = {
     "data_query": {"sql", "nosql"}, "data-query": {"sql", "nosql"}, "sql-injection": {"sql"}, "sql": {"sql"},
     "command_data": {"cmd"}, "command-data": {"cmd"}, "command-injection": {"cmd"},
     "os-command-injection": {"cmd"}, "command": {"cmd"},
-    "cross-site-scripting": {"xss"}, "xss": {"xss"}, "deserialization": {"deser"},
+    "cross-site-scripting": {"xss"}, "xss": {"xss"}, "html": {"xss"}, "angular_html": {"xss"}, "jsonp": {"xss"},
+    "deserialization": {"deser"}, "deserialize": {"deser"},
     "path-traversal": {"path"}, "file-path-traversal": {"path"}, "directory-traversal": {"path"},
     "arbitrary-file-read": {"path"}, "path": {"path"},
     "ssrf": {"ssrf"}, "server-side-request-forgery": {"ssrf"},
@@ -848,11 +854,13 @@ _CORROBORATION_CATEGORY_CLASSES = {
     "code": {"code"}, "eval": {"code"}, "code-injection": {"code"},
     "ssti": {"ssti"}, "template-injection": {"ssti"}, "server-side-template-injection": {"ssti"},
     "template_object": {"ssti"}, "template-object": {"ssti"}, "template-object-injection": {"ssti"},
-    "nosql-injection": {"nosql"},
+    "nosql-injection": {"nosql"}, "nosql_expr": {"nosql"}, "nosql": {"nosql"},
+    "prototype": {"proto"}, "prototype-pollution": {"proto"},
     "xxe": {"xxe"}, "xml-external-entity": {"xxe"},
     "xpath": {"xpath"}, "xpath-injection": {"xpath"},
     "ldap": {"ldap"}, "ldap-injection": {"ldap"},
-    "memory_safety": {"mem"}, "memory-safety": {"mem"}, "format-string": {"fmt"},
+    "memory_safety": {"mem"}, "memory-safety": {"mem"}, "memory": {"mem"}, "memory_len": {"mem"}, "memory_index": {"mem"},
+    "format-string": {"fmt"}, "format_string": {"fmt"}, "format": {"fmt"},
 }
 
 
@@ -873,7 +881,7 @@ def _finding_location(finding: dict[str, Any]) -> tuple[str, int] | None:
 
 def _finding_classes(finding: dict[str, Any]) -> set[str]:
     values: list[Any] = []
-    for raw in (finding.get("reference"), finding.get("cwe")):
+    for raw in (finding.get("reference"), finding.get("cwe"), finding.get("cwe_id")):
         for value in (raw if isinstance(raw, (list, tuple, set)) else (raw,)):
             if len(values) >= MAX_CORROBORATION_CLASSES:
                 break
@@ -1331,3 +1339,131 @@ def triage_rule_stats(db_path: str | Path, *, limit_audits: int = 500) -> dict[s
 def _rule_title(title: str) -> str:
     """Başlıktan kural adı (dosyaya/değere özgü kuyruk olmadan, sınırlı uzunluk)."""
     return title.split(" — ")[0][:120]
+
+
+def _extract_cve_gate_cwes(item: dict[str, Any]) -> set[str]:
+    cwes: set[str] = set()
+    for field in ("cwe", "cwe_id", "reference"):
+        raw = str(item.get(field) or "").strip()
+        if not raw:
+            continue
+        for num in re.findall(r"CWE-(\d+)", raw, flags=re.IGNORECASE):
+            cwes.add(num)
+        if field in ("cwe", "cwe_id") and raw.isdigit():
+            cwes.add(raw)
+    return cwes
+
+
+def _cve_gate_file_matches(finding_file: str, target_file: str) -> bool:
+    f_norm = finding_file.replace("\\", "/").strip().lstrip("./")
+    t_norm = target_file.replace("\\", "/").strip().lstrip("./")
+    if not t_norm:
+        return True
+    if not f_norm:
+        return False
+    if f_norm == t_norm or f_norm.endswith("/" + t_norm) or t_norm.endswith("/" + f_norm):
+        return True
+    return os.path.basename(f_norm) == os.path.basename(t_norm)
+
+
+def _cve_gate_item_matches(finding: dict[str, Any], target: dict[str, Any]) -> bool:
+    f_file = str(finding.get("file") or finding.get("affected_asset") or "")
+    t_file = str(target.get("file") or target.get("affected_asset") or "")
+    if not _cve_gate_file_matches(f_file, t_file):
+        return False
+
+    f_cwes = _extract_cve_gate_cwes(finding)
+    t_cwes = _extract_cve_gate_cwes(target)
+    if f_cwes and t_cwes and (f_cwes & t_cwes):
+        return True
+
+    f_ref = str(finding.get("reference") or finding.get("cwe") or "").strip().lower()
+    t_ref = str(target.get("reference") or target.get("cwe") or "").strip().lower()
+    if f_ref and t_ref and (t_ref in f_ref or f_ref in t_ref):
+        return True
+
+    f_title = str(finding.get("title") or finding.get("description") or "").strip().lower()
+    t_title = str(target.get("title") or target.get("description") or "").strip().lower()
+    if f_title and t_title and (t_title in f_title or f_title in t_title):
+        return True
+
+    f_cat = str(finding.get("category") or finding.get("class") or "").strip().lower()
+    t_cat = str(target.get("category") or target.get("class") or "").strip().lower()
+    if f_cat and t_cat and f_cat == t_cat:
+        return True
+
+    if not (t_cwes or t_ref or t_title or t_cat):
+        return True
+
+    return False
+
+
+def evaluate_real_world_cve_gate(
+    detected_findings: list[dict[str, Any]],
+    ground_truth_cves: list[dict[str, Any]],
+    false_positive_traps: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Pillar 7: Evaluate detected findings against real-world CVE ground truth and false-positive traps."""
+    valid_findings = [f for f in (detected_findings or []) if isinstance(f, dict)]
+    gt_list = [g for g in (ground_truth_cves or []) if isinstance(g, dict)]
+    trap_list = [t for t in (false_positive_traps or []) if isinstance(t, dict)]
+
+    true_positives = 0
+    false_negatives = 0
+    matched_finding_indices: set[int] = set()
+
+    for gt in gt_list:
+        matched = False
+        for idx, finding in enumerate(valid_findings):
+            if _cve_gate_item_matches(finding, gt):
+                matched = True
+                matched_finding_indices.add(idx)
+        if matched:
+            true_positives += 1
+        else:
+            false_negatives += 1
+
+    triggered_traps = 0
+    true_negatives = 0
+    for trap in trap_list:
+        trap_hit = False
+        for idx, finding in enumerate(valid_findings):
+            if _cve_gate_item_matches(finding, trap):
+                trap_hit = True
+                matched_finding_indices.add(idx)
+        if trap_hit:
+            triggered_traps += 1
+        else:
+            true_negatives += 1
+
+    unmatched_findings = sum(
+        1 for idx in range(len(valid_findings)) if idx not in matched_finding_indices
+    )
+    false_positives = triggered_traps + unmatched_findings
+
+    denom_prec = true_positives + false_positives
+    precision = (true_positives / denom_prec) if denom_prec > 0 else (1.0 if not gt_list else 0.0)
+
+    denom_rec = true_positives + false_negatives
+    recall = (true_positives / denom_rec) if denom_rec > 0 else 1.0
+
+    f1_score = (
+        (2.0 * precision * recall) / (precision + recall)
+        if (precision + recall) > 0.0
+        else 0.0
+    )
+    zero_noise_rate = true_negatives / max(1, len(trap_list))
+    gate_passed = bool(precision >= 0.90 and recall >= 0.85)
+
+    return {
+        "true_positives": true_positives,
+        "false_negatives": false_negatives,
+        "false_positives": false_positives,
+        "true_negatives": true_negatives,
+        "precision": round(precision, 4),
+        "recall": round(recall, 4),
+        "f1_score": round(f1_score, 4),
+        "zero_noise_rate": round(zero_noise_rate, 4),
+        "gate_passed": gate_passed,
+    }
+

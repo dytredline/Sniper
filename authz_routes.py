@@ -1,7 +1,9 @@
 """Rota yetki envanteri: eksik yetki denetimi (CWE-862) ve nesne düzeyi yetki / IDOR adayları (CWE-639).
 
 Yalnız statik analiz. Python (Flask, FastAPI, Django, DRF) için ``ast``; JavaScript/TypeScript (Express, Koa,
-NestJS) için taint motorunun JS sözcük çözümleyicisi kullanılır. Kesinlik önceliklidir:
+NestJS) için taint motorunun JS sözcük çözümleyicisi; Ruby/Rails için route/controller yapısına bağlı dar bir
+satır çözümleyici; Spring ve ASP.NET için yalnız literal controller/minimal-route sözleşmelerini kabul eden
+fail-closed çözümleyici kullanılır. Kesinlik önceliklidir:
 
 * Korumasız hassas rota yalnız aynı uygulamada (üst dizin + dil) rotaların çoğunluğu korunuyorsa raporlanır;
   tamamen açık API'lerde (kimlik doğrulama ağ geçidinde olabilir) gürültü yapılmaz.
@@ -17,8 +19,14 @@ import re
 from typing import Any, Iterable
 import warnings
 
+import authz_jvm_dotnet
+from rails_authz_inheritance import analyze_rails_controller_inheritance
+
 PY_SUFFIXES = (".py",)
 JS_SUFFIXES = (".js", ".mjs", ".cjs", ".ts", ".mts", ".cts")
+RUBY_SUFFIXES = (".rb",)
+JAVA_SUFFIXES = (".java",)
+CSHARP_SUFFIXES = (".cs",)
 MAX_ROUTES_REPORTED = 300
 MAX_SOURCE_BYTES = 1_000_000
 
@@ -26,9 +34,10 @@ MUTATING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
 # Kimlik doğrulama / yetki dekoratörü, bağımlılığı ya da ara katman adı.
 _AUTH_NAME_RE = re.compile(
-    r"(?i)(auth|login|logged|signed_?in|jwt|token|passport|session_?user|guard|verify_?(user|token|jwt|session|admin|role)"
+    r"(?i)(auth|login|logged|signed_?in|jwt|token|passport|session_?user|guard|verif(?:y|ied)_?(user|token|jwt|session|admin|role)"
     r"|permission|role|admin|staff|superuser|ensure|is_?user|acl|authori[sz]|restrict|private|protect|require_?user"
-    r"|current_?user|check_?user|is_?member|is_?owner|user_passes_test|requires?_|access_?required|api_?key|principal|identity"
+    r"|current_?user|check_?user|get_?user(?:_?id)?|user_?id|get_?request_?context|is_?member|is_?owner"
+    r"|user_passes_test|requires?_|access_?required|api_?key|principal|identity|scim_?auth"
     r"|allows\.requires|moderator|IsAtleast|has_?access)"
 )
 # Kimlikle ilgisiz ara katmanlar (adında "protect", "token" geçse bile).
@@ -44,10 +53,15 @@ _PUBLIC_PATH_RE = re.compile(
 )
 _PRIVATE_RESOURCE_RE = re.compile(
     r"(?i)(user|account|profile|order|invoice|payment|message|inbox|note|file|document|address|card|wallet|ticket|booking"
-    r"|cart|transaction|receipt|bank|balance|salary|medical|record|secret|token|key|setting|private|draft|task|project|report)"
+    r"|cart|transaction|receipt|bank|balance|salary|medical|record|secret|token|key|setting|private|draft|task|project|report"
+    r"|subscription|billing|payout|refund|webhook|api_key|apikey|credential|tenant|organization|workspace|member|audit|backup"
+    r"|prompt|conversation|thread|session|kyc|iban|patient)"
 )
 _READ_POST_RE = re.compile(r"(?i)(search|filter|query|lookup|find|list|preview|export|report)")
-_ADMIN_PATH_RE = re.compile(r"(?i)(^|/)(admin|manage|management|internal|debug|console|superuser|staff|backoffice|ops)(/|$|[-_])")
+_ADMIN_PATH_RE = re.compile(
+    r"(?i)(^|/)(admin|manage|management|internal|debug|console|superuser|staff|backoffice|ops"
+    r"|actuator|pprof|phpmyadmin|adminer|impersonate|sudo|feature_flag|migration)(/|$|[-_])"
+)
 _ID_NAME_RE = re.compile(r"(?i)(^(id|pk|uuid|guid|oid)$|_id$|_pk$|_uuid$|[a-z0-9]Id$|^id_)")
 _ADMIN_CHECK_RE = re.compile(r"(?i)(is_?admin|is_?staff|is_?superuser|has_?perm|has_?role|\brole\b|\broles\b|permission(?!_classes)|isAdmin|is_?owner|can_?(edit|view|delete|access))")
 
@@ -63,13 +77,16 @@ _PY_INLINE_AUTH_RE = re.compile(
     r"|abort\(\s*40[13]|PermissionDenied|status_code\s*=\s*40[13]|HTTP_40[13]|redirect\([^)]*login"
     r"|session\s*\[\s*['\"](user|uid|user_id|userid|username|logged_in|loggedin|login|auth)"
     r"|session\.get\(\s*['\"](user|uid|user_id|userid|username|logged_in|loggedin|login|auth)|check_auth|require_login"
-    r"|\bauthenticate\w*\(|return\s[^\n]*\b40[13]\b)"
+    r"|\bauthenticate\w*\(|\b_?authori[sz]e\w*\("
+    r"|\b(?:check|verify|require|ensure|assert)_?(?:permission|auth|access|role|member|owner)\w*\("
+    r"|return\s[^\n]*\b40[13]\b)"
 )
 _PY_ROUTE_ATTRS = frozenset({"get", "post", "put", "patch", "delete", "route", "api_route"})
 _PY_LOOKUP_ATTRS = frozenset({
     "get", "filter", "filter_by", "get_or_404", "first_or_404", "get_object_or_404", "get_list_or_404", "exclude",
     "find_one", "find", "find_one_and_update", "find_one_and_delete", "delete_one", "update_one", "replace_one",
     "execute", "raw", "select", "update", "delete", "where",
+    "scalar", "scalars", "one_or_none", "scalar_one", "scalar_one_or_none", "get_one", "get_or_none", "fetchrow", "fetchval",
 })
 _PY_STRICT_RECEIVER = frozenset({"get", "filter", "exclude", "select", "update", "delete", "where"})
 _DJANGO_CBV_OBJECT_BASES = re.compile(r"(DetailView|UpdateView|DeleteView|RetrieveAPIView|RetrieveUpdateAPIView|RetrieveDestroyAPIView|RetrieveUpdateDestroyAPIView|UpdateAPIView|DestroyAPIView|ModelViewSet|ReadOnlyModelViewSet|GenericViewSet)$")
@@ -104,6 +121,7 @@ _JS_LOOKUP_METHODS = frozenset({
     "findById", "findByPk", "findOne", "find", "findOneAndUpdate", "findByIdAndUpdate", "findByIdAndDelete",
     "findByIdAndRemove", "findOneAndDelete", "findOneAndRemove", "deleteOne", "updateOne", "deleteMany", "updateMany",
     "destroy", "update", "remove", "get", "query", "execute", "run", "all", "findUnique", "findFirst", "where", "getById",
+    "findUniqueOrThrow", "findFirstOrThrow", "findOneBy", "findOneByOrFail", "findOneOrFail", "deleteById", "updateById",
 })
 _JS_ID_SOURCES = ("params", "query", "body")
 _DATABASE_RECEIVER_SUFFIXES = (
@@ -137,12 +155,26 @@ class Route:
     public_mark: bool = False
     idor: dict[str, Any] | None = None
     group: str = ""
+    asymmetric_authz: bool = False
+    status: str = ""
+    reason: str = ""
 
     def public(self) -> dict[str, Any]:
+        computed_status = self.status or (
+            "public"
+            if (self.public_mark or _is_public_path(self))
+            else (
+                "protected"
+                if self.protection
+                else ("unprotected" if self.asymmetric_authz else "review")
+            )
+        )
         return {
             "file": self.file, "line": self.line, "framework": self.framework, "methods": list(self.methods),
             "path": self.path, "handler": self.handler, "protection": self.protection,
             "public": self.public_mark, "idor_candidate": bool(self.idor),
+            "status": computed_status, "asymmetric_authz": self.asymmetric_authz,
+            "reason": self.reason,
         }
 
 
@@ -159,6 +191,9 @@ class _Project:
     py_classes: dict[str, list[tuple[tuple[str, ...], bool, bool]]] = field(default_factory=dict)
     drf_default_auth: bool = False
     nest_global_guard: bool = False
+    # (controller yolu, action) → [(HTTP yöntemleri, rota)]. Yalnız config/routes.rb içindeki açık Rails DSL
+    # kayıtları eklenir; controller adı/action tahmininden hayali rota üretilmez.
+    rails_routes: dict[tuple[str, str], list[tuple[tuple[str, ...], str]]] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -349,11 +384,14 @@ def _class_signal_text(node: ast.ClassDef, lines: list[str] | None) -> str:
 
 def _has_auth_depends(node: ast.AST) -> bool:
     for sub in ast.walk(node):
-        if isinstance(sub, ast.Call) and _dotted(sub.func).rsplit(".", 1)[-1] in {"Depends", "Security"} and sub.args:
-            if _is_auth_name(_dotted(sub.args[0])):
-                return True
-        if isinstance(sub, ast.Call) and _dotted(sub.func).rsplit(".", 1)[-1] in {"Depends", "Security"} and not sub.args:
-            continue
+        if isinstance(sub, ast.Call):
+            dep_kind = _dotted(sub.func).rsplit(".", 1)[-1]
+            if dep_kind in {"Depends", "Security"} and sub.args:
+                dep_target = _dotted(sub.args[0])
+                if dep_kind == "Security" and dep_target and not _NOT_AUTH_RE.search(dep_target):
+                    return True
+                if _is_auth_name(dep_target):
+                    return True
     return False
 
 
@@ -486,7 +524,7 @@ def _py_routes(relpath: str, tree: ast.Module, project: _Project) -> list[Route]
         for sub in ast.walk(func):
             if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Name) and sub.func.id in module_funcs and sub.func.id != getattr(func, "name", ""):
                 callee = module_funcs[sub.func.id]
-                if _py_function_protection(callee, None)[0] and callee.decorator_list:
+                if _py_function_protection(callee, None)[0]:
                     return True
         return False
 
@@ -503,6 +541,8 @@ def _py_routes(relpath: str, tree: ast.Module, project: _Project) -> list[Route]
                 protection, public = _py_function_protection(node, decorator)
                 if protection is None and not public and router_protected(router):
                     protection = "router"
+                if protection is None and not public and callee_protected(node):
+                    protection = "inline"
                 route = Route(relpath, node.lineno, "flask/fastapi", methods, path, node.name, protection, public, group=group)
                 routes.append(route)
             elif is_django_views and node.args.args and node.args.args[0].arg == "request" and not node.name.startswith("_") \
@@ -708,6 +748,238 @@ def _py_class_routes(relpath: str, node: ast.ClassDef, project: _Project, group:
         if re.search(r"\b(queryset|model)\s*=", text) and "IsAdminUser" not in text:
             route.idor = {"line": node.lineno, "lookup": "queryset/model (kullanıcıya göre daraltılmamış)"}
     return [route]
+
+
+# ---------------------------------------------------------------------------
+# Ruby / Rails
+# ---------------------------------------------------------------------------
+_RAILS_REST_ROUTES: dict[str, tuple[tuple[str, ...], str]] = {
+    "index": (("GET",), ""),
+    "show": (("GET",), "/:id"),
+    "new": (("GET",), "/new"),
+    "create": (("POST",), ""),
+    "edit": (("GET",), "/:id/edit"),
+    "update": (("PATCH", "PUT"), "/:id"),
+    "destroy": (("DELETE",), "/:id"),
+}
+_RAILS_ROUTE_METHODS = {"get": "GET", "post": "POST", "put": "PUT", "patch": "PATCH", "delete": "DELETE"}
+_RUBY_METHOD_START_RE = re.compile(r"^\s*(?:async\s+)?def\s+(?:self\.)?([a-zA-Z_]\w*[!?=]?)(?!\w)")
+_RUBY_BLOCK_START_RE = re.compile(r"^\s*(?:def|class|module|if|unless|case|begin|while|until|for)\b")
+_RUBY_LOOKUP_RE = re.compile(
+    r"(?P<receiver>(?:[A-Z]\w*(?:::\w+)*|(?:current_user|Current\.(?:tenant|account|organization|workspace|user))"
+    r"(?:\.[a-zA-Z_]\w*)+))\.(?P<method>find|find_by!?|find_by_id!?|where)\s*\([^\n]*"
+    r"params\s*\[\s*:(?:id|\w+_id|uuid|guid)\s*\]"
+)
+_RUBY_OWNER_CONTEXT_RE = re.compile(
+    r"\bcurrent_user\b|\bCurrent\.(?:tenant|account|organization|workspace|user)\b|"
+    r"\b(?:authorize|policy_scope|authorized_scope|accessible_by|can\?)\b|"
+    r"\b(?:owner|user|account|tenant|organization|workspace)_id\s*:"
+)
+
+
+def _ruby_underscore(name: str) -> str:
+    """Rails controller sabitini route DSL'deki ``admin/orders`` biçimine indirger."""
+    parts = []
+    for component in name.split("::"):
+        component = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", component)
+        component = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", component)
+        parts.append(component.casefold())
+    return "/".join(parts)
+
+
+def _ruby_symbols(option: str | None) -> set[str] | None:
+    if option is None:
+        return None
+    return set(re.findall(r":([a-zA-Z_]\w*[!?]?)", option))
+
+
+def _rails_add_route(project: _Project, controller: str, action: str, methods: tuple[str, ...], path: str) -> None:
+    key = (controller.strip("/"), action)
+    item = (methods, path if path.startswith("/") else "/" + path)
+    if item not in project.rails_routes.setdefault(key, []):
+        project.rails_routes[key].append(item)
+
+
+def _ruby_strip_comment(line: str) -> str:
+    """Remove a Ruby line comment without truncating ``controller#action`` strings."""
+    quote = ""
+    escaped = False
+    for index, char in enumerate(line):
+        if escaped:
+            escaped = False
+            continue
+        if quote:
+            if char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = ""
+            continue
+        if char in {"'", '"'}:
+            quote = char
+        elif char == "#":
+            return line[:index]
+    return line
+
+
+def _rails_prepass(relpath: str, text: str, project: _Project) -> None:
+    """Açık Rails route DSL kayıtlarını çıkarır; belirsiz dinamik DSL/kapsamlar bilerek atlanır."""
+    path = PurePosixPath(relpath)
+    if path.name != "routes.rb" or "config" not in path.parts:
+        return
+    for raw in text.splitlines():
+        line = _ruby_strip_comment(raw).strip()
+        if not line:
+            continue
+        resources = re.match(r"resources\s+:(\w+)\b(.*)$", line)
+        if resources:
+            resource, options = resources.groups()
+            controller_option = re.search(r"\bcontroller:\s*['\"]([^'\"]+)['\"]", options)
+            controller = controller_option.group(1) if controller_option else resource
+            only_match = re.search(r"\bonly:\s*(\[[^\]]*\]|:\w+)", options)
+            except_match = re.search(r"\bexcept:\s*(\[[^\]]*\]|:\w+)", options)
+            selected = set(_RAILS_REST_ROUTES)
+            only = _ruby_symbols(only_match.group(1) if only_match else None)
+            excluded = _ruby_symbols(except_match.group(1) if except_match else None)
+            if only is not None:
+                selected &= only
+            if excluded:
+                selected -= excluded
+            base = "/" + resource
+            for action in _RAILS_REST_ROUTES:
+                if action in selected:
+                    methods, suffix = _RAILS_REST_ROUTES[action]
+                    _rails_add_route(project, controller, action, methods, base + suffix)
+            continue
+        singular = re.match(r"resource\s+:(\w+)\b(.*)$", line)
+        if singular:
+            resource, options = singular.groups()
+            controller_option = re.search(r"\bcontroller:\s*['\"]([^'\"]+)['\"]", options)
+            controller = controller_option.group(1) if controller_option else resource + "s"
+            only_match = re.search(r"\bonly:\s*(\[[^\]]*\]|:\w+)", options)
+            except_match = re.search(r"\bexcept:\s*(\[[^\]]*\]|:\w+)", options)
+            selected = set(_RAILS_REST_ROUTES) - {"index"}
+            only = _ruby_symbols(only_match.group(1) if only_match else None)
+            excluded = _ruby_symbols(except_match.group(1) if except_match else None)
+            if only is not None:
+                selected &= only
+            if excluded:
+                selected -= excluded
+            base = "/" + resource
+            for action in _RAILS_REST_ROUTES:
+                if action in selected:
+                    methods, suffix = _RAILS_REST_ROUTES[action]
+                    _rails_add_route(project, controller, action, methods, base + suffix.replace("/:id", ""))
+            continue
+        explicit = re.match(
+            r"(get|post|put|patch|delete)\s+['\"]([^'\"]+)['\"]\s*,?\s*(?:to:\s*|=>\s*)['\"]([^'#]+)#(\w+[!?]?)['\"]",
+            line,
+        )
+        if explicit:
+            verb, route_path, controller, action = explicit.groups()
+            _rails_add_route(project, controller, action, (_RAILS_ROUTE_METHODS[verb],), route_path)
+
+
+def _ruby_method_blocks(text: str) -> dict[str, tuple[int, str]]:
+    """Controller action gövdelerini satır numarasıyla ayıran sınırlı Ruby blok çözümleyicisi."""
+    lines = text.splitlines()
+    methods: dict[str, tuple[int, str]] = {}
+    i = 0
+    while i < len(lines):
+        match = _RUBY_METHOD_START_RE.match(lines[i])
+        if match is None:
+            i += 1
+            continue
+        name = match.group(1)
+        depth = 1
+        j = i + 1
+        while j < len(lines):
+            code = lines[j].split("#", 1)[0]
+            if re.match(r"^\s*end\b", code):
+                depth -= 1
+                if depth == 0:
+                    break
+            else:
+                if _RUBY_BLOCK_START_RE.match(code):
+                    depth += 1
+                depth += len(re.findall(r"\bdo\s*(?:\|[^|]*\|)?\s*(?:$|#)", code))
+            j += 1
+        if depth == 0:
+            methods[name] = (i + 1, "\n".join(lines[i:j + 1]))
+            i = j + 1
+        else:
+            i += 1
+    return methods
+
+
+def _ruby_lookup(method_line: int, method_text: str) -> tuple[int, str] | None:
+    """İstek kimliğini kullanan ilk ActiveRecord lookup'ını döndürür; sahiplik/policy bağlamında gürültü yapmaz."""
+    if _RUBY_OWNER_CONTEXT_RE.search(method_text):
+        return None
+    for offset, line in enumerate(method_text.splitlines()):
+        match = _RUBY_LOOKUP_RE.search(line)
+        if match:
+            return method_line + offset, f"{match.group('receiver')}.{match.group('method')}"
+    return None
+
+
+def _ruby_routes(
+    relpath: str,
+    text: str,
+    project: _Project,
+    controller_contexts: dict[str, Any],
+) -> list[Route]:
+    if "controllers" not in PurePosixPath(relpath).parts:
+        return []
+    class_match = re.search(r"^\s*class\s+([A-Z]\w*(?:::[A-Z]\w*)*)Controller\s*<\s*[A-Z]\w*(?:::[A-Z]\w*)*", text, re.MULTILINE)
+    if class_match is None:
+        return []
+    controller_class = class_match.group(1) + "Controller"
+    controller = _ruby_underscore(class_match.group(1))
+    methods = _ruby_method_blocks(text)
+    load_and_authorize = bool(re.search(r"^\s*load_and_authorize_resource\b", text, re.MULTILINE))
+    routes: list[Route] = []
+    group = _group(relpath, "ruby")
+    for action, (line, body) in methods.items():
+        definitions = project.rails_routes.get((controller, action), [])
+        if not definitions:
+            continue
+        protection: str | None = None
+        public = False
+        context = controller_contexts.get(controller_class)
+        action_context = context.action(action) if context is not None else None
+        # Only statically guaranteed effective callbacks can protect a route.
+        # The inheritance resolver has already applied base-to-child order,
+        # only/except scopes and skip_before_action removal. Dynamic predicates
+        # remain in uncertain_filters and intentionally do not enter this list.
+        applicable = [item.name for item in action_context.effective_filters] \
+            if action_context is not None else []
+        auth_filters = [name for name in applicable if _is_auth_name(name)]
+        if auth_filters:
+            protection = f"before_action:{auth_filters[0]}"
+        elif load_and_authorize:
+            protection = "load_and_authorize_resource"
+        elif re.search(r"\b(?:authenticate_user!|authorize|authorize!|verify_authorized)\b", body):
+            protection = "inline"
+        if re.search(r"^\s*(?:skip_before_action\s+:authenticate|allow_unauthenticated_access\b)", body, re.MULTILINE):
+            protection, public = None, True
+        lookup = None if load_and_authorize else _ruby_lookup(line, body)
+        if lookup is None and not load_and_authorize:
+            for callback in applicable:
+                helper = methods.get(callback)
+                if helper is None:
+                    continue
+                lookup = _ruby_lookup(helper[0], helper[1])
+                if lookup is not None:
+                    break
+        for route_methods, path in definitions:
+            route = Route(
+                relpath, line, "rails", route_methods, path, f"{controller_class}#{action}", protection, public,
+                group=group,
+            )
+            if lookup is not None:
+                route.idor = {"line": lookup[0], "lookup": lookup[1]}
+            routes.append(route)
+    return routes
 
 
 # ---------------------------------------------------------------------------
@@ -1072,9 +1344,12 @@ def analyze_sources(sources: Iterable[tuple[str, str] | tuple[str, str, ast.Modu
     aynı metnin ayrıştırılmış ağacı ve ``ast.walk`` sırasındaki düğüm listesi verilebilir (proje analizi zaten
     ayrıştırdı; ikisi de değiştirilmez)."""
     files = [item for item in sources if len(item[1]) <= MAX_SOURCE_BYTES]
+    rails_controller_contexts = analyze_rails_controller_inheritance(files)
     project = _Project()
     parsed_py: list[tuple[str, ast.Module]] = []
     parsed_js: list[tuple[str, Any]] = []
+    parsed_ruby: list[tuple[str, str]] = []
+    parsed_jvm_dotnet: list[dict[str, Any]] = []
     for item in files:
         rel, text = item[0], item[1]
         if rel.endswith(PY_SUFFIXES):
@@ -1098,6 +1373,14 @@ def analyze_sources(sources: Iterable[tuple[str, str] | tuple[str, str, ast.Modu
                 continue
             parsed_js.append((rel, toks))
             _js_prepass(rel, toks, project)
+        elif rel.endswith(RUBY_SUFFIXES):
+            parsed_ruby.append((rel, text))
+        elif rel.endswith(JAVA_SUFFIXES):
+            parsed_jvm_dotnet.extend(authz_jvm_dotnet.spring_routes(rel, text))
+        elif rel.endswith(CSHARP_SUFFIXES):
+            parsed_jvm_dotnet.extend(authz_jvm_dotnet.aspnet_routes(rel, text))
+    for rel, text in parsed_ruby:
+        _rails_prepass(rel, text, project)
     routes: list[Route] = []
     for rel, tree in parsed_py:
         try:
@@ -1106,10 +1389,49 @@ def analyze_sources(sources: Iterable[tuple[str, str] | tuple[str, str, ast.Modu
             continue
     for rel, toks in parsed_js:
         routes.extend(_js_routes(rel, toks, project))
-    return {"routes": routes, "findings": _findings(routes)}
+    for rel, text in parsed_ruby:
+        routes.extend(_ruby_routes(rel, text, project, rails_controller_contexts))
+    for item in parsed_jvm_dotnet:
+        item["group"] = _group(str(item["file"]), "java" if item["framework"] == "spring" else "csharp")
+        routes.append(Route(**item))
+    asymmetric_resources = detect_asymmetric_resource_authz(routes)
+    findings = _findings(routes)
+    inv = inventory(routes, asymmetric_resources=asymmetric_resources)
+    return {
+        "routes": routes,
+        "findings": findings,
+        "summary": inv["summary"],
+        "asymmetric_resources": asymmetric_resources,
+        "rails_controller_contexts": rails_controller_contexts,
+    }
 
 
 _PUBLIC_FILE_RE = re.compile(r"(?i)(^|[/._-])(auth|login|logout|register|signup|signin|sessions?|oauth|sso|webhooks?|public)([/._-]|$)")
+_PARAM_SEGMENT_RE = re.compile(
+    r"^(?:\{[^}]+\}|<[^>]+>|:[A-Za-z0-9_]+|\[+\.?\.?\.?[A-Za-z0-9_]+\]+|\$\{?[A-Za-z0-9_]+\}?|\([0-9a-zA-Z_\\+.*?|]+\))$"
+)
+_TRAILING_ACTION_VERBS = frozenset({
+    "delete", "cancel", "abort", "update", "remove", "destroy", "edit",
+    "archive", "approve", "reject", "close", "revoke", "reset", "disable", "enable",
+})
+_ASYMMETRIC_REASON_SUFFIX = (
+    "[Asimetrik Yetki: Aynı kaynağın kardeş uçlarında yetki denetimi varken bu uçta unutulmuş (CWE-862/CWE-639)]"
+)
+
+
+def _normalize_resource_key(path: str) -> str:
+    """Rota yolundaki parametreleri (/{id}, /<int:id>, /:id, /[id]) ve sondaki eylem fiillerini
+    (/delete, /cancel, /abort, /update vb.) soyarak temel REST kaynağını belirler."""
+    if not isinstance(path, str) or not path.strip():
+        return "/"
+    clean = path.strip().split("?", 1)[0].split("#", 1)[0].strip()
+    raw_segments = [seg.strip() for seg in clean.strip("^$/ ").split("/") if seg.strip()]
+    segments = [seg for seg in raw_segments if not _PARAM_SEGMENT_RE.match(seg)]
+    while len(segments) > 1 and segments[-1].casefold() in _TRAILING_ACTION_VERBS:
+        segments.pop()
+    if not segments:
+        return "/"
+    return "/" + "/".join(seg.casefold() for seg in segments)
 
 
 def _is_public_path(route: Route) -> bool:
@@ -1118,7 +1440,99 @@ def _is_public_path(route: Route) -> bool:
     return bool(_PUBLIC_PATH_RE.search(route.path or "") or _PUBLIC_PATH_RE.search(route.handler or "")) or route.path in {"*", "/*"}
 
 
+def _route_path(r: Any) -> str:
+    return str(r.get("path") or "") if isinstance(r, dict) else str(r.path or "")
+
+
+def _route_app_key(r: Any) -> str:
+    if isinstance(r, dict):
+        key = r.get("app_key") or r.get("group") or r.get("app")
+        if key:
+            return str(key)
+        rel = str(r.get("file") or "")
+        return _group(rel, "py") if rel else "default"
+    return r.group or (_group(r.file, "py") if r.file else "default")
+
+
+def _route_is_public(r: Any) -> bool:
+    if isinstance(r, dict):
+        if r.get("public") or r.get("public_mark") or r.get("status") == "public":
+            return True
+        path = str(r.get("path") or "")
+        handler = str(r.get("handler") or "")
+        file_rel = str(r.get("file") or "")
+        if file_rel and _PUBLIC_FILE_RE.search(file_rel):
+            return True
+        return bool(_PUBLIC_PATH_RE.search(path) or _PUBLIC_PATH_RE.search(handler)) or path in {"*", "/*"}
+    return bool(r.public_mark or _is_public_path(r))
+
+
+def _route_is_protected(r: Any) -> bool:
+    if isinstance(r, dict):
+        return bool(r.get("protection") or r.get("protected") or r.get("status") == "protected")
+    return bool(r.protection or r.status == "protected")
+
+
+def _route_endpoint_label(r: Any) -> str:
+    if isinstance(r, dict):
+        methods = r.get("methods") or ([r["method"]] if r.get("method") else ["GET"])
+        if isinstance(methods, str):
+            methods = [methods]
+        path = str(r.get("path") or r.get("handler") or "")
+    else:
+        methods = list(r.methods) or ["GET"]
+        path = str(r.path or r.handler or "")
+    return f"{'/'.join(str(m).upper() for m in methods)} {path}".strip()
+
+
+def detect_asymmetric_resource_authz(routes: list[Any]) -> list[dict[str, Any]]:
+    """Rotaları (app_key, _normalize_resource_key(path)) ile gruplar. Aynı kaynak üzerinde en az bir
+    korumalı (protected) uç ve en az bir korumasız kardeş uç varsa, korumasız kardeş uçları
+    asymmetric_authz=True ve status='unprotected' olarak işaretler."""
+    resource_groups: dict[tuple[str, str], list[Any]] = {}
+    for r in routes:
+        res_key = _normalize_resource_key(_route_path(r))
+        if not res_key or res_key == "/":
+            continue
+        app_key = _route_app_key(r)
+        resource_groups.setdefault((app_key, res_key), []).append(r)
+
+    asymmetric_resources: list[dict[str, Any]] = []
+    for (app_key, res_key), grp in resource_groups.items():
+        protected_routes = [r for r in grp if _route_is_protected(r)]
+        unprotected_routes = [
+            r for r in grp if not _route_is_protected(r) and not _route_is_public(r)
+        ]
+        if not protected_routes or not unprotected_routes:
+            continue
+        for r in unprotected_routes:
+            if isinstance(r, dict):
+                r["asymmetric_authz"] = True
+                r["status"] = "unprotected"
+                cur_reason = str(r.get("reason") or "")
+                if _ASYMMETRIC_REASON_SUFFIX not in cur_reason:
+                    r["reason"] = cur_reason + " " + _ASYMMETRIC_REASON_SUFFIX
+            else:
+                r.asymmetric_authz = True
+                r.status = "unprotected"
+                cur_reason = str(r.reason or "")
+                if _ASYMMETRIC_REASON_SUFFIX not in cur_reason:
+                    r.reason = cur_reason + " " + _ASYMMETRIC_REASON_SUFFIX
+        prot_eps = [_route_endpoint_label(r) for r in protected_routes]
+        unprot_eps = [_route_endpoint_label(r) for r in unprotected_routes]
+        asymmetric_resources.append({
+            "resource": res_key,
+            "app_key": app_key,
+            "protected_Endpoints": prot_eps,
+            "unprotected_Endpoints": unprot_eps,
+            "protected_endpoints": prot_eps,
+            "unprotected_endpoints": unprot_eps,
+        })
+    return asymmetric_resources
+
+
 def _findings(routes: list[Route]) -> list[dict[str, Any]]:
+    detect_asymmetric_resource_authz(routes)
     findings: list[dict[str, Any]] = []
     groups: dict[str, list[Route]] = {}
     for route in routes:
@@ -1129,21 +1543,22 @@ def _findings(routes: list[Route]) -> list[dict[str, Any]]:
         majority = len(considered) >= 4 and len(protected) >= 3 and len(protected) * 2 >= len(considered)
         flagged: set[int] = set()
         for route in considered:
-            if route.protection or not majority:
+            if route.protection or not (majority or route.asymmetric_authz):
                 continue
             admin = bool(_ADMIN_PATH_RE.search(route.path or ""))
             mutating = bool(set(route.methods) & MUTATING) or "ALL" in route.methods
             if mutating and set(route.methods) <= {"GET", "POST"} and _READ_POST_RE.search(f"{route.path} {route.handler}"):
                 mutating = False  # arama/süzme formu: POST ama okuma
-            if not (admin or mutating):
+            if not (admin or mutating or (route.asymmetric_authz and _PRIVATE_RESOURCE_RE.search(route.path or ""))):
                 continue
             flagged.add(id(route))
+            extra_reason = f" {route.reason.strip()}" if route.asymmetric_authz and route.reason else ""
             findings.append({
                 "file": route.file, "line": route.line, "severity": "medium",
                 "title": "Korumasız hassas rota: kimlik doğrulama/yetki denetimi görülmedi (gözden geçirme)",
                 "evidence": (
                     f"{'/'.join(route.methods)} {route.path or route.handler} ({route.framework}); aynı uygulamadaki "
-                    f"{len(considered)} rotanın {len(protected)} tanesi korumalı, bu rota için dekoratör/ara katman/satır içi denetim bulunamadı."
+                    f"{len(considered)} rotanın {len(protected)} tanesi korumalı, bu rota için dekoratör/ara katman/satır içi denetim bulunamadı.{extra_reason}"
                 ),
                 "recommendation": (
                     "Rotanın bilerek açık olup olmadığını doğrulayın; değilse uygulamanın diğer rotalarındaki kimlik doğrulama ve "
@@ -1178,21 +1593,293 @@ def _findings(routes: list[Route]) -> list[dict[str, Any]]:
     return findings
 
 
-def inventory(routes: list[Route]) -> dict[str, Any]:
+def inventory(routes: list[Route], asymmetric_resources: list[dict[str, Any]] | None = None) -> dict[str, Any]:
+    if asymmetric_resources is None:
+        asymmetric_resources = detect_asymmetric_resource_authz(routes)
     considered = [r for r in routes if not r.public_mark and not _is_public_path(r)]
     frameworks: dict[str, int] = {}
     for route in routes:
         frameworks[route.framework] = frameworks.get(route.framework, 0) + 1
     ordered = sorted(routes, key=lambda r: (bool(r.protection), r.file, r.line))
+    unprotected_sensitive = sum(
+        1 for r in considered
+        if not r.protection and (r.asymmetric_authz or r.status == "unprotected" or set(r.methods) & MUTATING or _ADMIN_PATH_RE.search(r.path or ""))
+    )
     return {
         "summary": {
             "total": len(routes),
             "protected": sum(1 for r in routes if r.protection),
-            "unprotected_sensitive": sum(1 for r in considered if not r.protection and (set(r.methods) & MUTATING or _ADMIN_PATH_RE.search(r.path or ""))),
+            "unprotected": unprotected_sensitive,
+            "unprotected_sensitive": unprotected_sensitive,
             "public_marked": sum(1 for r in routes if r.public_mark),
             "idor_candidates": sum(1 for r in routes if r.idor),
+            "asymmetric_resources": len(asymmetric_resources),
             "frameworks": dict(sorted(frameworks.items())),
             "truncated": len(routes) > MAX_ROUTES_REPORTED,
         },
         "routes": [r.public() for r in ordered[:MAX_ROUTES_REPORTED]],
+        "asymmetric_resources": asymmetric_resources,
     }
+
+
+def analyze_routes(
+    sources_or_routes: Iterable[Any] | str,
+    *,
+    filename: str = "routes.py",
+) -> dict[str, Any]:
+    """Kaynak çiftlerini, kaynak metnini veya önceden çıkarılmış rota sözlüklerini/nesnelerini analiz eder;
+    asimetrik kaynak yetkilendirme matrisini (asymmetric_resources) ve summary['unprotected'] sayısını üretir."""
+    if isinstance(sources_or_routes, str):
+        analyzed = analyze_sources([(filename, sources_or_routes)])
+        inv = inventory(analyzed["routes"], asymmetric_resources=analyzed["asymmetric_resources"])
+        return {
+            "summary": inv["summary"],
+            "routes": inv["routes"],
+            "findings": analyzed["findings"],
+            "asymmetric_resources": analyzed["asymmetric_resources"],
+        }
+    items = list(sources_or_routes)
+    if not items:
+        return {
+            "summary": {
+                "total": 0,
+                "protected": 0,
+                "unprotected": 0,
+                "unprotected_sensitive": 0,
+                "public_marked": 0,
+                "idor_candidates": 0,
+                "asymmetric_resources": 0,
+                "frameworks": {},
+                "truncated": False,
+            },
+            "routes": [],
+            "findings": [],
+            "asymmetric_resources": [],
+        }
+    first = items[0]
+    if isinstance(first, tuple):
+        analyzed = analyze_sources(items)
+        inv = inventory(analyzed["routes"], asymmetric_resources=analyzed["asymmetric_resources"])
+        return {
+            "summary": inv["summary"],
+            "routes": inv["routes"],
+            "findings": analyzed["findings"],
+            "asymmetric_resources": analyzed["asymmetric_resources"],
+        }
+    if isinstance(first, Route):
+        asymmetric_resources = detect_asymmetric_resource_authz(items)
+        inv = inventory(items, asymmetric_resources=asymmetric_resources)
+        return {
+            "summary": inv["summary"],
+            "routes": inv["routes"],
+            "findings": _findings(items),
+            "asymmetric_resources": asymmetric_resources,
+        }
+    if isinstance(first, dict):
+        asymmetric_resources = detect_asymmetric_resource_authz(items)
+        unprotected_count = sum(
+            1 for r in items
+            if r.get("status") == "unprotected" or r.get("asymmetric_authz")
+        )
+        protected_count = sum(1 for r in items if _route_is_protected(r))
+        public_count = sum(1 for r in items if _route_is_public(r))
+        idor_count = sum(1 for r in items if r.get("idor_candidate") or r.get("idor"))
+        frameworks: dict[str, int] = {}
+        for r in items:
+            fw = str(r.get("framework") or "unknown")
+            frameworks[fw] = frameworks.get(fw, 0) + 1
+        return {
+            "summary": {
+                "total": len(items),
+                "protected": protected_count,
+                "unprotected": unprotected_count,
+                "unprotected_sensitive": unprotected_count,
+                "public_marked": public_count,
+                "idor_candidates": idor_count,
+                "asymmetric_resources": len(asymmetric_resources),
+                "frameworks": dict(sorted(frameworks.items())),
+                "truncated": len(items) > MAX_ROUTES_REPORTED,
+            },
+            "routes": items[:MAX_ROUTES_REPORTED],
+            "findings": [],
+            "asymmetric_resources": asymmetric_resources,
+        }
+    return {
+        "summary": {"total": 0, "protected": 0, "unprotected": 0, "asymmetric_resources": 0},
+        "routes": [],
+        "findings": [],
+        "asymmetric_resources": [],
+    }
+
+_SPRING_MAPPING_RE = re.compile(
+    r"@(?:GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping|RequestMapping)\b"
+)
+_SPRING_LOOKUP_RE = re.compile(
+    r"\b(?:\w*(?:Repository|Repo|Service|Dao|repository|repo)\s*\.\s*(?:findById|getById|getReferenceById)"
+    r"|entityManager\s*\.\s*find)\s*\("
+)
+_SPRING_SAFE_RE = re.compile(
+    r"(?:@PreAuthorize\b|@PostAuthorize\b|@Secured\b|@RolesAllowed\b|@AuthenticationPrincipal\b"
+    r"|\bPrincipal\b|\bSecurityContextHolder\b|\b(?:tenantId|organizationId|userId|ownerId)\b"
+    r"|\bfindByIdAnd(?:Tenant|User|Owner|Organization)\w*\b)"
+)
+
+_ASPNET_ROUTE_RE = re.compile(
+    r"\[Http(?:Get|Post|Put|Delete|Patch)\b[^\]]*\]"
+)
+_ASPNET_LOOKUP_RE = re.compile(
+    r"\b(?:_context|dbContext|_db|context)\s*\.\s*\w+\s*\.\s*(?:FindAsync|Find|FirstOrDefaultAsync|FirstOrDefault|SingleOrDefaultAsync|SingleOrDefault)\s*\("
+)
+_ASPNET_SAFE_RE = re.compile(
+    r"(?:\bUser\.FindFirst\b|\bUser\.Identity\b|\bClaimTypes\b|\bAuthorizeAsync\b"
+    r"|\b(?:TenantId|tenantId|OrganizationId|organizationId|UserId|userId|OwnerId|ownerId)\b"
+    r"|\[Authorize\s*\(\s*(?:Policy|Roles)\s*=)"
+)
+
+_NEST_EXPRESS_ROUTE_RE = re.compile(
+    r"(?:@(?:Get|Post|Put|Delete|Patch)\s*\(|\b(?:app|router)\s*\.\s*(?:get|post|put|delete|patch)\s*\()"
+)
+_PRISMA_ID_LOOKUP_RE = re.compile(
+    r"\b(?:this\.)?prisma\s*\.\s*\w+\s*\.\s*(?:findUnique|findFirst|update|delete)\s*\(\s*\{\s*where\s*:\s*\{([^}]*)\}",
+    re.DOTALL,
+)
+_NEST_TENANT_SAFE_RE = re.compile(
+    r"\b(?:userId|tenantId|organizationId|ownerId|accountId)\b"
+)
+
+_PY_ID_LOOKUP_RE = re.compile(
+    r"(?:\b[A-Z]\w*\.objects\.get\s*\(([^)]*)"
+    r"|\bget_object_or_404\s*\(\s*[A-Z]\w*\s*,([^)]*)"
+    r"|\b(?:session|db)\.get\s*\(\s*[A-Z]\w*\s*,\s*([^)]*)\))"
+)
+_PY_TENANT_SAFE_RE = re.compile(
+    r"(?:\b(?:user|owner|tenant|tenant_id|organization|organization_id|user_id|account_id)\s*="
+    r"|\b(?:tenant_id|user_id|owner_id|organization_id)\s*==\s*(?:request\.user|current_user)"
+    r"|\bDepends\s*\(\s*get_current_user\s*\))"
+)
+
+
+def audit_multilang_route_tenant_authz(
+    raw_content: str,
+    *,
+    filename: str = "OrderController.java",
+) -> dict[str, Any]:
+    """Audit Spring Boot, ASP.NET Core, Express/NestJS, and Django/FastAPI routes for unscoped IDOR/tenant lookups."""
+    if not isinstance(raw_content, str) or not raw_content.strip():
+        return {
+            "format": "sniper-multilang-route-tenant-authz/1",
+            "filename": filename,
+            "finding_count": 0,
+            "findings": [],
+        }
+
+    ext = PurePosixPath(str(filename or "").replace("\\", "/")).suffix.casefold()
+    findings: list[dict[str, Any]] = []
+
+    # (a) Spring Boot (Java / Kotlin)
+    if ext in {".java", ".kt"} or _SPRING_MAPPING_RE.search(raw_content):
+        mapping_matches = list(_SPRING_MAPPING_RE.finditer(raw_content))
+        for idx, m in enumerate(mapping_matches):
+            start = max(0, m.start() - 160)
+            end = mapping_matches[idx + 1].start() if idx + 1 < len(mapping_matches) else min(len(raw_content), m.end() + 700)
+            window = raw_content[start:end]
+            lookup = _SPRING_LOOKUP_RE.search(window)
+            if lookup and not _SPRING_SAFE_RE.search(window):
+                line_no = raw_content.count("\n", 0, m.start()) + 1
+                findings.append({
+                    "id": "SNIPER-AUTHZ-SPRING-01",
+                    "rule_id": "SNIPER-AUTHZ-SPRING-01",
+                    "control_id": "SNIPER-AUTHZ-SPRING-01",
+                    "severity": "high",
+                    "cwe": "CWE-639",
+                    "reference": "CWE-639",
+                    "framework": "spring",
+                    "title": "Spring Boot yönlendirmesinde @PreAuthorize veya tenant/sahiplik kontrolü olmadan doğrudan ID sorgusu",
+                    "evidence": lookup.group(0).strip(),
+                    "filename": filename,
+                    "line": line_no,
+                    "location": f"{filename}:{line_no}",
+                })
+
+    # (b) ASP.NET Core (C#)
+    if ext == ".cs" or _ASPNET_ROUTE_RE.search(raw_content):
+        route_matches = list(_ASPNET_ROUTE_RE.finditer(raw_content))
+        for idx, m in enumerate(route_matches):
+            start = max(0, m.start() - 160)
+            end = route_matches[idx + 1].start() if idx + 1 < len(route_matches) else min(len(raw_content), m.end() + 700)
+            window = raw_content[start:end]
+            lookup = _ASPNET_LOOKUP_RE.search(window)
+            if lookup and not _ASPNET_SAFE_RE.search(window):
+                line_no = raw_content.count("\n", 0, m.start()) + 1
+                findings.append({
+                    "id": "SNIPER-AUTHZ-ASPNET-02",
+                    "rule_id": "SNIPER-AUTHZ-ASPNET-02",
+                    "control_id": "SNIPER-AUTHZ-ASPNET-02",
+                    "severity": "high",
+                    "cwe": "CWE-639",
+                    "reference": "CWE-639",
+                    "framework": "aspnet",
+                    "title": "ASP.NET Core aksiyonunda User/TenantId filtresi olmadan doğrudan varlık ID sorgusu",
+                    "evidence": lookup.group(0).strip(),
+                    "filename": filename,
+                    "line": line_no,
+                    "location": f"{filename}:{line_no}",
+                })
+
+    # (c) Express / NestJS (TypeScript / JavaScript)
+    if ext in {".ts", ".js", ".mts", ".mjs"} or _PRISMA_ID_LOOKUP_RE.search(raw_content):
+        if _NEST_EXPRESS_ROUTE_RE.search(raw_content):
+            for lookup in _PRISMA_ID_LOOKUP_RE.finditer(raw_content):
+                where_clause = lookup.group(1) or ""
+                if re.search(r"\bid\b", where_clause) and not _NEST_TENANT_SAFE_RE.search(where_clause):
+                    window = raw_content[max(0, lookup.start() - 220):min(len(raw_content), lookup.end() + 200)]
+                    if not _NEST_TENANT_SAFE_RE.search(window):
+                        line_no = raw_content.count("\n", 0, lookup.start()) + 1
+                        findings.append({
+                            "id": "SNIPER-AUTHZ-NEST-03",
+                            "rule_id": "SNIPER-AUTHZ-NEST-03",
+                            "control_id": "SNIPER-AUTHZ-NEST-03",
+                            "severity": "high",
+                            "cwe": "CWE-639",
+                            "reference": "CWE-639",
+                            "framework": "nestjs",
+                            "title": "Express/NestJS Prisma sorgusunda tenantId/userId kapsamı olmadan doğrudan id erişimi",
+                            "evidence": lookup.group(0).splitlines()[0].strip(),
+                            "filename": filename,
+                            "line": line_no,
+                            "location": f"{filename}:{line_no}",
+                        })
+
+    # (d) Django / FastAPI (Python)
+    if ext == ".py" or _PY_ID_LOOKUP_RE.search(raw_content):
+        for lookup in _PY_ID_LOOKUP_RE.finditer(raw_content):
+            args_text = (lookup.group(1) or lookup.group(2) or lookup.group(3) or "").strip()
+            if not re.search(r"\b(?:id|pk|\w+_id)\b", args_text):
+                continue
+            window = raw_content[max(0, lookup.start() - 260):min(len(raw_content), lookup.end() + 220)]
+            if not _PY_TENANT_SAFE_RE.search(args_text) and not _PY_TENANT_SAFE_RE.search(window):
+                line_no = raw_content.count("\n", 0, lookup.start()) + 1
+                findings.append({
+                    "id": "SNIPER-AUTHZ-PY-04",
+                    "rule_id": "SNIPER-AUTHZ-PY-04",
+                    "control_id": "SNIPER-AUTHZ-PY-04",
+                    "severity": "high",
+                    "cwe": "CWE-639",
+                    "reference": "CWE-639",
+                    "framework": "python",
+                    "title": "Django/FastAPI yönlendirmesinde kullanıcı veya tenant kapsamı olmadan doğrudan nesne sorgusu",
+                    "evidence": lookup.group(0).strip(),
+                    "filename": filename,
+                    "line": line_no,
+                    "location": f"{filename}:{line_no}",
+                })
+
+    return {
+        "format": "sniper-multilang-route-tenant-authz/1",
+        "filename": filename,
+        "finding_count": len(findings),
+        "findings": findings,
+    }
+
+
+

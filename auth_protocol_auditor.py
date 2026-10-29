@@ -137,6 +137,36 @@ def audit_auth_artifact(
                 )
             )
 
+        if "crit" in header:
+            findings.append(
+                _finding(
+                    "high",
+                    "crypto",
+                    "JWT başlığında kritik uzantı (crit) kullanımı (Doğrulama Atlatma Riski)",
+                    "JWT başlığında 'crit' (critical) uzantı listesi bulunuyor; RFC 7515 gereği desteklenmeyen crit başlıkları reddedilmelidir, aksi halde doğrulama atlatılabilir.",
+                    f"crit={header.get('crit')!r}",
+                    "Tanınmayan 'crit' başlık uzantılarını derhal reddedin ve standart başlık adlarının crit içinde kullanımına izin vermeyin.",
+                    "CWE-347",
+                    "SNIPER-CRYP-06",
+                )
+            )
+
+        if str(alg or "").strip().upper() in {"HS256", "HS384", "HS512"} and (
+            not payload.get("iss") or not payload.get("aud")
+        ):
+            findings.append(
+                _finding(
+                    "medium",
+                    "authentication",
+                    "Simetrik imzalı (HMAC) JWT belirtecinde iss/aud kapsam doğrulaması eksik",
+                    "HS256/HS384/HS512 simetrik imzalı JWT yükünde 'iss' (issuer) veya 'aud' (audience) alanı bulunmuyor; servisler arası belirteç yeniden oynatma (replay) ve algoritma karışıklığı riski doğurur.",
+                    f"alg={alg!r}, iss_present={bool(payload.get('iss'))}, aud_present={bool(payload.get('aud'))}",
+                    "Asimetrik imzaları (RS256/ES256/EdDSA) tercih edin ve her JWT doğrulamasında beklenen iss ile aud değerlerini zorunlu kılın.",
+                    "CWE-287",
+                    "SNIPER-AUTH-11",
+                )
+            )
+
         exp = payload.get("exp")
         iat = payload.get("iat")
         if not isinstance(exp, (int, float)) or (
@@ -336,6 +366,24 @@ def audit_auth_artifact(
                 )
             )
 
+        assertion_count = len(re.findall(r"<\s*(?:[A-Za-z0-9_]+:)?Assertion\b", cleaned))
+        has_object_wrapped_assertion = bool(
+            re.search(r"<\s*(?:[A-Za-z0-9_]+:)?Object\b[^>]*>[\s\S]*?<\s*(?:[A-Za-z0-9_]+:)?Assertion\b", cleaned)
+        )
+        if assertion_count > 1 or has_object_wrapped_assertion:
+            findings.append(
+                _finding(
+                    "critical",
+                    "authentication",
+                    "SAML yanıtında XML İmza Sarma (XML Signature Wrapping - XSW) saldırı deseni",
+                    "SAML belgesinde birden fazla Assertion elemanı veya ds:Object içine gizlenmiş ikincil Assertion saptandı; imzalı Assertion ile işlenen Assertion ayrıştırılarak kimlik doğrulama atlatılabilir.",
+                    f"assertion_count={assertion_count}, object_wrapped_assertion={has_object_wrapped_assertion}",
+                    "SAML yanıtlarında tek Assertion zorunluluğu uygulayın, XSD şema doğrulaması yapın ve yalnızca XML-DSig Reference URI ile doğrudan imzalanmış düğümü işleyin.",
+                    "CWE-347",
+                    "SNIPER-AUTH-11",
+                )
+            )
+
         parsed_metadata = {
             "has_signature": has_signature,
             "has_audience_restriction": has_audience,
@@ -365,3 +413,326 @@ def audit_auth_artifact(
             "SNIPER-SESS-03",
         ],
     }
+
+
+_FIDO2_VERIFY_CALL_RE = re.compile(
+    r"\b(verify_authentication_response|verify_registration_response|"
+    r"verifyAuthenticationResponse|verifyRegistrationResponse)\s*\("
+)
+_FIDO2_EXPECTED_ORIGIN_RE = re.compile(r"\b(?:expected_origin|expectedOrigin)\b")
+_FIDO2_EXPECTED_RP_ID_RE = re.compile(r"\b(?:expected_rp_id|expectedRPID)\b")
+_FIDO2_UV_DISABLED_RE = re.compile(
+    r"\b(?:require_user_verification|requireUserVerification)[\"']?\s*[:=]\s*(?:False|false)\b"
+)
+_SAML_UNSIGNED_CODE_RE = re.compile(
+    r"\b(?:want_assertions_signed|wantAssertionsSigned|"
+    r"want_messages_signed|wantMessagesSigned|"
+    r"verify_signature|verifySignature)[\"']?\s*[:=]\s*(?:False|false)\b"
+)
+_OIDC_DISABLED_VERIFY_RE = re.compile(
+    r"\b(?:verify_aud|verify_exp)[\"']?\s*[:=]\s*(?:False|false)\b"
+)
+
+
+def audit_fido2_saml_oidc_code(
+    raw_content: str,
+    *,
+    filename: str = "auth.py",
+) -> dict[str, Any]:
+    if not isinstance(raw_content, str) or not raw_content.strip():
+        return {
+            "format": "sniper-fido2-saml-oidc-code-audit/1",
+            "filename": filename,
+            "count": 0,
+            "findings": [],
+        }
+
+    findings: list[dict[str, Any]] = []
+
+    fido_triggered = False
+    for match in _FIDO2_VERIFY_CALL_RE.finditer(raw_content):
+        window = raw_content[match.start() : match.start() + 400]
+        has_origin = bool(_FIDO2_EXPECTED_ORIGIN_RE.search(window))
+        has_rp_id = bool(_FIDO2_EXPECTED_RP_ID_RE.search(window))
+        uv_disabled = bool(_FIDO2_UV_DISABLED_RE.search(window))
+        if not has_origin or not has_rp_id or uv_disabled:
+            line_no = raw_content.count("\n", 0, match.start()) + 1
+            findings.append({
+                "id": "SNIPER-AUTH-FIDO-01",
+                "rule_id": "SNIPER-AUTH-FIDO-01",
+                "control_id": "SNIPER-AUTH-FIDO-01",
+                "severity": "critical",
+                "cwe": "CWE-287",
+                "reference": "CWE-287",
+                "category": "authentication",
+                "title": "WebAuthn / Passkey (FIDO2) doğrulamasında expected_origin / expected_rp_id veya kullanıcı doğrulama kontrolü eksik",
+                "description": (
+                    "FIDO2 / WebAuthn kimlik veya kayıt doğrulama çağrısında expected_origin, expected_rp_id "
+                    "parametreleri eksik veya require_user_verification devre dışı bırakılmış."
+                ),
+                "evidence": match.group(0).strip(),
+                "recommendation": (
+                    "WebAuthn doğrulamalarında expected_origin ve expected_rp_id değerlerini açıkça doğrulayın "
+                    "ve require_user_verification=True zorunluluğunu etkinleştirin."
+                ),
+                "filename": filename,
+                "line": line_no,
+            })
+            fido_triggered = True
+
+    if not fido_triggered:
+        uv_match = _FIDO2_UV_DISABLED_RE.search(raw_content)
+        if uv_match:
+            line_no = raw_content.count("\n", 0, uv_match.start()) + 1
+            findings.append({
+                "id": "SNIPER-AUTH-FIDO-01",
+                "rule_id": "SNIPER-AUTH-FIDO-01",
+                "control_id": "SNIPER-AUTH-FIDO-01",
+                "severity": "critical",
+                "cwe": "CWE-287",
+                "reference": "CWE-287",
+                "category": "authentication",
+                "title": "WebAuthn / Passkey (FIDO2) doğrulamasında expected_origin / expected_rp_id veya kullanıcı doğrulama kontrolü eksik",
+                "description": (
+                    "FIDO2 / WebAuthn yapılandırmasında kullanıcı doğrulaması (require_user_verification) "
+                    "devre dışı bırakılmış."
+                ),
+                "evidence": uv_match.group(0).strip(),
+                "recommendation": (
+                    "WebAuthn doğrulamalarında expected_origin ve expected_rp_id değerlerini açıkça doğrulayın "
+                    "ve require_user_verification=True zorunluluğunu etkinleştirin."
+                ),
+                "filename": filename,
+                "line": line_no,
+            })
+
+    saml_match = _SAML_UNSIGNED_CODE_RE.search(raw_content)
+    if saml_match:
+        line_no = raw_content.count("\n", 0, saml_match.start()) + 1
+        findings.append({
+            "id": "SNIPER-AUTH-SAML-02",
+            "rule_id": "SNIPER-AUTH-SAML-02",
+            "control_id": "SNIPER-AUTH-SAML-02",
+            "severity": "critical",
+            "cwe": "CWE-347",
+            "reference": "CWE-347",
+            "category": "authentication",
+            "title": "SAML 2.0 kod yapılandırmasında imzasız Assertion kabulü (want_assertions_signed=False / XSW)",
+            "description": (
+                "SAML 2.0 istemci/SP yapılandırmasında want_assertions_signed, want_messages_signed veya "
+                "verify_signature kontrolü devre dışı bırakılmış; sahte veya sarmalanmış (XSW) Assertion kabul edilebilir."
+            ),
+            "evidence": saml_match.group(0).strip(),
+            "recommendation": (
+                "SAML SP ayarlarında want_assertions_signed=True, want_messages_signed=True ve "
+                "verify_signature=True kontrollerini zorunlu kılın."
+            ),
+            "filename": filename,
+            "line": line_no,
+        })
+
+    oidc_match = _OIDC_DISABLED_VERIFY_RE.search(raw_content)
+    if oidc_match:
+        line_no = raw_content.count("\n", 0, oidc_match.start()) + 1
+        findings.append({
+            "id": "SNIPER-AUTH-OIDC-03",
+            "rule_id": "SNIPER-AUTH-OIDC-03",
+            "control_id": "SNIPER-AUTH-OIDC-03",
+            "severity": "high",
+            "cwe": "CWE-294",
+            "reference": "CWE-294",
+            "category": "authentication",
+            "title": "OIDC / JWT doğrulamasında audience (verify_aud) veya süre (verify_exp) kontrolü devre dışı",
+            "description": (
+                "OIDC / JWT belirteç doğrulama seçeneklerinde verify_aud veya verify_exp devre dışı bırakılmış; "
+                "farklı hedef kitleye ait veya süresi dolmuş belirteçler kabul edilebilir."
+            ),
+            "evidence": oidc_match.group(0).strip(),
+            "recommendation": (
+                "OIDC ve JWT doğrulamalarında verify_aud=True ve verify_exp=True kontrollerini her zaman açık tutun."
+            ),
+            "filename": filename,
+            "line": line_no,
+        })
+
+    return {
+        "format": "sniper-fido2-saml-oidc-code-audit/1",
+        "filename": filename,
+        "count": len(findings),
+        "findings": findings,
+    }
+
+
+_OIDC_CONDITIONAL_CRED_RE = re.compile(
+    r"if\s*\(\s*hasCredentials\b[^)]*\)\s*\{?[^{}]*\b(?:authenticateClient|verifyRevocationClient)\b"
+    r"|\bhasCredentials\s*(?:&&|\?)[^;\n]*\b(?:authenticateClient|verifyRevocationClient)\b",
+    re.DOTALL,
+)
+_OIDC_OPTIONAL_CLIENT_ID_BIND_RE = re.compile(
+    r"if\s*\(\s*clientId\s*&&\s*session\.(?:oidcClientId|clientId)\s*&&\s*"
+    r"(?:clientId\s*!==\s*session\.(?:oidcClientId|clientId)|session\.(?:oidcClientId|clientId)\s*!==\s*clientId)"
+)
+_OIDC_REQUIRES_PKCE_FALSE_RE = re.compile(r"\brequiresPkce\s*:\s*false\b")
+_OIDC_EXCHANGE_OR_AUTH_CODE_RE = re.compile(
+    r"\bexchangeCodeForToken\b|grant_type\s*===\s*['\"]authorization_code['\"]"
+)
+_OIDC_STRICT_SESSION_CLIENT_BIND_RE = re.compile(
+    r"(?:!\s*clientId\s*\|\|\s*)?(?:session|authCode|codeData)\.(?:oidcClientId|clientId)\s*(?:!==|===|!=|==)\s*clientId"
+    r"|clientId\s*(?:!==|===|!=|==)\s*(?:session|authCode|codeData)\.(?:oidcClientId|clientId)"
+)
+_OIDC_AUTH_CLIENT_RE = re.compile(
+    r"\b(?:authenticateClient|verifyRevocationClient)\s*\("
+)
+_OAUTH_RESET_SESSION_RE = re.compile(r"\bresetSession\s*\(\s*\)")
+_OAUTH_STATE_GUARD_RE = re.compile(
+    r"(?:queryParameters\s*\[\s*['\"]state['\"]\s*\]|\bstate\b)[^\n;{}]*(?:!=|!==|==|===)\s*[A-Za-z0-9_.\"'\[\]()]+|"
+    r"guard\s+[^\n]*\bstate\b"
+)
+_OAUTH_MOBILE_TOKEN_CB_RE = re.compile(
+    r"\bAuthorizationResponse\.Type\.TOKEN\b|\bswapCodeForToken\s*\("
+)
+_OAUTH_MOBILE_STATE_COMPARE_RE = re.compile(
+    r"(?:getState\s*\(\s*\)|\.state\b)[^\n;]*(?:\.equals\s*\(|!=|!==|==|===)[^\n;]*"
+    r"(?:expectedState|request\.getState|storedState|pendingState|mState|csrfState|sessionState)"
+    r"|(?:expectedState|request\.getState\s*\(\s*\)|storedState|pendingState|mState|csrfState|sessionState)[^\n;]*"
+    r"(?:\.equals\s*\(|!=|!==|==|===)[^\n;]*(?:getState\s*\(\s*\)|\.state\b)"
+)
+_PKCE_MATH_RANDOM_RE = re.compile(r"\bMath\.random\s*\(\s*\)")
+
+
+def audit_oauth_oidc_state_machine_and_mobile_callbacks(
+    raw_content: str,
+    *,
+    filename: str = "OidcService.ts",
+) -> dict[str, Any]:
+    """OIDC DCR/Token durum makinesi ve OAuth/Mobil geri çağrı (callback) güvenlik kusurlarını denetler."""
+    if not isinstance(raw_content, str) or not raw_content.strip():
+        return {
+            "format": "sniper-oauth-oidc-state-machine-audit/1",
+            "filename": filename,
+            "finding_count": 0,
+            "findings": [],
+        }
+
+    findings: list[dict[str, Any]] = []
+    dcr_emitted = False
+
+    opt_bind_m = _OIDC_OPTIONAL_CLIENT_ID_BIND_RE.search(raw_content)
+    cond_cred_m = _OIDC_CONDITIONAL_CRED_RE.search(raw_content)
+    pkce_false_m = _OIDC_REQUIRES_PKCE_FALSE_RE.search(raw_content)
+    exchange_m = _OIDC_EXCHANGE_OR_AUTH_CODE_RE.search(raw_content)
+
+    has_auth_client = bool(_OIDC_AUTH_CLIENT_RE.search(raw_content))
+    has_strict_bind = bool(
+        _OIDC_STRICT_SESSION_CLIENT_BIND_RE.search(raw_content)
+        and not opt_bind_m
+    )
+    has_bound_exchange_call = bool(
+        has_auth_client
+        and not cond_cred_m
+        and re.search(r"\bexchangeCodeForToken\s*\([^)]*client", raw_content)
+    )
+
+    dcr_match = None
+    if opt_bind_m:
+        dcr_match = opt_bind_m
+    elif cond_cred_m:
+        dcr_match = cond_cred_m
+    elif pkce_false_m and not has_auth_client:
+        dcr_match = pkce_false_m
+    elif exchange_m and not (has_strict_bind or has_bound_exchange_call):
+        dcr_match = exchange_m
+
+    if dcr_match and not dcr_emitted:
+        dcr_emitted = True
+        line_no = raw_content.count("\n", 0, dcr_match.start()) + 1
+        evidence = dcr_match.group(0).strip().splitlines()[0].strip()
+        findings.append(
+            {
+                "id": "SNIPER-OIDC-DCR-04",
+                "rule_id": "SNIPER-OIDC-DCR-04",
+                "control_id": "SNIPER-OIDC-DCR-04",
+                "severity": "high",
+                "cwe": "CWE-287",
+                "reference": "CWE-287",
+                "category": "authentication",
+                "title": "OIDC kod değişimi veya yenileme akışında eksik istemci kimliği (clientId / oidcClientId) bağlaması veya koşullu kimlik doğrulama atlaması",
+                "description": (
+                    "OIDC yetkilendirme kodu değişimi (`exchangeCodeForToken` / `authorization_code`) "
+                    "veya oturum yenileme (`refresh_token` / `refreshSession`) akışında `session.clientId` / "
+                    "`session.oidcClientId` bağlaması zorunlu tutulmamış ya da istemci doğrulaması "
+                    "`if (hasCredentials)` / `if (clientId && ...)` koşuluna bağlanarak atlanabilir bırakılmış."
+                ),
+                "evidence": evidence,
+                "recommendation": (
+                    "Hem `authorization_code` hem de `refresh_token` akışlarında `clientId` değerini "
+                    "`session.clientId` / `session.oidcClientId` ile koşulsuz olarak doğrulayın ve "
+                    "gizli istemciler için `authenticateClient` kontrolünü zorunlu kılın."
+                ),
+                "remediation": (
+                    "Hem `authorization_code` hem de `refresh_token` akışlarında `clientId` değerini "
+                    "`session.clientId` / `session.oidcClientId` ile koşulsuz olarak doğrulayın ve "
+                    "gizli istemciler için `authenticateClient` kontrolünü zorunlu kılın."
+                ),
+                "filename": filename,
+                "line": line_no,
+            }
+        )
+
+    state_match = None
+    reset_m = _OAUTH_RESET_SESSION_RE.search(raw_content)
+    if reset_m:
+        prefix = raw_content[: reset_m.start()]
+        if not _OAUTH_STATE_GUARD_RE.search(prefix):
+            state_match = reset_m
+
+    if state_match is None:
+        token_cb_m = _OAUTH_MOBILE_TOKEN_CB_RE.search(raw_content)
+        if token_cb_m and not _OAUTH_MOBILE_STATE_COMPARE_RE.search(raw_content):
+            state_match = token_cb_m
+
+    if state_match is None:
+        math_rand_m = _PKCE_MATH_RANDOM_RE.search(raw_content)
+        if math_rand_m:
+            state_match = math_rand_m
+
+    if state_match is not None:
+        line_no = raw_content.count("\n", 0, state_match.start()) + 1
+        evidence = state_match.group(0).strip()
+        findings.append(
+            {
+                "id": "SNIPER-OAUTH-STATE-05",
+                "rule_id": "SNIPER-OAUTH-STATE-05",
+                "control_id": "SNIPER-OAUTH-STATE-05",
+                "severity": "high",
+                "cwe": "CWE-352",
+                "reference": "CWE-352",
+                "category": "authentication",
+                "title": "OAuth/Mobil SDK geri çağrısında (callback) state doğrulanmadan oturum sıfırlama/kabul veya zayıf PKCE üretimi",
+                "description": (
+                    "OAuth / Mobil SDK geri çağrı (callback) işleyicisinde `state` parametresi doğrulanmadan "
+                    "`resetSession()` çağrılıyor, `AuthorizationResponse.Type.TOKEN` / `swapCodeForToken` "
+                    "kabul ediliyor veya PKCE doğrulayıcısı kriptografik olmayan `Math.random()` (CWE-338) ile üretiliyor."
+                ),
+                "evidence": evidence,
+                "recommendation": (
+                    "Geri çağrı işleyicisinde oturum durumunu değiştirmeden veya belirteç takası yapmadan "
+                    "önce `state` parametresini beklenen değerle doğrulayın; PKCE üretimi için CSPRNG kullanın."
+                ),
+                "remediation": (
+                    "Geri çağrı işleyicisinde oturum durumunu değiştirmeden veya belirteç takası yapmadan "
+                    "önce `state` parametresini beklenen değerle doğrulayın; PKCE üretimi için CSPRNG kullanın."
+                ),
+                "filename": filename,
+                "line": line_no,
+            }
+        )
+
+    return {
+        "format": "sniper-oauth-oidc-state-machine-audit/1",
+        "filename": filename,
+        "finding_count": len(findings),
+        "findings": findings,
+    }
+
+

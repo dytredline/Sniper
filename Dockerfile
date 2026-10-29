@@ -57,7 +57,7 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
 
 CMD ["python", "server.py"]
 
-# Optional five-engine image. The acceptance gate is deliberately the first
+# Optional seven-engine image. The acceptance gate is deliberately the first
 # instruction in this target: selecting it without an explicit acknowledgement
 # fails before any third-party artifact is requested. The locked installer
 # verifies every complete archive and never executes an installed scanner.

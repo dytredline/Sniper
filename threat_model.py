@@ -48,6 +48,9 @@ _COMPONENTS: dict[str, tuple[str, str]] = {
     "restify": ("framework", "restify"), "next": ("framework", "Next.js"), "apollo-server": ("framework", "Apollo GraphQL"),
     "@apollo/server": ("framework", "Apollo GraphQL"), "graphene": ("framework", "Graphene GraphQL"),
     "strawberry": ("framework", "Strawberry GraphQL"), "ariadne": ("framework", "Ariadne GraphQL"),
+    "litestar": ("framework", "Litestar"), "blacksheep": ("framework", "BlackSheep"),
+    "robyn": ("framework", "Robyn"), "hono": ("framework", "Hono"), "elysia": ("framework", "Elysia"),
+    "@trpc/server": ("framework", "tRPC"),
     # SQL
     "sqlite3": ("sql", "SQLite"), "better-sqlite3": ("sql", "SQLite"), "psycopg2": ("sql", "PostgreSQL"),
     "psycopg": ("sql", "PostgreSQL"), "asyncpg": ("sql", "PostgreSQL"), "pg": ("sql", "PostgreSQL"),
@@ -56,12 +59,17 @@ _COMPONENTS: dict[str, tuple[str, str]] = {
     "cx_oracle": ("sql", "Oracle"), "sqlalchemy": ("sql", "SQLAlchemy"), "peewee": ("sql", "Peewee"),
     "tortoise": ("sql", "Tortoise ORM"), "sequelize": ("sql", "Sequelize"), "knex": ("sql", "Knex"),
     "typeorm": ("sql", "TypeORM"), "@prisma/client": ("sql", "Prisma"), "mikro-orm": ("sql", "MikroORM"),
-    "django.db": ("sql", "Django ORM"),
+    "django.db": ("sql", "Django ORM"), "sqlmodel": ("sql", "SQLModel"),
+    "drizzle-orm": ("sql", "Drizzle ORM"), "kysely": ("sql", "Kysely"),
     # NoSQL / önbellek / arama
     "pymongo": ("nosql", "MongoDB"), "motor": ("nosql", "MongoDB"), "mongoengine": ("nosql", "MongoDB"),
     "mongodb": ("nosql", "MongoDB"), "mongoose": ("nosql", "MongoDB"), "mongojs": ("nosql", "MongoDB"),
     "cassandra": ("nosql", "Cassandra"), "elasticsearch": ("nosql", "Elasticsearch"),
     "@elastic/elasticsearch": ("nosql", "Elasticsearch"), "couchbase": ("nosql", "Couchbase"),
+    "chromadb": ("nosql", "ChromaDB"), "qdrant_client": ("nosql", "Qdrant"),
+    "@qdrant/js-client-rest": ("nosql", "Qdrant"), "pinecone": ("nosql", "Pinecone"),
+    "@pinecone-database/pinecone": ("nosql", "Pinecone"), "weaviate": ("nosql", "Weaviate"),
+    "pymilvus": ("nosql", "Milvus"),
     "redis": ("cache", "Redis"), "ioredis": ("cache", "Redis"), "aioredis": ("cache", "Redis"),
     "memcache": ("cache", "Memcached"), "pymemcache": ("cache", "Memcached"),
     # kuyruk
@@ -73,13 +81,17 @@ _COMPONENTS: dict[str, tuple[str, str]] = {
     "boto3": ("cloud", "AWS"), "botocore": ("cloud", "AWS"), "aws-sdk": ("cloud", "AWS"), "@aws-sdk": ("cloud", "AWS"),
     "google.cloud": ("cloud", "Google Cloud"), "@google-cloud": ("cloud", "Google Cloud"), "azure": ("cloud", "Azure"),
     "@azure": ("cloud", "Azure"), "firebase_admin": ("cloud", "Firebase"), "firebase-admin": ("cloud", "Firebase"),
-    "firebase": ("cloud", "Firebase"),
+    "firebase": ("cloud", "Firebase"), "openai": ("cloud", "OpenAI"), "openai.resources": ("cloud", "OpenAI SDK"),
+    "anthropic": ("cloud", "Anthropic"),
+    "@anthropic-ai/sdk": ("cloud", "Anthropic"), "google.generativeai": ("cloud", "Google Gemini"),
+    "@google/generative-ai": ("cloud", "Google Gemini"), "supabase": ("cloud", "Supabase"),
+    "@supabase/supabase-js": ("cloud", "Supabase"),
     # HTTP istemcileri (dış servis)
     "requests": ("http", "requests"), "httpx": ("http", "httpx"), "urllib3": ("http", "urllib3"),
     "urllib.request": ("http", "urllib"), "aiohttp.client": ("http", "aiohttp istemcisi"), "axios": ("http", "axios"),
     "node-fetch": ("http", "node-fetch"), "got": ("http", "got"), "superagent": ("http", "superagent"),
     "request": ("http", "request"), "needle": ("http", "needle"), "undici": ("http", "undici"),
-    "pycurl": ("http", "pycurl"),
+    "pycurl": ("http", "pycurl"), "ofetch": ("http", "ofetch"), "ky": ("http", "ky"),
     # e-posta
     "smtplib": ("email", "SMTP"), "nodemailer": ("email", "SMTP (nodemailer)"), "flask_mail": ("email", "SMTP"),
     "sendgrid": ("email", "SendGrid"), "@sendgrid/mail": ("email", "SendGrid"),
@@ -92,6 +104,8 @@ _COMPONENTS: dict[str, tuple[str, str]] = {
     "passlib": ("auth", "passlib"), "authlib": ("auth", "Authlib"), "oauthlib": ("auth", "OAuth"),
     "@nestjs/passport": ("auth", "Passport"), "next-auth": ("auth", "NextAuth"), "flask_httpauth": ("auth", "HTTP auth"),
     "rest_framework.permissions": ("auth", "DRF izinleri"), "rest_framework_simplejwt": ("auth", "DRF JWT"),
+    "clerk": ("auth", "Clerk"), "@clerk/nextjs": ("auth", "Clerk"), "lucia": ("auth", "Lucia"),
+    "better-auth": ("auth", "Better Auth"),
     # ortam / sırlar
     "dotenv": ("env", "dotenv"), "decouple": ("env", "python-decouple"), "environ": ("env", "django-environ"),
     # dosya sistemi
@@ -122,13 +136,13 @@ _THREAT_TEMPLATES: list[dict[str, Any]] = [
      "cwes": _cwes(287, 306, 798, 522, 384, 613, 1004, 614, 521, 307, 640, 1275, 345, 347),
      "needs": "auth", "hint": "Kimlik doğrulama, oturum ve belirteç doğrulamasını gözden geçirin."},
     {"element": "client_flow", "stride": "T", "title": "İstek verisiyle kurcalama ve enjeksiyon",
-     "cwes": _cwes(79, 80, 89, 943, 78, 77, 94, 95, 22, 23, 73, 611, 918, 601, 1321, 502, 1336, 917, 90, 643, 113, 74, 352, 434, 915),
+     "cwes": _cwes(79, 80, 89, 943, 78, 77, 94, 95, 22, 23, 73, 611, 918, 601, 1321, 502, 1336, 917, 90, 643, 113, 74, 352, 434, 915, 472),
      "hint": "Girdi doğrulama, çıktı kodlama ve parametreli sorguları doğrulayın."},
     {"element": "client_flow", "stride": "R", "title": "İşlemlerin izlenememesi (güvenlik günlüğü eksikliği)",
      "cwes": _cwes(117, 778, 223, 532), "needs": "log",
      "hint": "Kimlik doğrulama, yetki reddi ve kritik işlemler değiştirilemez biçimde günlüklenmeli."},
     {"element": "client_flow", "stride": "I", "title": "Yanıt, hata ve başlıklarla bilgi sızması",
-     "cwes": _cwes(200, 209, 215, 548, 359, 312, 319, 1004, 942, 693, 1021, 16),
+     "cwes": _cwes(200, 209, 215, 548, 359, 312, 319, 1004, 942, 693, 1021, 16, 598),
      "hint": "Hata ayrıntıları, CORS ve güvenlik başlıklarını gözden geçirin."},
     {"element": "client_flow", "stride": "D", "title": "Hizmet engelleme (ReDoS, sınırsız kaynak, oran sınırı yok)",
      "cwes": _cwes(1333, 400, 770, 799, 307, 409, 674, 1325),
@@ -138,10 +152,10 @@ _THREAT_TEMPLATES: list[dict[str, Any]] = [
      "hint": "Her rota ve nesne erişiminde yetki ve sahiplik denetimi olmalı."},
     # Süreç
     {"element": "process", "stride": "E", "title": "Kod/komut yürütme ve güvensiz seri çözme ile süreç ele geçirme",
-     "cwes": _cwes(78, 77, 94, 95, 502, 917, 1336, 470, 829),
+     "cwes": _cwes(78, 77, 94, 95, 502, 917, 1336, 470, 829, 250, 426),
      "hint": "eval/exec, kabuk komutları, şablon derleme ve seri çözmeyi güvenilmeyen veriden ayırın."},
     {"element": "process", "stride": "T", "title": "Prototip kirletme / bellek içi durumun kurcalanması",
-     "cwes": _cwes(1321, 915, 471), "hint": "Nesne birleştirmelerinde __proto__/constructor anahtarlarını engelleyin."},
+     "cwes": _cwes(1321, 915, 471, 190, 252, 841), "hint": "Nesne birleştirmelerinde __proto__/constructor anahtarlarını engelleyin."},
     # Veri depoları
     {"element": "store:sql", "stride": "T", "title": "SQL enjeksiyonu ile verinin değiştirilmesi",
      "cwes": _cwes(89, 564, 566), "hint": "Parametreli sorgu / ORM kullanın; ham SQL birleştirmeyin."},
@@ -511,7 +525,7 @@ class ThreatModelCollector:
                 modules.update(alias.name.split(".")[0] for alias in node.names)
             elif isinstance(node, ast.ImportFrom) and node.module:
                 modules.add(node.module.split(".")[0])
-        framework = next((f for f in ("fastapi", "flask", "quart", "sanic", "starlette", "aiohttp", "falcon", "django", "tornado", "bottle") if f in modules), "python")
+        framework = next((f for f in ("fastapi", "litestar", "blacksheep", "robyn", "flask", "quart", "sanic", "starlette", "aiohttp", "falcon", "django", "tornado", "bottle") if f in modules), "python")
         for node in ast.walk(tree):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 for decorator in node.decorator_list:
@@ -580,7 +594,7 @@ class ThreatModelCollector:
 
     def _javascript_routes(self, relpath: str, text: str, nest: bool) -> None:
         framework = "express"
-        for name in ("fastify", "koa", "hapi", "restify"):
+        for name in ("fastify", "koa", "hapi", "restify", "hono", "elysia"):
             if re.search(rf"['\"](?:@koa/router|koa-router|{name}|@hapi/{name})['\"]", text):
                 framework = name
                 break
@@ -961,3 +975,178 @@ def build_from_paths(root, files: Iterable[tuple[str, str | None, str]], finding
     for relpath, text, kind in files:
         collector.add(relpath, text, kind)
     return collector.build(findings, partial=partial)
+
+
+_EXECUTABLE_STRIDE_CWE_MAP: dict[str, str] = {
+    # Spoofing (S)
+    "CWE-287": "S", "CWE-295": "S", "CWE-297": "S", "CWE-306": "S", "CWE-307": "S",
+    "CWE-345": "S", "CWE-347": "S", "CWE-384": "S", "CWE-521": "S", "CWE-522": "S",
+    "CWE-599": "S", "CWE-613": "S", "CWE-614": "S", "CWE-640": "S", "CWE-1004": "S",
+    "CWE-1275": "S",
+    # Tampering (T)
+    "CWE-20": "T", "CWE-22": "T", "CWE-23": "T", "CWE-36": "T", "CWE-59": "T",
+    "CWE-73": "T", "CWE-74": "T", "CWE-79": "T", "CWE-80": "T", "CWE-89": "T",
+    "CWE-90": "T", "CWE-113": "T", "CWE-352": "T", "CWE-434": "T", "CWE-441": "T",
+    "CWE-471": "T", "CWE-472": "T", "CWE-564": "T", "CWE-566": "T", "CWE-601": "T",
+    "CWE-611": "T", "CWE-643": "T", "CWE-915": "T", "CWE-943": "T", "CWE-1321": "T",
+    # Repudiation (R)
+    "CWE-117": "R", "CWE-223": "R", "CWE-778": "R",
+    # Information Disclosure (I)
+    "CWE-16": "I", "CWE-200": "I", "CWE-201": "I", "CWE-209": "I", "CWE-215": "I",
+    "CWE-256": "I", "CWE-261": "I", "CWE-311": "I", "CWE-312": "I", "CWE-319": "I",
+    "CWE-321": "I", "CWE-327": "I", "CWE-328": "I", "CWE-359": "I", "CWE-532": "I",
+    "CWE-540": "I", "CWE-547": "I", "CWE-548": "I", "CWE-598": "I", "CWE-693": "I",
+    "CWE-759": "I", "CWE-760": "I", "CWE-798": "I", "CWE-916": "I", "CWE-918": "I",
+    "CWE-942": "I", "CWE-1021": "I",
+    # Denial of Service (D)
+    "CWE-400": "D", "CWE-409": "D", "CWE-674": "D", "CWE-770": "D", "CWE-799": "D",
+    "CWE-1325": "D", "CWE-1333": "D",
+    # Elevation of Privilege (E)
+    "CWE-77": "E", "CWE-78": "E", "CWE-94": "E", "CWE-95": "E", "CWE-250": "E",
+    "CWE-266": "E", "CWE-269": "E", "CWE-284": "E", "CWE-285": "E", "CWE-425": "E",
+    "CWE-426": "E", "CWE-470": "E", "CWE-502": "E", "CWE-639": "E", "CWE-829": "E",
+    "CWE-862": "E", "CWE-863": "E", "CWE-917": "E", "CWE-1336": "E",
+}
+
+_EXECUTABLE_MITRE_CWE_MAP: dict[str, str] = {
+    # Command / Code / Deserialization / SSTI
+    "CWE-77": "T1059",
+    "CWE-78": "T1059",
+    "CWE-94": "T1059",
+    "CWE-95": "T1059",
+    "CWE-502": "T1059",
+    "CWE-917": "T1059",
+    "CWE-1336": "T1059",
+    # Auth / BOLA / FIDO / SAML / OIDC
+    "CWE-287": "T1078",
+    "CWE-306": "T1078",
+    "CWE-345": "T1078",
+    "CWE-347": "T1078",
+    "CWE-384": "T1078",
+    "CWE-522": "T1078",
+    "CWE-639": "T1078",
+    "CWE-862": "T1078",
+    "CWE-863": "T1078",
+    # SSRF / Secrets / Cloud / IAM
+    "CWE-918": "T1552",
+    "CWE-269": "T1552",
+    "CWE-798": "T1552",
+    "CWE-312": "T1552",
+    "CWE-532": "T1552",
+    # Container / Pod Escape
+    "CWE-250": "T1611",
+    # DoS / ReDoS
+    "CWE-400": "T1499",
+    "CWE-770": "T1499",
+    "CWE-799": "T1499",
+    "CWE-1333": "T1499",
+}
+
+
+def synthesize_executable_threat_model(
+    findings: list[dict[str, Any]],
+    *,
+    routes: list[dict[str, Any]] | None = None,
+    project_name: str = "sniper-project",
+) -> dict[str, Any]:
+    """Bulguları ve rotaları STRIDE + MITRE ATT&CK eşlemeli Mermaid.js DFD tehdit modeline dönüştürür."""
+    safe_project = str(project_name or "sniper-project").strip() or "sniper-project"
+    route_list = [r for r in (routes or []) if isinstance(r, dict)]
+    stride_counts: dict[str, int] = {key: 0 for key in STRIDE_LABELS}
+    mitre_set: set[str] = set()
+    threats: list[dict[str, Any]] = []
+
+    for idx, finding in enumerate(findings or [], 1):
+        if not isinstance(finding, dict):
+            continue
+        raw_cwe_numbers = sorted(_finding_cwes(finding))
+        if not raw_cwe_numbers and finding.get("cwe_id"):
+            raw_cwe_numbers = sorted(set(re.findall(r"CWE-(\d+)", str(finding.get("cwe_id")))))
+        primary_cwe = f"CWE-{raw_cwe_numbers[0]}" if raw_cwe_numbers else "CWE-200"
+
+        stride_cat = _EXECUTABLE_STRIDE_CWE_MAP.get(primary_cwe)
+        if not stride_cat:
+            title_cat = f"{finding.get('title', '')} {finding.get('category', '')}".casefold()
+            if any(k in title_cat for k in ("auth", "jwt", "oidc", "saml", "fido", "kimlik")):
+                stride_cat = "S"
+            elif any(k in title_cat for k in ("bola", "idor", "yetki", "privilege", "escape", "rce", "komut")):
+                stride_cat = "E"
+            elif any(k in title_cat for k in ("dos", "redos", "rate", "kaynak")):
+                stride_cat = "D"
+            elif any(k in title_cat for k in ("log", "günlük", "audit")):
+                stride_cat = "R"
+            elif any(k in title_cat for k in ("secret", "sır", "ssrf", "ifşa", "leak")):
+                stride_cat = "I"
+            else:
+                stride_cat = "T"
+
+        mitre_id = _EXECUTABLE_MITRE_CWE_MAP.get(primary_cwe, "T1190")
+        stride_counts[stride_cat] = stride_counts.get(stride_cat, 0) + 1
+        mitre_set.add(mitre_id)
+
+        if mitre_id in {"T1552", "T1611"}:
+            boundary = "Application_Tier -> Data_Cloud_Tier"
+            edge_src, edge_dst = "AppCore", "CloudMeta"
+        elif primary_cwe in {"CWE-89", "CWE-564", "CWE-566", "CWE-943"}:
+            boundary = "Application_Tier -> Data_Cloud_Tier"
+            edge_src, edge_dst = "AppCore", "DataStore"
+        elif stride_cat in {"S", "D"} or mitre_id in {"T1078", "T1499"}:
+            boundary = "Internet_Boundary -> Application_Tier"
+            edge_src, edge_dst = "Client", "Gateway"
+        else:
+            boundary = "Internet_Boundary -> Application_Tier"
+            edge_src, edge_dst = "Gateway", "AppCore"
+
+        threat_id = f"THREAT-{idx:03d}"
+        threats.append(
+            {
+                "id": threat_id,
+                "finding_id": finding.get("id"),
+                "title": str(finding.get("title") or finding.get("category") or "Tehdit Bulgusu"),
+                "cwe": primary_cwe,
+                "severity": str(finding.get("severity") or "medium").lower(),
+                "stride_category": stride_cat,
+                "stride_label": STRIDE_LABELS[stride_cat],
+                "mitre_attack_id": mitre_id,
+                "trust_boundary": boundary,
+                "edge_source": edge_src,
+                "edge_target": edge_dst,
+                "file": finding.get("file"),
+                "line": finding.get("line"),
+            }
+        )
+
+    clean_proj = re.sub(r'["\[\]\r\n]', "", safe_project)[:40]
+    route_suffix = f" ({len(route_list)} rota)" if route_list else ""
+    mermaid_lines = [
+        "flowchart LR",
+        '    subgraph Internet_Boundary["Dış Ağ / İstemci Sınırı"]',
+        '        Client["Dış İstemci / Saldırgan"]',
+        "    end",
+        '    subgraph Application_Tier["Uygulama ve API Katmanı"]',
+        f'        Gateway["API Ağ Geçidi{route_suffix}"]',
+        f'        AppCore["Uygulama Çekirdeği ({clean_proj})"]',
+        "    end",
+        '    subgraph Data_Cloud_Tier["Veri, AI ve Bulut Katmanı"]',
+        '        DataStore["Veritabanı ve Sırlar Deposu"]',
+        '        CloudMeta["Bulut / Konteyner / AI Servisleri"]',
+        "    end",
+        '    Client -->|"HTTPS / API İstekleri"| Gateway',
+        '    Gateway -->|"Doğrulanmış İstek"| AppCore',
+        '    AppCore -->|"Sorgu ve Sır Erişimi"| DataStore',
+        '    AppCore -->|"Servis / AI Çağrısı"| CloudMeta',
+    ]
+    for item in threats[:15]:
+        edge_label = f"{item['id']} [{item['stride_category']}/{item['mitre_attack_id']}] {item['cwe']}"
+        mermaid_lines.append(f'    {item["edge_source"]} -.->|"{edge_label}"| {item["edge_target"]}')
+
+    mermaid_dfd = "\n".join(mermaid_lines)
+    return {
+        "format": "sniper-executable-threat-model/1",
+        "project_name": safe_project,
+        "mermaid_dfd": mermaid_dfd,
+        "mitre_attack_techniques": sorted(list(mitre_set)),
+        "stride_breakdown": stride_counts,
+        "threat_count": len(threats),
+        "threats": threats,
+    }

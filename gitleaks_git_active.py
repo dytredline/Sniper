@@ -25,13 +25,14 @@ from verified_exec import VerificationError
 from trufflehog_git_active import (
     GitHistoryInvalid,
     GitHistoryExecution,
+    _graft_staged_head_only,
     _required_git_dir,
     _stage,
 )
 
-MAX_PROCESS_OUTPUT_BYTES = 2_000_000
-MAX_REPORT_BYTES = 2_000_000
-PROCESS_TIMEOUT_SECONDS = 45.0
+MAX_PROCESS_OUTPUT_BYTES = int(os.environ.get("SNIPER_GITLEAKS_MAX_REPORT_BYTES", "2000000") or "2000000")
+MAX_REPORT_BYTES = int(os.environ.get("SNIPER_GITLEAKS_MAX_REPORT_BYTES", "2000000") or "2000000")
+PROCESS_TIMEOUT_SECONDS = float(os.environ.get("SNIPER_GITLEAKS_GIT_TIMEOUT", "45.0") or "45.0")
 
 
 class GitleaksGitInvalid(ValueError):
@@ -203,10 +204,21 @@ def run_local_gitleaks_git_history(project_path: str) -> dict[str, Any]:
             command = [
                 gitleaks.argv0, "git", str(staged),
                 "--report-format", "json", "--report-path", str(report_path),
-                "--no-banner", "--redact=100", "--timeout", "20",
-                "--max-target-megabytes", "1",
+                "--no-banner", "--redact=100", "--timeout", os.environ.get("SNIPER_GITLEAKS_TIMEOUT", "20"),
+                "--max-target-megabytes", os.environ.get("SNIPER_GITLEAKS_MAX_TARGET_MB", "1"),
             ]
             status = _run_bounded(command, env, staged, (gitleaks.fd,))
+            if status not in (0, 1):
+                pack_dir = staged / ".git" / "objects" / "pack"
+                has_promisor = pack_dir.is_dir() and any(p.name.endswith(".promisor") for p in pack_dir.iterdir())
+                is_shallow = (staged / ".git" / "shallow").is_file()
+                if (has_promisor or is_shallow) and _graft_staged_head_only(staged, git, env):
+                    status = _run_bounded(
+                        [*command, "--log-opts=-n 1"],
+                        env,
+                        staged,
+                        (gitleaks.fd,),
+                    )
             if status not in (0, 1):
                 raise GitleaksGitExecution("Gitleaks Git geçmişi çalıştırması başarısız oldu.")
             report = _read_report(report_path)

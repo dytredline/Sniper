@@ -250,6 +250,38 @@ class ReachabilityVerdictTests(unittest.TestCase):
         self.assertIsNone(osv.record("../../etc/passwd"))
         self.assertIsNone(osv.record("GHSA-xxxx-yyyy-zzzz"))
 
+    def test_is_lockfile_patched_multi_branch(self):
+        self.assertFalse(dr.is_lockfile_patched("7.18.2, 8.3.0", {"8.1.0"}))
+        self.assertTrue(dr.is_lockfile_patched("7.18.2, 8.3.0", {"8.3.0"}))
+        self.assertTrue(dr.is_lockfile_patched("7.18.2, 8.3.0", {"7.19.0"}))
+        self.assertFalse(dr.is_lockfile_patched("7.18.2, 8.3.0", {"7.18.0"}))
+
+    def test_empty_findings_list_does_not_fallback_to_inventory(self):
+        _write(self.root, "package.json", '{"dependencies": {"lodash": "4.17.21"}}')
+        _write(self.root, "index.js", 'const _ = require("lodash");\n_.chunk([1, 2], 1);\n')
+        res, _ = self.run_items([])
+        self.assertEqual(res["items"], [])
+        self.assertEqual(res["reachable_count"], 0)
+
+    def test_advisory_reachability_synchronizes_top_level_reachable(self):
+        _write(self.root, "app.py", "import requests\nrequests.post('https://example.com')\n")
+        res, items = self.run_items(
+            [
+                {
+                    "package_name": "requests",
+                    "vulnerability_id": "GHSA-test-0001",
+                    "severity": "high",
+                    "title": "Vulnerability in requests.get()",
+                    "source": "osv",
+                }
+            ]
+        )
+        self.assertEqual(len(res["items"]), 1)
+        item = items["requests"]
+        self.assertEqual(item["reachability"]["verdict"], "imported_not_called")
+        self.assertFalse(item["reachable"])
+        self.assertEqual(res["reachable_count"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

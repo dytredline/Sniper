@@ -58,6 +58,25 @@ def test_resolve_http_template_paths_real_file(tmp_path: pathlib.Path) -> None:
     assert results["real_template"] == expected_path
 
 
+def test_resolve_http_template_paths_accepts_pinned_yml_file(tmp_path: pathlib.Path) -> None:
+    relative = "http/a/b/alternate.yml"
+    content = b"id: alternate\n"
+    digest = hashlib.sha256(content).hexdigest()
+    index_data = {
+        "version": "v10.5.0", "count": 1, "sha256": "b" * 64,
+        "ids_paths_hashes": [["alternate", relative, digest]],
+    }
+    index_bytes = json.dumps(index_data, separators=(",", ":")).encode("utf-8")
+    (tmp_path / "SNIPER-HTTP-ID-INDEX.json").write_bytes(index_bytes)
+    target = tmp_path / relative
+    target.parent.mkdir(parents=True)
+    target.write_bytes(content)
+
+    result = resolve_http_template_paths(
+        tmp_path, ["alternate"], hashlib.sha256(index_bytes).hexdigest())
+    assert result["alternate"] == target
+
+
 def test_resolve_http_template_paths_wrong_index_pin(tmp_path: pathlib.Path) -> None:
     real_content = b"# real\n"
     index_sha, catalog_root = _make_test_catalog(tmp_path, "real_template", real_content)

@@ -26,6 +26,7 @@ _PUG_RAW_INLINE_RE = re.compile(r"!\{([^}\n]*)\}")
 # etiket adı ile `!=` arasında boşluk olamaz).
 _PUG_RAW_LINE_RE = re.compile(r"^[ \t]*(?:[A-Za-z][\w:-]*)?(?:[#.][\w-]+)*(?:\([^)\n]*\))?!=[ \t]*(\S.*)$", re.M)
 _HBS_RAW_RE = re.compile(r"\{\{\{~?(.*?)~?\}\}\}", re.S)
+_HBS_AMP_RAW_RE = re.compile(r"(?<!\{)\{\{~?&\s*(.*?)~?\}\}(?!\})", re.S)
 # Nunjucks: {{ ifade | safe }} (son süzgeç safe) kaçışsız basar; {% autoescape false %} bloğu tümüyle kaçışsızdır.
 _NJK_OUT_RE = re.compile(r"\{\{-?(.*?)-?\}\}", re.S)
 _NJK_AUTOESCAPE_OFF_RE = re.compile(r"\{%-?\s*autoescape\s+false\s*-?%\}(.*?)\{%-?\s*endautoescape\s*-?%\}", re.S)
@@ -165,7 +166,7 @@ def unescaped_outputs(relpath: str, text: str) -> list[tuple[int, str, list[tupl
         off = [(m.start(1), m.end(1)) for m in _NJK_AUTOESCAPE_OFF_RE.finditer(text)]
         for match in _NJK_OUT_RE.finditer(text):
             filters = [part.strip() for part in _STRING_RE.sub(" ", match.group(1)).split("|")]
-            raw = filters[-1] == "safe" if len(filters) > 1 else False
+            raw = filters[-1] in {"safe", "raw"} if len(filters) > 1 else False
             if not raw and not any(lo <= match.start() < hi for lo, hi in off):
                 continue
             expression = match.group(1).split("|", 1)[0]
@@ -174,6 +175,9 @@ def unescaped_outputs(relpath: str, text: str) -> list[tuple[int, str, list[tupl
         for match in _HBS_RAW_RE.finditer(text):
             expression = match.group(1)
             add(match.start(), "{{{" + expression.strip()[:60] + "}}}", _hbs_paths(expression))
+        for match in _HBS_AMP_RAW_RE.finditer(text):
+            expression = match.group(1)
+            add(match.start(), "{{& " + expression.strip()[:60] + "}}", _hbs_paths(expression))
         for block in _SCRIPT_BLOCK_RE.finditer(text):
             for match in _HBS_ESC_RE.finditer(block.group(1)):
                 offset = block.start(1) + match.start()

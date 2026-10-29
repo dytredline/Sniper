@@ -9,14 +9,14 @@ database.
 
 | Host path | Community v1 status |
 | --- | --- |
-| Linux ARM64 | Supported and release-tested for the native source setup and five locked optional engines |
+| Linux ARM64 | Supported and release-tested for the native source setup and seven locked optional engines |
 | Linux x86-64 | Locked artifacts are provided; GitHub CI validates the source/container path |
 | Windows native | Not supported in v1; setup fails before creating an environment and directs users to WSL2 or Docker |
 | macOS native | Experimental core-only source setup with `--core-only`; no locked native engine artifacts and no real-host release evidence |
-| Docker Desktop / WSL2 | Linux core and explicit five-engine container profiles are provided and contract-tested; real Windows/macOS host execution is not part of this release evidence |
+| Docker Desktop / WSL2 | Linux core and explicit seven-engine container profiles are provided and contract-tested; real Windows/macOS host execution is not part of this release evidence |
 
-The default container runs the Sniper web application and does not bundle the five separately licensed optional
-engines. The distinct `community-tools` build target installs exactly the five Linux artifacts in
+The default container runs the Sniper web application and does not bundle the seven separately licensed optional
+engines. The distinct `community-tools` build target installs exactly the seven Linux artifacts in
 `COMMUNITY-TOOLS.lock.json` after an explicit license acknowledgement. Linux-specific isolation profiles such as
 bubblewrap/seccomp do not become native Windows or macOS capabilities merely because a Linux container is used.
 
@@ -68,7 +68,7 @@ file is bound to loopback.
 ```
 
 Plain `docker build .` and the default Compose build select `community-core` and never download optional engines.
-To build the five-engine image after reviewing the licenses recorded in `COMMUNITY-TOOLS.lock.json`, run:
+To build the seven-engine image after reviewing the licenses recorded in `COMMUNITY-TOOLS.lock.json`, run:
 
 ```bash
 python3 scripts/build-community-tools-image --accept-third-party-licenses --dry-run
@@ -95,7 +95,7 @@ Docker Desktop on Windows (PowerShell), core profile:
 docker compose up -d sniper
 ```
 
-Docker Desktop on Windows (PowerShell), explicit five-engine profile:
+Docker Desktop on Windows (PowerShell), explicit seven-engine profile:
 
 ```powershell
 $env:SNIPER_ACCEPT_THIRD_PARTY_LICENSES = "1"

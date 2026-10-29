@@ -10,6 +10,7 @@ from taint_flow import analyze_javascript, analyze_python, collect_js_route_hand
 
 
 APP_ROOT = Path(__file__).resolve().parents[1]
+TAINT_BENCHMARK = APP_ROOT / "scripts" / "taint_benchmark.py"
 
 
 def _sinks(analysis, kind=None, label=None):
@@ -200,10 +201,6 @@ class SwitchTests(unittest.TestCase):
             self.assertEqual(taint_flow.project_js_handler_names(root, frozenset()), frozenset({"show"}))
 
 
-@unittest.skipUnless(
-    (APP_ROOT / "scripts" / "taint_benchmark.py").is_file(),
-    "maintainer benchmark helper is not shipped in Community source",
-)
 class BenchmarkTests(unittest.TestCase):
     """followup-02 ölçüm seti: taint analizi satır tabanlı moddan kötü olmamalı."""
 
@@ -214,6 +211,7 @@ class BenchmarkTests(unittest.TestCase):
         with mock.patch.dict(os.environ, env):
             return module, module.run_benchmark()
 
+    @unittest.skipUnless(TAINT_BENCHMARK.is_file(), "maintainer benchmark script is not distributed")
     def test_token_fallback_engine_keeps_precision(self):
         # Node olmadan (belirteç motoru) dosyalar arası JS örnekleri kaçar, yanlış pozitif olmamalı.
         _module, result = self._run({"SNIPER_TAINT_JS_ENGINE": "tokens"})
@@ -221,6 +219,7 @@ class BenchmarkTests(unittest.TestCase):
         self.assertEqual(new["false_positives"], [])
         self.assertTrue(all(item.startswith("js_ip_") for item in new["false_negatives"]), new["false_negatives"])
 
+    @unittest.skipUnless(TAINT_BENCHMARK.is_file(), "maintainer benchmark script is not distributed")
     def test_benchmark_precision_and_recall(self):
         from tests.test_taint_js_ast import NODE_ENV
 

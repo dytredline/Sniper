@@ -304,6 +304,21 @@ class Store:
                 );
                 CREATE INDEX IF NOT EXISTS testssl_tool_evidence_engagement_idx ON testssl_tool_evidence_links(engagement_id, created_at DESC);
 
+                CREATE TABLE IF NOT EXISTS ssllabs_tool_evidence_links (
+                    id TEXT PRIMARY KEY,
+                    engagement_id TEXT NOT NULL,
+                    control_id TEXT NOT NULL,
+                    tool_identity TEXT NOT NULL CHECK(tool_identity = 'ssllabs-v4-host'),
+                    report_sha256 TEXT NOT NULL CHECK(length(report_sha256) = 64),
+                    assessment_status TEXT NOT NULL CHECK(assessment_status IN ('DNS', 'ERROR', 'IN_PROGRESS', 'READY')),
+                    endpoint_count INTEGER NOT NULL CHECK(endpoint_count BETWEEN 0 AND 500),
+                    grade_counts_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(engagement_id, control_id) REFERENCES manual_tests(engagement_id, control_id) ON DELETE CASCADE,
+                    UNIQUE(engagement_id, control_id, report_sha256)
+                );
+                CREATE INDEX IF NOT EXISTS ssllabs_tool_evidence_engagement_idx ON ssllabs_tool_evidence_links(engagement_id, created_at DESC);
+
                 CREATE TABLE IF NOT EXISTS zap_tool_evidence_links (
                     id TEXT PRIMARY KEY,
                     engagement_id TEXT NOT NULL,
@@ -480,6 +495,30 @@ class Store:
 
                 CREATE INDEX IF NOT EXISTS project_clickjacking_runtime_proofs_audit_idx
                     ON project_clickjacking_runtime_proofs(audit_id, finding_index, created_at DESC);
+
+                CREATE TABLE IF NOT EXISTS project_ssrf_runtime_proofs (
+                    id TEXT PRIMARY KEY,
+                    audit_id TEXT NOT NULL REFERENCES project_audits(id) ON DELETE CASCADE,
+                    finding_index INTEGER NOT NULL CHECK(finding_index >= 0),
+                    profile_id TEXT NOT NULL DEFAULT 'ssrf_callback',
+                    verdict TEXT NOT NULL CHECK(verdict IN ('confirmed', 'not_reproduced')),
+                    http_status INTEGER NOT NULL CHECK(http_status BETWEEN 100 AND 599),
+                    request_method TEXT NOT NULL DEFAULT 'GET',
+                    callback_observed INTEGER NOT NULL CHECK(callback_observed IN (0, 1)),
+                    target_request_count INTEGER NOT NULL DEFAULT 1 CHECK(target_request_count IN (1, 2)),
+                    callback_request_count INTEGER NOT NULL CHECK(callback_request_count IN (0, 1)),
+                    redirect_count INTEGER NOT NULL DEFAULT 0 CHECK(redirect_count IN (0, 1)),
+                    request_body_bytes INTEGER NOT NULL DEFAULT 0 CHECK(request_body_bytes BETWEEN 0 AND 1024),
+                    correlation_kind TEXT NOT NULL DEFAULT 'http_callback',
+                    callback_wait_ms INTEGER NOT NULL DEFAULT 750 CHECK(callback_wait_ms BETWEEN 1 AND 2000),
+                    canary_worker_cleaned INTEGER NOT NULL DEFAULT 1 CHECK(canary_worker_cleaned IN (0, 1)),
+                    evidence_sha256 TEXT NOT NULL CHECK(length(evidence_sha256) = 64),
+                    created_at TEXT NOT NULL,
+                    UNIQUE(audit_id, finding_index, evidence_sha256)
+                );
+
+                CREATE INDEX IF NOT EXISTS project_ssrf_runtime_proofs_audit_idx
+                    ON project_ssrf_runtime_proofs(audit_id, finding_index, created_at DESC);
 
                 CREATE TABLE IF NOT EXISTS project_asan_runtime_proofs (
                     id TEXT PRIMARY KEY,
@@ -704,6 +743,22 @@ class Store:
                     "ALTER TABLE project_clickjacking_runtime_proofs "
                     "ADD COLUMN body_capable INTEGER NOT NULL DEFAULT 1 CHECK(body_capable IN (0, 1))"
                 )
+            ssrf_columns = {
+                row["name"] for row in db.execute("PRAGMA table_info(project_ssrf_runtime_proofs)")
+            }
+            ssrf_migrations = (
+                ("profile_id", "ALTER TABLE project_ssrf_runtime_proofs ADD COLUMN profile_id TEXT NOT NULL DEFAULT 'ssrf_callback'"),
+                ("request_method", "ALTER TABLE project_ssrf_runtime_proofs ADD COLUMN request_method TEXT NOT NULL DEFAULT 'GET'"),
+                ("target_request_count", "ALTER TABLE project_ssrf_runtime_proofs ADD COLUMN target_request_count INTEGER NOT NULL DEFAULT 1 CHECK(target_request_count IN (1, 2))"),
+                ("redirect_count", "ALTER TABLE project_ssrf_runtime_proofs ADD COLUMN redirect_count INTEGER NOT NULL DEFAULT 0 CHECK(redirect_count IN (0, 1))"),
+                ("request_body_bytes", "ALTER TABLE project_ssrf_runtime_proofs ADD COLUMN request_body_bytes INTEGER NOT NULL DEFAULT 0 CHECK(request_body_bytes BETWEEN 0 AND 1024)"),
+                ("correlation_kind", "ALTER TABLE project_ssrf_runtime_proofs ADD COLUMN correlation_kind TEXT NOT NULL DEFAULT 'http_callback'"),
+                ("callback_wait_ms", "ALTER TABLE project_ssrf_runtime_proofs ADD COLUMN callback_wait_ms INTEGER NOT NULL DEFAULT 750 CHECK(callback_wait_ms BETWEEN 1 AND 2000)"),
+                ("canary_worker_cleaned", "ALTER TABLE project_ssrf_runtime_proofs ADD COLUMN canary_worker_cleaned INTEGER NOT NULL DEFAULT 1 CHECK(canary_worker_cleaned IN (0, 1))"),
+            )
+            for column, statement in ssrf_migrations:
+                if column not in ssrf_columns:
+                    db.execute(statement)
             # Legacy releases used pending/verified states for ownership-file checks.
             # The local-only workflow now treats every saved public target as ready.
             db.execute(
@@ -978,6 +1033,23 @@ class Store:
                         effective_protection=bool(item["effective_protection"]),
                         content_type_html=bool(item["content_type_html"]),
                         body_capable=bool(item["body_capable"]), request_count=1, body_read=False)
+            proofs_by_finding.setdefault(int(item["finding_index"]), []).append(item)
+        ssrf_rows = db.execute(
+            """SELECT id, audit_id, finding_index, profile_id, verdict, http_status, request_method,
+                      callback_observed, target_request_count, callback_request_count, redirect_count,
+                      request_body_bytes, correlation_kind, callback_wait_ms, canary_worker_cleaned,
+                      evidence_sha256, created_at
+               FROM project_ssrf_runtime_proofs WHERE audit_id = ?
+               ORDER BY created_at DESC, id DESC""",
+            (audit_id,),
+        ).fetchall()
+        for proof in ssrf_rows:
+            item = dict(proof)
+            item.update(proof_type=f"{item['profile_id']}_loopback",
+                        callback_observed=bool(item["callback_observed"]), trigger_request_count=1,
+                        redirect_followed=item["redirect_count"] == 1, response_body_read=False,
+                        canary_loopback_only=True,
+                        canary_worker_cleaned=bool(item["canary_worker_cleaned"]))
             proofs_by_finding.setdefault(int(item["finding_index"]), []).append(item)
         asan_rows = db.execute(
             """SELECT id, audit_id, finding_index, 'asan_prebuilt_binary' AS proof_type, verdict,
@@ -1333,6 +1405,109 @@ class Store:
                 "effective_protection": bool(saved["effective_protection"]), "request_count": 1,
                 "content_type_html": bool(saved["content_type_html"]),
                 "body_capable": bool(saved["body_capable"]), "body_read": False}
+
+    def add_project_ssrf_runtime_proof(
+        self, audit_id: str, finding_index: int, proof: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Callback adresini/tokenını saklamadan loopback SSRF kanıtını bulguya bağla."""
+        expected = {
+            "format", "audit_id", "finding_index", "finding_reference", "finding_kind", "verdict",
+            "profile_id", "http_status", "request_method", "callback_observed", "trigger_request_count",
+            "target_request_count", "callback_request_count", "redirect_count", "redirect_followed",
+            "response_body_read", "request_body_bytes", "correlation_kind", "callback_wait_ms",
+            "canary_loopback_only", "canary_worker_cleaned", "evidence_sha256",
+        }
+        profile_ids = {
+            "ssrf_callback", "ssrf_callback_post", "ssrf_callback_redirect",
+            "ssrf_callback_delayed", "ssrf_callback_dns",
+        }
+        contracts = {
+            "ssrf_callback": ("GET", 1, 0, 0, "http_callback", 750),
+            "ssrf_callback_post": ("POST", 1, 0, None, "http_callback", 750),
+            "ssrf_callback_redirect": ("GET", None, None, 0, "http_callback", 750),
+            "ssrf_callback_delayed": ("GET", 1, 0, 0, "http_callback", 1500),
+            "ssrf_callback_dns": ("GET", 1, 0, 0, "local_dns_oob", 1000),
+        }
+        if not isinstance(proof, dict) or set(proof) != expected \
+                or proof.get("format") != "sniper-ssrf-callback-runtime-proof/1" \
+                or proof.get("audit_id") != audit_id or proof.get("finding_index") != finding_index \
+                or proof.get("finding_kind") != "ssrf" \
+                or proof.get("profile_id") not in profile_ids \
+                or proof.get("verdict") not in {"confirmed", "not_reproduced"} \
+                or type(proof.get("http_status")) is not int or not 100 <= proof["http_status"] <= 599 \
+                or proof.get("request_method") not in {"GET", "POST"} \
+                or type(proof.get("callback_observed")) is not bool \
+                or proof.get("trigger_request_count") != 1 \
+                or proof.get("target_request_count") not in {1, 2} \
+                or proof.get("callback_request_count") not in {0, 1} \
+                or (proof["callback_observed"] and proof["callback_request_count"] != 1) \
+                or proof.get("redirect_count") not in {0, 1} \
+                or proof.get("redirect_followed") is not (proof.get("redirect_count") == 1) \
+                or (proof.get("redirect_count") == 1 and proof.get("target_request_count") != 2) \
+                or proof.get("response_body_read") is not False \
+                or type(proof.get("request_body_bytes")) is not int \
+                or not 0 <= proof["request_body_bytes"] <= 1024 \
+                or proof.get("correlation_kind") not in {"http_callback", "local_dns_oob"} \
+                or type(proof.get("callback_wait_ms")) is not int \
+                or not 1 <= proof["callback_wait_ms"] <= 2000 \
+                or proof.get("canary_loopback_only") is not True \
+                or proof.get("canary_worker_cleaned") is not True \
+                or not re.fullmatch(r"[0-9a-f]{64}", str(proof.get("evidence_sha256"))):
+            raise ValueError("Geçersiz SSRF çalışma zamanı kanıtı.")
+        contract = contracts[proof["profile_id"]]
+        contract_valid = proof["request_method"] == contract[0] \
+            and (contract[1] is None or proof["target_request_count"] == contract[1]) \
+            and (contract[2] is None or proof["redirect_count"] == contract[2]) \
+            and (contract[3] is None or proof["request_body_bytes"] == contract[3]) \
+            and proof["correlation_kind"] == contract[4] and proof["callback_wait_ms"] == contract[5]
+        if proof["profile_id"] == "ssrf_callback_post":
+            contract_valid = contract_valid and proof["request_body_bytes"] > 0
+        if proof["profile_id"] == "ssrf_callback_redirect":
+            contract_valid = contract_valid and (
+                proof["target_request_count"], proof["redirect_count"]
+            ) in {(1, 0), (2, 1)}
+        confirmed = proof["callback_observed"] and (
+            proof["profile_id"] != "ssrf_callback_redirect" or proof["redirect_count"] == 1
+        )
+        if not contract_valid or (proof["verdict"] == "confirmed") != confirmed:
+            raise ValueError("Geçersiz SSRF çalışma zamanı kararı.")
+        now = utc_now()
+        with self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT findings_json FROM project_audits WHERE id = ?", (audit_id,)).fetchone()
+            findings = json.loads(row["findings_json"] or "[]") if row else []
+            if not row or type(finding_index) is not int or not 0 <= finding_index < len(findings):
+                raise ValueError("Proje analizi veya bulgu bulunamadı.")
+            db.execute(
+                """INSERT OR IGNORE INTO project_ssrf_runtime_proofs(
+                       id, audit_id, finding_index, profile_id, verdict, http_status, request_method,
+                       callback_observed, target_request_count, callback_request_count, redirect_count,
+                       request_body_bytes, correlation_kind, callback_wait_ms, canary_worker_cleaned,
+                       evidence_sha256, created_at
+                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (self._id("rtp"), audit_id, finding_index, proof["profile_id"], proof["verdict"],
+                 proof["http_status"], proof["request_method"], int(proof["callback_observed"]),
+                 proof["target_request_count"], proof["callback_request_count"], proof["redirect_count"],
+                 proof["request_body_bytes"], proof["correlation_kind"], proof["callback_wait_ms"],
+                 int(proof["canary_worker_cleaned"]), proof["evidence_sha256"], now),
+            )
+            saved = db.execute(
+                """SELECT * FROM project_ssrf_runtime_proofs
+                   WHERE audit_id = ? AND finding_index = ? AND evidence_sha256 = ?""",
+                (audit_id, finding_index, proof["evidence_sha256"]),
+            ).fetchone()
+        self.log("project_audit.ssrf_runtime_proof_added", audit_id,
+                 {"finding_index": finding_index, "verdict": proof["verdict"],
+                  "evidence_sha256": proof["evidence_sha256"]})
+        return {
+            **dict(saved), "proof_type": f"{proof['profile_id']}_loopback", "format": proof["format"],
+            "finding_reference": proof["finding_reference"], "finding_kind": "ssrf",
+            "callback_observed": bool(saved["callback_observed"]), "trigger_request_count": 1,
+            "callback_request_count": int(saved["callback_request_count"]),
+            "redirect_followed": int(saved["redirect_count"]) == 1,
+            "response_body_read": False, "canary_loopback_only": True,
+            "canary_worker_cleaned": bool(saved["canary_worker_cleaned"]),
+        }
 
     def add_project_asan_runtime_proof(
         self, audit_id: str, finding_index: int, proof: dict[str, Any],
@@ -3042,6 +3217,10 @@ class Store:
                 "SELECT * FROM testssl_tool_evidence_links WHERE engagement_id = ? ORDER BY created_at DESC, id DESC",
                 (engagement_id,),
             ).fetchall()
+            ssllabs_evidence = db.execute(
+                "SELECT * FROM ssllabs_tool_evidence_links WHERE engagement_id = ? ORDER BY created_at DESC, id DESC",
+                (engagement_id,),
+            ).fetchall()
             zap_evidence = db.execute(
                 "SELECT * FROM zap_tool_evidence_links WHERE engagement_id = ? ORDER BY created_at DESC, id DESC",
                 (engagement_id,),
@@ -3099,6 +3278,7 @@ class Store:
             + [self._nuclei_evidence_dict(link) for link in nuclei_evidence]
             + [self._burp_sitemap_evidence_dict(link) for link in burp_evidence]
             + [self._testssl_evidence_dict(link) for link in testssl_evidence]
+            + [self._ssllabs_evidence_dict(link) for link in ssllabs_evidence]
             + [self._zap_evidence_dict(link) for link in zap_evidence]
             + [self._semgrep_evidence_dict(link) for link in semgrep_evidence]
             + [self._generic_evidence_dict(link) for link in generic_evidence],
@@ -3163,10 +3343,11 @@ class Store:
                 (SELECT COUNT(*) FROM nuclei_tool_evidence_links WHERE engagement_id = ?) +
                 (SELECT COUNT(*) FROM burp_sitemap_tool_evidence_links WHERE engagement_id = ?) +
                 (SELECT COUNT(*) FROM testssl_tool_evidence_links WHERE engagement_id = ?) +
+                (SELECT COUNT(*) FROM ssllabs_tool_evidence_links WHERE engagement_id = ?) +
                 (SELECT COUNT(*) FROM zap_tool_evidence_links WHERE engagement_id = ?) +
                 (SELECT COUNT(*) FROM semgrep_tool_evidence_links WHERE engagement_id = ?)
             """,
-            (engagement_id,) * 8,
+            (engagement_id,) * 9,
         ).fetchone()
         base_total = int(row[0] or 0)
         has_generic_table = db.execute(
@@ -3451,11 +3632,78 @@ class Store:
         return result
 
     @staticmethod
+    def _ssllabs_evidence_dict(row: sqlite3.Row) -> dict:
+        """Expose only SSL Labs fixed aggregate counts and its report digest."""
+        result = dict(row)
+        result["grade_counts"] = json.loads(result.pop("grade_counts_json"))
+        return result
+
+    @staticmethod
     def _zap_evidence_dict(row: sqlite3.Row) -> dict:
         """Expose only ZAP aggregate counts and the report digest."""
         result = dict(row)
         result["risk_counts"] = json.loads(result.pop("risk_counts_json"))
         return result
+
+    def add_ssllabs_tool_evidence(self, engagement_id: str, control_id: str, summary: dict) -> tuple[dict, bool]:
+        """Link a saved SSL Labs aggregate with explicit consent, never the source report."""
+        now = utc_now()
+        digest = summary["report_sha256"]
+        with self._connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            engagement = db.execute(
+                "SELECT status, authorization_ref, special_approvals_json FROM engagements WHERE id = ?",
+                (engagement_id,),
+            ).fetchone()
+            if not engagement:
+                raise ValueError("Manuel denetim bulunamadı.")
+            approvals = json.loads(engagement["special_approvals_json"] or "{}")
+            if engagement["status"] != "active" or not engagement["authorization_ref"].strip() or not approvals.get("redacted_data_proof"):
+                raise ValueError("Etkin, yetkili ve maskeli kanıt onaylı denetim gerekli.")
+            test = db.execute(
+                "SELECT status FROM manual_tests WHERE engagement_id = ? AND control_id = ?",
+                (engagement_id, control_id),
+            ).fetchone()
+            if not test:
+                raise ValueError("Test adımı bulunamadı.")
+            existing = db.execute(
+                "SELECT * FROM ssllabs_tool_evidence_links WHERE engagement_id = ? AND control_id = ? AND report_sha256 = ?",
+                (engagement_id, control_id, digest),
+            ).fetchone()
+            if existing:
+                return self._ssllabs_evidence_dict(existing), False
+            if self._count_engagement_tool_evidence(db, engagement_id) >= 100:
+                raise ValueError("Bu denetimin toplu kanıt bağlantı sınırına ulaşıldı.")
+            cursor = db.execute(
+                """INSERT INTO ssllabs_tool_evidence_links(
+                    id, engagement_id, control_id, tool_identity, report_sha256,
+                    assessment_status, endpoint_count, grade_counts_json, created_at
+                ) VALUES (?, ?, ?, 'ssllabs-v4-host', ?, ?, ?, ?, ?)
+                ON CONFLICT(engagement_id, control_id, report_sha256) DO NOTHING""",
+                (
+                    self._id("tev"), engagement_id, control_id, digest,
+                    summary["assessment_status"], summary["endpoint_count"],
+                    json.dumps(summary["grade_counts"], sort_keys=True, ensure_ascii=False), now,
+                ),
+            )
+            created = cursor.rowcount == 1
+            if created and test["status"] == "not_tested":
+                db.execute(
+                    """UPDATE manual_tests SET status = 'needs_review', tested_at = ?,
+                       notes = CASE WHEN notes = '' THEN 'SSL Labs JSON toplu kanıtı uzman incelemesi bekliyor.' ELSE notes END,
+                       evidence = CASE WHEN evidence = '' THEN ? ELSE evidence END
+                       WHERE engagement_id = ? AND control_id = ?""",
+                    (now, f"SSL Labs JSON özet SHA-256: {digest}", engagement_id, control_id),
+                )
+            if created:
+                db.execute("UPDATE engagements SET updated_at = ? WHERE id = ?", (now, engagement_id))
+            row = db.execute(
+                "SELECT * FROM ssllabs_tool_evidence_links WHERE engagement_id = ? AND control_id = ? AND report_sha256 = ?",
+                (engagement_id, control_id, digest),
+            ).fetchone()
+        if created:
+            self.log("tool_evidence.linked", engagement_id, {"tool_identity": "ssllabs-v4-host", "control_id": control_id})
+        return self._ssllabs_evidence_dict(row), created
 
     def add_zap_tool_evidence(self, engagement_id: str, control_id: str, summary: dict) -> tuple[dict, bool]:
         """Link a parsed ZAP traditional JSON aggregate, never the source report."""
@@ -4726,3 +4974,31 @@ class Store:
         result["allowed_paths"] = allowed
         result["excluded_paths"] = excluded
         return result
+
+def get_optimized_wal_pragmas() -> dict[str, Any]:
+    """Faz 2 R9: Yüksek eşzamanlı SQLite WAL bağlantıları için optimize edilmiş PRAGMA profili."""
+    return {
+        "format": "sniper-sqlite-wal-pragma-profile/1",
+        "journal_mode": "WAL",
+        "synchronous": "NORMAL",
+        "busy_timeout_ms": 15000,
+        "busy_timeout": 15000,
+        "mmap_size_bytes": 67108864,
+        "mmap_size": 67108864,
+        "cache_size_kb": 16384,
+        "cache_size": -16384,
+        "wal_autocheckpoint": 1000,
+        "temp_store": "MEMORY",
+        "foreign_keys": "ON",
+        "statements": [
+            "PRAGMA journal_mode = WAL",
+            "PRAGMA synchronous = NORMAL",
+            "PRAGMA busy_timeout = 15000",
+            "PRAGMA mmap_size = 67108864",
+            "PRAGMA cache_size = -16384",
+            "PRAGMA wal_autocheckpoint = 1000",
+            "PRAGMA temp_store = MEMORY",
+            "PRAGMA foreign_keys = ON",
+        ],
+    }
+

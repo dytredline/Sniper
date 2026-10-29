@@ -56,6 +56,17 @@ TRY_TIMEOUT_SECONDS = 30
 MAX_TRY_CODE_BYTES = 200_000
 _NAME_RE = re.compile(r"[a-z0-9][a-z0-9_-]{0,63}\Z")
 _CWE_RE = re.compile(r"CWE-\d{1,5}\Z")
+_DEFAULT_KIND_CWES: dict[str, str] = {
+    "sql": "CWE-89", "nosql": "CWE-943", "nosql_expr": "CWE-943",
+    "command": "CWE-78", "eval": "CWE-95", "code": "CWE-94", "ssti": "CWE-1336",
+    "html": "CWE-79", "path": "CWE-22", "ssrf": "CWE-918",
+    "deserialize": "CWE-502", "redirect": "CWE-601", "ldap": "CWE-90",
+    "xpath": "CWE-643", "xxe": "CWE-611", "session": "CWE-501",
+    "cookie": "CWE-614", "log": "CWE-117", "regex": "CWE-1333",
+    "header": "CWE-113", "format": "CWE-134", "format_string": "CWE-134",
+    "prototype": "CWE-1321", "mass_assign": "CWE-915",
+    "memory": "CWE-120", "memory_len": "CWE-805", "memory_index": "CWE-129",
+}
 _TOP_KEYS = {"format", "name", "language", "description", "sources", "sinks", "sanitizers", "propagators"}
 
 APP_DIR = Path(__file__).resolve().parent
@@ -181,13 +192,14 @@ def validate_rule(data: dict[str, Any]) -> dict[str, Any]:
             raise RuleError("sources öğesinde calls veya attributes gerekli.")
         rule["sources"].append(item)
         entries += 1
+    allowed_kinds = getattr(taint_models, "VALID_KINDS", taint_models.KNOWN_KINDS)
     for raw in data.get("sinks") or []:
         if not isinstance(raw, dict):
             raise RuleError("sinks öğeleri nesne olmalı.")
         _only_keys(raw, {"kind", "calls", "args", "keywords", "receiver", "cwe", "severity", "message"}, "sinks")
         kind = raw.get("kind")
-        if kind not in taint_models.KNOWN_KINDS:
-            raise RuleError(f"sinks.kind şunlardan biri olmalı: {', '.join(sorted(taint_models.KNOWN_KINDS))}.")
+        if kind not in allowed_kinds:
+            raise RuleError(f"sinks.kind şunlardan biri olmalı: {', '.join(sorted(allowed_kinds))}.")
         args = raw.get("args", [0] if not raw.get("receiver") and not raw.get("keywords") else [])
         if not isinstance(args, list) or not all(isinstance(i, int) and not isinstance(i, bool) and 0 <= i < 16 for i in args):
             raise RuleError("sinks.args 0-15 arası tamsayı listesi olmalı.")
@@ -199,9 +211,18 @@ def validate_rule(data: dict[str, Any]) -> dict[str, Any]:
                 raise RuleError("sinks.receiver true/false olmalı.")
             item["receiver"] = raw["receiver"]
         if raw.get("cwe") is not None:
-            if not isinstance(raw["cwe"], str) or not _CWE_RE.fullmatch(raw["cwe"]):
+            raw_cwe = raw["cwe"]
+            if isinstance(raw_cwe, int) and not isinstance(raw_cwe, bool):
+                cwe_str = f"CWE-{raw_cwe}"
+            elif isinstance(raw_cwe, str):
+                cwe_str = raw_cwe.strip().upper()
+                if cwe_str.isdigit():
+                    cwe_str = f"CWE-{cwe_str}"
+            else:
+                cwe_str = ""
+            if not _CWE_RE.fullmatch(cwe_str):
                 raise RuleError("sinks.cwe 'CWE-89' biçiminde olmalı.")
-            item["cwe"] = raw["cwe"]
+            item["cwe"] = cwe_str
         if raw.get("severity") is not None:
             if raw["severity"] not in SEVERITIES:
                 raise RuleError("sinks.severity critical/high/medium/low/info olmalı.")
@@ -219,7 +240,7 @@ def validate_rule(data: dict[str, Any]) -> dict[str, Any]:
             raise RuleError("sanitizers öğeleri nesne olmalı.")
         _only_keys(raw, {"calls", "kinds"}, "sanitizers")
         kinds = _string_list(raw.get("kinds"), "sanitizers.kinds")
-        unknown = set(kinds) - taint_models.KNOWN_KINDS
+        unknown = set(kinds) - allowed_kinds
         if unknown:
             raise RuleError(f"sanitizers.kinds bilinmeyen tür: {', '.join(sorted(unknown))}.")
         rule["sanitizers"].append({"calls": _string_list(raw.get("calls"), "sanitizers.calls", validator=_call_name), "kinds": kinds})
@@ -287,8 +308,12 @@ def compile_models(rules: list[dict[str, Any]], language: str) -> dict[str, Any]
 
 _DEFAULT_OPENGREP_SOURCES = {
     "python": ["flask.request.$ATTR", "request.args", "request.form", "request.values", "request.json",
-               "request.cookies", "request.headers", "request.data", "request.get_json()", "request.GET", "request.POST"],
-    "javascript": ["$REQ.query", "$REQ.body", "$REQ.params", "$REQ.headers", "$REQ.cookies"],
+               "request.cookies", "request.headers", "request.data", "request.get_json()", "request.GET", "request.POST",
+               "request.query_params", "request.path_params", "request.body()", "await request.body()",
+               "await request.json()", "await request.form()"],
+    "javascript": ["$REQ.query", "$REQ.body", "$REQ.params", "$REQ.headers", "$REQ.cookies",
+                   "$REQ.json()", "$REQ.text()", "$REQ.formData()", "await $REQ.json()",
+                   "await $REQ.text()", "await $REQ.formData()", "ctx.request.body", "ctx.query", "ctx.params"],
 }
 _SEVERITY_TO_OPENGREP = {"critical": "ERROR", "high": "ERROR", "medium": "WARNING", "low": "INFO", "info": "INFO"}
 
@@ -321,6 +346,7 @@ def compile_opengrep(rules: list[dict[str, Any]]) -> dict[str, Any]:
                         sink_patterns.append({"pattern": _opengrep_call(call, None)})
                     else:
                         sink_patterns.append({"patterns": [{"pattern": _opengrep_call(call, arg)}, {"focus-metavariable": "$SINK"}]})
+            cwe_ref = sink.get("cwe") or _DEFAULT_KIND_CWES.get(sink["kind"])
             entry: dict[str, Any] = {
                 "id": f"sniper-custom-{rule['name']}-{index + 1}",
                 "mode": "taint",
@@ -328,7 +354,7 @@ def compile_opengrep(rules: list[dict[str, Any]]) -> dict[str, Any]:
                 "severity": _SEVERITY_TO_OPENGREP.get(sink.get("severity", "high"), "WARNING"),
                 "message": sink.get("message") or f"{rule['description'] or rule['name']}: güvenilmeyen girdi '{sink['kind']}' hedefine ulaşıyor (özel kural).",
                 "metadata": {"category": "security", "source": "sniper-custom-rule", "rule": rule["name"],
-                             "sink_kind": sink["kind"], **({"cwe": [sink["cwe"]]} if sink.get("cwe") else {})},
+                             "sink_kind": sink["kind"], **({"cwe": [cwe_ref]} if cwe_ref else {})},
                 "pattern-sources": source_patterns,
                 "pattern-sinks": sink_patterns,
             }

@@ -20,13 +20,19 @@ _AUTHORIZATION_RE = re.compile(
     r"(?i)\b(authorization)\b[\"']?(\s*[:=]\s*)(?:(?:Bearer|Basic)\s+)?(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
 )
 _CREDENTIAL_RE = re.compile(
-    r"(?i)\b(password|passwd|client[_-]?secret|access[_-]?token|refresh[_-]?token|id[_-]?token|secret|token|api[_-]?key|private[_-]?key)\b[\"']?(\s*[:=]\s*)(?:\"[^\"]*\"|'[^']*'|[^\s,;&]+)"
+    r"(?i)\b(password|passwd|client[_-]?secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|x[_-]?api[_-]?key|webhook[_-]?secret|signing[_-]?secret|encryption[_-]?key|master[_-]?key|service[_-]?role[_-]?key|anon[_-]?key|secret|token|api[_-]?key|private[_-]?key)\b[\"']?(\s*[:=]\s*)(?:\"[^\"]*\"|'[^']*'|[^\s,;&]+)"
 )
 _SPACED_CREDENTIAL_RE = re.compile(
-    r"(?i)\b(password|passwd|client[_-]?secret|access[_-]?token|refresh[_-]?token|id[_-]?token|token|api[_-]?key|private[_-]?key)\b[\"']?(\s+)(?:\"[^\"]*\"|'[^']*'|[^\s,;&]+)"
+    r"(?i)\b(password|passwd|client[_-]?secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|x[_-]?api[_-]?key|webhook[_-]?secret|signing[_-]?secret|encryption[_-]?key|master[_-]?key|service[_-]?role[_-]?key|anon[_-]?key|token|api[_-]?key|private[_-]?key)\b[\"']?(\s+)(?:\"[^\"]*\"|'[^']*'|[^\s,;&]+)"
 )
 _BEARER_RE = re.compile(
     r"(?i)\b(Bearer|Basic)(\s+)(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
+)
+_JWT_TOKEN_RE = re.compile(
+    r"\beyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b"
+)
+_PROVIDER_TOKEN_RE = re.compile(
+    r"\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-(?:proj-|ant-)?[A-Za-z0-9_-]{20,}|xox[baprs]-[A-Za-z0-9-]{15,}|AKIA[0-9A-Z]{16})\b"
 )
 _PRIVATE_NOTE_FIELDS = {"resolution_notes", "notes", "reproduction"}
 _SECRET_VALUE_KEYS = {
@@ -36,6 +42,15 @@ _SECRET_VALUE_KEYS = {
     "accesstoken",
     "refreshtoken",
     "idtoken",
+    "sessiontoken",
+    "authtoken",
+    "xapikey",
+    "webhooksecret",
+    "signingsecret",
+    "encryptionkey",
+    "masterkey",
+    "servicerolekey",
+    "anonkey",
     "secret",
     "token",
     "apikey",
@@ -43,7 +58,7 @@ _SECRET_VALUE_KEYS = {
 }
 
 _NESTED_CREDENTIAL_PREFIX_RE = re.compile(
-    r"""(?i)\b(?:authorization|Bearer|Basic|password|passwd|client[_-]?secret|access[_-]?token|refresh[_-]?token|id[_-]?token|secret|token|api[_-]?key|private[_-]?key)\b["']?(?:\s*[:=]\s*|\s+)(?:(?:Bearer|Basic)\s+)?"""
+    r"""(?i)\b(?:authorization|Bearer|Basic|password|passwd|client[_-]?secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|x[_-]?api[_-]?key|webhook[_-]?secret|signing[_-]?secret|encryption[_-]?key|master[_-]?key|service[_-]?role[_-]?key|anon[_-]?key|secret|token|api[_-]?key|private[_-]?key)\b["']?(?:\s*[:=]\s*|\s+)(?:(?:Bearer|Basic)\s+)?"""
 )
 _ENTITY_DOUBLE_QUOTE_RE = re.compile(r"(?i)&(?:quot|#0*34|#x0*22);")
 _ENTITY_SINGLE_QUOTE_RE = re.compile(r"(?i)&(?:apos|#0*39|#x0*27);")
@@ -175,6 +190,8 @@ def redact_evidence_text(value: object, *, max_len: int = 240) -> str:
     text = _CREDENTIAL_RE.sub(r"\1\2[REDACTED]", text)
     text = _SPACED_CREDENTIAL_RE.sub(r"\1\2[REDACTED]", text)
     text = _BEARER_RE.sub(r"\1\2[REDACTED]", text)
+    text = _JWT_TOKEN_RE.sub("[REDACTED]", text)
+    text = _PROVIDER_TOKEN_RE.sub("[REDACTED]", text)
     if max_len > 0 and len(text) > max_len:
         return text[:max_len] + "…"
     return text

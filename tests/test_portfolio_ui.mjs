@@ -76,7 +76,7 @@ test('politika formu: boş gün SLA yok, yönetici olmayan için kilitli', async
 
 test('dışa aktarım adresi parametreleri kodlar', () => {
   const { exp } = load();
-  assert.equal(exp.exportUrl({ format: 'jira', status: 'all', project_path: '/home/community-user b&c' }), '/api/portfolio/export?format=jira&status=all&project_path=%2Fhome%2Fcommunity-user+b%26c');
+  assert.equal(exp.exportUrl({ format: 'jira', status: 'all', project_path: '/var/tmp/a b&c' }), '/api/portfolio/export?format=jira&status=all&project_path=%2Fvar%2Ftmp%2Fa+b%26c');
   assert.equal(exp.exportUrl({}), '/api/portfolio/export?format=csv&status=active');
 });
 

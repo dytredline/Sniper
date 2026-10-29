@@ -74,21 +74,25 @@ _AI_KEY_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("OpenAI Project API Key", re.compile(r"\bsk-proj-[A-Za-z0-9_-]{8,}\b")),
     ("Anthropic API Key", re.compile(r"\bsk-ant-[A-Za-z0-9_-]{8,}\b")),
     ("OpenAI API Key", re.compile(r"\bsk-(?!proj-|ant-)[A-Za-z0-9]{16,}\b")),
+    ("Google Gemini API Key", re.compile(r"\bAIzaSy[A-Za-z0-9_-]{33}\b")),
     ("HuggingFace Access Token", re.compile(r"\bhf_[A-Za-z0-9]{14,}\b")),
     ("Replicate API Token", re.compile(r"\br8_[A-Za-z0-9]{14,}\b")),
     ("Groq API Key", re.compile(r"\bgsk_[A-Za-z0-9]{14,}\b")),
+    ("xAI API Key", re.compile(r"\bxai-[A-Za-z0-9_-]{14,}\b")),
     (
         "AI Provider API Key",
         re.compile(
             r"(?i)\b(?:cohere_api_key|groq_api_key|openai_api_key|anthropic_api_key|"
-            r"huggingface_api_key|replicate_api_token)\s*[:=]\s*[\"']([A-Za-z0-9_\-]{14,})[\"']"
+            r"huggingface_api_key|replicate_api_token|gemini_api_key|mistral_api_key|"
+            r"deepseek_api_key|xai_api_key)\s*[:=]\s*[\"']([A-Za-z0-9_\-]{14,})[\"']"
         ),
     ),
 )
 
 _SECRET_REDACT_RE = re.compile(
     r"\b(?:sk-proj-[A-Za-z0-9_-]{4,}|sk-ant-[A-Za-z0-9_-]{4,}|sk-[A-Za-z0-9]{10,}|"
-    r"hf_[A-Za-z0-9]{8,}|r8_[A-Za-z0-9]{8,}|gsk_[A-Za-z0-9]{8,})\b"
+    r"AIzaSy[A-Za-z0-9_-]{10,}|hf_[A-Za-z0-9]{8,}|r8_[A-Za-z0-9]{8,}|"
+    r"gsk_[A-Za-z0-9]{8,}|xai-[A-Za-z0-9_-]{8,})\b"
 )
 
 _ASCII_LOWER = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
@@ -122,12 +126,17 @@ def _redact_secrets(text: str) -> str:
             return "r8_***[REDACTED]***"
         if val.startswith("gsk_"):
             return "gsk_***[REDACTED]***"
+        if val.startswith("AIzaSy"):
+            return "AIzaSy***[REDACTED]***"
+        if val.startswith("xai-"):
+            return "xai-***[REDACTED]***"
         return "***[REDACTED]***"
 
     redacted = _SECRET_REDACT_RE.sub(_mask, text)
     redacted = re.sub(
         r"(?i)((?:cohere_api_key|groq_api_key|openai_api_key|anthropic_api_key|"
-        r"huggingface_api_key|replicate_api_token)\s*[:=]\s*[\"'])([^\"']+)([\"'])",
+        r"huggingface_api_key|replicate_api_token|gemini_api_key|mistral_api_key|"
+        r"deepseek_api_key|xai_api_key)\s*[:=]\s*[\"'])([^\"']+)([\"'])",
         r"\1***[REDACTED]***\3",
         redacted,
     )
@@ -534,6 +543,87 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
             )
         )
 
+    # 3b. LLM04: Data and Model Poisoning
+    load_dataset_re = re.compile(r"\bload_dataset\s*\(")
+    for match in load_dataset_re.finditer(raw_content):
+        call_block = _extract_call_block(raw_content, match.start())
+        has_pinned_revision = bool(re.search(r"\brevision\s*=\s*['\"][0-9a-fA-F]{7,40}['\"]", call_block)) or bool(
+            re.search(r"\brevision\s*=\s*['\"][^'\"]+['\"]", call_block)
+            and not re.search(r"\brevision\s*=\s*['\"](?:main|master|latest|HEAD)['\"]", call_block, re.IGNORECASE)
+        )
+        has_integrity_check = bool(
+            re.search(r"\b(?:verification_mode|sha256|expected_sha256|checksum)\b", call_block)
+        )
+        has_remote_url = bool(re.search(r"https?://", call_block))
+        if has_remote_url and not has_integrity_check or not (has_pinned_revision or has_integrity_check):
+            line_no = _line_number_for_offset(raw_content, match.start())
+            snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else call_block
+            _add(
+                _make_llm_finding(
+                    severity="high",
+                    category="supplychain",
+                    title="Sabitlenmemiş revizyon veya doğrulamasız eğitim/RAG veri kümesi yüklemesi (LLM04)",
+                    description=(
+                        "load_dataset() çağrısı sabitlenmiş bir commit/tag (revision=...) veya bütünlük "
+                        "doğrulaması olmadan kullanılıyor; uzak veri kümesi değişiklikleri veri ve model "
+                        "zehirlenmesine (Data & Model Poisoning) yol açabilir."
+                    ),
+                    evidence=snippet,
+                    recommendation=(
+                        "load_dataset(..., revision='<commit-sha>') ile veri kümesi sürümünü sabitleyin "
+                        "ve eğitim/RAG öncesi SHA-256 özeti ile veri kümesi bütünlüğünü doğrulayın."
+                    ),
+                    cwe="CWE-494",
+                    control_id="SNIPER-SRVR-06",
+                    llm_risk="LLM04",
+                    filename=clean_filename,
+                    line=line_no,
+                )
+            )
+
+    finetune_call_re = re.compile(
+        r"\b(?:fine_tuning\.jobs\.create|SFTTrainer|DPOTrainer|RewardTrainer|ORPOTrainer)\s*\("
+    )
+    untrusted_training_re = re.compile(
+        r"\b(?:user_feedback|raw_feedback|unverified_dataset|untrusted_data|scraped_data|"
+        r"user_input|raw_logs|unfiltered_corpus)\b",
+        re.IGNORECASE,
+    )
+    dataset_validation_re = re.compile(
+        r"\b(?:validate_dataset|sanitize_dataset|moderation|filter_poison|verify_signature|"
+        r"curated_dataset|approved_only)\b",
+        re.IGNORECASE,
+    )
+    for match in finetune_call_re.finditer(raw_content):
+        call_block = _extract_call_block(raw_content, match.start())
+        window_start = max(0, match.start() - 300)
+        window = raw_content[window_start : match.start() + len(call_block) + 200]
+        if untrusted_training_re.search(window) and not dataset_validation_re.search(window):
+            line_no = _line_number_for_offset(raw_content, match.start())
+            snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else call_block
+            _add(
+                _make_llm_finding(
+                    severity="critical",
+                    category="input_validation",
+                    title="Doğrulanmamış kullanıcı geri bildirimi veya ham veri ile model ince ayarı (LLM04)",
+                    description=(
+                        "Model ince ayarı (fine-tuning / SFT / DPO) çağrısında doğrulanmamış kullanıcı "
+                        "geri bildirimi veya kazınmış ham veri sanitizasyon/moderasyon olmadan eğitim "
+                        "hattına veriliyor; arka kapı veya davranış zehirlenmesi (Model Poisoning) oluşabilir."
+                    ),
+                    evidence=snippet,
+                    recommendation=(
+                        "Eğitim/fine-tuning verilerini modele vermeden önce toksisite/anomali taramasından, "
+                        "şema doğrulamasından (validate_dataset) ve insan onaylı kürasyon sürecinden geçirin."
+                    ),
+                    cwe="CWE-20",
+                    control_id="SNIPER-INPV-07",
+                    llm_risk="LLM04",
+                    filename=clean_filename,
+                    line=line_no,
+                )
+            )
+
     # 4. LLM05: Improper Output Handling
     llm_output_vars: set[str] = {
         "llm_output",
@@ -585,13 +675,18 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
             )
         )
 
-    # 5. LLM06: Excessive Agency
+    # 5. LLM06: Excessive Agency (including MCP tools & Computer-Use desktop agents)
     tool_marker_re = re.compile(
-        r"(?:@(?:[A-Za-z0-9_]+\.)?tool\b|\bStructuredTool\b|\bfunction_declarations\b|\btools\s*=\s*\[)"
+        r"(?:@(?:[A-Za-z0-9_]+\.)?tool\b|\b(?:server|mcp)\.tool\s*\(|\b(?:McpServer|FastMCP)\b"
+        r"|\bStructuredTool\b|\bfunction_declarations\b|\btools\s*=\s*\["
+        r"|\b(?:pyautogui|xdotool|pynput|computer_use)\b)"
     )
     dangerous_agency_re = re.compile(
         r"\b(?:subprocess\.(?:run|Popen|call|check_output)|os\.system|os\.popen|"
-        r"os\.remove|os\.unlink|shutil\.rmtree|cursor\.execute|db\.execute)\b"
+        r"os\.remove|os\.unlink|shutil\.rmtree|cursor\.execute|db\.execute|"
+        r"child_process\.(?:exec|execSync|spawn)|execSync\s*\(|"
+        r"pyautogui\.(?:write|typewrite|hotkey|press|click)|xdotool\s+(?:type|key|exec)|"
+        r"write_bytes|write_text|exec_module)\b"
     )
     hil_approval_re = re.compile(
         r"\b(?:confirm|approval|human_in_the_loop|require_approval|ask_human|HumanInTheLoop)\b",
@@ -623,6 +718,52 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                     line=line_no,
                 )
             )
+
+    # 5b. LLM01 -> LLM06: Indirect Prompt Injection to Tool / CUA Execution Chain
+    indirect_ingestion_re = re.compile(
+        r"\b(?:requests\.(?:get|post)|httpx\.(?:get|post|AsyncClient)|BeautifulSoup|"
+        r"playwright|imaplib|read_email|pytesseract|image_to_string|similarity_search|"
+        r"WebBaseLoader|fetch_url|scrape)\b"
+    )
+    indirect_match = indirect_ingestion_re.search(raw_content)
+    agency_match = dangerous_agency_re.search(raw_content)
+    if (
+        indirect_match is not None
+        and tool_marker_re.search(raw_content) is not None
+        and agency_match is not None
+        and not hil_approval_re.search(raw_content)
+    ):
+        src_line_no = _line_number_for_offset(raw_content, indirect_match.start())
+        sink_line_no = _line_number_for_offset(raw_content, agency_match.start())
+        src_snippet = lines[src_line_no - 1].strip() if 1 <= src_line_no <= len(lines) else indirect_match.group(0)
+        sink_snippet = lines[sink_line_no - 1].strip() if 1 <= sink_line_no <= len(lines) else agency_match.group(0)
+        chain_evidence = f"{src_snippet} -> {sink_snippet}" if src_line_no != sink_line_no else sink_snippet
+        _add(
+            _make_llm_finding(
+                severity="critical",
+                category="authorization",
+                title="Dolaylı Prompt Injection üzerinden otonom araç / masaüstü komutu çalıştırma zinciri (LLM01 -> LLM06)",
+                description=(
+                    "Harici ve güvenilmeyen bir veri kaynağından (web kazıma, e-posta, OCR/görsel metni veya "
+                    "vektör araması) alınan içerik, insan onayı (HITL) bulunmayan yüksek yetkili bir ajan/MCP "
+                    "veya masaüstü (Computer-Use) yürütme aracına bağlanıyor; dolaylı prompt enjeksiyonu "
+                    "uzaktan komut çalıştırmaya (RCE) dönüşebilir."
+                ),
+                evidence=chain_evidence,
+                recommendation=(
+                    "Harici içerik okuyan ajan akışları ile kabuk/dosya/masaüstü komutu çalıştıran araçları "
+                    "ayrıcalık sınırlarıyla ayırın ve yıkıcı araç çağrılarında zorunlu insan onayı (HITL) uygulayın."
+                ),
+                cwe="CWE-77",
+                control_id="SNIPER-AI-CHAIN-01",
+                llm_risk="LLM01",
+                filename=clean_filename,
+                line=sink_line_no,
+            )
+        )
+
+    for mcp_finding in audit_mcp_config_privileges(raw_content, filename=clean_filename)["findings"]:
+        _add(mcp_finding)
 
     # 6. LLM08: Vector / RAG Tenant Isolation Weakness
     vector_call_re = re.compile(
@@ -659,6 +800,53 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                     line=line_no,
                 )
             )
+
+    # 6b. LLM09: Misinformation / Hallucination Risk
+    llm_model_or_call_re = re.compile(
+        r"\b(?:chat\.completions\.create|completions\.create|messages\.create|generate_content|"
+        r"ChatOpenAI|ChatAnthropic|GenerativeModel)\s*\("
+    )
+    grounding_control_re = re.compile(
+        r"\b(?:grounding|grounding_config|citations|fact_check|verify_facts|rag_sources|"
+        r"source_citations|google_search_retrieval)\b",
+        re.IGNORECASE,
+    )
+    temp_param_re = re.compile(r"\btemperature\s*=\s*([0-9]+(?:\.[0-9]+)?)")
+    for match in llm_model_or_call_re.finditer(raw_content):
+        call_block = _extract_call_block(raw_content, match.start())
+        temp_match = temp_param_re.search(call_block)
+        if temp_match is not None:
+            try:
+                temp_val = float(temp_match.group(1))
+            except ValueError:
+                temp_val = 0.0
+            window_start = max(0, match.start() - 200)
+            window = raw_content[window_start : match.start() + len(call_block) + 200]
+            if temp_val > 1.0 and not grounding_control_re.search(window):
+                line_no = _line_number_for_offset(raw_content, match.start())
+                snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else call_block
+                _add(
+                    _make_llm_finding(
+                        severity="medium",
+                        category="configuration",
+                        title="Yüksek yaratıcılık sıcaklığı (temperature > 1.0) ve kaynak doğrulama eksikliği (LLM09)",
+                        description=(
+                            f"LLM çağrısında temperature={temp_match.group(1)} (> 1.0) ayarlanmış ve kaynak "
+                            "dayanağı (grounding/citations) kontrolü bulunmuyor; bu yapılandırma halüsinasyon "
+                            "ve yanıltıcı bilgi üretimi (Misinformation) riskini ciddi biçimde artırır."
+                        ),
+                        evidence=snippet,
+                        recommendation=(
+                            "Olgusal doğruluk gerektiren akışlarda temperature değerini 0.0–0.3 aralığında "
+                            "tutun ve yanıtları doğrulanmış RAG kaynakları (grounding/citations) ile sınırlandırın."
+                        ),
+                        cwe="CWE-1188",
+                        control_id="SNIPER-INPV-07",
+                        llm_risk="LLM09",
+                        filename=clean_filename,
+                        line=line_no,
+                    )
+                )
 
     # 7. LLM10: Unbounded Consumption / DoS
     completion_call_re = re.compile(
@@ -762,3 +950,130 @@ def audit_ai_llm_project(
         "llm_top10_summary": llm_top10_summary,
         "controls_evaluated": controls_evaluated,
     }
+
+
+def audit_mcp_config_privileges(
+    raw_content: str,
+    *,
+    filename: str = "mcp.json",
+) -> dict[str, Any]:
+    clean_filename = filename.strip() if isinstance(filename, str) and filename.strip() else "mcp.json"
+    if not isinstance(raw_content, str) or not raw_content.strip():
+        return {"findings": [], "count": 0, "filename": clean_filename}
+
+    lines = raw_content.splitlines()
+    findings: list[dict[str, Any]] = []
+    seen_controls: set[tuple[str, int]] = set()
+
+    def _add_mcp(finding: dict[str, Any]) -> None:
+        key = (finding["control_id"], int(finding["line"]))
+        if key not in seen_controls:
+            seen_controls.add(key)
+            findings.append(finding)
+
+    has_mcp_context = bool(
+        re.search(
+            r"(?i)(?:server-filesystem|mcpServers|mcp_servers|StdioServerParameters|"
+            r"@modelcontextprotocol|fastmcp|McpServer|\bmcp\b)",
+            raw_content,
+        )
+    ) or "mcp" in clean_filename.lower()
+    has_fs_or_args = bool(
+        re.search(r"(?i)(?:server-filesystem|\bargs\b)", raw_content)
+    )
+    sensitive_mount_re = re.compile(
+        r"""(?m)(?:["'](?:/|/home(?:/[^"'\s]*)?|/etc(?:/[^"'\s]*)?|/var(?:/[^"'\s]*)?|/root(?:/[^"'\s]*)?|[A-Za-z]:\\+|[A-Za-z]:/)["']"""
+        r"""|^\s*-\s*(?:/|/home(?:/\S*)?|/etc(?:/\S*)?|/var(?:/\S*)?|/root(?:/\S*)?|[A-Za-z]:\\+)\s*$)"""
+    )
+    if has_mcp_context and has_fs_or_args:
+        mount_match = sensitive_mount_re.search(raw_content)
+        if mount_match is not None:
+            line_no = _line_number_for_offset(raw_content, mount_match.start())
+            snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else mount_match.group(0)
+            _add_mcp(
+                _make_llm_finding(
+                    severity="critical",
+                    category="authorization",
+                    title="MCP sunucu yapılandırmasında kısıtsız ana bilgisayar kök/ev dizini erişimi",
+                    description=(
+                        "MCP dosya sistemi sunucusuna (server-filesystem) veya argümanlarına kök dizin ('/', 'C:\\\\') "
+                        "ya da kritik sistem/kullanıcı dizini ('/home', '/etc', '/var', '/root') doğrudan bağlanmış."
+                    ),
+                    evidence=snippet,
+                    recommendation=(
+                        "MCP dosya sistemi erişimini yalnızca izole bir çalışma alanı alt diziniyle sınırlandırın "
+                        "ve hassas sistem dizinlerini kesin olarak hariç tutun."
+                    ),
+                    cwe="CWE-250",
+                    control_id="SNIPER-MCP-PRIV-01",
+                    llm_risk="LLM06",
+                    filename=clean_filename,
+                    line=line_no,
+                )
+            )
+
+    dangerous_mcp_server_re = re.compile(
+        r"(?i)(?:\b(?:server-everything|mcp-server-shell|mcp-server-commands|"
+        r"mcp_server_shell|mcp_server_commands)\b|--(?:allow-all|dangerously-skip-permissions)\b)"
+    )
+    for match in dangerous_mcp_server_re.finditer(raw_content):
+        line_no = _line_number_for_offset(raw_content, match.start())
+        snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else match.group(0)
+        _add_mcp(
+            _make_llm_finding(
+                severity="high",
+                category="authorization",
+                title="MCP sunucu yapılandırmasında aşırı yetkili kabuk/komut yürütme eklentisi",
+                description=(
+                    "MCP yapılandırmasında kısıtsız komut çalıştırma veya tüm izinleri atlama "
+                    "(server-everything, mcp-server-shell, --allow-all, --dangerously-skip-permissions) "
+                    "yetkisi tanımlanmış."
+                ),
+                evidence=snippet,
+                recommendation=(
+                    "Genel amaçlı kabuk/everything MCP sunucularını devre dışı bırakın; yalnızca dar kapsamlı, "
+                    "izin listeli (allowlist) ve insan onaylı araçları etkinleştirin."
+                ),
+                cwe="CWE-78",
+                control_id="SNIPER-MCP-PRIV-02",
+                llm_risk="LLM06",
+                filename=clean_filename,
+                line=line_no,
+            )
+        )
+
+    bind_all_match = re.search(r"\b0\.0\.0\.0\b", raw_content)
+    remote_transport_match = re.search(r"(?i)\b(?:sse|streamable[-_]http)\b", raw_content)
+    auth_guard_re = re.compile(
+        r"(?i)\b(?:auth|authentication|bearer|token|api_key|apikey|oauth|jwt|verify_token|auth_middleware)\b"
+    )
+    if (
+        bind_all_match is not None
+        and remote_transport_match is not None
+        and not auth_guard_re.search(raw_content)
+    ):
+        line_no = _line_number_for_offset(raw_content, bind_all_match.start())
+        snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else bind_all_match.group(0)
+        _add_mcp(
+            _make_llm_finding(
+                severity="high",
+                category="authorization",
+                title="Kimlik doğrulamasız genel ağa açık MCP SSE/HTTP sunucu bağlaması",
+                description=(
+                    "MCP sunucusu SSE veya streamable-http taşıyıcısı ile tüm ağ arayüzlerine (0.0.0.0) "
+                    "kimlik doğrulama/token kontrolü olmadan bağlanıyor."
+                ),
+                evidence=snippet,
+                recommendation=(
+                    "MCP sunucularını varsayılan olarak 127.0.0.1 (localhost) adresine bağlayın; ağ üzerinden "
+                    "erişim gerekiyorsa zorunlu Bearer/OAuth token doğrulaması ve TLS uygulayın."
+                ),
+                cwe="CWE-306",
+                control_id="SNIPER-MCP-PRIV-03",
+                llm_risk="LLM06",
+                filename=clean_filename,
+                line=line_no,
+            )
+        )
+
+    return {"findings": findings, "count": len(findings), "filename": clean_filename}

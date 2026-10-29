@@ -11,6 +11,30 @@ map is [CAPABILITIES.md](CAPABILITIES.md). Use that map when answering what Snip
 **Optional locked engine**, **Prerequisite-dependent**, and **Human review** labels. A listed control describes
 coverage or an integration path, not evidence that a check ran against a particular project.
 
+## AI-assisted release preflight
+
+Teams can ask an AI client connected through Sniper's local stdio MCP server to organize a supported application
+security review, explain evidence, and prioritize findings before release. A mobile team preparing an **App Store** or
+**Google Play** submission can review supported Android, iOS, Flutter, and React Native source and manifests alongside
+API paths, secrets, dependencies, SBOM data, and CI configuration. The same workflow helps a web team prepare a
+website or API launch and helps developers review a pull request before merge.
+
+## High-value security review paths
+
+- Trace supported data flows for SQL and command injection, XSS, SSRF, open redirect, path traversal, unsafe
+  deserialization, XXE, expression-language, and LDAP risks, with SARIF `codeFlows` where available.
+- Prioritize authorization review through CWE-862 route candidates and IDOR candidates (CWE-639), backed by file,
+  route, method, framework, and line evidence for authorized manual penetration testing.
+- Review secret indicators and privacy-oriented data flows while preserving redacted evidence.
+- Inventory dependencies and containers; generate or import CycloneDX/SPDX SBOMs; use VEX, reachability context, and
+  configured local vulnerability evidence to support release decisions.
+- Inspect supported Dockerfile, Terraform, Kubernetes, Helm, Compose, cloud IAM, CI, mobile, browser-extension, and
+  desktop-application security configuration.
+- Correlate and prioritize findings with CVSS 3.1/4.0, CISA SSVC, attack paths, baselines, ownership, and quality
+  gates; share results through JSON, HTML, SARIF, GitLab, SBOM, VEX, and supported PDF workflows.
+- Bring the same review into a loopback web interface, scriptable CLI, CI pipeline, or an AI client through local
+  stdio MCP.
+
 ## Who Sniper Community is for
 
 ### Application and source owners
@@ -23,15 +47,33 @@ evidence. The exact supported languages, frameworks, input formats, analyzers, a
 Typical defensive questions include:
 
 - Which supported source and configuration issues does this checkout contain?
+- Which routes may lack authorization checks, and which object lookups are potential IDOR candidates (CWE-639)?
 - Which dependencies, container artifacts, or infrastructure definitions need review?
 - Can the project produce or consume the documented SBOM and saved-report formats?
 - What did a check actually inspect, skip, or leave prerequisite-blocked?
+
+### IDOR and manual penetration testing support
+
+For supported Python, JavaScript/TypeScript, and Ruby/Rails frameworks, Sniper's built-in route inventory identifies
+unprotected-route candidates (CWE-862) and object lookups that may need Insecure Direct Object Reference (IDOR)
+review (CWE-639). File, route, and line evidence gives an authorized tester a practical starting point for manual
+penetration testing with separate test roles, users, and synthetic objects. Rails controller review resolves exact
+cross-file superclass chains and applies action-scoped `before_action` and `skip_before_action` declarations; dynamic
+callback predicates remain uncertain rather than being reported as guaranteed protection.
+
+For GraphQL-Ruby, the separate local contract auditor correlates SDL root fields with method-style root resolvers and
+explicit `resolver: X` / `BaseResolver#resolve` chains. It emits a high-confidence BOLA review candidate only when an
+ID-like argument reaches an unscoped ActiveRecord lookup and no visible owner, tenant, or policy guard is present.
+
+The analyzer packages each candidate for evidence-led manual validation. Within an authorized scope, reviewers can
+confirm runtime behavior across separate users and roles while accounting for gateway, middleware, runtime-policy,
+and business-logic controls.
 
 ### Website and API owners
 
 Owners of websites and APIs can combine local source review, imported evidence, TLS metadata, and supported
 external-target workflows. Any target interaction remains limited to systems the operator owns or is explicitly
-authorized to assess. The five-tool local profile does not make every website check immediately available: broad
+authorized to assess. The seven-tool local profile does not make every website check immediately available: broad
 Nuclei HTTP work needs a separately pinned template catalog, and every host-constrained integration must pass its
 own readiness and authorization checks.
 
@@ -84,22 +126,24 @@ The rootless `local` profile contains exactly these separately installed tools:
 | Gitleaks | 8.30.1 | Optional secret-detection execution against authorized local inputs. |
 | TruffleHog | 3.99.0 | Optional filesystem and Git-history secret review against authorized local inputs. |
 | Opengrep | 1.30.1 | Optional local source-rule execution with the supported pinned rule assets. |
+| Syft | 1.55.0 | Optional manifest-only local SBOM generation. |
+| Grype | 0.121.0 | Optional offline SBOM vulnerability matching; requires the exact separately pinned database. |
 
 `COMMUNITY-TOOLS.lock.json` is authoritative for versions, artifact URLs, SHA-256 digests, supported Linux
 architectures, installation destinations, and upstream licenses. The source archive does not bundle these binaries.
 The installer verifies complete artifacts before extraction and does not execute a scanner during installation. See
 [COMMUNITY-TOOLS.md](COMMUNITY-TOOLS.md) for the rootless and prepared-offline procedures.
 
-The full native five-engine setup is Linux-only. Native Windows is rejected and should use WSL2 or Docker Desktop's
-Linux containers. macOS has an experimental `--core-only` source path without the five engines. The default container
+The full native seven-engine setup is Linux-only. Native Windows is rejected and should use WSL2 or Docker Desktop's
+Linux containers. macOS has an experimental `--core-only` source path without the seven engines. The default container
 is also core-only; `scripts/build-community-tools-image --accept-third-party-licenses` selects the separate,
-license-gated five-engine Linux target. These profiles are contract-tested, but this release does not claim a real
+license-gated seven-engine Linux target. These profiles are contract-tested, but this release does not claim a real
 Windows/macOS host execution. Exact commands and limitations are in [DEPLOYMENT.md](../DEPLOYMENT.md).
 
 ## Using Sniper with an AI client
 
 1. From a reviewed source checkout, run `python3 scripts/setup-community --accept-third-party-licenses`. This creates
-   `.venv`, installs locked Python requirements and the five optional tools, and checks the documented help
+   `.venv`, installs locked Python requirements and the seven optional tools, and checks the documented help
    entrypoints; it does not start Sniper or run a scan.
 2. Configure the MCP client to launch `.venv/bin/python scripts/sniper-mcp --mode community` over stdin/stdout. The
    complete configuration and trust model are in [COMMUNITY-MCP.md](COMMUNITY-MCP.md).
@@ -154,3 +198,5 @@ Future commits can change test totals, so prefer the dated snapshot in `VALIDATI
 - Localized introductions: [日本語](README.ja.md), [简体中文](README.zh-CN.md), and
   [한국어](README.ko.md).
 - [Localization](LOCALIZATION.md): interface/report languages, English fallback, CJK layout validation, and the language-pack update contract.
+
+

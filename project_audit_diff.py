@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import deque
 import hashlib
 import re
 
@@ -16,6 +17,9 @@ def _is_false_positive(finding: dict[str, Any]) -> bool:
     if isinstance(triage, dict) and str(triage.get("disposition") or "").strip().lower() == "false_positive":
         return True
     if str(finding.get("disposition") or "").strip().lower() == "false_positive":
+        return True
+    tracking = finding.get("tracking")
+    if isinstance(tracking, dict) and str(tracking.get("status") or "").strip().lower() == "false_positive":
         return True
     return False
 
@@ -59,7 +63,16 @@ def _sort_findings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
     )
 
 
+def _line_num(finding: dict[str, Any]) -> int:
+    try:
+        return int(finding.get("line") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def compare_project_audits(store: Any, audit_1_id: str, audit_2_id: str) -> dict[str, Any]:
+    import finding_tracking
+
     audit_1 = store.get_project_audit(audit_1_id)
     audit_2 = store.get_project_audit(audit_2_id)
     if audit_1 is None or audit_2 is None:
@@ -68,24 +81,57 @@ def compare_project_audits(store: Any, audit_1_id: str, audit_2_id: str) -> dict
     findings_1 = _active_findings(audit_1)
     findings_2 = _active_findings(audit_2)
 
-    map_1: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+    buckets_1: dict[tuple[str, str, str, str], list[dict[str, Any]]] = {}
     for f in findings_1:
-        key = _finding_key(f)
-        if key not in map_1:
-            map_1[key] = f
+        buckets_1.setdefault(_finding_key(f), []).append(f)
 
-    map_2: dict[tuple[str, str, str, str], dict[str, Any]] = {}
+    buckets_2: dict[tuple[str, str, str, str], list[dict[str, Any]]] = {}
     for f in findings_2:
-        key = _finding_key(f)
-        if key not in map_2:
-            map_2[key] = f
+        buckets_2.setdefault(_finding_key(f), []).append(f)
 
-    keys_1 = set(map_1.keys())
-    keys_2 = set(map_2.keys())
+    new_raw: list[dict[str, Any]] = []
+    resolved_raw: list[dict[str, Any]] = []
+    persistent_raw: list[dict[str, Any]] = []
 
-    new_findings = _sort_findings([map_2[k] for k in (keys_2 - keys_1)])
-    resolved_findings = _sort_findings([map_1[k] for k in (keys_1 - keys_2)])
-    persistent_findings = _sort_findings([map_2[k] for k in (keys_1 & keys_2)])
+    for key in set(buckets_1) | set(buckets_2):
+        list_1 = buckets_1.get(key, [])
+        list_2 = buckets_2.get(key, [])
+        if not list_1:
+            new_raw.extend(list_2)
+            continue
+        if not list_2:
+            resolved_raw.extend(list_1)
+            continue
+        fps_1 = [finding_tracking.fingerprint(item) for item in list_1]
+        fps_2 = [finding_tracking.fingerprint(item) for item in list_2]
+        pairs: list[tuple[bool, int, int, int]] = []
+        for idx_1, item_1 in enumerate(list_1):
+            for idx_2, item_2 in enumerate(list_2):
+                pairs.append((
+                    fps_1[idx_1] != fps_2[idx_2],
+                    abs(_line_num(item_1) - _line_num(item_2)),
+                    idx_1,
+                    idx_2,
+                ))
+        pairs.sort()
+        used_1: set[int] = set()
+        used_2: set[int] = set()
+        for _fp_diff, _dist, idx_1, idx_2 in pairs:
+            if idx_1 in used_1 or idx_2 in used_2:
+                continue
+            used_1.add(idx_1)
+            used_2.add(idx_2)
+            persistent_raw.append(list_2[idx_2])
+        for idx_1, item_1 in enumerate(list_1):
+            if idx_1 not in used_1:
+                resolved_raw.append(item_1)
+        for idx_2, item_2 in enumerate(list_2):
+            if idx_2 not in used_2:
+                new_raw.append(item_2)
+
+    new_findings = _sort_findings(new_raw)
+    resolved_findings = _sort_findings(resolved_raw)
+    persistent_findings = _sort_findings(persistent_raw)
 
     score_1 = int(audit_1.get("score") if audit_1.get("score") is not None else 0)
     score_2 = int(audit_2.get("score") if audit_2.get("score") is not None else 0)
@@ -500,3 +546,321 @@ pre {{ background: #f1f5f9; padding: 0.6rem; border-radius: 4px; overflow-x: aut
 </section>
 </body>
 </html>"""
+
+
+_FUNC_DEF_RE = re.compile(
+    r"(?:^\s*(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\("
+    r"|^\s*(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_]\w*)\s*\("
+    r"|^\s*(?:export\s+)?(?:const|let|var)\s+([A-Za-z_]\w*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_]\w*)\s*=>"
+    r"|^\s*func\s+(?:\([^)]+\)\s*)?([A-Za-z_]\w*)\s*\("
+    r"|^\s*(?:pub\s+)?(?:async\s+)?fn\s+([A-Za-z_]\w*)\s*\("
+    r"|^\s*class\s+([A-Za-z_]\w*)\b)",
+    re.MULTILINE,
+)
+
+_IMPORT_PATTERNS = (
+    re.compile(r"^\s*from\s+([A-Za-z0-9_.]+)\s+import\s+([^\n#]+)", re.MULTILINE),
+    re.compile(r"^\s*import\s+([A-Za-z0-9_.,\s]+)", re.MULTILINE),
+    re.compile(r"""(?:from|import)\s+["']([^"']+)["']""", re.MULTILINE),
+    re.compile(r"""require\s*\(\s*["']([^"']+)["']\s*\)""", re.MULTILINE),
+)
+
+_CALL_TOKEN_RE = re.compile(r"\b([A-Za-z_]\w*)\s*\(")
+_JVM_DOTNET_TYPE_DEF_RE = re.compile(
+    r"^\s*(?:(?:public|protected|private|internal|abstract|final|sealed|static|partial)\s+)*"
+    r"(?:class|interface|enum|record)\s+([A-Za-z_]\w*)\b",
+    re.MULTILINE,
+)
+_MEMBER_CALL_OWNER_RE = re.compile(r"\b([A-Za-z_]\w*)\s*\.\s*[A-Za-z_]\w*\s*\(")
+_CSHARP_USING_RE = re.compile(
+    r"^\s*(?:global\s+)?using\s+(?:[A-Za-z_]\w*\s*=\s*)?([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*;",
+    re.MULTILINE,
+)
+
+_FRONTEND_EXTS = (".js", ".jsx", ".ts", ".tsx", ".vue")
+_BACKEND_EXTS = (".py", ".go", ".rs", ".js", ".ts", ".java")
+
+_FRONTEND_HTTP_RE = re.compile(
+    r"""(?:fetch\s*\(\s*["'`](?P<fetch_url>/api/[^"'`\s?]+)|axios\.(?:get|post|put|delete|patch)\s*\(\s*["'`](?P<axios_url>/api/[^"'`\s?]+))"""
+)
+
+_BACKEND_ROUTE_RE = re.compile(
+    r"""(?:@(?:app|router|bp)\.(?:get|post|put|delete|patch|route)\s*\(\s*["'](?P<py_url>/api/[^"'?]+)|(?:app|router|bp|r|mux|http)\.(?:get|post|put|delete|patch|route|handleFunc|HandleFunc)\s*\(\s*["'](?P<router_url>/api/[^"'?]+)|@(?:GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping|RequestMapping)\s*\(\s*(?:value\s*=\s*)?["'](?P<java_url>/api/[^"'?]+))"""
+)
+
+
+def _module_stems_for_path(file_path: str) -> set[str]:
+    norm = file_path.replace("\\", "/").strip("/")
+    base = norm.rsplit("/", 1)[-1]
+    stem = base.rsplit(".", 1)[0] if "." in base else base
+    stems = {stem} if stem else set()
+    if stem == "__init__" and "/" in norm:
+        pkg = norm.rsplit("/", 2)[-2]
+        if pkg:
+            stems.add(pkg)
+    return stems
+
+
+def _extract_file_dependencies(source: str) -> tuple[set[str], set[str], set[str]]:
+    defined_symbols: set[str] = set()
+    for match in _FUNC_DEF_RE.finditer(source):
+        for group in match.groups():
+            if group:
+                defined_symbols.add(group)
+    defined_symbols.update(_JVM_DOTNET_TYPE_DEF_RE.findall(source))
+
+    imported_stems: set[str] = set()
+    for match in _IMPORT_PATTERNS[0].finditer(source):
+        mod_path, imported_names = match.group(1), match.group(2)
+        for part in mod_path.split("."):
+            if part:
+                imported_stems.add(part)
+        for item in imported_names.split(","):
+            token = item.strip().split(" as ")[0].strip()
+            if token and token != "*":
+                imported_stems.add(token)
+
+    for match in _IMPORT_PATTERNS[1].finditer(source):
+        for item in match.group(1).split(","):
+            mod_path = item.strip().split(" as ")[0].strip()
+            for part in mod_path.split("."):
+                if part:
+                    imported_stems.add(part)
+
+    for pat in _IMPORT_PATTERNS[2:]:
+        for match in pat.finditer(source):
+            raw_mod = match.group(1).strip()
+            leaf = raw_mod.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1]
+            stem = leaf.rsplit(".", 1)[0] if "." in leaf else leaf
+            if stem:
+                imported_stems.add(stem)
+
+    for match in _CSHARP_USING_RE.finditer(source):
+        imported_stems.update(part for part in match.group(1).split(".") if part)
+
+    called_symbols = {m.group(1) for m in _CALL_TOKEN_RE.finditer(source)}
+    # Java/C# static member calls name the changed type before ``.`` rather
+    # than before ``(``. Treat that exact receiver token as a dependency too;
+    # false positives can only widen the bounded scan cone, never hide a file.
+    called_symbols.update(_MEMBER_CALL_OWNER_RE.findall(source))
+    return imported_stems, defined_symbols, called_symbols
+
+
+def compute_incremental_scan_cone(
+    file_sources: dict[str, str],
+    changed_files: list[str],
+    *,
+    max_depth: int | None = None,
+) -> dict[str, Any]:
+    """Pillar 6: Compute incremental call-cone of files transitively affected by changed_files."""
+    if max_depth is not None and (
+        not isinstance(max_depth, int) or isinstance(max_depth, bool) or not 0 <= max_depth <= 1_000
+    ):
+        raise ValueError("max_depth must be an integer between 0 and 1000")
+    file_hashes: dict[str, str] = {}
+    file_stems: dict[str, set[str]] = {}
+    imported_by_file: dict[str, set[str]] = {}
+    defined_by_file: dict[str, set[str]] = {}
+    called_by_file: dict[str, set[str]] = {}
+    importing_by_stem: dict[str, set[str]] = {}
+    dependent_by_symbol: dict[str, set[str]] = {}
+
+    for path, content in sorted((file_sources or {}).items()):
+        text = str(content or "")
+        file_hashes[path] = hashlib.sha256(text.encode("utf-8", errors="replace")).hexdigest()
+        file_stems[path] = _module_stems_for_path(path)
+        imp_stems, def_syms, call_syms = _extract_file_dependencies(text)
+        imported_by_file[path] = imp_stems
+        defined_by_file[path] = def_syms
+        called_by_file[path] = call_syms
+        for stem in imp_stems:
+            importing_by_stem.setdefault(stem, set()).add(path)
+            dependent_by_symbol.setdefault(stem, set()).add(path)
+        for symbol in call_syms:
+            dependent_by_symbol.setdefault(symbol, set()).add(path)
+
+    affected_cone: set[str] = set()
+    queue: deque[tuple[str, int]] = deque()
+    for changed in changed_files or []:
+        if changed in file_sources and changed not in affected_cone:
+            affected_cone.add(changed)
+            queue.append((changed, 0))
+        else:
+            norm_changed = changed.replace("\\", "/").lstrip("./")
+            for candidate in file_sources:
+                norm_cand = candidate.replace("\\", "/").lstrip("./")
+                if (norm_cand == norm_changed or norm_cand.endswith("/" + norm_changed)) and candidate not in affected_cone:
+                    affected_cone.add(candidate)
+                    queue.append((candidate, 0))
+
+    depth_truncated = False
+    max_depth_observed = 0
+    while queue:
+        current, depth = queue.popleft()
+        max_depth_observed = max(max_depth_observed, depth)
+        curr_stems = file_stems.get(current, set())
+        curr_defs = defined_by_file.get(current, set())
+        candidates: set[str] = set()
+        for stem in curr_stems:
+            candidates.update(importing_by_stem.get(stem, set()))
+        for symbol in curr_defs:
+            candidates.update(dependent_by_symbol.get(symbol, set()))
+        unseen = candidates - affected_cone
+        if max_depth is not None and depth >= max_depth:
+            depth_truncated = depth_truncated or bool(unseen)
+            continue
+        for candidate in sorted(unseen):
+            if candidate in affected_cone:
+                continue
+            affected_cone.add(candidate)
+            queue.append((candidate, depth + 1))
+
+    affected_cone_files = sorted(affected_cone)
+    skipped_unchanged_files = sorted(set(file_sources.keys()) - affected_cone)
+    total_files = max(1, len(file_sources))
+    cone_reduction_ratio = 1.0 - (len(affected_cone_files) / total_files)
+
+    return {
+        "affected_cone_files": affected_cone_files,
+        "skipped_unchanged_files": skipped_unchanged_files,
+        "file_hashes": file_hashes,
+        "cone_reduction_ratio": cone_reduction_ratio,
+        "depth_truncated": depth_truncated,
+        "max_depth_observed": max_depth_observed,
+    }
+
+
+def _normalize_api_path(raw_path: str) -> str:
+    path = raw_path.strip().split("?", 1)[0].strip()
+    path = re.sub(r"\$\{[^}]+\}", "{param}", path)
+    path = re.sub(r"\{[^}]+\}", "{param}", path)
+    path = re.sub(r"<[^>]+>", "{param}", path)
+    path = re.sub(r":[A-Za-z_]\w*", "{param}", path)
+    path = re.sub(r"(?<=/)\d+(?=/|$)", "{param}", path)
+    if len(path) > 1 and path.endswith("/"):
+        path = path.rstrip("/")
+    return path
+
+
+def correlate_cross_language_api_flows(file_sources: dict[str, str]) -> list[dict[str, Any]]:
+    """Pillar 6: Correlate frontend HTTP client calls with backend API route definitions."""
+    frontend_calls: list[tuple[str, str, int]] = []
+    backend_routes: list[tuple[str, str, int]] = []
+
+    for file_path, content in sorted((file_sources or {}).items()):
+        text = str(content or "")
+        lower_path = file_path.lower()
+
+        if lower_path.endswith(_FRONTEND_EXTS):
+            for match in _FRONTEND_HTTP_RE.finditer(text):
+                raw_url = match.group("fetch_url") or match.group("axios_url") or ""
+                if raw_url:
+                    line_no = text.count("\n", 0, match.start()) + 1
+                    frontend_calls.append((_normalize_api_path(raw_url), file_path, line_no))
+
+        if lower_path.endswith(_BACKEND_EXTS):
+            for match in _BACKEND_ROUTE_RE.finditer(text):
+                raw_url = (
+                    match.group("py_url")
+                    or match.group("router_url")
+                    or match.group("java_url")
+                    or ""
+                )
+                if raw_url:
+                    line_no = text.count("\n", 0, match.start()) + 1
+                    backend_routes.append((_normalize_api_path(raw_url), file_path, line_no))
+
+    flows: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, int, str, int]] = set()
+    for fe_norm, fe_file, fe_line in frontend_calls:
+        for be_norm, be_file, be_line in backend_routes:
+            if fe_norm == be_norm and (fe_file != be_file or fe_line != be_line):
+                key = (fe_norm, fe_file, fe_line, be_file, be_line)
+                if key not in seen:
+                    seen.add(key)
+                    flows.append({
+                        "api_path": fe_norm,
+                        "frontend_file": fe_file,
+                        "frontend_line": fe_line,
+                        "backend_file": be_file,
+                        "backend_line": be_line,
+                    })
+
+    flows.sort(key=lambda item: (
+        item["api_path"],
+        item["frontend_file"],
+        item["frontend_line"],
+        item["backend_file"],
+        item["backend_line"],
+    ))
+    return flows
+
+
+def build_enterprise_enriched_sarif(
+    audit: dict[str, Any],
+    *,
+    include_fixes: bool = True,
+    include_attack_graph: bool = True,
+) -> dict[str, Any]:
+    """Wave-7 Item #7: SARIF v2.1.0 çıktısını codeFlows, fixes ve çok-adımlı saldırı grafiği ile zenginleştir."""
+    sarif = render_project_audit_sarif(audit)
+    findings = _active_findings(audit)
+    runs = sarif.get("runs") or []
+    if not runs:
+        return sarif
+    run0 = runs[0]
+    results = run0.get("results") or []
+    for result, finding in zip(results, findings):
+        uri = str(finding.get("file") or audit.get("project_name") or "project").strip() or "project"
+        try:
+            start_line = max(1, int(finding.get("line") or 1))
+        except (TypeError, ValueError):
+            start_line = 1
+        if "codeFlows" not in result:
+            result["codeFlows"] = [
+                {
+                    "threadFlows": [
+                        {
+                            "locations": [
+                                {
+                                    "location": _sarif_location(
+                                        uri,
+                                        start_line,
+                                        f"Doğrulanan kaynak/hedef: {str(finding.get('title') or '')[:100]}",
+                                    )
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        if include_fixes:
+            rec_text = str(finding.get("recommendation") or "Sniper otomatik güvenlik yaması uygula")[:200]
+            result["fixes"] = [
+                {
+                    "description": {"text": rec_text},
+                    "artifactChanges": [
+                        {
+                            "artifactLocation": {"uri": uri},
+                            "replacements": [
+                                {
+                                    "deletedRegion": {"startLine": start_line},
+                                    "insertedContent": {"text": str(finding.get("recommendation") or "")[:200]},
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ]
+    if include_attack_graph:
+        try:
+            import attack_path_correlator
+
+            run0.setdefault("properties", {})["attackGraph"] = (
+                attack_path_correlator.synthesize_multi_hop_exploit_chains(findings)
+            )
+        except Exception:  # noqa: BLE001
+            pass
+    return sarif
+
+

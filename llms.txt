@@ -4,19 +4,30 @@
 
 ## Built-in capabilities
 
+- AI-assisted release preflight brings supported Android, iOS, Flutter, and React Native source and manifests together with API paths, secrets, dependencies, SBOM data, and CI configuration before an App Store or Google Play submission, website/API launch, or release pull request.
 - Local source and configuration analysis, dependency and container inventory, infrastructure-as-code review, SBOM workflows, saved-report handling, and bounded security reports are included in the source tree.
+- Supported source-to-sink analysis covers SQL and command injection, XSS, SSRF, open redirect, path traversal, unsafe deserialization, XXE, expression-language, and LDAP risk patterns, with SARIF `codeFlows` where available.
+- Built-in route and authorization analysis surfaces unprotected-route candidates (CWE-862) and potential IDOR paths (CWE-639) in supported Python, JavaScript/TypeScript, Ruby/Rails, Spring, and ASP.NET source to prioritize authorized manual penetration testing across separate users and roles. Spring/ASP.NET correlation accepts literal controller or minimal-API routes and visible authorization annotations/policies; ambiguous dynamic routes are not claimed as protected.
+- GraphQL-Ruby contract analysis correlates SDL root fields with method-style resolvers and explicit `resolver: X` / `BaseResolver#resolve` chains, surfacing high-confidence unscoped ActiveRecord object-lookup candidates when no visible owner, tenant, or policy guard exists.
+- Bounded local bulk review persists six independent cross-repository graphs for supported OpenAPI HTTP calls, webhook boundaries, exact Kafka topics, explicit auth contracts, exact GraphQL query/mutation/subscription root-field pairs (including safe same-document named fragments and SHA-256 verified Apollo persisted operations), and unambiguous exact PyPI version drift. An optional exact-schema `sniper-runtime-service-trace.json` can annotate an exact static HTTP/webhook/Kafka/GraphQL edge with bounded observed counts; the integrity hash is not a signature, missing or invalid trace evidence never removes the static edge, and trace contents, raw origins, broker endpoints, GraphQL endpoints, private package indexes, persisted bodies/IDs, and credentials are excluded.
+- Supply-chain workflows include dependency and container inventory, NuGet/Paket and Terraform provider lock selections, CycloneDX/SPDX SBOM generation/import, VEX, reachability context, configured local vulnerability evidence, and exact-pin dependency-lineage evidence.
+- Cross-file GitHub Actions review correlates same-commit local reusable workflows for effective permissions and secret flow, and separately links literal pull-request artifacts to exact `workflow_run` download-and-execute consumers with bounded mitigation signals.
+- Infrastructure review covers supported Dockerfile, Terraform, Kubernetes, Helm, Compose, cloud IAM, CI, mobile, browser-extension, and desktop-application security configuration.
+- Findings can be prioritized with CVSS 3.1/4.0, CISA SSVC, attack paths, ownership, baselines, and quality gates, then shared through JSON, HTML, SARIF, GitLab, SBOM, VEX, and supported PDF workflows.
 - Manual command-line workflows and a loopback web interface support operation without an AI client.
 - The canonical exhaustive map of built-in, optional, prerequisite-dependent, and human-review controls is [docs/CAPABILITIES.md](docs/CAPABILITIES.md). A mapped control is not a claim that it ran or passed.
 
 ## Optional locked engines
 
-The rootless `local` profile installs five optional, version-locked engines after separate acceptance of their upstream licenses:
+The rootless `local` profile installs seven optional, version-locked engines after separate acceptance of their upstream licenses:
 
 - Nuclei 3.11.1
 - Trivy 0.75.0
 - Gitleaks 8.30.1
 - TruffleHog 3.99.0
 - Opengrep 1.30.1
+- Syft 1.55.0
+- Grype 0.121.0
 
 Versions, artifact SHA-256 values, platforms, and licenses are authoritative in [COMMUNITY-TOOLS.lock.json](COMMUNITY-TOOLS.lock.json). The binaries are installed separately and are not bundled in the source archive.
 
@@ -24,6 +35,7 @@ Versions, artifact SHA-256 values, platforms, and licenses are authoritative in 
 
 - Broad Nuclei HTTP assessment requires a separately pinned template catalog; the repository includes only a pinned loopback template.
 - Trivy configuration profiles can use the locked executable; vulnerability profiles also require a separately pinned offline database.
+- Syft produces a manifest-only local SBOM; Grype matching additionally requires its exact separately pinned offline database.
 - Other host-constrained or service-backed integrations remain unavailable until their documented runtime, isolation, license, and readiness conditions pass.
 - External-target workflows require target ownership or written scope, runtime readiness, and explicit authorization. Missing prerequisites are not reported as successful checks.
 
@@ -42,7 +54,7 @@ python3 scripts/setup-community --accept-third-party-licenses
 - Runtime baseline: Python 3.12; locked optional-tool artifacts cover Linux ARM64 and x86-64.
 - Native Windows is not supported; use WSL2 or Docker Desktop's Linux containers. macOS source setup is experimental
   and core-only (`python3 scripts/setup-community --core-only`).
-- The default container is core-only. The separate five-engine target is built with
+- The default container is core-only. The separate seven-engine target is built with
   `python3 scripts/build-community-tools-image --accept-third-party-licenses`; it is license-gated and does not run scanners during the build.
 - [README](README.md): setup, MCP quick start, manual operation, and responsible-use boundaries.
 - [Community tool installation](docs/COMMUNITY-TOOLS.md): optional engine installation and prerequisites.

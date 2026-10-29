@@ -2070,7 +2070,7 @@ S	SMTP portu 1–65535 olmalı.	SMTP port must be 1–65535.
 S	SNIPER / BAĞIMSIZ DENETİM	SNIPER / INDEPENDENT AUDIT
 S	SNIPER / MANUEL SIZMA TESTİ	SNIPER / MANUAL PENETRATION TEST
 S	SNIPER / TARAMA KARŞILAŞTIRMASI	SNIPER / SCAN COMPARISON
-S	SNIPER 1.0 · YEREL KAYNAK KOD	SNIPER 1.0 · LOCAL SOURCE CODE
+S	SNIPER 2.0 · YEREL KAYNAK KOD	SNIPER 2.0 · LOCAL SOURCE CODE
 S	SNIPER İSTEĞİ	SNIPER REQUEST
 S	SNIPER'DA TANIMLI AKIŞ	FLOW DEFINED IN SNIPER
 S	SNIPER_REMOTE_AUTH_ACK=1 verildi ama giriş etkin değil; önce 'cli_reports.py users create-admin' ile yönetici oluşturun (uzak erişimde TLS ya da SSH tüneli kullanın).	SNIPER_REMOTE_AUTH_ACK=1 was given but sign-in is not enabled; first create an administrator with 'cli_reports.py users create-admin' (use TLS or an SSH tunnel for remote access).
@@ -2202,7 +2202,7 @@ S	Silmek için onay kutusunu işaretleyin.	Tick the approval box to delete.
 S	Site haritası kaydı:	Site map record:
 S	Site sayısı	Site count
 S	Site-map XML içeriği (XML yapıştırın)	Site-map XML content (paste XML)
-S	Sniper — Yerel güvenlik stüdyosu	Sniper — Local security studio
+S	Sniper 2.0 — Yerel güvenlik stüdyosu	Sniper 2.0 — Local security studio
 S	Sniper Kod ve Veri Akışı Analizi	Sniper Code and Data Flow Analysis
 S	Sniper Proje Güvenlik Denetimi:	Sniper Project Security Audit:
 S	Sniper Proje Güvenlik Raporu —	Sniper Project Security Report —

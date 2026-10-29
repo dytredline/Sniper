@@ -14,7 +14,7 @@ Required runtime files are retained when they contain a machine-specific
 literal, but the literal is normalized to a neutral Community placeholder in
 the assembled tree. This prevents publishing a maintainer path. The source
 archive does not contain third-party engine binaries: the rootless Community
-setup installs the five lock-declared local engines from verified downloads or
+setup installs the seven lock-declared local engines from verified downloads or
 an explicit offline cache after license acceptance. Separate databases,
 catalogs, and other optional inputs remain host-specific; their availability is
 not implied by this archive.

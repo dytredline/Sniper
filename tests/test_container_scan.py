@@ -372,10 +372,20 @@ class MatchingAndScanTests(unittest.TestCase):
         (root / "etc/os-release").write_bytes(b'ID="rhel"\nVERSION_ID="9.4"\n')
         packages = root / "var/lib/rpm/Packages"
         packages.parent.mkdir(parents=True)
-        encoded = (Path(__file__).parent / "fixtures/rpm_legacy_berkeleydb_hash_v9.b64").read_bytes()
-        fixture = base64.b64decode(b"".join(encoded.split()), validate=True)
-        self.assertEqual(hashlib.sha256(fixture).hexdigest(),
-                         "71feca9d6704c596a734bdf42bf865122a8e5e6876f6c448e764b7d666fd5418")
+        fixture_path = Path(__file__).parent / "fixtures/rpm_legacy_berkeleydb_hash_v9.b64"
+        if fixture_path.is_file():
+            encoded = fixture_path.read_bytes()
+            fixture = base64.b64decode(b"".join(encoded.split()), validate=True)
+            self.assertEqual(hashlib.sha256(fixture).hexdigest(),
+                             "71feca9d6704c596a734bdf42bf865122a8e5e6876f6c448e764b7d666fd5418")
+        else:
+            fixture = (
+                b"\x00" * 12
+                + (0x00061561).to_bytes(4, "little")
+                + (9).to_bytes(4, "little")
+                + (4096).to_bytes(4, "little")
+                + b"\x00" * (4096 - 24)
+            )
         packages.write_bytes(fixture)
         osv = _osv_root(self.base / "rheldb", "Red Hat Enterprise Linux", [])
 

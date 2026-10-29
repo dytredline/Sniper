@@ -12,8 +12,17 @@ MAX_FILE_UTF8_BYTES = 65_536
 MAX_TOTAL_UTF8_BYTES = 262_144
 MAX_RELATIVE_PATH_LENGTH = 255
 
-FORBIDDEN_DIR_SEGMENTS = frozenset({".git"})
-FORBIDDEN_BASENAMES = frozenset({".gitleaks.toml", ".gitleaksignore"})
+FORBIDDEN_DIR_SEGMENTS = frozenset({".git", ".hg", ".svn"})
+FORBIDDEN_BASENAMES = frozenset({
+    ".gitleaks.toml",
+    "gitleaks.toml",
+    ".gitleaksignore",
+    ".trufflehogignore",
+    ".trufflehog.yaml",
+    ".trufflehog.yml",
+    ".semgrepignore",
+    ".sniperignore",
+})
 
 
 def _validate_relative_path(raw_path: object) -> str:
@@ -41,10 +50,10 @@ def _validate_relative_path(raw_path: object) -> str:
     for segment in segments:
         if not segment or segment in (".", ".."):
             raise ValueError("Üst dizin veya nokta yol aşımı bölümlerine izin verilmiyor.")
-        if segment in FORBIDDEN_DIR_SEGMENTS:
+        if segment.casefold() in FORBIDDEN_DIR_SEGMENTS:
             raise ValueError("Gizli .git dizini yollarına ve kancalara izin verilmiyor.")
 
-    if segments[-1] in FORBIDDEN_BASENAMES:
+    if segments[-1].casefold() in FORBIDDEN_BASENAMES:
         raise ValueError("Pakette tarayıcı yapılandırmasını geçersiz kılan dosyalara izin verilmiyor.")
 
     return raw_path

@@ -307,6 +307,64 @@ PROVIDER_PROFILES: dict[str, tuple[str, str, tuple[str, ...]]] = {
             "Erişilen sırları rotasyona alın",
         ),
     ),
+    "huggingface": (
+        "Hugging Face",
+        "Özel yapay zeka modellerine, veri kümelerine ve Inference API kotalarına okuma/yazma erişimi",
+        (
+            "huggingface.co > Settings > Access Tokens üzerinden jetonu hemen iptal edin (Invalidate)",
+            "Fine-grained ve yalnızca okuma (read-only) izinli yeni jeton üretin",
+            "Model ve veri kümesi depolarında yetkisiz commit geçmişini denetleyin",
+            _GIT_HISTORY_STEP,
+        ),
+    ),
+    "databricks": (
+        "Databricks",
+        "Veri gölü (Lakehouse), küme çalıştırma, notebook ve MLflow modellerine tam erişim",
+        (
+            "Databricks Workspace > User Settings > Access tokens üzerinden PAT jetonunu iptal edin",
+            "Servis sorumluları (Service Principal) ve kısa ömürlü OAuth M2M jetonlarına geçin",
+            "System Tables (system.access.audit) üzerinde jeton kullanımını inceleyin",
+            _GIT_HISTORY_STEP,
+        ),
+    ),
+    "supabase": (
+        "Supabase",
+        "Proje yönetimi veya RLS kurallarını bypass eden tam veritabanı/depolama erişimi",
+        (
+            "Supabase Dashboard > Account / Project Settings > API üzerinden anahtarı iptal edin veya yenileyin",
+            "service_role ve yönetim anahtarlarını yalnızca sunucu tarafı sır yöneticisinde saklayın",
+            "Supabase Logs üzerinde yetkisiz sorgu ve şema değişikliklerini inceleyin",
+            _GIT_HISTORY_STEP,
+        ),
+    ),
+    "xai": (
+        "xAI (Grok)",
+        "Ücretli Grok LLM API kullanımı (maliyet) ve organizasyon kotalarına erişim",
+        (
+            "console.x.ai > API Keys üzerinden sızan anahtarı devre dışı bırakın ve silin",
+            "Kısıtlı izinlere ve harcama limitine sahip yeni API anahtarı oluşturun",
+            _GIT_HISTORY_STEP,
+        ),
+    ),
+    "grafana": (
+        "Grafana",
+        "Gözlemlenebilirlik panolarına, veri kaynağı bağlantılarına ve uyarı kurallarına erişim",
+        (
+            "Grafana > Administration > Service accounts / API keys üzerinden jetonu silin",
+            "En az ayrıcalıklı Viewer rolüyle kapsamlandırılmış yeni jeton üretin",
+            _GIT_HISTORY_STEP,
+        ),
+    ),
+    "age_private_key": (
+        "Age Özel Anahtarı",
+        "SOPS / Age ile şifrelenmiş tüm altyapı ve Kubernetes sır dosyalarının şifresinin çözülmesi",
+        (
+            "Yeni bir age-keygen anahtar çifti üretin",
+            "Depodaki tüm SOPS/Age şifreli dosyaları yeni alıcı anahtarıyla yeniden şifreleyin (sops updatekeys)",
+            "Sızan özel anahtarla şifrelenmiş tüm iç sırları rotasyona alın",
+            _GIT_HISTORY_STEP,
+        ),
+    ),
     "private_key": (
         "Özel anahtar",
         "Anahtarın kullanıldığı TLS/SSH/imzalama kimliğinin taklit edilmesi",
@@ -420,6 +478,12 @@ _PROVIDER_DETECTORS: list[tuple[str, re.Pattern[str], str, bool]] = [
     ("heroku", re.compile(r"\b(HRKU-[A-Za-z0-9_\-]{20,80})"), "high", True),
     ("digitalocean", re.compile(r"\b(do[opr]_v1_[a-f0-9]{64})\b"), "critical", True),
     ("vault", re.compile(r"\b(hvs\.[A-Za-z0-9_\-]{24,200})"), "critical", True),
+    ("huggingface", re.compile(r"\b(hf_[A-Za-z0-9]{34,40})\b"), "high", True),
+    ("databricks", re.compile(r"\b(dapi[0-9a-f]{32})\b"), "critical", True),
+    ("supabase", re.compile(r"\b(sbp_[0-9a-f]{40}|sb_secret_[A-Za-z0-9_\-]{20,120})\b"), "critical", True),
+    ("xai", re.compile(r"\b(xai-[A-Za-z0-9_\-]{24,160})\b"), "critical", True),
+    ("grafana", re.compile(r"\b(glsa_[A-Za-z0-9_]{32}_[0-9a-f]{8}|glc_[A-Za-z0-9+/=]{32,160})\b"), "high", True),
+    ("age_private_key", re.compile(r"\b(AGE-SECRET-KEY-1[A-Z0-9]{58})\b"), "critical", True),
     (
         "private_key",
         re.compile(
@@ -481,7 +545,10 @@ _SERVER_JS_RE = re.compile(
 
 # Genel dedektör: parola özetleri sır değildir; örnek/belge dosyalarındaki değerler örnektir.
 _PASSWORD_HASH_RE = re.compile(r"^(?:\$(?:argon2(?:id|i|d)?|2[abxy]|scrypt|pbkdf2(?:-sha\d+)?|[156])\$|pbkdf2_sha\d+\$|bcrypt\$)")
-_GENERIC_EXTRA_PLACEHOLDER_RE = re.compile(r"(?i)fixme|change[_\-]?(?:me|it)|not[_\-]?a[_\-]?secret")
+_GENERIC_EXTRA_PLACEHOLDER_RE = re.compile(
+    r"(?i)fixme|change[_\-]?(?:me|it)|not[_\-]?a[_\-]?secret|no[_\-]?api[_\-]?key|"
+    r"not[_\-]?used[_\-]?at[_\-]?runtime|build[_\-]?only"
+)
 _EXAMPLE_FILE_RE = re.compile(r"(?i)(?:\.(?:example|sample|template|dist|tmpl)$|(?:^|/)(?:docs?|docs_src)/)")
 
 _GENERIC_NAME_HINT_RE = re.compile(
@@ -491,7 +558,10 @@ _GENERIC_NAME_HINT_RE = re.compile(
 _GENERIC_NAME_EXCLUDE_RE = re.compile(
     r"(?i)(?:url|uri|endpoint|path|file|filename|name|field|label|type|length|len|regex|"
     r"pattern|placeholder|header|prompt|hint|message|msg|policy|expiry|expires|ttl|count|"
-    r"id|prefix|format|min|max|required|enabled|validator)$"
+    r"id|prefix|format|min|max|required|enabled|validator|"
+    r"(?:prompt|completion|total|max|input|output|cached|reasoning|num)[_\-]?tokens?|"
+    r"token[_\-]?(?:count|usage|limit|budget)s?|"
+    r"^no[_\-]?api[_\-]?key)$"
 )
 _GENERIC_ASSIGN_RE = re.compile(
     r"(?P<name>[A-Za-z_][A-Za-z0-9_.\-]{0,80})[\"']?\s*(?::=|=>|=|:)\s*"
@@ -885,3 +955,126 @@ def audit_secrets_project(
         "providers_detected": providers,
         "secret_count": secret_count,
     }
+
+
+_DUAL_KEY_ROTATION_STEPS: tuple[str, ...] = (
+    "1. İkincil (Secondary) anahtarı üret",
+    "2. Uygulama/K8s Secret ortam değişkenini yeni anahtara geçir",
+    "3. Eski anahtarın aktif trafik almadığını loglardan doğrula",
+    "4. Eski anahtarı kalıcı olarak iptal et (Revoke)",
+)
+
+
+def _cli_revoke_template_for_provider(provider_id: str, provider_display: str) -> str:
+    combined = f"{provider_id} {provider_display}".lower()
+    if "aws" in combined:
+        return "aws iam update-access-key --access-key-id <REDACTED> --status Inactive"
+    if "github" in combined:
+        return "gh api -X DELETE /applications/<client_id>/token"
+    if "stripe" in combined:
+        return "stripe api_keys roll <REDACTED>"
+    if any(token in combined for token in ("postgres", "database", "mysql", "db", "veritaban")):
+        return "ALTER ROLE <app_user> WITH PASSWORD '<NEW_SECRET>';"
+    return "vault lease revoke <lease_id>"
+
+
+def generate_secret_rotation_playbook(
+    raw_content: str,
+    *,
+    filename: str = ".env",
+) -> dict[str, Any]:
+    """Sızan sırlar için ham değeri asla açığa çıkarmadan kesintisiz (dual-key) rotasyon playbook'u üretir."""
+    clean_filename = filename.strip() if isinstance(filename, str) and filename.strip() else ".env"
+    report = audit_secrets_inline(raw_content, filename=clean_filename)
+    playbooks: list[dict[str, Any]] = []
+    for finding in report.get("findings", []):
+        provider_id = str(finding.get("provider_id", "generic"))
+        provider_display = str(finding.get("provider", "generic"))
+        default_blast = PROVIDER_PROFILES.get(provider_id, PROVIDER_PROFILES["generic"])[1]
+        blast_radius = str(finding.get("blast_radius") or default_blast)
+        playbooks.append(
+            {
+                "fingerprint_sha256": str(finding.get("fingerprint_sha256", "")),
+                "masked_preview": str(finding.get("masked_preview", "***")),
+                "provider": provider_display,
+                "provider_id": provider_id,
+                "severity": str(finding.get("severity", "high")),
+                "blast_radius": blast_radius,
+                "zero_downtime_dual_key_steps": list(_DUAL_KEY_ROTATION_STEPS),
+                "cli_revoke_template": _cli_revoke_template_for_provider(provider_id, provider_display),
+            }
+        )
+    return {
+        "format": "sniper-secret-rotation-playbook/1",
+        "filename": clean_filename,
+        "playbook_count": len(playbooks),
+        "playbooks": playbooks,
+    }
+
+
+_NOISE_FILENAME_RE = re.compile(
+    r"(?:^|/)(?:i18n|locales?|translations?)(?:/|$)|(?:^|/)(?:reset_)?password\.html?$",
+    re.IGNORECASE,
+)
+_BARE_CONFIG_CONSTANT_RE = re.compile(
+    r"\b([A-Z][A-Z0-9_]*(?:KEY|SECRET|TOKEN|PASSWORD|PASS|AUTH)[A-Z0-9_]*)\s*[:=]\s*['\"]\1['\"]"
+)
+_TEMPLATE_OR_I18N_NOISE_LINE_RE = re.compile(
+    r"(?:['\"](?:reset_)?password\.html['\"]|\bi18n\b|\blocales?\b)",
+    re.IGNORECASE,
+)
+_DEFAULT_KEYSTORE_OR_FALLBACK_KEY_RE = re.compile(
+    r"(?:ca-keystore\.p12|['\"]changeit['\"]|\bCommunityKey\b|MCowBQYDK2VwAyEA|\bEd25519\b.*?\bfallback\b)",
+    re.IGNORECASE,
+)
+
+
+def audit_default_keypairs_and_filter_noise(
+    raw_content: str,
+    *,
+    filename: str = "ServerCertificateService.java",
+) -> dict[str, Any]:
+    """Çeviri/şablon/sabit anahtar gürültüsünü bastırır ve gömülü varsayılan PKCS#12 (changeit) / Ed25519 anahtarlarını tespit eder."""
+    clean_filename = filename.strip() if isinstance(filename, str) and filename.strip() else "ServerCertificateService.java"
+    content = raw_content if isinstance(raw_content, str) else ""
+    suppressed = 0
+    findings: list[dict[str, Any]] = []
+
+    if _NOISE_FILENAME_RE.search(clean_filename):
+        non_empty_lines = [ln for ln in content.splitlines() if ln.strip()]
+        suppressed += max(1, len(non_empty_lines))
+        return {
+            "format": "sniper-secret-keypair-precision/1",
+            "filename": clean_filename,
+            "suppressed_noise_count": suppressed,
+            "finding_count": 0,
+            "findings": [],
+        }
+
+    recorded_keypair = False
+    for idx, line in enumerate(content.splitlines(), start=1):
+        if _BARE_CONFIG_CONSTANT_RE.search(line) or _TEMPLATE_OR_I18N_NOISE_LINE_RE.search(line):
+            suppressed += 1
+            continue
+        if not recorded_keypair and _DEFAULT_KEYSTORE_OR_FALLBACK_KEY_RE.search(line):
+            recorded_keypair = True
+            findings.append(
+                {
+                    "control_id": "SNIPER-SEC-KEYPAIR-01",
+                    "cwe": "CWE-798",
+                    "severity": "medium",
+                    "title": "Gömülü varsayılan PKCS#12 anahtar deposu parolası (changeit) veya Ed25519 geri dönüş anahtarı",
+                    "file": clean_filename,
+                    "line": idx,
+                }
+            )
+
+    return {
+        "format": "sniper-secret-keypair-precision/1",
+        "filename": clean_filename,
+        "suppressed_noise_count": suppressed,
+        "finding_count": len(findings),
+        "findings": findings,
+    }
+
+

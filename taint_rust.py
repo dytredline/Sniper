@@ -393,6 +393,23 @@ class RustBody(BodyAnalyzer):
             if t.kind == "id" and toks[j + 1].text == "." and toks[j + 2].kind == "id" and toks[j + 2].text in (
                     "starts_with", "strip_prefix", "components") and toks[j + 3].text == "(":
                 self.path_guards.add(t.text)
+            if (
+                t.kind == "id"
+                and t.text == "Path"
+                and j + 6 < hi
+                and toks[j + 1].text == "::"
+                and toks[j + 2].text == "new"
+                and toks[j + 3].text == "("
+            ):
+                close_new = match_close(toks, j + 3, hi)
+                if (
+                    close_new + 3 < hi
+                    and toks[close_new + 1].text == "."
+                    and toks[close_new + 2].text in ("components", "starts_with", "strip_prefix")
+                ):
+                    for q in range(j + 4, close_new):
+                        if toks[q].kind == "id":
+                            self.path_guards.add(toks[q].text)
             if t.kind == "id" and toks[j + 1].text == "." and toks[j + 2].text == "contains" and toks[j + 3].text == "(" \
                     and j + 4 < hi and toks[j + 4].kind == "str" and ".." in toks[j + 4].text:
                 self.path_guards.add(t.text)
@@ -404,6 +421,18 @@ class RustBody(BodyAnalyzer):
                 for q in range(j + 2, close):
                     if toks[q].kind == "id":
                         self.path_guards.add(toks[q].text)
+        param_names_set = {nm for p in fn.params if p.name != "self" for nm in (p.names or (p.name,))}
+        if not self.handler_like and (self.path_guards & param_names_set):
+            for p in fn.params:
+                if p.name == "self":
+                    continue
+                typ_clean = p.type_text.replace(" ", "")
+                if re.search(r"\b(?:str|String|OsStr|OsString|Path|PathBuf)\b", typ_clean) and not _type_is_numeric(typ_clean):
+                    for nm in p.names or (p.name,):
+                        if nm not in self.path_guards:
+                            self.env[nm] = self.env.get(nm, EMPTY) | self.src(
+                                "request", f"doğrulanmamış ikincil parametre ({nm})", fn.line
+                            )
         self.pending_match: frozenset | None = None
 
     handler_like = False
@@ -624,6 +653,17 @@ class RustBody(BodyAnalyzer):
         chain = self.chain
         if typ and _type_is_numeric(typ):
             rhs = numeric(rhs)
+        rhs_idents = {x.text for x in toks[eq + 1:rhs_end] if x.kind == "id"}
+        if rhs_idents & self.path_guards:
+            unguarded_rhs: set[Origin] = set()
+            for uid in rhs_idents - self.path_guards:
+                if uid in self.env and uid != "self":
+                    unguarded_rhs |= strings_only(self.env[uid])
+            if unguarded_rhs:
+                rhs = frozenset(unguarded_rhs)
+            else:
+                for name in names:
+                    self.path_guards.add(name)
         for name in names:
             self.set_var(name, rhs, strong=True)
             if chain:
@@ -987,10 +1027,14 @@ class RustBody(BodyAnalyzer):
             else:
                 self.col.evaluated(self.file, "html", line)
             return EMPTY
-        if parts[0] == "bincode" and name in ("deserialize", "deserialize_from", "decode_from_slice",
-                                              "decode_from_std_read", "borrow_decode_from_slice") and taints:
+        if parts[0] in ("bincode", "rmp_serde", "postcard", "ciborium") and name in (
+                "deserialize", "deserialize_from", "decode_from_slice", "decode_from_std_read",
+                "borrow_decode_from_slice", "from_slice", "from_read", "from_bytes", "from_reader") and taints:
             self.sink("deserialize_unbounded", f"{path}()", line, strings_only(taints[0]))
             return taints[0]
+        if (parts[-2:] == ["Library", "new"] or (parts[0] == "libloading" and name == "new")) and taints:
+            self.sink("command", f"{path}()", line, strings_only(taints[0]))
+            return EMPTY
         if name == "evaluate_xpath" and len(taints) >= 2:
             self.sink("xpath", "evaluate_xpath()", line, strings_only(taints[1]))
             return EMPTY
@@ -1241,7 +1285,14 @@ class RustBody(BodyAnalyzer):
         a, b = r
         idents = {x.text for x in self.toks[a:b] if x.kind == "id"}
         if idents & self.path_guards:
-            self.col.evaluated(self.file, "path", line)
+            unguarded_taint: set[Origin] = set()
+            for ident in idents - self.path_guards:
+                if ident in self.env and ident not in ("self",):
+                    unguarded_taint |= strings_only(self.env[ident])
+            if not unguarded_taint:
+                self.col.evaluated(self.file, "path", line)
+                return
+            self.sink("path", desc, line, frozenset(unguarded_taint))
             return
         self.sink("path", desc, line, strings_only(taint))
 

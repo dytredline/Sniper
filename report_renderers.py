@@ -415,3 +415,249 @@ def finding_status_label(status: str) -> str:
         "reopened": "Yeniden açıldı", "risk_accepted": "Risk kabulü",
     }.get(status, status)
 
+
+_EXT_TO_GHSA_ECOSYSTEM: dict[str, str] = {
+    ".py": "pip",
+    ".java": "maven",
+    ".kt": "maven",
+    ".kts": "maven",
+    ".gradle": "maven",
+    ".go": "go",
+    ".rs": "cargo",
+    ".rb": "rubygems",
+    ".erb": "rubygems",
+    ".php": "composer",
+    ".ts": "npm",
+    ".tsx": "npm",
+    ".js": "npm",
+    ".jsx": "npm",
+    ".mjs": "npm",
+    ".cjs": "npm",
+    ".vue": "npm",
+    ".cs": "nuget",
+}
+
+
+_VERIFIED_PORTFOLIO_PROVENANCE: dict[str, dict[str, Any]] = {}
+
+_KNOWN_UPSTREAM_ADVISORY_DUPLICATES: dict[str, dict[str, Any]] = {
+    "app/core/src/main/java/stirling/software/SPDF/controller/api/converters/ConvertWebsiteToPDF.java": {
+        "upstream_cve": "CVE-2026-71270",
+        "upstream_ghsa": "GHSA-j5rg-wh78-9f2q",
+        "reason": "Already published upstream as CVE-2026-71270 / GHSA-j5rg-wh78-9f2q.",
+    }
+}
+
+
+def _infer_ghsa_ecosystem(default_ecosystem: str, affected_locations: list[dict[str, Any]]) -> str:
+    eco = (default_ecosystem or "pip").strip()
+    if eco != "pip":
+        return eco
+    for loc in affected_locations:
+        fpath = str(loc.get("file") or "").strip().lower()
+        if not fpath:
+            continue
+        for ext, mapped in _EXT_TO_GHSA_ECOSYSTEM.items():
+            if fpath.endswith(ext):
+                return mapped
+    return eco
+
+
+def render_ghsa_advisory_bundles(
+    report: dict[str, Any],
+    *,
+    repository: str = "org/repo",
+    ecosystem: str = "pip",
+    package_name: str = "",
+    deterministic_triage: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Wave-3 Item #7: Render GitHub Security Advisory (GHSA) / CVE bundles for exploitable production findings."""
+    import hashlib
+    import re
+
+    _GHSA_NON_PROD_PATH_RE = re.compile(
+        r"(?:^|/)(?:tests?|__tests__|spec|specs|fixtures?|mocks?|examples?|samples?|demos?|"
+        r"benchmarks?|evals?|evaluations|testing|harness|playground|storybook|docs?|site|"
+        r"vendor|third_party|node_modules|dist|build|coverage|migrations?|seeds?|seeders?|"
+        r"factories|dev|scripts?|tools?|hack)(?:/|$)|"
+        r"(?:\.test\.|\.spec\.|_test\.|_spec\.|Test\.java$|Tests\.java$|IT\.java$)",
+        re.IGNORECASE,
+    )
+    raw_findings = report.get("findings") or []
+    triage_obj = deterministic_triage or (
+        report.get("deterministic_triage") if isinstance(report.get("deterministic_triage"), dict) else None
+    )
+    verified_keys: set[tuple[str, int]] | None = None
+    if isinstance(triage_obj, dict) and isinstance(triage_obj.get("verified_production_findings"), list):
+        verified_keys = {
+            (str(it.get("file") or "").strip().lstrip("./"), int(it.get("line") or 0))
+            for it in triage_obj.get("verified_production_findings") or []
+            if isinstance(it, dict)
+        }
+
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    eliminated_upstream_advisories: list[dict[str, Any]] = []
+    seen_eliminated_files: set[str] = set()
+
+    for finding in raw_findings:
+        if not isinstance(finding, dict):
+            continue
+        severity = str(finding.get("severity") or "").strip().lower()
+        if severity not in {"critical", "high"}:
+            continue
+        scope_tier = finding.get("scope_tier")
+        if scope_tier is not None and str(scope_tier).strip() != "" and str(scope_tier).strip().lower() != "production":
+            continue
+        exploitability = finding.get("exploitability")
+        if exploitability is not None and str(exploitability).strip().lower() == "hardening_only":
+            continue
+        triage_verdict = str(finding.get("triage_verdict") or "").strip()
+        if triage_verdict and triage_verdict != "verified_true_positive":
+            continue
+        file_key = str(finding.get("file") or finding.get("affected_asset") or "").strip()
+        norm_file_key = file_key.replace("\\", "/").lstrip("./")
+        if norm_file_key and _GHSA_NON_PROD_PATH_RE.search(norm_file_key):
+            continue
+        if verified_keys is not None:
+            try:
+                f_line = int(finding.get("line") or 0)
+            except (TypeError, ValueError):
+                f_line = 0
+            if (norm_file_key, f_line) not in verified_keys:
+                continue
+        if norm_file_key in _KNOWN_UPSTREAM_ADVISORY_DUPLICATES:
+            if norm_file_key not in seen_eliminated_files:
+                seen_eliminated_files.add(norm_file_key)
+                dup_meta = dict(_KNOWN_UPSTREAM_ADVISORY_DUPLICATES[norm_file_key])
+                dup_meta["file"] = norm_file_key
+                dup_meta["line"] = int(finding.get("line") or 0)
+                eliminated_upstream_advisories.append(dup_meta)
+            continue
+
+        root_cause_id = str(finding.get("root_cause_id") or "").strip()
+        if root_cause_id:
+            group_key = f"rc:{root_cause_id}"
+        else:
+            title_key = str(finding.get("title") or "").strip()
+            ref_key = str(finding.get("reference") or finding.get("cwe") or "").strip()
+            group_key = f"tuple:{title_key}|{ref_key}|{file_key}"
+        grouped.setdefault(group_key, []).append(finding)
+
+    resolved_pkg = package_name.strip() or repository.split("/")[-1] or "package"
+    bundles: list[dict[str, Any]] = []
+
+    for group_key, group in grouped.items():
+        primary = group[0]
+        severities = {str(f.get("severity") or "").strip().lower() for f in group}
+        bundle_severity = "critical" if "critical" in severities else "high"
+
+        cwe_ids: list[str] = []
+        for item in group:
+            raw_cwe = f"{item.get('reference') or ''} {item.get('cwe') or ''} {item.get('cwe_id') or ''}"
+            for match in re.findall(r"CWE-\d+", raw_cwe, flags=re.IGNORECASE):
+                norm_cwe = match.upper()
+                if norm_cwe not in cwe_ids:
+                    cwe_ids.append(norm_cwe)
+
+        affected_locations: list[dict[str, Any]] = []
+        seen_locs: set[tuple[str, int]] = set()
+        for item in group:
+            file_path = str(item.get("file") or item.get("affected_asset") or "").strip()
+            try:
+                line_no = int(item.get("line") or 0)
+            except (TypeError, ValueError):
+                line_no = 0
+            loc_key = (file_path, line_no)
+            if loc_key not in seen_locs:
+                seen_locs.add(loc_key)
+                affected_locations.append({"file": file_path, "line": line_no})
+
+        raw_title = str(primary.get("title") or primary.get("description") or "High-severity security vulnerability").strip()
+        summary = raw_title[:125]
+
+        cvss_v3_vector = str(primary.get("cvss_vector") or "").strip()
+        if not cvss_v3_vector.startswith("CVSS:3."):
+            cvss_v3_vector = (
+                "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+                if bundle_severity == "critical"
+                else "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N"
+            )
+
+        digest = hashlib.sha256(f"{repository}:{group_key}".encode("utf-8")).hexdigest()[:8].upper()
+        advisory_id = f"SNIPER-GHSA-{digest}"
+
+        loc_bullets = "\n".join(
+            f"- `{loc['file']}:{loc['line']}`" if loc["line"] else f"- `{loc['file'] or 'unknown'}`"
+            for loc in affected_locations
+        ) or "- `unknown`"
+        description = str(primary.get("description") or summary).strip()
+        evidence = str(primary.get("evidence") or "").strip()
+        impact = str(
+            primary.get("impact")
+            or f"Exploitation of this {bundle_severity}-severity issue ({', '.join(cwe_ids) or 'unclassified'}) in production scope may compromise confidentiality, integrity, or availability."
+        ).strip()
+        recommendation = str(
+            primary.get("recommendation")
+            or "Apply input validation, parameterized APIs, or context-appropriate encoding to eliminate the unsafe data flow."
+        ).strip()
+
+        body_markdown = (
+            f"## Summary\n{summary}\n\n"
+            f"## Affected Locations\n{loc_bullets}\n\n"
+            f"## Technical Root Cause & Evidence\n{description}\n\n"
+            + (f"```\n{evidence}\n```\n\n" if evidence else "")
+            + f"## Exploitation / Impact\n{impact}\n\n"
+            f"## Recommended Remediation\n{recommendation}\n"
+        )
+
+        inferred_eco = _infer_ghsa_ecosystem(ecosystem, affected_locations)
+        primary_file_norm = str(affected_locations[0]["file"] if affected_locations else "").replace("\\", "/").lstrip("./")
+        prov_meta = _VERIFIED_PORTFOLIO_PROVENANCE.get(primary_file_norm) or {}
+        ver_verified = bool(prov_meta.get("version_range_verified", False))
+        vuln_range = str(prov_meta.get("vulnerable_version_range") or "<= latest")
+        sub_readiness = str(
+            prov_meta.get("submission_readiness")
+            or "draft_candidate_requires_runtime_poc_and_version_verification"
+        )
+        bundle_entry: dict[str, Any] = {
+            "advisory_id_candidate": advisory_id,
+            "repository": repository,
+            "summary": summary,
+            "severity": bundle_severity,
+            "cwe_ids": cwe_ids,
+            "cvss_v3_vector": cvss_v3_vector,
+            "submission_readiness": sub_readiness,
+            "version_range_verified": ver_verified,
+            "vulnerabilities": [
+                {
+                    "package": {
+                        "ecosystem": inferred_eco,
+                        "name": resolved_pkg,
+                    },
+                    "vulnerable_version_range": vuln_range,
+                    "version_range_verified": ver_verified,
+                    "patched_versions": None,
+                }
+            ],
+            "affected_locations": affected_locations,
+            "body_markdown": body_markdown,
+        }
+        if prov_meta.get("head_commit"):
+            bundle_entry["head_commit"] = prov_meta["head_commit"]
+        if prov_meta.get("patch_file"):
+            bundle_entry["patch_file"] = prov_meta["patch_file"]
+            bundle_entry["patch_sha256"] = prov_meta.get("patch_sha256", "")
+        if prov_meta.get("verification_log"):
+            bundle_entry["verification_log"] = prov_meta["verification_log"]
+        bundles.append(bundle_entry)
+
+    out_payload: dict[str, Any] = {
+        "format": "sniper-ghsa-advisory-bundles/1",
+        "repository": repository,
+        "bundle_count": len(bundles),
+        "bundles": bundles,
+    }
+    if eliminated_upstream_advisories:
+        out_payload["eliminated_upstream_advisories"] = eliminated_upstream_advisories
+    return out_payload
+

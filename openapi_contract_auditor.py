@@ -25,6 +25,9 @@ OPENAPI_CONTRACT_FILENAMES = {
     "swagger.yml",
 }
 GRAPHQL_EXTENSIONS = {".graphql", ".gql"}
+MAX_GRAPHQL_RUBY_SOURCE_BYTES = 512_000
+MAX_GRAPHQL_RUBY_SOURCE_FILES = 1_000
+MAX_GRAPHQL_RUBY_TOTAL_BYTES = 8_000_000
 
 GRAPHQL_AUTH_DIRECTIVES = {"auth", "authorized", "hasrole"}
 GRAPHQL_SENSITIVE_FIELDS = {
@@ -38,6 +41,49 @@ GRAPHQL_SENSITIVE_FIELDS = {
     "creditcard",
     "credit_card",
 }
+
+_RUBY_GRAPHQL_PATH_PARTS = {"graphql", "resolvers", "mutations"}
+_RUBY_GRAPHQL_FILENAMES = {"query_type.rb", "mutation_type.rb", "subscription_type.rb"}
+_RUBY_METHOD_RE = re.compile(
+    r"^\s*def\s+(?:self\.)?([A-Za-z_][A-Za-z0-9_]*[!?=]?)\s*(?:\(([^)]*)\)|\s+([^#\n]+))?",
+    re.MULTILINE,
+)
+_RUBY_UNSCOPED_LOOKUP_RE = re.compile(
+    r"(?<![A-Za-z0-9_:.])([A-Z][A-Za-z0-9_]*(?:::[A-Z][A-Za-z0-9_]*)*)"
+    r"\s*\.\s*(find|find_by!?)\s*\("
+)
+_RUBY_ID_ARGUMENT_RE = re.compile(
+    r"(?:\b(?:id|node_id|global_id)\b|\b[A-Za-z_][A-Za-z0-9_]*_id\b|\bargs\s*\[\s*:?[A-Za-z_][A-Za-z0-9_]*id\s*\])",
+    re.IGNORECASE,
+)
+_RUBY_AUTHORIZATION_GUARD_RE = re.compile(
+    r"(?:\b(?:authorize|authorize!|authorized\?|policy|policy_scope|can\?|allowed\?)\s*\(|"
+    r"\b(?:authorize|authorize!)\s+[A-Za-z_])",
+    re.IGNORECASE,
+)
+_RUBY_TENANT_SCOPE_RE = re.compile(
+    r"(?:"
+    r"\b(?:user|owner|account|tenant|organization|workspace|project)_id\s*:"
+    r"[^\n,)]*(?:current_|context\s*\[)"
+    r"|(?:current_(?:user|account|tenant|organization|workspace)|"
+    r"context\s*\[\s*:current_(?:user|account|tenant|organization|workspace)\s*\])"
+    r"\s*\.\s*[A-Za-z_][A-Za-z0-9_]*\s*\.\s*(?:find|find_by!?)\s*\("
+    r")",
+    re.IGNORECASE,
+)
+_RUBY_GRAPHQL_FIELD_RE = re.compile(
+    r"^\s*field\s+(?::([A-Za-z_][A-Za-z0-9_]*)|['\"]([A-Za-z_][A-Za-z0-9_]*)['\"])"
+    r"\s*,([^\n]*(?:\n[ \t]+(?!field\b|def\b|end\b)[^\n]*){0,8})",
+    re.MULTILINE,
+)
+_RUBY_RESOLVER_REF_RE = re.compile(
+    r"\bresolver\s*:\s*(?:::)?([A-Z][A-Za-z0-9_]*(?:::[A-Z][A-Za-z0-9_]*)*)"
+)
+_RUBY_BASE_RESOLVER_CLASS_RE = re.compile(
+    r"^\s*class\s+[A-Z][A-Za-z0-9_:]*\s*<\s*(?:::)?"
+    r"(?:(?:[A-Z][A-Za-z0-9_]*)::)*BaseResolver\b",
+    re.MULTILINE,
+)
 
 
 @contextmanager
@@ -73,6 +119,23 @@ BOLA_PARAM_NAMES = {
     "accountid",
     "order_id",
     "orderid",
+}
+
+SSRF_PARAM_NAMES = {
+    "url",
+    "uri",
+    "webhook",
+    "webhook_url",
+    "webhookurl",
+    "callback",
+    "callback_url",
+    "callbackurl",
+    "target_url",
+    "targeturl",
+    "redirect_url",
+    "redirect_uri",
+    "fetch_url",
+    "endpoint_url",
 }
 
 
@@ -459,6 +522,164 @@ def _audit_graphql_sdl(raw_content: str, source_name: str) -> dict[str, Any]:
     }
 
 
+def _graphql_root_fields(raw_content: str) -> dict[str, set[str]]:
+    """Return GraphQL root field names without exposing schema content."""
+    cleaned = re.sub(r"#[^\n]*", "", raw_content)
+    fields: dict[str, set[str]] = {}
+    for kind, type_name, body in _graphql_type_blocks(cleaned):
+        if kind != "type" or type_name not in {"Query", "Mutation", "Subscription"}:
+            continue
+        for raw_line in body.splitlines():
+            field = _graphql_field(raw_line.strip())
+            if field is not None:
+                fields.setdefault(field[0], set()).add(type_name)
+    return fields
+
+
+def _ruby_graphql_candidate(path: Path) -> bool:
+    if path.suffix.casefold() != ".rb":
+        return False
+    lowered_parts = {part.casefold() for part in path.parts}
+    return bool(lowered_parts & _RUBY_GRAPHQL_PATH_PARTS) or path.name.casefold() in _RUBY_GRAPHQL_FILENAMES
+
+
+def _ruby_graphql_method_name(field_name: str) -> str:
+    snake = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", field_name).casefold()
+    return snake.replace("-", "_")
+
+
+def _ruby_class_name(raw_content: str) -> str:
+    namespace: list[str] = []
+    for line in raw_content.splitlines():
+        module_match = re.match(r"^\s*module\s+([A-Z][A-Za-z0-9_]*)\b", line)
+        if module_match:
+            namespace.append(module_match.group(1))
+            continue
+        class_match = re.match(r"^\s*class\s+([A-Z][A-Za-z0-9_:]*)\b", line)
+        if not class_match:
+            continue
+        class_name = class_match.group(1)
+        if "::" in class_name or not namespace:
+            return class_name
+        return "::".join((*namespace, class_name))
+    return "GraphQLResolver"
+
+
+def _ruby_method_slices(raw_content: str) -> list[tuple[str, str, str]]:
+    matches = list(_RUBY_METHOD_RE.finditer(raw_content))
+    methods: list[tuple[str, str, str]] = []
+    for index, match in enumerate(matches):
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(raw_content)
+        signature = " ".join(part for part in match.groups()[1:] if part)
+        methods.append((match.group(1), signature, raw_content[match.start():end]))
+    return methods
+
+
+def _ruby_method_has_authorization(raw_content: str, method_body: str) -> bool:
+    if _RUBY_AUTHORIZATION_GUARD_RE.search(method_body):
+        return True
+    if _RUBY_TENANT_SCOPE_RE.search(method_body):
+        return True
+    return bool(re.search(r"^\s*def\s+self\.authorized\?\b", raw_content, re.MULTILINE))
+
+
+def _ruby_resolver_class_links(
+    root_fields: dict[str, set[str]],
+    ruby_sources: list[tuple[str, str]],
+) -> dict[str, set[str]]:
+    """Map explicit GraphQL-Ruby resolver classes to referenced SDL root fields."""
+    method_to_field = {_ruby_graphql_method_name(field): field for field in root_fields}
+    links: dict[str, set[str]] = {}
+    for _source_name, raw_content in ruby_sources:
+        for match in _RUBY_GRAPHQL_FIELD_RE.finditer(raw_content):
+            ruby_field = match.group(1) or match.group(2) or ""
+            field_name = method_to_field.get(ruby_field)
+            if field_name is None:
+                continue
+            resolver_match = _RUBY_RESOLVER_REF_RE.search(match.group(3))
+            if resolver_match is not None:
+                links.setdefault(resolver_match.group(1), set()).add(field_name)
+    return links
+
+
+def _append_ruby_lookup_findings(
+    findings: list[dict[str, Any]],
+    *,
+    root_fields: dict[str, set[str]],
+    field_name: str,
+    class_name: str,
+    method_name: str,
+    source_name: str,
+    method_body: str,
+) -> None:
+    for lookup in _RUBY_UNSCOPED_LOOKUP_RE.finditer(method_body):
+        call_tail = method_body[lookup.end():].split(")", 1)[0]
+        if not _RUBY_ID_ARGUMENT_RE.search(call_tail):
+            continue
+        for root_type in sorted(root_fields[field_name]):
+            findings.append({
+                "rule_id": "SNIPER-APIT-10",
+                "owasp_category": "OWASP API1:2023",
+                "severity": "high",
+                "title": "GraphQL resolver nesne sorgusunda görünür sahiplik/tenant yetkilendirmesi eksik",
+                "location": f"{root_type}.{field_name} -> {class_name}#{method_name}",
+                "source_name": source_name,
+                "lookup": f"{lookup.group(1)}.{lookup.group(2)}",
+                "confidence": "high",
+            })
+        break
+
+
+def _audit_graphql_ruby_resolvers(
+    root_fields: dict[str, set[str]],
+    ruby_sources: list[tuple[str, str]],
+) -> list[dict[str, Any]]:
+    """Correlate SDL roots with method and explicit resolver-class lookups."""
+    method_to_field = {_ruby_graphql_method_name(field): field for field in root_fields}
+    resolver_links = _ruby_resolver_class_links(root_fields, ruby_sources)
+    findings: list[dict[str, Any]] = []
+
+    for source_name, raw_content in ruby_sources:
+        class_name = _ruby_class_name(raw_content)
+        methods = _ruby_method_slices(raw_content)
+
+        for method_name, signature, method_body in methods:
+            field_name = method_to_field.get(method_name)
+            if field_name is None or not _RUBY_ID_ARGUMENT_RE.search(signature):
+                continue
+            if _ruby_method_has_authorization(raw_content, method_body):
+                continue
+            _append_ruby_lookup_findings(
+                findings,
+                root_fields=root_fields,
+                field_name=field_name,
+                class_name=class_name,
+                method_name=method_name,
+                source_name=source_name,
+                method_body=method_body,
+            )
+
+        linked_fields = resolver_links.get(class_name, set())
+        if not linked_fields or not _RUBY_BASE_RESOLVER_CLASS_RE.search(raw_content):
+            continue
+        for method_name, signature, method_body in methods:
+            if method_name != "resolve" or not _RUBY_ID_ARGUMENT_RE.search(signature):
+                continue
+            if _ruby_method_has_authorization(raw_content, method_body):
+                continue
+            for field_name in sorted(linked_fields):
+                _append_ruby_lookup_findings(
+                    findings,
+                    root_fields=root_fields,
+                    field_name=field_name,
+                    class_name=class_name,
+                    method_name=method_name,
+                    source_name=source_name,
+                    method_body=method_body,
+                )
+    return findings
+
+
 def _resolve_schema_ref(doc: dict[str, Any], schema: Any, depth: int = 0) -> dict[str, Any]:
     if not isinstance(schema, dict) or depth > 8:
         return {}
@@ -700,6 +921,58 @@ def _audit_openapi_or_swagger(doc: dict[str, Any], detected_type: str, source_na
                     "source_name": source_name,
                 })
 
+            # 5b. OWASP API7:2023 SSRF / Unconstrained URL or Webhook parameter check
+            ssrf_params: list[str] = []
+            for param in all_params:
+                if not isinstance(param, dict):
+                    continue
+                p_in = str(param.get("in", "")).casefold()
+                if p_in == "body":
+                    body_schema = _resolve_schema_ref(doc, param.get("schema"))
+                    if isinstance(body_schema, dict) and isinstance(body_schema.get("properties"), dict):
+                        for prop_name, prop_schema in body_schema["properties"].items():
+                            norm_prop = str(prop_name).casefold()
+                            resolved_prop = _resolve_schema_ref(doc, prop_schema)
+                            if (
+                                norm_prop in SSRF_PARAM_NAMES
+                                or norm_prop.endswith(("_url", "_uri", "webhookurl", "callbackurl"))
+                            ) and not (isinstance(resolved_prop, dict) and (resolved_prop.get("enum") or resolved_prop.get("pattern"))):
+                                ssrf_params.append(str(prop_name))
+                    continue
+                pname = str(param.get("name", ""))
+                norm_p = pname.casefold()
+                p_schema = _resolve_schema_ref(doc, param.get("schema")) if isinstance(param.get("schema"), dict) else param
+                if (
+                    norm_p in SSRF_PARAM_NAMES
+                    or norm_p.endswith(("_url", "_uri", "webhookurl", "callbackurl"))
+                ) and not (isinstance(p_schema, dict) and (p_schema.get("enum") or p_schema.get("pattern"))):
+                    ssrf_params.append(pname)
+
+            if isinstance(req_body, dict) and isinstance(req_body.get("content"), dict):
+                for media_obj in req_body["content"].values():
+                    if not isinstance(media_obj, dict):
+                        continue
+                    resolved_schema = _resolve_schema_ref(doc, media_obj.get("schema"))
+                    if isinstance(resolved_schema, dict) and isinstance(resolved_schema.get("properties"), dict):
+                        for prop_name, prop_schema in resolved_schema["properties"].items():
+                            norm_prop = str(prop_name).casefold()
+                            resolved_prop = _resolve_schema_ref(doc, prop_schema)
+                            if (
+                                norm_prop in SSRF_PARAM_NAMES
+                                or norm_prop.endswith(("_url", "_uri", "webhookurl", "callbackurl"))
+                            ) and not (isinstance(resolved_prop, dict) and (resolved_prop.get("enum") or resolved_prop.get("pattern"))):
+                                ssrf_params.append(str(prop_name))
+
+            if ssrf_params:
+                findings.append({
+                    "rule_id": "SNIPER-APIT-07",
+                    "owasp_category": "OWASP API7:2023",
+                    "severity": "high",
+                    "title": "API sözleşmesinde kısıtlanmamış dış URL/Webhook parametresi (SSRF riski - OWASP API7:2023)",
+                    "location": f"{op_loc} ({', '.join(sorted(set(ssrf_params)))})",
+                    "source_name": source_name,
+                })
+
             # 6. Check 2xx response schemas for sensitive field exposure
             responses = operation.get("responses")
             if isinstance(responses, dict):
@@ -746,6 +1019,7 @@ def _audit_openapi_or_swagger(doc: dict[str, Any], detected_type: str, source_na
             "SNIPER-APIT-02",
             "SNIPER-APIT-03",
             "SNIPER-APIT-05",
+            "SNIPER-APIT-07",
             "SNIPER-APIT-09",
         ],
     }
@@ -804,6 +1078,9 @@ def audit_project_api_contracts(
     root = validate_project_path(project_path, allowed_roots)
     contract_reports: list[dict[str, Any]] = []
     all_findings: list[dict[str, Any]] = []
+    graphql_root_fields: dict[str, set[str]] = {}
+    ruby_sources: list[tuple[str, str]] = []
+    ruby_source_bytes = 0
 
     with _opened_project_tree(root) as tree:
         for project_file in tree.iter_files(skip_dirs=tuple(SKIP_DIRS), reject_unsafe=False):
@@ -812,6 +1089,19 @@ def audit_project_api_contracts(
             ext = project_file.path.suffix.casefold()
             is_openapi_file = lower_name in OPENAPI_CONTRACT_FILENAMES
             is_graphql_file = ext in GRAPHQL_EXTENSIONS
+            if (
+                _ruby_graphql_candidate(project_file.path)
+                and len(ruby_sources) < MAX_GRAPHQL_RUBY_SOURCE_FILES
+                and 0 < project_file.size <= MAX_GRAPHQL_RUBY_SOURCE_BYTES
+                and ruby_source_bytes + project_file.size <= MAX_GRAPHQL_RUBY_TOTAL_BYTES
+            ):
+                try:
+                    ruby_content = tree.read_text(project_file, MAX_GRAPHQL_RUBY_SOURCE_BYTES, errors="strict")
+                except UnicodeDecodeError:
+                    continue
+                ruby_sources.append((project_file.path.as_posix(), ruby_content))
+                ruby_source_bytes += project_file.size
+                continue
             if not (is_openapi_file or is_graphql_file):
                 continue
             if project_file.size == 0 or project_file.size > MAX_CONTRACT_BYTES:
@@ -826,17 +1116,255 @@ def audit_project_api_contracts(
                 report = audit_api_contract(content, contract_type=ctype, source_name=rel_name)
                 contract_reports.append(report)
                 all_findings.extend(report["findings"])
+                if is_graphql_file:
+                    for field_name, root_types in _graphql_root_fields(content).items():
+                        graphql_root_fields.setdefault(field_name, set()).update(root_types)
             except ApiContractAuditError:
                 continue
+
+    resolver_findings = _audit_graphql_ruby_resolvers(graphql_root_fields, ruby_sources)
+    all_findings.extend(resolver_findings)
 
     score, grade = _score_findings(all_findings)
     return {
         "format": "sniper-project-api-contract-audit-v1",
         "project_path": str(root),
         "contracts_audited": len(contract_reports),
+        "resolver_files_audited": len(ruby_sources) if graphql_root_fields else 0,
+        "resolver_finding_count": len(resolver_findings),
         "finding_count": len(all_findings),
         "score": score,
         "grade": grade,
         "contracts": contract_reports,
         "findings": all_findings,
     }
+
+
+_SHADOW_ROUTE_RE = re.compile(
+    r"(?:@?\b(?:app|router|bp|api)\.(?:get|post|put|delete|patch|route))\s*\(\s*[\"'](/[^\"']+)[\"']"
+)
+_BOPLA_CODE_RE = re.compile(
+    r"(?:"
+    r"\b[A-Z]\w*\s*\(\s*\*\*\s*(?:request\.(?:json\b|form\b|get_json\s*\(\s*\)|data\b)|(?:payload|body|data)\b)"
+    r"|Object\.assign\s*\(\s*\w+\s*,\s*req\.body\b"
+    r"|\.create\s*\(\s*req\.body\s*\)"
+    r"|\.update\s*\(\s*req\.body\b"
+    r"|\.permit!(?!\w)"
+    r")"
+)
+
+
+def audit_shadow_api_and_bopla(
+    raw_content: str,
+    *,
+    contract_paths: list[str] | None = None,
+    filename: str = "routes.py",
+) -> dict[str, Any]:
+    if not isinstance(raw_content, str) or not raw_content.strip():
+        return {
+            "format": "sniper-shadow-api-bopla-audit/1",
+            "filename": filename,
+            "count": 0,
+            "findings": [],
+        }
+
+    findings: list[dict[str, Any]] = []
+
+    if contract_paths:
+        known_paths = {str(p).strip() for p in contract_paths if str(p).strip()}
+        if known_paths:
+            for match in _SHADOW_ROUTE_RE.finditer(raw_content):
+                route_path = match.group(1)
+                if route_path not in known_paths:
+                    line_no = raw_content.count("\n", 0, match.start()) + 1
+                    findings.append({
+                        "id": "SNIPER-OPENAPI-SHADOW-01",
+                        "rule_id": "SNIPER-OPENAPI-SHADOW-01",
+                        "control_id": "SNIPER-OPENAPI-SHADOW-01",
+                        "severity": "high",
+                        "cwe": "CWE-285",
+                        "reference": "CWE-285",
+                        "category": "api_security",
+                        "owasp_category": "OWASP API9:2023",
+                        "title": "OpenAPI sözleşmesinde tanımlı olmayan gölge uç nokta (Shadow / Zombie API)",
+                        "description": (
+                            f"Uygulama kodunda tanımlı '{route_path}' uç noktası OpenAPI sözleşmesinde "
+                            "yer almıyor; belgesiz veya unutulmuş (Shadow/Zombie) API uç noktası güvenlik kontrollerini atlatabilir."
+                        ),
+                        "evidence": match.group(0).strip(),
+                        "path": route_path,
+                        "location": f"{filename}:{line_no} ({route_path})",
+                        "recommendation": (
+                            "Tüm aktif uç noktaları OpenAPI sözleşmesine dahil edin ve kullanımdan kalkmış "
+                            "(zombie/debug) yönlendirmeleri kod tabanından kaldırın."
+                        ),
+                        "filename": filename,
+                        "line": line_no,
+                    })
+
+    for match in _BOPLA_CODE_RE.finditer(raw_content):
+        line_no = raw_content.count("\n", 0, match.start()) + 1
+        findings.append({
+            "id": "SNIPER-API-BOPLA-03",
+            "rule_id": "SNIPER-API-BOPLA-03",
+            "control_id": "SNIPER-API-BOPLA-03",
+            "severity": "high",
+            "cwe": "CWE-915",
+            "reference": "CWE-915",
+            "category": "api_security",
+            "owasp_category": "OWASP API3:2023",
+            "title": "Sınırsız toplu atama (Mass Assignment / BOPLA — OWASP API3:2023)",
+            "description": (
+                "İstemciden gelen istek gövdesi (request.json / req.body / payload) alan bazlı "
+                "allowlist uygulanmadan doğrudan ORM modeline veya nesneye aktarılıyor."
+            ),
+            "evidence": match.group(0).strip(),
+            "location": f"{filename}:{line_no}",
+            "recommendation": (
+                "İstek verisini doğrudan modele açmak yerine yalnızca izin verilen alanları içeren "
+                "açık DTO / Pydantic şeması (allowlist) kullanın."
+            ),
+            "filename": filename,
+            "line": line_no,
+        })
+
+    return {
+        "format": "sniper-shadow-api-bopla-audit/1",
+        "filename": filename,
+        "count": len(findings),
+        "findings": findings,
+    }
+
+
+_GQL_FRAGMENT_OR_SUB_RE = re.compile(
+    r"(?:\bfragment\s+[A-Za-z_][A-Za-z0-9_]*\s+on\s+([A-Za-z_][A-Za-z0-9_]*)"
+    r"|\btype\s+(Subscription)\b\s*\{)",
+    re.MULTILINE,
+)
+_GQL_UNSCOPED_LOOKUP_RE = re.compile(
+    r"\b(?:find\s*\(|find_by_gid\b|GlobalID\b|findById\s*\(|findUnique\s*\(|objects\.get\s*\()"
+)
+_GQL_TENANT_GUARD_RE = re.compile(
+    r"(?:\bauthorize!?|\bin_organization\b|Ability\.allowed\?|\bcurrent_user\.can\?"
+    r"|\bcontext\.(?:tenantId|organizationId)\b|\btenant_id\s*==)"
+)
+_GQL_FED_KEY_RE = re.compile(r"@key\s*\(\s*fields\s*:")
+_GQL_FED_RESOLVER_RE = re.compile(
+    r"\b(?:__resolveReference|resolve_reference)\b[\s\S]{0,600}?"
+    r"\b(?:findById|findUnique|findOne|find|\.get)\s*\("
+)
+_GQL_FED_AUTH_RE = re.compile(
+    r"\b(?:context\.(?:user|tenantId|organizationId)|current_user\b|in_organization\b|authorize!?\b|Ability\.allowed\?)"
+)
+_GQL_PERSISTED_SENSITIVE_OP_RE = re.compile(
+    r"(?:\bmutation\b|\b(?:admin|delete|destroy|promote|grant|impersonate|updateRole|reset\w*|purge)\w*\b)",
+    re.IGNORECASE,
+)
+_GQL_RESOLVER_AUTH_GUARD_RE = re.compile(
+    r"(?:\bauthorize!?|@UseGuards\b|\brequireAuth\b|\bisAdmin\b|Ability\.allowed\?"
+    r"|\bcheck_admin\b|\bensure_admin\b|\bcontext\.(?:user|isAdmin|roles)\b|\bcurrent_user\.admin\?)"
+)
+
+
+def audit_graphql_advanced_authorization(
+    schema_sdl: str,
+    resolver_sources: dict[str, str] | str = "",
+    *,
+    persisted_Manifest: dict[str, str] | None = None,
+    persisted_manifest: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    sdl_text = schema_sdl if isinstance(schema_sdl, str) else ""
+    if isinstance(resolver_sources, dict):
+        source_items = [(str(k), str(v)) for k, v in resolver_sources.items() if isinstance(v, str)]
+    elif isinstance(resolver_sources, str) and resolver_sources.strip():
+        source_items = [("resolvers", resolver_sources)]
+    else:
+        source_items = []
+
+    combined_resolvers = "\n".join(text for _, text in source_items)
+    manifest = persisted_Manifest if persisted_Manifest is not None else persisted_manifest
+    findings: list[dict[str, Any]] = []
+
+    # (a) SNIPER-GQL-FRAG-01: Fragment/Spread or Subscription unscoped tenant lookup
+    frag_or_sub_match = _GQL_FRAGMENT_OR_SUB_RE.search(sdl_text) or _GQL_FRAGMENT_OR_SUB_RE.search(combined_resolvers)
+    if frag_or_sub_match and combined_resolvers:
+        target_type = frag_or_sub_match.group(1) or frag_or_sub_match.group(2) or "Subscription"
+        lookup_match = _GQL_UNSCOPED_LOOKUP_RE.search(combined_resolvers)
+        if lookup_match and not _GQL_TENANT_GUARD_RE.search(combined_resolvers):
+            findings.append({
+                "id": "SNIPER-GQL-FRAG-01",
+                "rule_id": "SNIPER-GQL-FRAG-01",
+                "control_id": "SNIPER-GQL-FRAG-01",
+                "severity": "high",
+                "cwe": "CWE-862",
+                "reference": "CWE-862",
+                "category": "api_security",
+                "owasp_category": "OWASP API1:2023",
+                "title": "GraphQL Fragment/Spread veya Subscription üzerinden yetkisiz/tenant-dışı alan erişimi",
+                "description": (
+                    f"GraphQL '{target_type}' fragment/subscription alanı, authorize veya tenant kapsam kontrolü "
+                    "olmadan doğrudan nesne/GlobalID sorgusu ile çözümleniyor."
+                ),
+                "evidence": lookup_match.group(0).strip(),
+                "location": f"graphql:{target_type}",
+            })
+
+    # (b) SNIPER-GQL-FED-02: Apollo Federation (@key / __resolveReference) missing tenant/owner check
+    if _GQL_FED_KEY_RE.search(sdl_text) and combined_resolvers:
+        for src_name, src_text in source_items:
+            fed_match = _GQL_FED_RESOLVER_RE.search(src_text)
+            if fed_match:
+                window = src_text[max(0, fed_match.start() - 100):min(len(src_text), fed_match.end() + 300)]
+                if not _GQL_FED_AUTH_RE.search(window):
+                    findings.append({
+                        "id": "SNIPER-GQL-FED-02",
+                        "rule_id": "SNIPER-GQL-FED-02",
+                        "control_id": "SNIPER-GQL-FED-02",
+                        "severity": "critical",
+                        "cwe": "CWE-639",
+                        "reference": "CWE-639",
+                        "category": "api_security",
+                        "owasp_category": "OWASP API1:2023",
+                        "title": "Apollo Federation (__resolveReference / @key) varlık çözümleyicisinde tenant/sahiplik kontrolü eksikliği",
+                        "description": (
+                            "Federation @key varlık çözümleyicisi (__resolveReference), context.user / context.tenantId "
+                            "kontrolü yapmadan doğrudan ID ile kayıt döndürüyor."
+                        ),
+                        "evidence": fed_match.group(0).splitlines()[0].strip(),
+                        "location": f"{src_name}:__resolveReference",
+                    })
+                    break
+
+    # (c) SNIPER-GQL-PERSIST-03: Persisted GraphQL query manifest unprotected mutation / admin query
+    if isinstance(manifest, dict) and manifest:
+        for query_id, query_body in manifest.items():
+            q_text = str(query_body or "")
+            if _GQL_PERSISTED_SENSITIVE_OP_RE.search(q_text):
+                if not _GQL_RESOLVER_AUTH_GUARD_RE.search(combined_resolvers):
+                    findings.append({
+                        "id": "SNIPER-GQL-PERSIST-03",
+                        "rule_id": "SNIPER-GQL-PERSIST-03",
+                        "control_id": "SNIPER-GQL-PERSIST-03",
+                        "severity": "high",
+                        "cwe": "CWE-285",
+                        "reference": "CWE-285",
+                        "category": "api_security",
+                        "owasp_category": "OWASP API5:2023",
+                        "title": "Persisted GraphQL sorgu manifestinde (persisted_queries) korumasız mutasyon veya yönetici operasyonu",
+                        "description": (
+                            f"Persisted query '{query_id}' hassas bir mutasyon veya yönetici operasyonu içeriyor "
+                            "ancak hedef çözümleyicide yetki doğrulaması bulunmuyor."
+                        ),
+                        "evidence": q_text.strip()[:160],
+                        "location": f"persisted_queries:{query_id}",
+                    })
+                    break
+
+    return {
+        "format": "sniper-graphql-advanced-authz/1",
+        "finding_count": len(findings),
+        "findings": findings,
+    }
+
+
+

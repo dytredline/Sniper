@@ -202,7 +202,8 @@ def _rule_id(finding: dict[str, Any]) -> str:
     """Kararlı kural kimliği: grup + (IaC denetim kimliği | CWE | başvuru | başlık özeti)."""
     group = group_of(finding)
     if finding.get("_kind") == "sca":
-        return f"sniper/{group}/{finding['vulnerability_id']}"[:255]
+        vuln_id = str(finding.get("vulnerability_id") or finding.get("title") or "sca")
+        return f"sniper/{group}/{vuln_id}"[:255]
     iac = finding.get("iac") if isinstance(finding.get("iac"), dict) else {}
     flow = finding.get("taint_flow") if isinstance(finding.get("taint_flow"), dict) else {}
     if iac.get("check"):
@@ -385,7 +386,12 @@ def apply_exceptions(findings: list[dict[str, Any]], exceptions: list[dict[str, 
 
 def _triaged_out(finding: dict[str, Any]) -> bool:
     triage = finding.get("triage") if isinstance(finding.get("triage"), dict) else {}
-    return triage.get("disposition") in {"false_positive", "risk_accepted"}
+    if triage.get("disposition") in {"false_positive", "risk_accepted", "accepted_risk"}:
+        return True
+    if finding.get("disposition") in {"false_positive", "risk_accepted", "accepted_risk"}:
+        return True
+    tracking = finding.get("tracking") if isinstance(finding.get("tracking"), dict) else {}
+    return tracking.get("status") in {"false_positive", "risk_accepted"}
 
 
 def evaluate(findings: list[dict[str, Any]], policy: dict[str, Any], *, compared: bool,
@@ -618,6 +624,9 @@ def _gl_identifiers(finding: dict[str, Any]) -> list[dict[str, Any]]:
     if match:
         ids.append({"type": "cwe", "name": f"CWE-{match.group(1)}", "value": match.group(1),
                     "url": f"https://cwe.mitre.org/data/definitions/{match.group(1)}.html"})
+    owasp = str(finding.get("owasp") or "").strip()
+    if owasp:
+        ids.append({"type": "owasp", "name": owasp, "value": owasp})
     for value in [finding.get("vulnerability_id")] + list(finding.get("aliases") or []):
         if not value:
             continue
@@ -658,8 +667,11 @@ def build_gitlab_sast(findings: list[dict[str, Any]], *, root: Path | None, star
     return {"version": GITLAB_SCHEMA_VERSION, "vulnerabilities": vulns, "scan": _gl_scan("sast", start, end, version)}
 
 
-_GL_PACKAGE_MANAGER = {"npm": "npm", "pypi": "pip", "go": "go", "maven": "maven", "rubygems": "bundler",
-                       "packagist": "composer", "nuget": "nuget", "crates.io": "cargo", "pub": "pub"}
+_GL_PACKAGE_MANAGER = {"npm": "npm", "pypi": "pip", "python": "pip", "pip": "pip", "go": "go", "golang": "go",
+                       "maven": "maven", "rubygems": "bundler", "bundler": "bundler", "packagist": "composer",
+                       "composer": "composer", "nuget": "nuget", "crates.io": "cargo", "cargo": "cargo", "pub": "pub",
+                       "hex": "mix", "swifturl": "swift", "swift": "swift", "github actions": "github-actions",
+                       "actions": "github-actions", "erlang": "rebar3"}
 
 
 def build_gitlab_dependency(findings: list[dict[str, Any]], *, start: dt.datetime, end: dt.datetime,
@@ -990,3 +1002,68 @@ def console_lines(code: int, report: dict[str, Any]) -> Iterable[str]:
     for warning in report.get("warnings", [])[:5]:
         yield f"  Uyarı: {warning}"
     yield f"Sonuç: {'GEÇTİ' if code == EXIT_PASS else 'BAŞARISIZ'} (çıkış kodu {code})"
+
+
+def evaluate_enterprise_v2_ci_gate(
+    audit: dict[str, Any],
+    *,
+    block_on_attack_chains: bool = True,
+    block_on_ssvc_act: bool = True,
+) -> dict[str, Any]:
+    """Wave-9 Item #7: Saldırı zinciri (attack chain) ve CISA SSVC 'Act' odaklı kurumsal CI/CD kapısı."""
+    import attack_path_correlator
+    import cvss_ssvc_prioritizer
+
+    triage_obj = audit.get("deterministic_triage") if isinstance(audit.get("deterministic_triage"), dict) else None
+    verified_keys: set[tuple[str, int]] | None = None
+    if isinstance(triage_obj, dict) and isinstance(triage_obj.get("verified_production_findings"), list):
+        verified_keys = {
+            (str(it.get("file") or "").strip().lstrip("./"), int(it.get("line") or 0))
+            for it in triage_obj.get("verified_production_findings") or []
+            if isinstance(it, dict)
+        }
+    findings = [
+        f
+        for f in (audit.get("findings") or [])
+        if isinstance(f, dict)
+        and f.get("scope_tier", "production") == "production"
+        and f.get("exploitability", "") != "hardening_only"
+        and f.get("triage_verdict", "verified_true_positive") == "verified_true_positive"
+        and (
+            verified_keys is None
+            or (str(f.get("file") or "").strip().lstrip("./"), int(f.get("line") or 0)) in verified_keys
+        )
+    ]
+    ag = attack_path_correlator.synthesize_multi_hop_exploit_chains(findings)
+    ssvc = cvss_ssvc_prioritizer.evaluate_cisa_ssvc_decisions(findings)
+
+    attack_chain_count = int(ag.get("chain_count", 0))
+    ssvc_act_count = int((ssvc.get("summary") or {}).get("Act", 0))
+    critical_count = sum(1 for f in findings if str(f.get("severity") or "").lower() == "critical")
+
+    blocking_reasons: list[str] = []
+    if block_on_attack_chains and attack_chain_count > 0:
+        blocking_reasons.append(f"{attack_chain_count} çok adımlı saldırı zinciri (multi-hop exploit chain) tespit edildi.")
+    if block_on_ssvc_act and ssvc_act_count > 0:
+        blocking_reasons.append(f"{ssvc_act_count} bulgu CISA SSVC 'Act' (derhal müdahale) kararında.")
+    if critical_count > 0:
+        blocking_reasons.append(f"{critical_count} kritik üretim (production) bulgusu mevcut.")
+
+    passed = len(blocking_reasons) == 0
+    verdict = "PASS" if passed else "BLOCK"
+    return {
+        "format": "sniper-enterprise-v2-ci-gate/1",
+        "verdict": verdict,
+        "passed": passed,
+        "blocking_reasons": blocking_reasons,
+        "attack_chain_count": attack_chain_count,
+        "ssvc_act_count": ssvc_act_count,
+        "critical_production_count": critical_count,
+        "pr_comment_markdown": (
+            f"## Sniper Enterprise v2 CI Gate: **{verdict}**\n"
+            f"- Attack Chains: {attack_chain_count}\n"
+            f"- CISA SSVC Act: {ssvc_act_count}\n"
+            f"- Critical Findings: {critical_count}\n"
+        ),
+    }
+

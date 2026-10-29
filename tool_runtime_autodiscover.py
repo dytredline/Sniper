@@ -293,7 +293,8 @@ def _read_systemd_dropin_defaults(dropin_dir: Path) -> dict[str, str]:
 
 
 def autodiscover_and_bind_runtimes(*, apply_env: bool = True, persist: bool = True,
-                                   trust_disk: bool = False) -> dict[str, Any]:
+                                   trust_disk: bool = False,
+                                   include_readiness: bool = True) -> dict[str, Any]:
     """Yerel/taşınabilir araç çalışma zamanlarını keşfet, SHA-256 değerlerini hesapla, ortamı bağla.
 
     Güven modeli: diskten hesaplanan hash'ler yalnız açık onayla (``trust_disk=True``, ör.
@@ -304,7 +305,12 @@ def autodiscover_and_bind_runtimes(*, apply_env: bool = True, persist: bool = Tr
     Operatörün verdiği değerler (systemd drop-in, kabuk ortamı) hiçbir zaman ezilmez.
     """
     with _BIND_LOCK:
-        return _autodiscover_locked(apply_env=apply_env, persist=persist, trust_disk=trust_disk)
+        return _autodiscover_locked(
+            apply_env=apply_env,
+            persist=persist,
+            trust_disk=trust_disk,
+            include_readiness=include_readiness,
+        )
 
 
 def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
@@ -369,6 +375,29 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
         "id": "trivy",
         "bound": bool(trivy_bin),
         "mode": "local_binary_with_optional_offline_db",
+    })
+
+    # 2b. Syft + Grype binaries; Grype analysis is enabled only with the exact
+    # separately pinned offline database snapshot accepted by the product.
+    syft_runtime = community_runtimes.get("syft")
+    grype_runtime = community_runtimes.get("grype")
+    syft_bin = syft_runtime[0] if syft_runtime else None
+    grype_bin = grype_runtime[0] if grype_runtime else None
+    if syft_bin and syft_runtime:
+        bindings["SNIPER_SYFT_BINARY"] = str(syft_bin)
+        bindings["SNIPER_SYFT_BINARY_SHA256"] = syft_runtime[1]
+    if grype_bin and grype_runtime:
+        bindings["SNIPER_GRYPE_BINARY"] = str(grype_bin)
+        bindings["SNIPER_GRYPE_BINARY_SHA256"] = grype_runtime[1]
+    # The vulnerability DB is several GiB.  Startup discovery must never hash it:
+    # an explicit operator binding is verified once, in-process, by the active
+    # Syft/Grype readiness gate immediately before use.
+    tool_results.append({
+        "id": "syft-grype",
+        "bound": bool(syft_bin and grype_bin),
+        "database_bound": False,
+        "database_binding": "explicit_runtime_configuration_required",
+        "mode": "two_locked_binaries_with_optional_offline_db",
     })
 
     # 3. Gitleaks
@@ -515,7 +544,26 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
         "mode": "single_static_binary_and_offline_db",
     })
 
-    # 11. Schemathesis Local & Loopback
+    # 11. Schemathesis Local & Loopback.  A fixture/port configuration alone is
+    # not a bound scanner: the exact, owner-controlled CLI must also be present.
+    from schemathesis_active import ST_EXECUTABLE_SHA256
+    st_bin = _first_valid_file(
+        ([Path(dropin_defaults["SNIPER_SCHEMATHESIS_BINARY"])]
+         if "SNIPER_SCHEMATHESIS_BINARY" in dropin_defaults else [])
+        + [r / "schemathesis-4.31.0" / "venv" / "bin" / "st" for r in portable_roots]
+        + [r / "schemathesis" / "venv" / "bin" / "st" for r in portable_roots],
+        executable=True,
+    )
+    st_sha = _sha256_file(st_bin) if st_bin else None
+    st_secure = False
+    if st_bin and st_sha == ST_EXECUTABLE_SHA256:
+        try:
+            metadata = st_bin.stat()
+            st_secure = metadata.st_uid == os.geteuid() and not metadata.st_mode & 0o022
+        except OSError:
+            st_secure = False
+    if st_secure and st_bin:
+        bindings["SNIPER_SCHEMATHESIS_BINARY"] = str(st_bin)
     st_origin = dropin_defaults.get("SNIPER_SCHEMATHESIS_LOCAL_ORIGIN", "http://127.0.0.1:8788")
     st_ports = dropin_defaults.get("SNIPER_SCHEMATHESIS_ALLOWED_PORTS", "8788")
     bindings["SNIPER_SCHEMATHESIS_LOCAL_ORIGIN"] = st_origin
@@ -523,8 +571,8 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
     bindings["SNIPER_SCHEMATHESIS_ALLOWED_PORTS"] = st_ports
     tool_results.append({
         "id": "schemathesis",
-        "bound": True,
-        "mode": "synthetic_fixture_and_loopback",
+        "bound": st_secure,
+        "mode": "pinned_cli_synthetic_fixture_and_loopback",
     })
 
     # 12. OWASP ZAP (already pinned via zap_passive_active.py)
@@ -540,7 +588,8 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
     return bindings, tool_results
 
 
-def _autodiscover_locked(*, apply_env: bool, persist: bool, trust_disk: bool) -> dict[str, Any]:
+def _autodiscover_locked(*, apply_env: bool, persist: bool, trust_disk: bool,
+                         include_readiness: bool) -> dict[str, Any]:
     bindings, tool_results = _discover_bindings()
     pin_mismatches: list[str] = []
     pins_recorded = False
@@ -593,7 +642,10 @@ def _autodiscover_locked(*, apply_env: bool, persist: bool, trust_disk: bool) ->
                 except OSError:
                     persisted = False
 
-    readiness = runtime_readiness_payload()
+    readiness = runtime_readiness_payload() if include_readiness else {
+        "tools": [],
+        "deferred": True,
+    }
     ready_profiles = sum(
         1
         for tool in readiness.get("tools", [])
@@ -669,6 +721,17 @@ def portable_bundle_manifest() -> dict[str, Any]:
             "approx_size_mb": 160,
             "ready_on_this_host": ready_by_tool.get("trivy", False),
             "bundle_present": "trivy" in verified,
+        },
+        {
+            "id": "syft-grype",
+            "name": "Syft 1.55.0 + Grype 0.121.0 (SBOM; zafiyet analizi ayrıca sabitlenmiş çevrimdışı DB ister)",
+            "bundle_relpath": "runtimes/syft-1.55.0/syft + runtimes/grype-0.121.0/grype",
+            "packaging_type": "two_static_binaries_optional_offline_db",
+            "requires_separate_install": False,
+            "requires_docker": False,
+            "approx_size_mb": 250,
+            "ready_on_this_host": ready_by_tool.get("syft-grype", False),
+            "bundle_present": "syft" in verified and "grype" in verified,
         },
         {
             "id": "gitleaks",

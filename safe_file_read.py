@@ -57,7 +57,7 @@ def _open_regular_candidate(path: str | os.PathLike[str]) -> int:
     parts = [_validated_component(part) for part in normalized_relative.split("/")]
     if not parts:
         raise ValueError("file path required")
-    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
+    directory_flags = getattr(os, "O_PATH", os.O_RDONLY) | os.O_DIRECTORY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0)
     file_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | getattr(os, "O_CLOEXEC", 0)
     directory_fd = os.open("/" if absolute else ".", directory_flags)
     try:

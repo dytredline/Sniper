@@ -106,7 +106,9 @@ _EXEC_V = {"execv": 0, "execvp": 0, "execve": 0, "execvpe": 0, "_execv": 0, "_ex
            "_spawnv": 1, "_spawnvp": 1, "_wspawnv": 1, "_wspawnvp": 1}
 _CMD_DIRECT = {"system": 0, "_wsystem": 0, "popen": 0, "_popen": 0, "_wpopen": 0, "WinExec": 0,
                "CreateProcessA": 1, "CreateProcessW": 1, "CreateProcess": 1, "ShellExecuteA": 2, "ShellExecuteW": 2,
-               "ShellExecute": 2}
+               "ShellExecute": 2, "dlopen": 0, "LoadLibraryA": 0, "LoadLibraryW": 0, "LoadLibrary": 0,
+               "LoadLibraryExA": 0, "LoadLibraryExW": 0, "g_spawn_command_line_async": 0,
+               "g_spawn_command_line_sync": 0}
 # printf ailesi: ad → biçim argümanı dizini
 _FMT = {"printf": 0, "vprintf": 0, "wprintf": 0, "vwprintf": 0, "fprintf": 1, "vfprintf": 1, "fwprintf": 1,
         "vfwprintf": 1, "dprintf": 1, "vdprintf": 1, "sprintf": 1, "vsprintf": 1, "swprintf": 2, "vswprintf": 2,
@@ -131,7 +133,8 @@ _PATH = {"fopen": 0, "_wfopen": 0, "fopen64": 0, "freopen": 0, "open": 0, "open6
          "openat": 1, "creat": 0, "unlink": 0, "_unlink": 0, "_wunlink": 0, "remove": 0, "_wremove": 0, "rmdir": 0,
          "rename": 0, "opendir": 0, "chmod": 0, "chown": 0, "truncate": 0, "CreateFileA": 0, "CreateFileW": 0,
          "CreateFile": 0, "DeleteFileA": 0, "DeleteFileW": 0, "DeleteFile": 0, "ifstream": 0, "ofstream": 0,
-         "fstream": 0, "wifstream": 0, "wofstream": 0}
+         "fstream": 0, "wifstream": 0, "wofstream": 0, "unlinkat": 1, "mkdir": 0, "mkdirat": 1, "symlink": 1,
+         "link": 1}
 _LDAP = {"ldap_search_s": 3, "ldap_search_st": 3, "ldap_search_ext": 3, "ldap_search_ext_s": 3, "ldap_search": 3,
          "ldap_search_sA": 3, "ldap_search_sW": 3, "ldap_search_ext_sA": 3, "ldap_search_ext_sW": 3}
 _CGI_HTML_RE = re.compile(r"(?i)content-type:\s*text/html")
@@ -2776,16 +2779,15 @@ class CBody(BodyAnalyzer):
                     "wsprintfA", "wsprintfW", "wsprintf", "asprintf", "vasprintf") and len(ranges) >= 2:
             fi = _FMT.get(name, 1)
             add = EMPTY
-            fmt_lit = self._lit(ranges[fi]) if fi < len(ranges) and ranges[fi][1] - ranges[fi][0] == 1 else ""
+            fmt_lit = self._fmt_lit(ranges[fi]) if fi < len(ranges) else ""
             for t in (self.fmt_arg_taints(fmt_lit, taints[fi + 1:]) if fmt_lit else taints[fi + 1:]):
                 add = add | t
             if fi < len(ranges):
-                fa, fb = ranges[fi]
-                if fb - fa == 1 and toks[fa].kind == "str" and self.fixed_host_literal(toks[fa].text):
+                if fmt_lit and self.fixed_host_literal(fmt_lit):
                     add = core.with_host(add)
-                if fb - fa == 1 and toks[fa].kind == "str" and _SRC_EXT_RE.search(toks[fa].text.strip()):
+                if fmt_lit and _SRC_EXT_RE.search(fmt_lit.strip()):
                     self.var_info.setdefault(self.base_ident(*ranges[0]), {})["srcpath"] = True
-                add = add | (taints[fi] if not (fb - fa == 1 and toks[fa].kind == "str") else EMPTY)
+                add = add | (taints[fi] if not fmt_lit else EMPTY)
             dst_name = self.base_ident(*ranges[0])
             self._note_deps(dst_name, ranges[min(fi, len(ranges) - 1)][0], ranges[-1][1], replace=True)
             cap = self.container_cap(ranges[0])
@@ -2913,6 +2915,22 @@ class CBody(BodyAnalyzer):
             if toks[j].kind == "str":
                 return toks[j].text
         return ""
+
+    def _fmt_lit(self, r: tuple[int, int]) -> str:
+        """Sabit biçim dizgesi (ardışık C dizge sabitleri ve PRI* biçim makroları dahil)."""
+        a, b = r
+        toks = self.toks[a:b]
+        if not toks:
+            return ""
+        parts: list[str] = []
+        for t in toks:
+            if t.kind == "str":
+                parts.append(t.text)
+            elif t.kind == "id" and re.match(r"^PRI[diouxX]\w*$", t.text):
+                parts.append('"d"')
+            else:
+                return ""
+        return " ".join(parts)
 
     def _lit_or_id(self, r: tuple[int, int]) -> str:
         a, b = r

@@ -222,8 +222,18 @@
           </div>
           <div id="dependency-summary" class="dependency-summary"></div>
           <div id="dependency-sources" class="dependency-sources"></div>
-          <div class="responsive-table"><table><thead><tr><th>Açık</th><th>Paket / sürüm</th><th>Önem</th><th>Düzeltme</th><th>Kaynak</th><th>Durum</th></tr></thead><tbody id="dependency-findings"></tbody></table></div>
+          <div id="dependency-filter-bar" class="dependency-filter-bar form-grid">
+            <label>Paket / CVE ara<input id="dependency-filter-query" type="search" maxlength="160" placeholder="Paket, CVE/GHSA veya başlık…"></label>
+            <label>Kaynak<select id="dependency-filter-source"><option value="all">Tümü</option><option value="trivy">Trivy</option><option value="osv">OSV</option></select></label>
+            <label>Önem<select id="dependency-filter-severity"><option value="all">Tümü</option><option value="critical">Kritik</option><option value="high">Yüksek</option><option value="medium">Orta</option><option value="low">Düşük</option><option value="info">Bilgi</option></select></label>
+            <label>Durum<select id="dependency-filter-status"><option value="all">Tümü</option><option value="open">Açık</option><option value="in_progress">Üzerinde çalışılıyor</option><option value="retest_required">Yeniden test</option><option value="resolved">Çözüldü</option><option value="reopened">Yeniden açıldı</option><option value="risk_accepted">Risk kabulü</option></select></label>
+            <span id="dependency-filter-count" class="muted"></span>
+          </div>
+          <div class="responsive-table"><table><thead><tr><th>Açık</th><th>Paket / sürüm</th><th>Önem</th><th>Düzeltme</th><th>Kaynak</th><th>Durum / İnceleme</th></tr></thead><tbody id="dependency-findings"></tbody></table></div>
+          <div class="row-actions" aria-label="Bağımlılık bulgusu sayfaları"><button id="dependency-page-prev" class="button secondary" type="button" disabled>Önceki</button><span id="dependency-page-label" class="muted" role="status"></span><button id="dependency-page-next" class="button secondary" type="button" disabled>Sonraki</button></div>
           <div id="dependency-empty" class="empty-state"><div class="empty-icon" aria-hidden="true"><svg class="ui-symbol"><use href="/static/ui-icons.svg#package"></use></svg></div><h3>Henüz bağımlılık bulgusu yok</h3><p>SBOM üretin veya daha önce oluşturulmuş güvenilir Trivy/OSV JSON raporunu yerelden içe aktarın.</p></div>
+          <div id="dependency-no-results" class="empty-state hidden"><div class="empty-icon" aria-hidden="true"><svg class="ui-symbol"><use href="/static/ui-icons.svg#search"></use></svg></div><h3>Bu filtrelere uyan bulgu yok</h3><p>Arama veya filtreleri değiştirin.</p></div>
+          <section id="dependency-finding-detail" class="panel hidden" aria-live="polite"></section>
         </section>
       </section>
 
@@ -528,6 +538,7 @@
                 <option value="/api/tool-runs/trivy-maven-vulnerability">Trivy Maven (pom.xml) zafiyet analizi</option>
                 <option value="/api/tool-runs/trivy-ruby-vulnerability">Trivy Ruby (Gemfile.lock) zafiyet analizi</option>
                 <option value="/api/tool-runs/trivy-terraform-config-batch">Trivy Terraform çoklu .tf dizin taraması</option>
+                <option value="/api/tool-runs/syft-grype">Syft SBOM + Grype çevrimdışı zafiyet analizi</option>
                 <option value="/api/tool-runs/gitleaks-git-history">Gitleaks yerel Git geçmişi sır taraması</option>
                 <option value="/api/protocol-security/audit">gRPC / WebSocket / Webhook protokol güvenliği (yalnız satır içi)</option>
                 <option value="/api/auth-protocol/audit">JWT / OAuth2 / SAML yapıt denetimi (yalnız satır içi)</option>
@@ -1878,6 +1889,35 @@
           </div>
         </article>
       </div>
+    </section>
+  </div>
+</div>
+<div class="modal-backdrop hidden" id="burp-workbench-modal" role="dialog" aria-modal="true" aria-labelledby="burp-workbench-modal-title">
+  <div class="modal modal-wide">
+    <button class="modal-close" data-close="burp-workbench-modal" aria-label="Kapat">×</button>
+    <div class="modal-icon shield">▶</div><p class="eyebrow">ETKİLEŞİMLİ GÜVENLİK VE BOUNTY LABORATUVARI</p><h2 id="burp-workbench-modal-title">Etkileşimli Güvenlik ve Bounty Laboratuvarı (Repeater / Autorize / Sequencer / Decoder / Bounty Kokpiti)</h2>
+    <p class="modal-copy">HTTP yanıt farklarını (Repeater + Comparer), çoklu oturum yetki matrisini (Autorize), belirteç entropisini (Sequencer), çok katmanlı trafik kod çözücüyü (Decoder), sembolik kısıt çözücüyü (Z3 SAT/UNSAT) ve 5 kapılı Bug Bounty / CVE hazırlık kokpitini yerel olarak çalıştırın.</p>
+    <form id="burp-workbench-form" class="form-grid">
+      <label class="full">Araç seçimi<select id="burp-workbench-tool" name="tool">
+        <option value="/api/burp-equiv/repeater-compare">HTTP Repeater &amp; Comparer (Yanıt Farkı ve Anomali)</option>
+        <option value="/api/burp-equiv/autorize-matrix">Autorize Yetki Matrisi (IDOR / BOLA / Mass Assignment)</option>
+        <option value="/api/burp-equiv/token-sequencer">Token Sequencer (Shannon Entropi ve Sayaç Analizi)</option>
+        <option value="/api/burp-equiv/traffic-decoder">Traffic Decoder &amp; HAR Denetçisi</option>
+        <option value="/api/burp-equiv/dom-invader">DOM Invader &amp; İstemci Gadget Denetçisi</option>
+        <option value="/api/burp-equiv/smuggling-differential">HTTP Request Smuggling Diferansiyel Denetçisi</option>
+        <option value="/api/wave6/symbolic-solve">Sembolik Yol Kısıt Çözücü (SAT / UNSAT Kanıtı)</option>
+        <option value="/api/wave6/bounty-readiness">Bug Bounty &amp; CVE Gönderim Hazırlık Kokpiti</option>
+      </select></label>
+      <label class="full">JSON Girdi Yükü<textarea id="burp-workbench-payload" name="payload" rows="7" placeholder='{"baseline_response": {"status": 200, "body": {"role": "user"}}, "mutated_response": {"status": 200, "body": {"role": "admin"}}}' required></textarea></label>
+      <button class="button primary wide full" id="burp-workbench-submit" type="submit">Analizi çalıştır</button>
+    </form>
+    <p id="burp-workbench-error" class="error-message hidden" role="alert"></p>
+    <section id="burp-workbench-result" class="panel hidden" aria-live="polite">
+      <div class="summary-grid">
+        <article><small>Format</small><b id="burp-workbench-format"></b></article>
+        <article><small>Durum / Karar</small><b id="burp-workbench-verdict"></b></article>
+      </div>
+      <pre id="burp-workbench-output" class="code-block"></pre>
     </section>
   </div>
 </div>

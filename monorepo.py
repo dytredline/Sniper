@@ -35,7 +35,9 @@ ROOT_KEY = "."
 # Örtük alt proje tespitinde sayılan bağımlılık bildirimleri (docker-compose, CI dosyaları sayılmaz).
 DEPENDENCY_MANIFESTS = frozenset({
     "package.json", "requirements.txt", "pyproject.toml", "pipfile", "setup.py", "cargo.toml", "go.mod", "gemfile",
-    "composer.json", "pom.xml", "build.gradle", "build.gradle.kts", "pubspec.yaml", "podfile",
+    "composer.json", "pom.xml", "build.gradle", "build.gradle.kts", "pubspec.yaml", "podfile", "mix.exs",
+    "rebar.config", "package.swift", "uv.lock", "poetry.lock", "pipfile.lock", "bun.lock", "packages.config",
+    "directory.packages.props",
 })
 
 
@@ -207,6 +209,23 @@ def _cargo(root: Path, project_tree: ProjectTree) -> tuple[list[str], list[str]]
     return members, exclude
 
 
+def _uv(root: Path, project_tree: ProjectTree) -> tuple[list[str], list[str]]:
+    text = _read(root / "pyproject.toml", project_tree=project_tree)
+    if not text:
+        return [], []
+    try:
+        tool = tomllib.loads(text).get("tool")
+    except (tomllib.TOMLDecodeError, ValueError):
+        return [], []
+    uv_cfg = tool.get("uv") if isinstance(tool, dict) else None
+    workspace = uv_cfg.get("workspace") if isinstance(uv_cfg, dict) else None
+    if not isinstance(workspace, dict):
+        return [], []
+    members = [m for m in workspace.get("members") or [] if isinstance(m, str)]
+    exclude = [m for m in workspace.get("exclude") or [] if isinstance(m, str)]
+    return members, exclude
+
+
 def _maven(root: Path, project_tree: ProjectTree) -> list[str]:
     text = _read(root / "pom.xml", project_tree=project_tree)
     if not text:
@@ -286,6 +305,12 @@ def _detect(root: Path, manifests: Iterable[str], project_tree: ProjectTree) -> 
         for rel in get_tree().expand(members, "Cargo.toml"):
             if rel not in excluded:
                 add(rel, "cargo")
+    uv_members, uv_exclude = _uv(root, project_tree)
+    if uv_members:
+        excluded = set(get_tree().expand(uv_exclude)) if uv_exclude else set()
+        for rel in get_tree().expand(uv_members, "pyproject.toml"):
+            if rel not in excluded:
+                add(rel, "uv")
     for rel in _maven(root, project_tree):
         add(rel, "maven")
     for rel in _gradle(root, project_tree):

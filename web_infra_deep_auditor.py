@@ -16,6 +16,14 @@ DANGLING_CNAME_SUFFIXES: tuple[str, ...] = (
     "pantheonsite.io",
     "zendesk.com",
     "unbouncepages.com",
+    "vercel.app",
+    "netlify.app",
+    "fly.dev",
+    "onrender.com",
+    "pages.dev",
+    "surge.sh",
+    "cargo.site",
+    "ghost.io",
 )
 
 SENSITIVE_ROBOTS_PATHS: tuple[str, ...] = (
@@ -312,6 +320,26 @@ def audit_discovery_and_identity_endpoints(
                 )
             )
 
+        token_auth_methods = [
+            str(m).strip().lower()
+            for m in openid_config.get("token_endpoint_auth_methods_supported", [])
+            if str(m).strip()
+        ]
+        weak_token_auth = [m for m in token_auth_methods if m in {"none", "client_secret_get"}]
+        if weak_token_auth:
+            findings.append(
+                _controlled_finding(
+                    "high",
+                    "authentication",
+                    "OpenID Connect token uç noktasında zayıf istemci kimlik doğrulama yöntemi (none / client_secret_get)",
+                    "token_endpoint_auth_methods_supported içinde 'none' (kimlik doğrulamasız) veya 'client_secret_get' (URL sorgu dizgesinde istemci sırrı sızıntısı) yöntemine izin veriliyor.",
+                    "token_endpoint_auth_methods_supported: " + ", ".join(weak_token_auth),
+                    "Gizli istemciler için private_key_jwt veya tls_client_auth (en azından client_secret_basic/post + PKCE) zorunlu kılın; client_secret_get yöntemini kapatın.",
+                    "OAuth 2.0 Security Best Current Practice",
+                    "SNIPER-AUTH-11",
+                )
+            )
+
     if isinstance(jwks_doc, dict) and jwks_doc:
         key_entries = jwks_doc.get("keys")
         candidates = key_entries if isinstance(key_entries, list) else [jwks_doc]
@@ -354,6 +382,21 @@ def audit_discovery_and_identity_endpoints(
 
     if response_headers is not None:
         hdrs = {str(k).lower(): str(v).strip() for k, v in response_headers.items()}
+        acao = hdrs.get("access-control-allow-origin", "").strip().lower()
+        acac = hdrs.get("access-control-allow-credentials", "").strip().lower()
+        if acao in {"*", "null"} and acac == "true":
+            findings.append(
+                _controlled_finding(
+                    "critical",
+                    "headers",
+                    "CORS yapılandırmasında kimlik bilgileriyle (Allow-Credentials: true) joker veya null köken izni",
+                    "Yanıt başlıklarında Access-Control-Allow-Credentials: true ile birlikte Access-Control-Allow-Origin: * veya null kullanılıyor; sanal çerçeve (sandboxed iframe) ve çapraz köken saldırılarıyla oturum verileri çalınabilir.",
+                    f"Access-Control-Allow-Origin={acao}, Access-Control-Allow-Credentials={acac}",
+                    "Kimlik bilgili CORS yanıtlarında yalnızca açıkça beyaz listeye alınmış tam HTTPS kökenlerine izin verin; 'null' ve '*' kökenlerini reddedin.",
+                    "CWE-942",
+                    "SNIPER-CONF-07",
+                )
+            )
         missing_isolation = [
             header_name
             for header_name in (

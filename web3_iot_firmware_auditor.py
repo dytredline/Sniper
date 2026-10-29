@@ -210,6 +210,75 @@ def _scan_smart_contract_text(
                     )
                 )
 
+        if re.search(r"\bunchecked\s*\{", raw_line):
+            window = "\n".join(lines[line_no - 1 : min(len(lines), line_no + 6)])
+            if re.search(r"\b(?:balance|balances|totalSupply|allowance|amount|shares)\b[^\n]*[-+*]=", window):
+                title = "Solidity unchecked bloğu içinde bakiye/arz aritmetiği: Tam sayı taşması riski (SWC-101)"
+                key = (title, rel_file, line_no)
+                if key not in seen_keys:
+                    seen_keys.add(key)
+                    findings.append(
+                        _make_finding(
+                            "high",
+                            "smart_contract",
+                            title,
+                            "unchecked { ... } bloğu içinde bakiye, toplam arz veya tutar aritmetiği yapılıyor; Solidity 0.8+ taşma koruması devre dışı kaldığından underflow/overflow oluşabilir (SWC-101).",
+                            f"Satır {line_no}: unchecked blokta bakiye/tutar aritmetiği",
+                            "Finansal bakiye ve token miktarı hesaplamalarını unchecked bloklarının dışında tutun veya işlem öncesinde açık sınır kontrolü (require) uygulayın.",
+                            "CWE-190",
+                            "SNIPER-BUSL-01",
+                            file=rel_file,
+                            line=line_no,
+                            swc_id="SWC-101",
+                        )
+                    )
+
+        if re.search(r"\.(?:transferFrom|send)\s*\(", raw_line) and not re.search(
+            r"\b(?:require|if|assert|bool\s+\w+\s*=|safeTransferFrom)\b", raw_line
+        ):
+            title = "Solidity ERC20 transferFrom / send dönüş değerinin kontrol edilmemesi (SWC-104)"
+            key = (title, rel_file, line_no)
+            if key not in seen_keys:
+                seen_keys.add(key)
+                findings.append(
+                    _make_finding(
+                        "high",
+                        "smart_contract",
+                        title,
+                        "transferFrom() veya send() çağrısının boolean dönüş değeri doğrulanmıyor; revert etmeyen token sözleşmelerinde başarısız transferler başarılı sayılabilir (SWC-104).",
+                        f"Satır {line_no}: {stripped[:80]}",
+                        "OpenZeppelin SafeERC20 (safeTransfer / safeTransferFrom) kullanın veya dönüş değerini require(...) içinde doğrulayın.",
+                        "CWE-252",
+                        "SNIPER-BUSL-01",
+                        file=rel_file,
+                        line=line_no,
+                        swc_id="SWC-104",
+                    )
+                )
+
+        if re.search(r"\.getReserves\s*\(\s*\)", raw_line) and not re.search(
+            r"\b(?:TWAP|consult|observe|AggregatorV3Interface|latestRoundData)\b", raw_content
+        ):
+            title = "DeFi akıllı sözleşmesinde anlık AMM rezerv fiyat kehaneti (Flash Loan Oracle Manipulation)"
+            key = (title, rel_file, line_no)
+            if key not in seen_keys:
+                seen_keys.add(key)
+                findings.append(
+                    _make_finding(
+                        "critical",
+                        "smart_contract",
+                        title,
+                        "Fiyat hesaplamasında TWAP veya merkeziyetsiz fiyat beslemesi (Chainlink) yerine doğrudan AMM getReserves() anlık bakiyesi kullanılıyor; tek blokluk Flash Loan ile fiyat manipüle edilebilir.",
+                        f"Satır {line_no}: getReserves() anlık rezerv kullanımı",
+                        "Anlık havuz rezervleri yerine Chainlink AggregatorV3Interface (latestRoundData + staleness kontrolü) veya Uniswap V3 TWAP (observe) kullanın.",
+                        "CWE-841",
+                        "SNIPER-BUSL-01",
+                        file=rel_file,
+                        line=line_no,
+                        swc_id="SWC-136",
+                    )
+                )
+
 
 def audit_smart_contract_inline(
     raw_content: str,
@@ -523,6 +592,28 @@ def _scan_iot_firmware_text(
                         "Üretim firmware derlemelerinde telnetd ve kimlik doğrulamasız UART konsol erişimini devre dışı bırakın.",
                         "CWE-284",
                         "SNIPER-INFR-01",
+                        file=rel_file,
+                        line=line_no,
+                    )
+                )
+
+        cmd_calls = list(_named_c_calls(raw_line, ("system", "popen")))
+        if cmd_calls:
+            fn_name = cmd_calls[0][1]
+            title = "Gömülü C/C++ firmware kodunda kabuk komutu çalıştırma (system / popen)"
+            key = (title, rel_file, line_no)
+            if key not in seen_keys:
+                seen_keys.add(key)
+                findings.append(
+                    _make_finding(
+                        "critical",
+                        "iot_firmware",
+                        title,
+                        f"Firmware içinde '{fn_name}()' ile işletim sistemi kabuk komutu çalıştırılıyor; ağdan veya NVRAM'den gelen parametrelerle komut enjeksiyonu (RCE) oluşabilir.",
+                        f"Satır {line_no}: {fn_name}(...) çağrısı",
+                        "system()/popen() yerine kabuk yorumlayıcısı çağırmayan execve() veya doğrudan C kütüphanesi/ioctl API'lerini kullanın.",
+                        "CWE-78",
+                        "SNIPER-INPV-07",
                         file=rel_file,
                         line=line_no,
                     )

@@ -45,9 +45,9 @@ MAX_CONTEXT_BYTES = 80_000_000
 MAX_BULK_FINDINGS = 50
 # Düşük önemli yeni bulgular (ör. düzeltmenin eklediği subprocess içe aktarımı) sonucu düşürmez, not olur.
 _BLOCKING_SEVERITIES = {"critical", "high", "medium"}
-# Koruma (guard) ekleyen stratejiler: realpath+commonpath, ana makine allowlist'i, göreli yönlendirme.
+# Koruma (guard) ekleyen stratejiler: realpath+commonpath, ana makine allowlist'i, göreli yönlendirme, skaler zorlama/başlık temizliği.
 # Analiz motoru bu korumaları her zaman arındırıcı saymaz; bulgu kalırsa sonuç "kısmen" + elle gözden geçirme.
-GUARD_KINDS = frozenset({"path", "ssrf", "redirect"})
+GUARD_KINDS = frozenset({"path", "ssrf", "redirect", "nosql", "header"})
 _JS_SUFFIX_RE = re.compile(r"\.(?:[cm]?[jt]sx?)$")
 _SLOTS = threading.BoundedSemaphore(2)
 
@@ -287,10 +287,13 @@ def _verify(audit: dict[str, Any], root: Path, patches: dict[str, tuple[str, str
         else:
             located.add(b_index)
             closed = b_index in gone
-            row.update(closed=closed, reason="" if closed else "Yamadan sonra bulgu hâlâ raporlanıyor.")
-            if not closed and target["kind"] in GUARD_KINDS and target.get("applied", True):
-                row.update(guarded=True, reason="Yama bir koruma ekliyor; analiz motoru bu korumayı arındırıcı saymadığı için "
-                                                "bulgu hâlâ raporlanıyor. Korumanın doğruluğunu elle gözden geçirin.")
+            if target["kind"] in GUARD_KINDS and target.get("applied", True):
+                closed = False
+                row.update(closed=False, guarded=True,
+                           reason="Yama bir koruma ekliyor; analiz motoru bu korumayı arındırıcı saymadığı için "
+                                  "bulgu hâlâ raporlanıyor. Korumanın doğruluğunu elle gözden geçirin.")
+            else:
+                row.update(closed=closed, reason="" if closed else "Yamadan sonra bulgu hâlâ raporlanıyor.")
         if not row["applied"]:
             row["reason"] = target.get("reason") or "Bu bulgu için otomatik yama üretilemedi."
         target_rows.append(row)

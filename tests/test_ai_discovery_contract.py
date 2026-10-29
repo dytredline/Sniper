@@ -30,6 +30,115 @@ def _load(path: Path, name: str):
 
 
 class AiDiscoveryContractTests(unittest.TestCase):
+    def test_ai_assisted_release_preflight_is_prominent_and_multilingual(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        discovery = (ROOT / "docs" / "AI-DISCOVERY.md").read_text(encoding="utf-8")
+        use_cases = (ROOT / "docs" / "USE-CASES.md").read_text(encoding="utf-8")
+        llms = (ROOT / "llms.txt").read_text(encoding="utf-8")
+
+        for fragment in (
+            "## Review before you ship",
+            "Ask an AI assistant to review your application",
+            "App Store",
+            "Google Play",
+            "Android, iOS, Flutter, and React Native",
+            "website or API launch",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, readme)
+
+        for content in (discovery, use_cases, llms):
+            for fragment in ("AI-assisted", "App Store", "Google Play", "mobile", "API"):
+                with self.subTest(document=content[:30], fragment=fragment):
+                    self.assertIn(fragment, content)
+
+        localized_claims = {
+            "README.ja.md": ("AI", "App Store", "Google Play", "公開前"),
+            "README.zh-CN.md": ("AI", "App Store", "Google Play", "发布前"),
+            "README.ko.md": ("AI", "App Store", "Google Play", "출시 전"),
+        }
+        for filename, fragments in localized_claims.items():
+            content = (ROOT / "docs" / filename).read_text(encoding="utf-8")
+            for fragment in fragments:
+                with self.subTest(filename=filename, fragment=fragment):
+                    self.assertIn(fragment, content)
+
+    def test_public_intro_leads_with_concrete_security_value(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        discovery = (ROOT / "docs" / "AI-DISCOVERY.md").read_text(encoding="utf-8")
+        llms = (ROOT / "llms.txt").read_text(encoding="utf-8")
+
+        for fragment in (
+            "## Security review highlights",
+            "SQL and command injection",
+            "XSS",
+            "SSRF",
+            "SBOM",
+            "VEX",
+            "CVSS 4.0",
+            "CISA SSVC",
+            "SARIF",
+            "stdio MCP",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, readme)
+
+        for content in (discovery, llms):
+            for fragment in ("SQL", "XSS", "SSRF", "IDOR", "SBOM", "SARIF", "MCP"):
+                with self.subTest(document=content[:30], fragment=fragment):
+                    self.assertIn(fragment, content)
+
+        highlights = readme.split("## Security review highlights", 1)[1].split("\n## ", 1)[0]
+        for negative in ("does not", "cannot", "not a", "doesn't"):
+            with self.subTest(negative=negative):
+                self.assertNotIn(negative, highlights.casefold())
+
+        for filename in ("README.ja.md", "README.zh-CN.md", "README.ko.md"):
+            localized = (ROOT / "docs" / filename).read_text(encoding="utf-8")
+            for fragment in ("SQL", "XSS", "SSRF", "SBOM", "IDOR", "MCP"):
+                with self.subTest(filename=filename, fragment=fragment):
+                    self.assertIn(fragment, localized)
+
+    def test_idor_and_manual_pentest_discovery_claims_are_visible_and_bounded(self) -> None:
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        discovery = (ROOT / "docs" / "AI-DISCOVERY.md").read_text(encoding="utf-8")
+        capabilities = (ROOT / "docs" / "CAPABILITIES.md").read_text(encoding="utf-8")
+        use_cases = (ROOT / "docs" / "USE-CASES.md").read_text(encoding="utf-8")
+        llms = (ROOT / "llms.txt").read_text(encoding="utf-8")
+
+        for content in (readme, discovery, use_cases, llms):
+            with self.subTest(document=content[:40]):
+                self.assertIn("IDOR", content)
+                self.assertIn("CWE-639", content)
+                self.assertIn("manual penetration testing", content.casefold())
+
+        for fragment in (
+            "IDOR adayı",
+            "CWE-639",
+            "manuel sızma testi",
+            "yetkili test kapsamında iki ayrı kullanıcı/rol",
+        ):
+            with self.subTest(fragment=fragment):
+                self.assertIn(fragment, capabilities)
+
+        for content in (readme, discovery, use_cases, llms):
+            lowered = content.casefold()
+            with self.subTest(boundary=content[:40]):
+                self.assertNotIn("automatically confirms idor", lowered)
+                self.assertNotIn("replaces a human-led penetration test", lowered)
+                self.assertIn("authorized", lowered)
+
+        localized_claims = {
+            "README.ja.md": ("IDOR", "CWE-639", "手動ペネトレーションテスト"),
+            "README.zh-CN.md": ("IDOR", "CWE-639", "人工渗透测试"),
+            "README.ko.md": ("IDOR", "CWE-639", "수동 침투 테스트"),
+        }
+        for filename, fragments in localized_claims.items():
+            content = (ROOT / "docs" / filename).read_text(encoding="utf-8")
+            for fragment in fragments:
+                with self.subTest(filename=filename, fragment=fragment):
+                    self.assertIn(fragment, content)
+
     def test_llms_txt_is_a_compact_capability_and_safety_map(self) -> None:
         content = (ROOT / "llms.txt").read_text(encoding="utf-8")
 

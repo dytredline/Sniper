@@ -119,13 +119,13 @@ class Wave20SqliteWalConcurrencyStressTests(unittest.TestCase):
         self._assert_wal_and_integrity_ok()
 
     def test_02_16_thread_zap_authorization_lease_generation_and_revocation_races(self) -> None:
-        target = self.store.create_target(normalize_target("https://example.test/"))
+        target = self.store.create_target(normalize_target("https://target.example/"))
         window = "2026-10-17T10:00:00Z/2026-10-17T14:00:00Z"
         engagement = self.store.create_engagement(
             target_id=target["id"],
             name="Wave 20 Concurrent ZAP Lease Stress",
             authorization_ref="AUTH-W20-ZAP-01",
-            scope_notes="FULL_ORIGIN_ACTIVE_SCAN https://example.test",
+            scope_notes="FULL_ORIGIN_ACTIVE_SCAN https://target.example",
             out_of_scope="",
             test_window=window,
             special_approvals={},

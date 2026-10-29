@@ -23,7 +23,8 @@ import triage_context as tc
 from tests.test_finding_tracking_collab import make_audit
 
 APP = Path(__file__).resolve().parents[1]
-SECRET = "sk-" + "proj-" + "A" * 28
+AI_TRIAGE_EVAL = APP / "scripts" / "ai_triage_eval.py"
+SECRET = "sk-proj-AAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 
 FLASK_VIEW = (
     "from flask import Flask, request, render_template\n"
@@ -261,7 +262,7 @@ class LimitAndMaskTests(_Tmp):
         write(self.root, "w.py", f"token = '{SECRET}'\nstore(q)\n")
         finding = {"evidence": "yazıldığı yer: w.py:2"}
         text = json.dumps(self.ctx("s.py", 34, finding=finding), ensure_ascii=False)
-        self.assertNotIn(SECRET[:12], text)
+        self.assertNotIn("sk-proj-AAAA", text)
         self.assertNotIn("hunter2", text)
         self.assertIn(at.MASK, text)
         self.assertIn("store(q)", text)
@@ -391,11 +392,8 @@ class PacketAndMcpTests(unittest.TestCase):
         self.assertTrue(all(tc._size(f.get("context") or {}) <= 600 for f in packet["findings"]))
 
 
-@unittest.skipUnless(
-    (APP / "scripts" / "ai_triage_eval.py").is_file(),
-    "maintainer evaluation helper is not shipped in Community source",
-)
 class EvalPacketContextTests(unittest.TestCase):
+    @unittest.skipUnless(AI_TRIAGE_EVAL.is_file(), "maintainer evaluation script is not distributed")
     def test_eval_packet_has_context(self):
         sys.path.insert(0, str(APP / "scripts"))
         import ai_triage_eval as ev

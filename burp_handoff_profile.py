@@ -17,6 +17,9 @@ ALLOWED_HTTP_METHODS = frozenset(
     {"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}
 )
 _HOSTNAME_LABEL_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
+_PARAM_PATH_RE = re.compile(
+    r"\{[^{}/]+\}|/:[A-Za-z_][A-Za-z0-9_]*|<[^<>/]+>|\[[^\[\]/]+\]|;[A-Za-z_][A-Za-z0-9_]*="
+)
 
 
 def _validate_allowed_host(allowed_host: str) -> str:
@@ -206,7 +209,7 @@ def build_burp_manual_handoff_manifest(
         method = _extract_item_method(item)
         methods_seen.add(method)
         in_scope_endpoint_count += 1
-        if bool(query.strip()) or ("{" in path and "}" in path):
+        if bool(query.strip()) or ("{" in path and "}" in path) or bool(_PARAM_PATH_RE.search(path)):
             parameterized_endpoint_count += 1
 
     sitemap_summary = parse_burp_sitemap_xml_summary(sitemap_xml)

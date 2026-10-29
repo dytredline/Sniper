@@ -14,6 +14,8 @@ def _write_lock_and_manifest(app_dir: Path, runtimes: Path, binaries: dict[str, 
         "gitleaks": ("8.30.1", "gitleaks-8.30.1-stdlib", "gitleaks", "SNIPER_GITLEAKS_BINARY", "SNIPER_GITLEAKS_SHA256"),
         "trufflehog": ("3.99.0", "trufflehog-3.99.0-unpacked", "trufflehog", "SNIPER_TRUFFLEHOG_BINARY", "SNIPER_TRUFFLEHOG_SHA256"),
         "opengrep": ("1.30.1", "opengrep-1.30.1", "opengrep", "SNIPER_OPENGREP_BINARY", "SNIPER_OPENGREP_SHA256"),
+        "syft": ("1.55.0", "syft-1.55.0", "syft", "SNIPER_SYFT_BINARY", "SNIPER_SYFT_BINARY_SHA256"),
+        "grype": ("0.121.0", "grype-0.121.0", "grype", "SNIPER_GRYPE_BINARY", "SNIPER_GRYPE_BINARY_SHA256"),
     }
     lock: dict[str, object] = {
         "schema": installer.LOCK_SCHEMA,
@@ -68,6 +70,7 @@ def _write_lock_and_manifest(app_dir: Path, runtimes: Path, binaries: dict[str, 
 def test_public_runtime_discovery_never_probes_private_migration_workspaces(monkeypatch, tmp_path: Path) -> None:
     """Community discovery may use portable/configured roots, never a developer migration tree."""
     observed: list[Path] = []
+    hashed: list[Path] = []
 
     def first_file(candidates, *, executable=False):
         observed.extend(Path(item) for item in candidates)
@@ -78,7 +81,12 @@ def test_public_runtime_discovery_never_probes_private_migration_workspaces(monk
         return None, None
 
     def first_dir(candidates):
-        observed.extend(Path(item) for item in candidates)
+        paths = [Path(item) for item in candidates]
+        observed.extend(paths)
+        return next((path for path in paths if path.name == "grype-db-20261029"), None)
+
+    def hash_file(path):
+        hashed.append(Path(path))
         return None
 
     monkeypatch.setattr(discovery.Path, "home", classmethod(lambda cls: tmp_path))
@@ -87,7 +95,7 @@ def test_public_runtime_discovery_never_probes_private_migration_workspaces(monk
     monkeypatch.setattr(discovery, "_first_valid_dir", first_dir)
     monkeypatch.setattr(discovery, "_read_systemd_dropin_defaults", lambda _path: {})
     monkeypatch.setattr(discovery, "_is_regular_file", lambda *_args, **_kwargs: False)
-    monkeypatch.setattr(discovery, "_sha256_file", lambda _path: None)
+    monkeypatch.setattr(discovery, "_sha256_file", hash_file)
 
     bindings, tools = discovery._discover_bindings()
 
@@ -97,6 +105,8 @@ def test_public_runtime_discovery_never_probes_private_migration_workspaces(monk
         "SNIPER_SCHEMATHESIS_LOCAL_ORIGIN",
     }
     assert tools
+    assert next(item for item in tools if item["id"] == "schemathesis")["bound"] is False
+    assert all(path.name != "vulnerability.db" for path in hashed)
     rendered = "\n".join(str(path) for path in observed)
     assert "/runtime-prereqs/" not in rendered
     assert "osv-local-active-analysis-" not in rendered
@@ -120,9 +130,9 @@ def test_portable_manifest_never_claims_absent_runtimes_are_zero_setup(
     )
     assert manifest["license_acceptance_required"] is True
     by_id = {item["id"]: item for item in manifest["components"]}
-    assert set(by_id) == {"sniper-core", "nuclei", "trivy", "gitleaks", "trufflehog", "semgrep"}
+    assert set(by_id) == {"sniper-core", "nuclei", "trivy", "syft-grype", "gitleaks", "trufflehog", "semgrep"}
     assert by_id["sniper-core"]["requires_separate_install"] is False
-    for tool_id in ("nuclei", "trivy", "gitleaks", "trufflehog", "semgrep"):
+    for tool_id in ("nuclei", "trivy", "syft-grype", "gitleaks", "trufflehog", "semgrep"):
         assert by_id[tool_id]["requires_separate_install"] is True
         assert by_id[tool_id]["bundle_present"] is False
 
@@ -137,6 +147,8 @@ def test_portable_manifest_reports_zero_setup_only_for_complete_verified_profile
         "SNIPER_GITLEAKS": runtimes / "gitleaks-8.30.1-stdlib" / "gitleaks",
         "SNIPER_TRUFFLEHOG": runtimes / "trufflehog-3.99.0-unpacked" / "trufflehog",
         "SNIPER_OPENGREP": runtimes / "opengrep-1.30.1" / "opengrep",
+        "SNIPER_SYFT": runtimes / "syft-1.55.0" / "syft",
+        "SNIPER_GRYPE": runtimes / "grype-0.121.0" / "grype",
     }
     for name, binary in binaries.items():
         binary.parent.mkdir(parents=True, exist_ok=True)
@@ -154,7 +166,7 @@ def test_portable_manifest_reports_zero_setup_only_for_complete_verified_profile
         lambda: {
             "tools": [
                 {"id": tool_id, "profiles": [{"mode": "local", "runtime": "precheck_passed"}]}
-                for tool_id in ("nuclei", "trivy", "gitleaks", "trufflehog", "semgrep")
+                for tool_id in ("nuclei", "trivy", "syft-grype", "gitleaks", "trufflehog", "semgrep")
             ]
         },
     )
@@ -163,7 +175,7 @@ def test_portable_manifest_reports_zero_setup_only_for_complete_verified_profile
 
     assert manifest["zero_setup_supported"] is True
     by_id = {item["id"]: item for item in manifest["components"]}
-    assert set(by_id) == {"sniper-core", "nuclei", "trivy", "gitleaks", "trufflehog", "semgrep"}
+    assert set(by_id) == {"sniper-core", "nuclei", "trivy", "syft-grype", "gitleaks", "trufflehog", "semgrep"}
     assert all(item["bundle_present"] for item in manifest["components"])
     assert all(item["ready_on_this_host"] for item in manifest["components"])
 
@@ -178,6 +190,8 @@ def test_installed_local_profile_binds_each_binary_to_its_computed_digest(
         "SNIPER_GITLEAKS": runtimes / "gitleaks-8.30.1-stdlib" / "gitleaks",
         "SNIPER_TRUFFLEHOG": runtimes / "trufflehog-3.99.0-unpacked" / "trufflehog",
         "SNIPER_OPENGREP": runtimes / "opengrep-1.30.1" / "opengrep",
+        "SNIPER_SYFT": runtimes / "syft-1.55.0" / "syft",
+        "SNIPER_GRYPE": runtimes / "grype-0.121.0" / "grype",
     }
     for name, binary in binaries.items():
         binary.parent.mkdir(parents=True, exist_ok=True)
@@ -197,6 +211,8 @@ def test_installed_local_profile_binds_each_binary_to_its_computed_digest(
         "SNIPER_GITLEAKS_BINARY": binaries["SNIPER_GITLEAKS"],
         "SNIPER_TRUFFLEHOG_BINARY": binaries["SNIPER_TRUFFLEHOG"],
         "SNIPER_OPENGREP_BINARY": binaries["SNIPER_OPENGREP"],
+        "SNIPER_SYFT_BINARY": binaries["SNIPER_SYFT"],
+        "SNIPER_GRYPE_BINARY": binaries["SNIPER_GRYPE"],
     }
     for env_name, binary in expected.items():
         assert bindings[env_name] == str(binary)
@@ -215,6 +231,12 @@ def test_installed_local_profile_binds_each_binary_to_its_computed_digest(
     ).hexdigest()
     assert bindings["SNIPER_OPENGREP_SHA256"] == hashlib.sha256(
         binaries["SNIPER_OPENGREP"].read_bytes()
+    ).hexdigest()
+    assert bindings["SNIPER_SYFT_BINARY_SHA256"] == hashlib.sha256(
+        binaries["SNIPER_SYFT"].read_bytes()
+    ).hexdigest()
+    assert bindings["SNIPER_GRYPE_BINARY_SHA256"] == hashlib.sha256(
+        binaries["SNIPER_GRYPE"].read_bytes()
     ).hexdigest()
     by_id = {item["id"]: item for item in tools}
     assert by_id["trivy"] == {
@@ -247,6 +269,8 @@ def test_manifest_tracked_binary_is_rejected_after_content_change(monkeypatch, t
         "SNIPER_GITLEAKS": runtimes / "gitleaks-8.30.1-stdlib" / "gitleaks",
         "SNIPER_TRUFFLEHOG": runtimes / "trufflehog-3.99.0-unpacked" / "trufflehog",
         "SNIPER_OPENGREP": runtimes / "opengrep-1.30.1" / "opengrep",
+        "SNIPER_SYFT": runtimes / "syft-1.55.0" / "syft",
+        "SNIPER_GRYPE": runtimes / "grype-0.121.0" / "grype",
     }
     for name, binary in binaries.items():
         binary.parent.mkdir(parents=True, exist_ok=True)

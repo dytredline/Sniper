@@ -66,9 +66,9 @@ def run_local_gitleaks(project_path: str) -> dict[str, Any]:
             input_dir = snapshot_root / "input"
             input_dir.mkdir(parents=True, exist_ok=True)
 
-            # Enforce bounded scan: total bytes <= 25_000_000, per-file <= 1_000_000, MAX_FILES
-            MAX_TOTAL_BYTES = 25_000_000
-            MAX_FILE_BYTES = 1_000_000
+            # Enforce bounded scan: total bytes <= 25_000_000, per-file <= 1_000_000, MAX_FILES (overridable via env)
+            MAX_TOTAL_BYTES = int(os.environ.get("SNIPER_SECRET_SCAN_MAX_TOTAL_BYTES", "25000000"))
+            MAX_FILE_BYTES = int(os.environ.get("SNIPER_SECRET_SCAN_MAX_FILE_BYTES", "1000000"))
             total_bytes = 0
 
             # Local bounded file walker: copy all regular files (including .txt, .md, .pem, .key, .env, source/manifest)
@@ -76,7 +76,8 @@ def run_local_gitleaks(project_path: str) -> dict[str, Any]:
             # Never follow symlinks; enforce per-file and total size limits; fail closed on errors
             EXCLUDE_DIRS = {".git", "node_modules", "vendor", "__pycache__", ".cache", "dist", "build"}
             EXCLUDE_BASENAMES = {".gitleaks.toml", ".gitleaksignore"}
-            MAX_FILES = 2000
+            MAX_FILES = int(os.environ.get("SNIPER_SECRET_SCAN_MAX_FILES", "2000"))
+            skip_oversized = os.environ.get("SNIPER_SECRET_SCAN_SKIP_OVERSIZED", "0") == "1"
             file_count = 0
 
             def _is_excluded_dir(p: Path) -> bool:
@@ -107,12 +108,14 @@ def run_local_gitleaks(project_path: str) -> dict[str, Any]:
                     yield entry, st
 
             for path, st in _walk_local(src_root):
+                file_bytes = st.st_size
+                if file_bytes > MAX_FILE_BYTES:
+                    if skip_oversized:
+                        continue
+                    raise ValueError("Dosya 1.000.000 baytı aşıyor")
                 file_count += 1
                 if file_count > MAX_FILES:
                     raise ValueError("Hazırlanan dosya sayısı 2000 sınırını aşıyor")
-                file_bytes = st.st_size
-                if file_bytes > MAX_FILE_BYTES:
-                    raise ValueError("Dosya 1.000.000 baytı aşıyor")
                 total_bytes += file_bytes
                 if total_bytes > MAX_TOTAL_BYTES:
                     raise ValueError(f"Hazırlanan toplam bayt ({total_bytes}) 25.000.000 sınırını aşıyor")
@@ -169,9 +172,9 @@ def run_local_gitleaks(project_path: str) -> dict[str, Any]:
                 "--no-banner",
                 "--redact=100",
                 "--timeout",
-                "20",
+                os.environ.get("SNIPER_GITLEAKS_TIMEOUT", "20"),
                 "--max-target-megabytes",
-                "1",
+                os.environ.get("SNIPER_GITLEAKS_MAX_TARGET_MB", "1"),
             ]
             if ignore_file is not None:
                 cmd.extend(["--gitleaks-ignore-path", str(ignore_file)])

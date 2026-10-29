@@ -22,22 +22,23 @@ passed.
 
 ## Reproducible validation snapshot
 
-Snapshot date: **2026-10-24**. Scope: the Community v1.0.0 publication candidate and its assembled public source
+Snapshot date: **2026-10-29**. Scope: the Community v1.0.0 publication candidate and its assembled public source
 tree.
 
 | Gate | Observed result |
 | --- | --- |
 | Community metadata/release-surface validation | PASS — 43 required release files checked |
 | Assembled source validation | PASS — deterministic source builder completed; assembled tree passed the release-tree scan |
-| Python unittest launcher | 2,819 tests, 0 failures, 0 errors |
-| Python pytest modules | 204 passed |
-| JavaScript/Node tests | 432 passed, 0 failed |
+| Python unittest launcher | 3,044 tests, 0 failures, 0 errors |
+| Python pytest modules | 313 passed |
+| JavaScript/Node tests | 513 passed, 0 failed |
 | CJK real-browser layout | PASS — Turkish, English, Japanese, Simplified Chinese, and Korean at desktop and mobile viewports (10/10) |
 | Platform setup policy | PASS — Linux full/core paths, experimental macOS core-only path, and fail-closed Windows/unknown-native routes covered by runtime tests |
-| Optional-tools container profile | PASS — exact five-tool target, explicit license gate, Linux architecture selection, loopback port, and three volumes contract-tested; optional image download/build not performed locally |
+| Optional-tools container profile | PASS — exact seven-tool target, explicit license gate, Linux architecture selection, loopback port, and three volumes contract-tested; optional image download/build not performed locally |
 | Publication secret-name boundary | PASS — deployment `.env`, field-key records, key files, and image archives are excluded before read and rejected by release-tree validation |
-| Locked tool installer smoke | PASS — five Linux ARM64 Community tools installed and reverified from an offline cache; no scanner executed |
-| One-command offline setup smoke | PASS — parseable JSON result, five provenance-bound tools, and both real help entrypoints |
+| Locked tool installer smoke | PASS — seven Linux ARM64 lock entries and their fail-closed installer contracts validated; pinned Syft and Grype runtimes were installed and reverified locally |
+| One-command offline setup smoke | PASS — parseable JSON result, seven provenance-bound tools, and both real help entrypoints |
+| Synthetic runtime proofs | PASS — Schemathesis completed a one-operation loopback OpenAPI check; Syft/Grype completed an offline local-fixture run against the pinned Grype database; no external target was scanned |
 | Changed-file Python compilation and JavaScript syntax | PASS |
 | Docker Compose configuration | PASS locally for default and explicit tools override; missing license acknowledgement rejected |
 | Community container image build | PASS — PR #7 built the current `community-core` image and its isolated container reached healthy state |

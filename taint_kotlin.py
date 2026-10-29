@@ -1723,14 +1723,18 @@ class Translator:
                         lam: int | None, prev_dot: bool) -> tuple[str, str] | None:
         recv = recv_text.lower()
         arg_text = "".join(p[0] for p in args)
-        if name == "respondText" and ("call" in recv or not prev_dot):
+        if name in ("respondText", "respondBytes") and ("call" in recv or not prev_dot):
             if _HTML_KTOR.search(arg_text):
-                return "html", "call.respondText(…, ContentType.Text.Html)"
+                return "html", f"call.{name}(…, ContentType.Text.Html)"
             return None
         if name == "respondRedirect" and ("call" in recv or not prev_dot):
             return "redirect", "call.respondRedirect()"
         if name == "respondFile" and ("call" in recv or not prev_dot):
             return "path", "call.respondFile()"
+        if name in ("exec", "execInBatch") and has_paren and (not prev_dot or "transaction" in recv):
+            return "sql", f"Exposed Transaction.{name}()"
+        if name == "evaluateJavascript" and prev_dot and has_paren:
+            return "eval", "WebView.evaluateJavascript()"
         if name == "html" and prev_dot and recv in ("ctx", "context", "it") and has_paren:
             return "html", "ctx.html()"
         if name == "redirect" and prev_dot and recv in ("ctx", "context") and has_paren:

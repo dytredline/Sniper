@@ -36,7 +36,7 @@ PUBLIC_REGISTRIES = {"registry.npmjs.org", "registry.yarnpkg.com", "registry.npm
 REGISTRY_CONFIG_FILES = (".npmrc", ".yarnrc", ".yarnrc.yml", "pip.conf", "pip.ini", ".pypirc", "settings.xml",
                          ".mvn/settings.xml", "nuget.config", "NuGet.Config", "NuGet.config", ".gemrc",
                          ".cargo/config.toml", ".cargo/config", "poetry.toml")
-INTERNAL_TOKENS = {"internal", "private", "intranet", "corp", "inhouse"}
+INTERNAL_TOKENS = {"internal", "private", "intranet", "corp", "inhouse", "confidential", "staging", "backoffice", "infra"}
 GENERIC_PREFIXES = {"node", "react", "vue", "angular", "app", "web", "api", "my", "the", "test", "demo", "example",
                     "server", "client", "core", "lib", "js", "ts", "py", "go", "frontend", "backend", "service",
                     "project", "sample", "simple", "express", "next", "nuxt", "svelte", "eslint", "babel", "webpack",
@@ -53,14 +53,21 @@ SUSPICIOUS_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
      re.compile(r"(?:base64\s+(?:-d|--decode)|atob\s*\(|Buffer\.from\s*\([^)]{0,400}['\"]base64['\"]|b64decode)"
                 r"[\s\S]{0,400}?(?:\beval\s*\(|new\s+Function\s*\(|\bexec(?:Sync)?\s*\(|\|\s*(?:ba)?sh\b|\bspawn\s*\()",
                 re.I)),
+    ("hex veya sıkıştırılmış verinin çözülüp çalıştırılması",
+     re.compile(r"(?:(?:Buffer\.from\s*\([^)]{0,400}['\"]hex['\"]|zlib\.(?:inflate|gunzip|unzip)(?:Sync)?\s*\()"
+                r"[\s\S]{0,400}?(?:\beval\s*\(|new\s+Function\s*\(|\bexec(?:Sync)?\s*\(|\bspawn(?:Sync)?\s*\(|\bvm\.runIn)"
+                r"|(?:\beval\s*\(|new\s+Function\s*\(|\bexec(?:Sync)?\s*\(|\bspawn(?:Sync)?\s*\(|\bvm\.runIn)"
+                r"[\s\S]{0,400}?(?:Buffer\.from\s*\([^)]{0,400}['\"]hex['\"]|zlib\.(?:inflate|gunzip|unzip)(?:Sync)?\s*\())",
+                re.I)),
     ("ağ isteği ile süreç başlatma bir arada",
      re.compile(r"\A(?=[\s\S]*\brequire\s*\(\s*['\"](?:https?|net|dns|node:https?|node:net)['\"]\s*\))"
                 r"(?=[\s\S]*\b(?:child_process|node:child_process)\b)[\s\S]*\b(?:exec|execSync|spawn|spawnSync|"
                 r"execFile)\s*\(", re.I)),
     ("kimlik bilgisi dosyaları ya da ortam değişkenlerinin ağa gönderilmesi",
-     re.compile(r"\A(?=[\s\S]*(?:\.npmrc|\.ssh[/\\]|id_rsa|\.aws[/\\]credentials|\.git-credentials|"
+     re.compile(r"\A(?=[\s\S]*(?:\.npmrc|\.ssh[/\\]|id_rsa|id_ed25519|\.aws[/\\]credentials|\.git-credentials|"
+                r"\.kube[/\\]config|\.docker[/\\]config\.json|gcloud[/\\]|serviceaccount[/\\]token|"
                 r"JSON\.stringify\s*\(\s*process\.env\s*\)))"
-                r"[\s\S]*\b(?:https?\.(?:get|request)|fetch\s*\(|axios|XMLHttpRequest|dns\.(?:lookup|resolve))", re.I)),
+                r"[\s\S]*\b(?:https?\.(?:get|request)|fetch\s*\(|axios|undici|got|net\.connect|tls\.connect|dgram|XMLHttpRequest|dns\.(?:lookup|resolve))", re.I)),
 )
 _NODE_FILE_RE = re.compile(r"\bnode\s+(?:-[-\w=]+\s+)*['\"]?([\w./\\-]+\.(?:c|m)?js)\b")
 

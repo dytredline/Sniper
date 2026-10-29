@@ -538,6 +538,36 @@ def _check_sshd(raw: str, col: _CheckCollector) -> None:
             line=item[1],
         )
 
+    # GatewayPorts (yalnızca açıkça etkinleştirildiğinde raporlanır)
+    item = get("gatewayports")
+    if item and item[0].lower() in {"yes", "clientspecified"}:
+        col.fail(
+            "ssh_gateway_ports",
+            severity="medium",
+            title="SSH: uzak port yönlendirmeleri tüm ağ arayüzlerine bağlanabiliyor (GatewayPorts)",
+            description="GatewayPorts yes/clientspecified, SSH uzak port yönlendirmelerinin yalnızca 127.0.0.1 yerine 0.0.0.0 üzerinde dinlemesine izin vererek iç servisleri dış ağa açar.",
+            evidence=item[2],
+            recommendation="GatewayPorts no ayarlayın.",
+            cwe="CWE-16",
+            control_id=control,
+            line=item[1],
+        )
+
+    # PermitTunnel (yalnızca açıkça etkinleştirildiğinde raporlanır)
+    item = get("permittunnel")
+    if item and item[0].lower() in {"yes", "point-to-point", "ethernet"}:
+        col.fail(
+            "ssh_permit_tunnel",
+            severity="medium",
+            title="SSH: tun(4) katman-2/3 VPN tünel açma yetkisi etkin (PermitTunnel)",
+            description="PermitTunnel etkinleştirildiğinde SSH oturumu tam ağ tüneli oluşturarak güvenlik duvarı kurallarını atlatabilir.",
+            evidence=item[2],
+            recommendation="PermitTunnel no ayarlayın.",
+            cwe="CWE-16",
+            control_id=control,
+            line=item[1],
+        )
+
     # ClientAliveInterval
     col.evaluate("ssh_client_alive_interval")
     item = get("clientaliveinterval")
@@ -908,6 +938,9 @@ def _check_sysctl(raw: str, col: _CheckCollector) -> None:
 _GTFO_EXACT = {
     "vi", "vim", "view", "rvim", "rview", "less", "more", "find", "awk", "gawk", "mawk",
     "nawk", "bash", "sh", "dash", "zsh", "ksh", "tar", "zip", "nmap", "env", "tee",
+    "docker", "kubectl", "git", "rsync", "socat", "strace", "gdb", "tcpdump",
+    "journalctl", "systemctl", "apt", "apt-get", "yum", "dnf", "pip", "pip3",
+    "npm", "node", "lua", "php",
 }
 _GTFO_PREFIX_RE = re.compile(r"^(?:python|perl|ruby)[0-9.]*$")
 _SUDO_BROAD_GROUPS = {
@@ -921,7 +954,9 @@ _SUDO_SPEC_RE = re.compile(
 )
 _SUDO_NOPASSWD_ALL_RE = re.compile(r"\bNOPASSWD\s*:(?:\s*[A-Z_]+\s*:)*\s*ALL\s*(?:,|$)")
 _SUDO_PREFIX_RE = re.compile(r"^(?:\([^)]*\)\s*|[A-Z_]+\s*:\s*|[A-Z_]+=\S+\s+)")
-_SUDO_LD_VARS_RE = re.compile(r"\b(?:LD_PRELOAD|LD_LIBRARY_PATH|LD_AUDIT)\b")
+_SUDO_LD_VARS_RE = re.compile(
+    r"\b(?:LD_PRELOAD|LD_LIBRARY_PATH|LD_AUDIT|PYTHONPATH|PERL5LIB|PERL5OPT|RUBYLIB|NODE_OPTIONS|BASH_ENV|ENV)\b"
+)
 
 
 def _split_sudo_commands(cmds: str) -> list[str]:
@@ -1333,3 +1368,184 @@ def audit_host_config_project(
         "config_types_detected": detected,
         "config_type_counts": dict(sorted(type_counts.items())),
     }
+
+
+_BLOCKED_DANGEROUS_SYSCALLS: tuple[str, ...] = (
+    "kexec_load",
+    "kexec_file_load",
+    "init_module",
+    "finit_module",
+    "delete_module",
+    "ptrace",
+    "mount",
+    "umount2",
+    "pivot_root",
+    "unshare",
+    "setns",
+    "bpf",
+    "perf_event_open",
+    "userfaultfd",
+    "keyctl",
+    "add_key",
+    "request_key",
+)
+
+_ALLOWED_POSIX_RUNTIME_SYSCALLS: tuple[str, ...] = (
+    "accept4",
+    "access",
+    "arch_prctl",
+    "bind",
+    "brk",
+    "clock_gettime",
+    "clone",
+    "close",
+    "connect",
+    "dup2",
+    "dup3",
+    "epoll_create1",
+    "epoll_ctl",
+    "epoll_pwait",
+    "epoll_wait",
+    "eventfd2",
+    "execve",
+    "exit",
+    "exit_group",
+    "fcntl",
+    "fstat",
+    "fsync",
+    "futex",
+    "getcwd",
+    "getdents64",
+    "getegid",
+    "geteuid",
+    "getgid",
+    "getpid",
+    "getppid",
+    "getrandom",
+    "getsockname",
+    "getsockopt",
+    "gettid",
+    "getuid",
+    "listen",
+    "lseek",
+    "madvise",
+    "mmap",
+    "mprotect",
+    "munmap",
+    "nanosleep",
+    "newfstatat",
+    "openat",
+    "pipe2",
+    "poll",
+    "pread64",
+    "prlimit64",
+    "pwrite64",
+    "read",
+    "readlinkat",
+    "recvfrom",
+    "recvmsg",
+    "renameat2",
+    "restart_syscall",
+    "rt_sigaction",
+    "rt_sigprocmask",
+    "rt_sigreturn",
+    "sched_getaffinity",
+    "sched_yield",
+    "sendmsg",
+    "sendto",
+    "set_robust_list",
+    "set_tid_address",
+    "setsockopt",
+    "shutdown",
+    "sigaltstack",
+    "socket",
+    "statx",
+    "tgkill",
+    "unlinkat",
+    "wait4",
+    "write",
+    "writev",
+)
+
+
+def synthesize_least_privilege_runtime_profiles(
+    findings_or_audit: list[dict[str, Any]] | dict[str, Any] | None = None,
+    *,
+    service_name: str = "sniper-app",
+) -> dict[str, Any]:
+    clean_service = re.sub(r"[^A-Za-z0-9_.-]", "-", (service_name or "sniper-app").strip()) or "sniper-app"
+    blocked_dangerous_syscalls = list(_BLOCKED_DANGEROUS_SYSCALLS)
+
+    seccomp_profile_json: dict[str, Any] = {
+        "defaultAction": "SCMP_ACT_ERRNO",
+        "architectures": ["SCMP_ARCH_X86_64", "SCMP_ARCH_AARCH64"],
+        "syscalls": [
+            {
+                "names": list(_ALLOWED_POSIX_RUNTIME_SYSCALLS),
+                "action": "SCMP_ACT_ALLOW",
+            },
+            {
+                "names": list(blocked_dangerous_syscalls),
+                "action": "SCMP_ACT_ERRNO",
+            },
+        ],
+    }
+
+    apparmor_profile_text = (
+        "#include <tunables/global>\n\n"
+        f"profile {clean_service} flags=(attach_disconnected,mediate_deleted) {{\n"
+        "  #include <abstractions/base>\n"
+        "  #include <abstractions/nameservice>\n\n"
+        "  network inet tcp,\n"
+        "  network inet udp,\n"
+        "  network inet6 tcp,\n"
+        "  network inet6 udp,\n\n"
+        "  deny capability sys_admin,\n"
+        "  deny capability sys_module,\n"
+        "  deny capability sys_ptrace,\n"
+        "  deny capability sys_rawio,\n"
+        "  deny mount,\n"
+        "  deny umount,\n"
+        "  deny ptrace,\n\n"
+        "  deny /var/run/docker.sock rwklx,\n"
+        "  deny /run/docker.sock rwklx,\n"
+        "  deny /proc/kcore r,\n"
+        "  deny /proc/sysrq-trigger rw,\n"
+        "  deny /sys/firmware/** rw,\n"
+        "  deny /etc/shadow rwk,\n"
+        "  deny /etc/gshadow rwk,\n"
+        "}\n"
+    )
+
+    systemd_unit_hardening_ini = (
+        "[Service]\n"
+        "ProtectSystem=strict\n"
+        "ProtectHome=read-only\n"
+        "NoNewPrivileges=yes\n"
+        "PrivateTmp=yes\n"
+        "PrivateDevices=yes\n"
+        "ProtectKernelTunables=yes\n"
+        "ProtectKernelModules=yes\n"
+        "ProtectKernelLogs=yes\n"
+        "ProtectControlGroups=yes\n"
+        "RestrictSUIDSGID=yes\n"
+        "RestrictNamespaces=yes\n"
+        "LockPersonality=yes\n"
+        "MemoryDenyWriteExecute=yes\n"
+        "CapabilityBoundingSet=\n"
+        "AmbientCapabilities=\n"
+        "SystemCallArchitectures=native\n"
+        "SystemCallFilter=@system-service\n"
+        "SystemCallFilter=~@mount @module @raw-io @reboot @swap @obsolete @debug\n"
+        "UMask=0077\n"
+    )
+
+    return {
+        "format": "sniper-least-privilege-runtime-profiles/1",
+        "service_name": clean_service,
+        "blocked_dangerous_syscalls": blocked_dangerous_syscalls,
+        "seccomp_profile_json": seccomp_profile_json,
+        "apparmor_profile_text": apparmor_profile_text,
+        "systemd_unit_hardening_ini": systemd_unit_hardening_ini,
+    }
+

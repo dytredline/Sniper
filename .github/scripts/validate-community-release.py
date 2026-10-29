@@ -82,6 +82,8 @@ REQUIRED_TEXT = {
         "Gitleaks 8.30.1",
         "TruffleHog 3.99.0",
         "Opengrep 1.30.1",
+        "Syft 1.55.0",
+        "Grype 0.121.0",
         "stdio MCP",
         "prepare_action",
         "execute_action",
@@ -153,9 +155,11 @@ REQUIRED_TEXT = {
     ),
     "VALIDATION.md": (
         "Sniper Community validation evidence",
-        "2,819 tests, 0 failures, 0 errors",
-        "204 passed",
-        "432 passed, 0 failed",
+        "3,044 tests, 0 failures, 0 errors",
+        "313 passed",
+        "513 passed, 0 failed",
+        "seven provenance-bound tools",
+        "Synthetic runtime proofs",
         "not a security certification",
         "No step in this validation snapshot scans an external website",
     ),
@@ -351,7 +355,7 @@ FORBIDDEN_ARTIFACT_DIRS = frozenset({
     "runtimes", "data", "backups", "backup", "evidence", ".auth-field-keys",
     "dev-" + "evidence", "frozen-" + "evidence",
 })
-FORBIDDEN_ARTIFACT_NAMES = frozenset({"release.json", ".coverage"})
+FORBIDDEN_ARTIFACT_NAMES = frozenset({".git", "release.json", ".coverage"})
 FORBIDDEN_ARTIFACT_SUFFIXES = (
     ".pyc", ".pyo", ".db", ".sqlite", ".sqlite3", "-wal", "-shm", "-journal", ".key", ".tar",
 )
@@ -497,7 +501,6 @@ def _identity(value: os.stat_result) -> tuple[int, int, int]:
 
 def _content_state(value: os.stat_result) -> tuple[int, int, int]:
     return value.st_size, value.st_mtime_ns, value.st_ctime_ns
-
 
 def _entry_kind(mode: int) -> str:
     if stat.S_ISLNK(mode):
@@ -837,7 +840,7 @@ def validate(root: Path, *, scan_release_tree: bool = False) -> list[str]:
                 raise ValueError("unexpected schema")
             profiles = tool_lock.get("profiles")
             tools = tool_lock.get("tools")
-            expected_local = {"nuclei", "trivy", "gitleaks", "trufflehog", "opengrep"}
+            expected_local = {"nuclei", "trivy", "gitleaks", "trufflehog", "opengrep", "syft", "grype"}
             if not isinstance(profiles, dict) or set(profiles.get("local", ())) != expected_local:
                 raise ValueError("local profile does not contain the supported locked engines")
             if not isinstance(tools, dict) or not expected_local.issubset(tools):

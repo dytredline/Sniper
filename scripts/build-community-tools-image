@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the license-gated five-engine Community container image."""
+"""Build the license-gated seven-engine Community container image."""
 
 from __future__ import annotations
 
@@ -24,8 +24,8 @@ COMPOSE_FILES = ("docker-compose.yml", "docker-compose.tools.yml")
 def build_plan() -> dict[str, object]:
     lock = load_lock(APP_ROOT / "COMMUNITY-TOOLS.lock.json")
     tools = lock["profiles"].get("local")
-    if not isinstance(tools, list) or len(tools) != 5 or len(set(tools)) != len(tools):
-        raise InstallError("Community local profile must contain exactly five distinct locked tools")
+    if not isinstance(tools, list) or len(tools) != 7 or len(set(tools)) != len(tools):
+        raise InstallError("Community local profile must contain exactly seven distinct locked tools")
     command = ["docker", "compose"]
     for relative in COMPOSE_FILES:
         path = APP_ROOT / relative

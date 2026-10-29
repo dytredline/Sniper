@@ -61,17 +61,20 @@ def run_local_trivy_secret(project_path: str) -> dict[str, Any]:
             input_dir = snapshot_root / "input"
             input_dir.mkdir(parents=True, exist_ok=True)
 
-            # Enforce bounded scan: total bytes <= 25_000_000, per-file <= 1_000_000, MAX_FILES
-            MAX_TOTAL_BYTES = 25_000_000
-            MAX_FILE_BYTES = 1_000_000
+            # Enforce bounded scan: total bytes <= 25_000_000, per-file <= 1_000_000, MAX_FILES (overridable via env)
+            MAX_TOTAL_BYTES = int(os.environ.get("SNIPER_SECRET_SCAN_MAX_TOTAL_BYTES", "25000000"))
+            MAX_FILE_BYTES = int(os.environ.get("SNIPER_SECRET_SCAN_MAX_FILE_BYTES", "1000000"))
             total_bytes = 0
 
             # Local bounded file walker: copy all regular files (including .txt, .md, .pem, .key, .env, source/manifest)
             # Exclude .git, common cache/dependency dirs, symlinks, trivy.yaml, trivy-secret.yaml, .trivyignore
             # Never follow symlinks; enforce per-file and total size limits; fail closed on errors
             EXCLUDE_DIRS = {".git", "node_modules", "vendor", "__pycache__", ".cache", "dist", "build"}
+            if os.environ.get("SNIPER_TRIVY_SKIP_SNAPSHOTS", "0") == "1":
+                EXCLUDE_DIRS = EXCLUDE_DIRS | {".next", ".turbo", "target", "coverage", "__snapshots__", "compiled"}
             EXCLUDE_BASENAMES = {"trivy.yaml", "trivy-secret.yaml", ".trivyignore"}
-            MAX_FILES = 2000
+            MAX_FILES = int(os.environ.get("SNIPER_SECRET_SCAN_MAX_FILES", "2000"))
+            skip_oversized = os.environ.get("SNIPER_SECRET_SCAN_SKIP_OVERSIZED", "0") == "1"
             file_count = 0
 
             def _is_excluded_dir(p: Path) -> bool:
@@ -102,12 +105,14 @@ def run_local_trivy_secret(project_path: str) -> dict[str, Any]:
                     yield entry, st
 
             for path, st in _walk_local(src_root):
+                file_bytes = st.st_size
+                if file_bytes > MAX_FILE_BYTES:
+                    if skip_oversized:
+                        continue
+                    raise ValueError("Dosya 1.000.000 baytı aşıyor")
                 file_count += 1
                 if file_count > MAX_FILES:
                     raise ValueError("Hazırlanan dosya sayısı 2000 sınırını aşıyor")
-                file_bytes = st.st_size
-                if file_bytes > MAX_FILE_BYTES:
-                    raise ValueError("Dosya 1.000.000 baytı aşıyor")
                 total_bytes += file_bytes
                 if total_bytes > MAX_TOTAL_BYTES:
                     raise ValueError(f"Hazırlanan toplam bayt ({total_bytes}) 25.000.000 sınırını aşıyor")
@@ -147,6 +152,9 @@ def run_local_trivy_secret(project_path: str) -> dict[str, Any]:
 
             # Prepare output report file as sibling of input/
             report_file = snapshot_root / "report.json"
+            trivy_timeout = int(os.environ.get("SNIPER_TRIVY_TIMEOUT", "45") or "45")
+            max_report_bytes = int(os.environ.get("SNIPER_TRIVY_MAX_REPORT_BYTES", "2000000") or "2000000")
+            cli_timeout_s = max(30, trivy_timeout - 15) if trivy_timeout > 45 else 30
 
             # Build argument vector per spec
             cmd = [
@@ -164,7 +172,7 @@ def run_local_trivy_secret(project_path: str) -> dict[str, Any]:
                 "--format", "json",
                 "--output", str(report_file),
                 "--cache-dir", str(snapshot_root / "cache"),
-                "--timeout", "30s",
+                "--timeout", f"{cli_timeout_s}s",
                 str(input_dir),
             ]
 
@@ -180,7 +188,7 @@ def run_local_trivy_secret(project_path: str) -> dict[str, Any]:
                     env=env,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
-                    timeout=45,
+                    timeout=trivy_timeout,
                     check=False,
                     pass_fds=(binary_fd,),
                 )
@@ -193,10 +201,10 @@ def run_local_trivy_secret(project_path: str) -> dict[str, Any]:
             if proc.returncode != 0:
                 raise RuntimeError("Trivy çalıştırılamadı.")
 
-            # Enforce 2 MB report cap and existence
+            # Enforce 2 MB report cap (or SNIPER_TRIVY_MAX_REPORT_BYTES override) and existence
             if not report_file.is_file() or report_file.is_symlink():
                 raise RuntimeError("Trivy rapor dosyası üretmedi.")
-            if report_file.stat().st_size > 2_000_000:
+            if report_file.stat().st_size > max_report_bytes:
                 raise RuntimeError("Trivy raporu 2 MB sınırını aşıyor.")
 
             # Load and parse report

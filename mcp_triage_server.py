@@ -178,6 +178,122 @@ TOOLS: list[dict[str, Any]] = [
             },
         },
     },
+    {
+        "name": "generate_ghsa_bundles",
+        "description": (
+            "Proje denetimindeki kanıtlanmış kritik/yüksek bulgulardan GitHub Security Advisory (GHSA) "
+            "ve CVE bildirim paketlerini (JSON + Markdown) üretir."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["project"],
+            "properties": {
+                "project": {"type": "string", "maxLength": 4096},
+                "findings": {"type": "array"},
+                "repository": {"type": "string", "maxLength": 256},
+                "ecosystem": {"type": "string", "maxLength": 64},
+                "package_name": {"type": "string", "maxLength": 128},
+            },
+        },
+    },
+    {
+        "name": "generate_automated_openvex",
+        "description": (
+            "Bağımlılık erişilebilirliği ve zafiyetli sembol analizinden imzalı OpenVEX v0.2.0 "
+            "(not_affected / affected) belgesi üretir."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["items"],
+            "properties": {
+                "items": {"type": "array"},
+                "product_id": {"type": "string", "maxLength": 256},
+            },
+        },
+    },
+    {
+        "name": "run_burp_repeater_diff",
+        "description": (
+            "Temel (baseline) ve değiştirilmiş (mutated) HTTP yanıtlarını yan yana karşılaştırarak "
+            "yetki/fiyat anomalilerini ve yapısal farkları çıkarır (Burp Repeater + Comparer karşılığı)."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["baseline_response", "mutated_response"],
+            "properties": {
+                "baseline_response": {"type": "object"},
+                "mutated_response": {"type": "object"},
+                "applied_mutation": {"type": "object"},
+            },
+        },
+    },
+    {
+        "name": "run_autorize_matrix",
+        "description": (
+            "Çoklu oturum (Sahip, Farklı Kiracı, Anonim) ve gizli alan enjeksiyonu (Mass Assignment) "
+            "problarını değerlendirerek IDOR/BOLA/BOPLA açıklarını tespit eder (Burp Autorize karşılığı)."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["probes"],
+            "properties": {
+                "probes": {"type": "array"},
+            },
+        },
+    },
+    {
+        "name": "run_token_sequencer",
+        "description": (
+            "Oturum ve sıfırlama belirteçleri üzerinde Shannon entropisi, FIPS monobit, ki-kare ve "
+            "ardışık sayaç/epoch sızıntısı analizi yapar (Burp Sequencer karşılığı)."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["tokens"],
+            "properties": {
+                "tokens": {"type": "array"},
+                "token_label": {"type": "string", "maxLength": 128},
+            },
+        },
+    },
+    {
+        "name": "run_traffic_decoder",
+        "description": (
+            "Çok katmanlı kodlanmış verileri (URL, Base64, Hex, JWT) özyinelemeli çözer veya "
+            "HAR/HTTP değişimini denetleyerek Repeater/Autorize şablonları üretir (Burp Decoder + Inspector karşılığı)."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": [],
+            "properties": {
+                "raw_value": {"type": "string", "maxLength": 65536},
+                "exchange": {"type": "object"},
+            },
+        },
+    },
+    {
+        "name": "evaluate_bounty_readiness",
+        "description": (
+            "Bir bulguyu statik akış, sembolik/çalışma zamanı kanıtı, CVSS v4 ve CWE düzeltmesiyle "
+            "değerlendirerek HackerOne / Bugcrowd / GitHub GHSA teslim hazırlık puanını hesaplar."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["finding"],
+            "properties": {
+                "finding": {"type": "object"},
+                "runtime_proof": {"type": "object"},
+                "symbolic_proof": {"type": "object"},
+            },
+        },
+    },
 ]
 WRITE_TOOLS = {"submit_triage", "request_scan", "submit_scan_result_triage"}
 BOUND_USER_TOOLS = {"list_scan_profiles", "list_scan_requests", "list_scan_result_findings"}
@@ -210,6 +326,19 @@ class TriageMCPServer:
     def _tools(self) -> list[dict[str, Any]]:
         if self.mode == COMMUNITY_MODE:
             return [*TOOLS, *mcp_community_actions.COMMUNITY_TOOLS]
+        if self.user is None and self.store is not None:
+            return [
+                t for t in TOOLS
+                if t["name"] not in {
+                    "generate_ghsa_bundles",
+                    "generate_automated_openvex",
+                    "run_burp_repeater_diff",
+                    "run_autorize_matrix",
+                    "run_token_sequencer",
+                    "run_traffic_decoder",
+                    "evaluate_bounty_readiness",
+                }
+            ]
         return TOOLS
 
     # -- yardımcılar --------------------------------------------------------
@@ -231,13 +360,18 @@ class TriageMCPServer:
         extra = set(args) - set(schema["properties"])
         if extra:
             raise ai_triage.TriageError("Tanınmayan argüman: " + ", ".join(sorted(extra)))
-        missing = [key for key in schema.get("required", []) if key not in args]
+        missing = [
+            key for key in schema.get("required", [])
+            if key not in args and not (key == "project" and "findings" in schema["properties"] and "findings" in args)
+        ]
         if missing:
             raise ai_triage.TriageError("Eksik argüman: " + ", ".join(missing))
         for key, value in args.items():
             spec = schema["properties"][key]
             kind = spec.get("type")
             if kind == "string" and not isinstance(value, str):
+                if key == "project" and "findings" in schema["properties"] and isinstance(value, dict):
+                    continue
                 raise ai_triage.TriageError(f"{key} metin olmalı.")
             if kind == "integer" and (isinstance(value, bool) or not isinstance(value, int)):
                 raise ai_triage.TriageError(f"{key} tam sayı olmalı.")
@@ -247,6 +381,8 @@ class TriageMCPServer:
                 raise ai_triage.TriageError(f"{key} sayı olmalı.")
             if kind == "object" and not isinstance(value, dict):
                 raise ai_triage.TriageError(f"{key} nesne olmalı.")
+            if kind == "array" and not isinstance(value, list):
+                raise ai_triage.TriageError(f"{key} liste olmalı.")
             if kind == "string" and "maxLength" in spec and len(value) > spec["maxLength"]:
                 raise ai_triage.TriageError(f"{key} çok uzun.")
             if kind in {"integer", "number"} and "minimum" in spec and value < spec["minimum"]:
@@ -261,7 +397,8 @@ class TriageMCPServer:
 
     # -- araçlar ------------------------------------------------------------
     def call_tool(self, name: str, args: Any) -> dict[str, Any]:
-        tool = next((t for t in self._tools() if t["name"] == name), None)
+        available_tools = [*TOOLS, *mcp_community_actions.COMMUNITY_TOOLS] if self.mode == COMMUNITY_MODE else TOOLS
+        tool = next((t for t in available_tools if t["name"] == name), None)
         if tool is None:
             return self._text(f"Bilinmeyen araç: {name}", error=True)
         try:
@@ -368,6 +505,103 @@ class TriageMCPServer:
             )
         return {"suggestion_id": saved["id"], "decision": saved["decision"],
                 "message": "Öneri kaydedildi; analist kararını bekliyor."}
+
+    def _tool_generate_ghsa_bundles(self, args: dict[str, Any]) -> dict[str, Any]:
+        import report_renderers
+
+        report: dict[str, Any] | None = None
+        if isinstance(args.get("findings"), list):
+            report = {"findings": args["findings"]}
+        elif isinstance(args.get("project"), dict):
+            report = args["project"]
+        else:
+            project = str(args.get("project") or "").strip()
+            if self.store is not None and project:
+                if hasattr(self.store, "get_project_audit"):
+                    try:
+                        audit = self.store.get_project_audit(project)
+                        if isinstance(audit, dict):
+                            report = audit
+                    except Exception:
+                        pass
+                if report is None and hasattr(self.store, "list_project_audits"):
+                    try:
+                        for row in self.store.list_project_audits(50) or []:
+                            if isinstance(row, dict) and project in {
+                                str(row.get("id") or ""),
+                                str(row.get("project_path") or ""),
+                                str(row.get("project_name") or ""),
+                            }:
+                                full = (
+                                    self.store.get_project_audit(row["id"])
+                                    if hasattr(self.store, "get_project_audit") and row.get("id")
+                                    else None
+                                )
+                                report = full if isinstance(full, dict) else row
+                                break
+                    except Exception:
+                        pass
+                if report is None:
+                    try:
+                        report = ai_triage.list_findings(
+                            self.store, project, limit=ai_triage.MAX_PACKET_FINDINGS
+                        )
+                    except Exception:
+                        report = {"findings": []}
+        if not isinstance(report, dict):
+            report = {"findings": []}
+        return report_renderers.render_ghsa_advisory_bundles(
+            report,
+            repository=str(args.get("repository") or "org/repo"),
+            ecosystem=str(args.get("ecosystem") or "pip"),
+            package_name=str(args.get("package_name") or ""),
+        )
+
+    def _tool_generate_automated_openvex(self, args: dict[str, Any]) -> dict[str, Any]:
+        import vex_export
+
+        return vex_export.build_automated_reachability_openvex(
+            {"items": args.get("items") or []},
+            product_id=str(args.get("product_id") or "pkg:generic/sniper-audited-app@local"),
+        )
+
+    def _tool_run_burp_repeater_diff(self, args: dict[str, Any]) -> dict[str, Any]:
+        import http_repeater_comparer
+
+        return http_repeater_comparer.compare_http_responses(
+            args.get("baseline_response") or {},
+            args.get("mutated_response") or {},
+            applied_mutation=args.get("applied_mutation") if isinstance(args.get("applied_mutation"), dict) else None,
+        )
+
+    def _tool_run_autorize_matrix(self, args: dict[str, Any]) -> dict[str, Any]:
+        import autorize_matrix_tester
+
+        return autorize_matrix_tester.evaluate_autorize_access_matrix(args.get("probes") or [])
+
+    def _tool_run_token_sequencer(self, args: dict[str, Any]) -> dict[str, Any]:
+        import token_sequencer
+
+        return token_sequencer.analyze_token_sequence_entropy(
+            args.get("tokens") or [],
+            token_label=str(args.get("token_label") or "session_identifier"),
+        )
+
+    def _tool_run_traffic_decoder(self, args: dict[str, Any]) -> dict[str, Any]:
+        import traffic_decoder_inspector
+
+        if isinstance(args.get("exchange"), dict):
+            return traffic_decoder_inspector.inspect_har_or_http_exchange(args["exchange"])
+        return traffic_decoder_inspector.recursive_decode_and_inspect(str(args.get("raw_value") or ""))
+
+    def _tool_evaluate_bounty_readiness(self, args: dict[str, Any]) -> dict[str, Any]:
+        import bounty_readiness_cockpit
+
+        return bounty_readiness_cockpit.evaluate_end_to_end_bounty_readiness(
+            args.get("finding") or {},
+            runtime_proof=args.get("runtime_proof") if isinstance(args.get("runtime_proof"), dict) else None,
+            symbolic_proof=args.get("symbolic_proof") if isinstance(args.get("symbolic_proof"), dict) else None,
+        )
 
     # -- JSON-RPC -----------------------------------------------------------
     def handle(self, message: Any) -> dict[str, Any] | None:
@@ -487,7 +721,14 @@ def _bind_community_runtimes(db_path: Path) -> dict[str, Any] | None:
     try:
         from tool_runtime_autodiscover import autodiscover_and_bind_runtimes
 
-        result = autodiscover_and_bind_runtimes(apply_env=True, persist=True)
+        # MCP startup only needs verified bindings.  Full catalog/DB readiness
+        # is evaluated by the selected action and may include multi-GiB offline
+        # databases, so do not put it on every stdio handshake's critical path.
+        result = autodiscover_and_bind_runtimes(
+            apply_env=True,
+            persist=True,
+            include_readiness=False,
+        )
         if not isinstance(result, dict) or result.get("format") != "sniper-runtime-autodiscover-v1" \
                 or type(result.get("bound_tool_count")) is not int:
             raise ValueError("invalid runtime discovery result")
@@ -514,7 +755,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--token-file", default=os.environ.get("SNIPER_MCP_TOKEN_FILE"),
                         help="Authenticated mod için MCP belirteç dosyası (0600)")
     args = parser.parse_args(argv)
-    mode = args.mode or (AUTHENTICATED_MODE if args.token_file else COMMUNITY_MODE)
+    explicit_mode = args.mode
+    if not explicit_mode and args.token_file:
+        explicit_mode = AUTHENTICATED_MODE
+    elif not explicit_mode and args.db:
+        try:
+            candidate_db = Path(args.db).expanduser().resolve(strict=False)
+            if (candidate_db.parent / "ai_triage_settings.json").is_file() or (candidate_db.parent / ai_triage.POLICY_FILE).is_file():
+                explicit_mode = AUTHENTICATED_MODE
+        except OSError:
+            pass
+    mode = explicit_mode or COMMUNITY_MODE
     if mode not in MODES:
         _log("Geçersiz MCP modu; community ya da authenticated seçin.")
         return 2

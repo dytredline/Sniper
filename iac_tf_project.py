@@ -419,7 +419,7 @@ def scan_tree(root, skip_dirs, *, project_tree: ProjectTree | None = None) -> ia
                 # Terraform yalnız sabit adlı ve *.auto adlı HCL/JSON tfvars dosyalarını otomatik yükler.
                 # Aynı dosya/bayt bütçesini tüketmeleri, çok sayıda tfvars ile sınırın aşılmasını engeller.
                 automatic_tfvars = _automatic_tfvars(name)
-                if not (name.endswith(".tf") or automatic_tfvars):
+                if not (name.endswith((".tf", ".tofu")) or automatic_tfvars):
                     continue
                 if observed.size > MAX_TF_FILE_BYTES:
                     limitations.add("file-bytes")

@@ -80,11 +80,20 @@ def _read_dockerfile(project_root: Path) -> bytes:
     try:
         with ProjectTree(project_root) as tree:
             walker = tree.walk(reject_unsafe=False)
+            source = None
             try:
-                entry = next(walker)
+                for entry in walker:
+                    for item in entry.files:
+                        posix_p = item.path.as_posix()
+                        if posix_p == "Dockerfile":
+                            source = item
+                            break
+                        if source is None and posix_p in ("docker/Dockerfile", "build/Dockerfile"):
+                            source = item
+                    if source is not None and source.path.as_posix() == "Dockerfile":
+                        break
             finally:
                 walker.close()
-            source = next((item for item in entry.files if item.path.as_posix() == "Dockerfile"), None)
             if source is None:
                 raise ValueError("project_path normal bir Dockerfile içermeli.")
             if source.size > MAX_DOCKERFILE_BYTES:
@@ -331,3 +340,104 @@ def run_local_trivy_terraform(project_path: str, terraform_file: str) -> dict:
     finally:
         os.close(lock)
         os.close(binary_fd)
+
+
+def _discover_all_dockerfiles(project_root: Path, max_files: int = 200) -> list[tuple[str, bytes]]:
+    skip = {".git", "node_modules", "vendor", "__pycache__", ".cache", "dist", "build", ".next", ".turbo", "target"}
+    discovered: list[tuple[str, bytes]] = []
+    try:
+        with ProjectTree(project_root) as tree:
+            for item in tree.iter_files(skip_dirs=skip, reject_unsafe=False):
+                name_low = item.name.casefold()
+                if not (
+                    name_low == "dockerfile"
+                    or name_low.startswith("dockerfile.")
+                    or name_low.endswith(".dockerfile")
+                ):
+                    continue
+                if item.size == 0 or item.size > MAX_DOCKERFILE_BYTES:
+                    continue
+                rel_posix = item.path.as_posix()
+                raw = tree.read_bytes(item, MAX_DOCKERFILE_BYTES, allow_empty=True)
+                discovered.append((rel_posix, raw))
+                if len(discovered) >= max_files:
+                    break
+    except ProjectTreeError as exc:
+        raise ValueError("Dockerfile ağacı okuma sırasında değişti.") from exc
+    return discovered
+
+
+def run_local_trivy_dockerfile_all(project_path: str) -> dict:
+    """Discover and scan ALL root and nested Dockerfile* files across the project."""
+    project_root = validate_project_path(project_path, allowed_roots=(Path.home().resolve(),))
+    dockerfiles = _discover_all_dockerfiles(project_root)
+    if not dockerfiles:
+        return {
+            "format": "trivy-native-json",
+            "profile": "local-dockerfile-config-all-v1",
+            "_engine_status": "skipped",
+            "dockerfiles_scanned_count": 0,
+            "dockerfiles_scanned": [],
+            "finding_counts": {"vulnerabilities": 0, "misconfigurations": 0, "secrets": 0, "licenses": 0},
+        }
+    _binary, binary_fd = _open_trusted_binary()
+    try:
+        lock = _scan_lock()
+    except BaseException:
+        os.close(binary_fd)
+        raise
+    try:
+        with tempfile.TemporaryDirectory(prefix="sniper_trivy_df_all_") as directory:
+            scratch = Path(directory)
+            staged = scratch / "input"
+            staged.mkdir()
+            staged_paths: list[str] = []
+            for rel_posix, raw_bytes in dockerfiles:
+                dest = staged / rel_posix
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(raw_bytes)
+                staged_paths.append(rel_posix)
+            report = scratch / "report.json"
+            environment = {
+                "HOME": str(scratch),
+                "XDG_CACHE_HOME": str(scratch / "cache"),
+                "TMPDIR": str(scratch),
+                "PATH": "/usr/bin:/bin",
+                "LANG": "C.UTF-8",
+            }
+            command = [
+                f"/proc/self/fd/{binary_fd}", "config", "--misconfig-scanners", "dockerfile",
+                "--skip-check-update", "--skip-version-check", "--config=", "--ignorefile=",
+                "--format", "json", "--output", str(report), "--cache-dir", str(scratch / "cache"),
+                "--timeout", "60s", str(staged),
+            ]
+            try:
+                process = subprocess.Popen(
+                    command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL, env=environment, start_new_session=True,
+                    pass_fds=(binary_fd,),
+                )
+                try:
+                    exit_code = process.wait(timeout=75)
+                except subprocess.TimeoutExpired as exc:
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    process.wait(timeout=3)
+                    raise TrivyConfigExecutionError("Trivy çoklu Dockerfile taraması zaman aşımına uğradı.") from exc
+            except OSError as exc:
+                raise TrivyConfigExecutionError("Trivy çoklu Dockerfile taraması başarısız oldu.") from exc
+            max_rep = int(os.environ.get("SNIPER_TRIVY_MAX_REPORT_BYTES", str(MAX_REPORT_BYTES * 5)) or str(MAX_REPORT_BYTES * 5))
+            if exit_code != 0 or report.is_symlink() or not report.is_file() or report.stat().st_size > max_rep:
+                raise TrivyConfigExecutionError("Trivy çoklu Dockerfile raporu üretilemedi veya sınırı aştı.")
+            document = json.loads(report.read_text(encoding="utf-8"))
+            summary = parse_trivy_native_json_summary(document)
+            summary["profile"] = "local-dockerfile-config-all-v1"
+            summary["dockerfiles_scanned_count"] = len(staged_paths)
+            summary["dockerfiles_scanned"] = staged_paths
+            return summary
+    finally:
+        os.close(lock)
+        os.close(binary_fd)
+

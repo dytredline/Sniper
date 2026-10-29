@@ -36,12 +36,12 @@ GO_SUFFIXES = frozenset({".go"})
 RUBY_SUFFIXES = frozenset({".rb", ".erb", ".haml"})
 GORUBY_SUFFIXES = GO_SUFFIXES | RUBY_SUFFIXES
 
-MAX_FIXPOINT_ROUNDS = 5
+MAX_FIXPOINT_ROUNDS = int(os.environ.get("SNIPER_TAINT_MAX_ROUNDS", "12"))
 MAX_FLOWS_PER_FILE = 200
-MAX_SLOT_FUNCS = 256  # bir işlev değeri yuvasında tutulan en çok işlev
-MAX_SLOT_CALLEES = 40  # (argüman sayısı süzgecinden sonra) bundan fazla adayı olan yuva çağrısı çözülmez
-MAX_GO_TYPE_DEPTH = 6  # tür takma adı / gömülü yöntem çözümleme derinliği
-MAX_GO_RECEIVER_TYPES = 256  # tek yöntem seçiminde gezilen gömülü alıcı türleri
+MAX_SLOT_FUNCS = int(os.environ.get("SNIPER_TAINT_MAX_SLOT_FUNCS", "1024"))  # bir işlev değeri yuvasında tutulan en çok işlev
+MAX_SLOT_CALLEES = int(os.environ.get("SNIPER_TAINT_MAX_SLOT_CALLEES", "256"))  # (argüman sayısı süzgecinden sonra) bundan fazla adayı olan yuva çağrısı çözülmez
+MAX_GO_TYPE_DEPTH = int(os.environ.get("SNIPER_TAINT_MAX_GO_DEPTH", "16"))  # tür takma adı / gömülü yöntem çözümleme derinliği
+MAX_GO_RECEIVER_TYPES = int(os.environ.get("SNIPER_TAINT_MAX_GO_RECEIVERS", "1024"))  # tek yöntem seçiminde gezilen gömülü alıcı türleri
 
 
 def language_for(filename: str) -> str | None:
@@ -1757,6 +1757,101 @@ class GoAnalyzer(_FuncBase):
             j += 1
         return None
 
+    def _definitely_returns(self, a: int, b: int) -> bool:
+        """Whether a branch ends with a function-level return.
+
+        A return inside another block or function literal is deliberately not
+        enough: such a return does not dominate the continuation after the
+        branch.
+        """
+        toks = self.toks
+        paren = bracket = brace = 0
+        j = a
+        while j < b:
+            t = toks[j]
+            if t.kind == "op":
+                if t.value == "(":
+                    paren += 1
+                elif t.value == ")":
+                    paren = max(0, paren - 1)
+                elif t.value == "[":
+                    bracket += 1
+                elif t.value == "]":
+                    bracket = max(0, bracket - 1)
+                elif t.value == "{":
+                    brace += 1
+                elif t.value == "}":
+                    brace = max(0, brace - 1)
+            elif t.kind == "id" and t.value == "return" and paren == bracket == brace == 0:
+                # Go inserts a semicolon after a return line. Find that exact
+                # statement boundary, then require only separators afterwards.
+                k = j + 1
+                expr_depth = 0
+                while k < b:
+                    end = toks[k]
+                    if end.kind == "op":
+                        if end.value in ("(", "[", "{"):
+                            expr_depth += 1
+                        elif end.value in (")", "]", "}"):
+                            expr_depth = max(0, expr_depth - 1)
+                        elif end.value == ";" and expr_depth == 0:
+                            break
+                    if end.kind == "nl" and expr_depth == 0:
+                        break
+                    k += 1
+                rest = range(k + 1, b) if k < b else range(b, b)
+                return all(
+                    toks[x].kind == "nl" or (toks[x].kind == "op" and toks[x].value == ";")
+                    for x in rest
+                )
+            j += 1
+        return False
+
+    def _assigned_before(self, name: str, before: int) -> bool:
+        """Conservatively reject an import alias shadowed before a guard."""
+        if name in self.func.param_names:
+            return True
+        toks = self.toks
+        start = self.func.body[0]
+        for j in range(start, before):
+            if toks[j].kind != "id" or toks[j].value != name:
+                continue
+            k = j + 1
+            while k < before and toks[k].kind == "nl":
+                k += 1
+            if k < before and toks[k].kind == "op" and toks[k].value in _GO_ASSIGN:
+                return True
+            if j > start and toks[j - 1].kind == "id" and toks[j - 1].value in ("var", "const"):
+                return True
+        return False
+
+    def _negative_islocal_path_guard(self, a: int, b: int) -> frozenset[str]:
+        """Return the variable proven local by an exact ``!filepath.IsLocal`` guard."""
+        parts = _split_top(self.toks, a, b, ";")
+        if not parts:
+            return frozenset()
+        x, y = parts[-1]
+        items = [j for j in range(x, y) if self.toks[j].kind != "nl"]
+        if len(items) != 7:
+            return frozenset()
+        values = [self.toks[j].value for j in items]
+        if values[0] != "!" or values[2:5] != [".", "IsLocal", "("] or values[6] != ")":
+            return frozenset()
+        alias, name = values[1], values[5]
+        if self.toks[items[1]].kind != "id" or self.toks[items[5]].kind != "id":
+            return frozenset()
+        if self.file.imports.get(alias) != "path/filepath" or self._assigned_before(alias, items[0]):
+            return frozenset()
+        if _match(self.toks, items[4]) != items[6]:
+            return frozenset()
+        return frozenset({name})
+
+    def _apply_path_guard(self, names: Iterable[str]) -> None:
+        for name in names:
+            taint = self.env.get(name, EMPTY)
+            if taint:
+                self.env[name] = _clean(taint, frozenset({"path"}))
+
     def statement(self, i: int, b: int, depth: int) -> int:
         toks = self.toks
         t = toks[i]
@@ -1771,8 +1866,11 @@ class GoAnalyzer(_FuncBase):
                 end = self.simple_end(i, b)
                 self.eval(i + 1, end)
                 return end
-            self.header(word, i + 1, brace, depth)
             close = _match(toks, brace)
+            path_guards = frozenset()
+            if word == "if" and self._definitely_returns(brace + 1, close):
+                path_guards = self._negative_islocal_path_guard(i + 1, brace)
+            self.header(word, i + 1, brace, depth)
             if word in ("switch", "select"):
                 self.cases(brace + 1, close, depth + 1)
             else:
@@ -1785,6 +1883,7 @@ class GoAnalyzer(_FuncBase):
                     close2 = _match(toks, j + 1)
                     self.block(j + 2, close2, depth + 1)
                     return close2 + 1
+            self._apply_path_guard(path_guards)
             return j
         if word in ("go", "defer"):
             end = self.simple_end(i + 1, b)
@@ -2620,6 +2719,12 @@ class GoAnalyzer(_FuncBase):
             if path == "os" and fn == "StartProcess":
                 check("command", 0, "os.StartProcess")
                 return
+            if path == "plugin" and fn == "Open":
+                check("eval", 0, "plugin.Open")
+                return
+            if path == "encoding/gob" and fn == "NewDecoder":
+                check("deserialize", 0, "gob.NewDecoder")
+                return
             if path in ("html/template",) and fn in ("HTML", "JS", "HTMLAttr", "CSS", "URL", "JSStr", "Srcset"):
                 check("html", 0, f"template.{fn}")
                 return
@@ -2671,6 +2776,8 @@ class GoAnalyzer(_FuncBase):
                 self.ct_safe = True
         if method in _GO_SQL_METHODS and self._db_receiver(segs, recv_type):
             index = _GO_SQL_METHODS[method]
+            if index == 0 and len(spans) >= 2 and self._is_context_span(spans[0]):
+                index = 1
             if method in ("Select", "Get") and recv_type != "db" and not self._db_name(segs):
                 return
             if index < len(spans) and self._stringish(spans[index]):
@@ -2901,6 +3008,8 @@ class GoAnalyzer(_FuncBase):
             return None
         if method in _GO_SQL_WRITE_METHODS:
             index = _GO_SQL_WRITE_METHODS[method]
+            if index == 0 and len(spans) >= 2 and self._is_context_span(spans[0]):
+                index = 1
             if index < len(spans):
                 text = self._sql_text(spans[index])
                 m = _SQL_WRITE_RE.match(text)
@@ -2910,6 +3019,8 @@ class GoAnalyzer(_FuncBase):
                     return None
         if method in _GO_SQL_READ_METHODS:
             index = _GO_SQL_READ_METHODS[method]
+            if index == 0 and len(spans) >= 2 and self._is_context_span(spans[0]):
+                index = 1
             if index < len(spans):
                 text = self._sql_text(spans[index])
                 m = _SQL_READ_RE.match(text)
@@ -2917,6 +3028,22 @@ class GoAnalyzer(_FuncBase):
                     stored = self.proj.stored_for(m.group(1).lower(), self._read_cols(text))
                     return stored if stored else None
         return None
+
+    def _is_context_span(self, span: tuple[int, int]) -> bool:
+        """pgx/pgxpool vb. ilk argümanı context.Context olduğunda SQL metni 1. indekstedir."""
+        x, y = span
+        toks = [t for t in self.toks[x:y] if t.kind != "nl"]
+        if not toks:
+            return False
+        if len(toks) == 1 and toks[0].kind == "id":
+            ident = toks[0].value
+            if ident.lower() in ("ctx", "context", "bgctx", "reqctx"):
+                return True
+            raw_type = self.types.get(ident) or self.decl_types.get(ident, "")
+            if isinstance(raw_type, str) and "context" in raw_type.lower():
+                return True
+        text = "".join(t.value for t in toks)
+        return text.endswith((".Context()", "context.Background()", "context.TODO()"))
 
     def _has_string_part(self, span: tuple[int, int]) -> bool:
         x, y = span
@@ -2926,7 +3053,7 @@ class GoAnalyzer(_FuncBase):
     @staticmethod
     def _db_name(segs: list) -> bool:
         root = segs[0].lower()
-        return bool(re.search(r"db|tx|conn|sql|database|pool|store|repo", root)) and "stmt" not in root
+        return bool(re.search(r"db|tx|conn|sql|database|pool|store|repo", root)) and "stmt" not in root and "cache" not in root
 
     def _db_receiver(self, segs: list, recv_type: str | None) -> bool:
         if recv_type in ("req", "gin", "echo", "fiber", "url", "writer", "client", "hparams", "stmt"):
@@ -3081,8 +3208,9 @@ class GoProject(_ProjectBase):
             self.function_type_keys.update((gf.dir, name) for name in direct)
             aliases.extend((gf, name, target) for name, target in _GO_DIRECT_ALIAS_RE.findall(text))
         self.type_aliases: dict[tuple[str, str], tuple[str, str]] = {
-            (gf.dir, name): self.type_key(gf, target)
+            (gf.dir, name): target_key
             for gf, name, target in exact_aliases
+            if (target_key := self.type_key(gf, target)) != (gf.dir, name)
         }
         # Resolve local and imported alias chains to their declaring package.
         for _round in range(16):
@@ -3313,6 +3441,11 @@ class GoProject(_ProjectBase):
             return self.by_dir.get(d, {}).get(method, []) or self.slot_funcs(self.slot(("var", d, method)), arity)
         if method:
             candidates = self.methods.get(method, [])
+            if candidates and arity is not None:
+                candidates = [
+                    f for f in candidates
+                    if (len(f.params) == arity if f.variadic is None else arity >= f.variadic)
+                ]
             if candidates:
                 return self.conservative_methods(candidates)
             if not candidates and arity is not None:
@@ -4179,7 +4312,10 @@ def parse_ruby_file(rel: str, text: str) -> RubyFile:
             names: list[str] = []
             only: set[str] = set()
             exclude: set[str] = set()
-            condition: bool | None = None
+            # True means unconditional. None is a dynamic predicate that an
+            # authorization inventory must not promote to a guaranteed guard.
+            # Existing taint consumers only special-case False.
+            condition: bool | None = True
             mode = None
             block_at: int | None = None
             callable_blocks: list[tuple[int, int, int, list[str], str | None]] = []
@@ -4212,6 +4348,7 @@ def parse_ruby_file(rel: str, text: str) -> RubyFile:
                 if tk.kind == "label" and tk.value in ("only", "except", "if", "unless"):
                     mode = tk.value
                     if mode in ("if", "unless"):
+                        condition = None
                         value = literal_callback_condition(k + 1)
                         if value is not None:
                             condition = value if mode == "if" else not value
@@ -4219,6 +4356,7 @@ def parse_ruby_file(rel: str, text: str) -> RubyFile:
                         and tk.value in ("only", "except", "if", "unless"):
                     mode = tk.value
                     if mode in ("if", "unless"):
+                        condition = None
                         value = literal_callback_condition(k + 2)
                         if value is not None:
                             condition = value if mode == "if" else not value
@@ -4459,6 +4597,8 @@ class RubyAnalyzer(_FuncBase):
     def statements(self, toks: list[Tok], a: int, b: int, excluded: tuple) -> list[tuple[int, int]]:
         out: list[tuple[int, int]] = []
         depth = 0
+        b = min(b, len(toks))
+        a = max(0, min(a, b))
         start = a
         closing_pipes: set[int] = set()
         j = a
@@ -5451,7 +5591,10 @@ class RubyAnalyzer(_FuncBase):
                     self.apply_summary(callees, taints, kw_taints, line)
                 continue
             _, params, a, b = lam
-            key = (id(toks), a)
+            lam_toks = toks if 0 <= a <= b <= len(toks) else self.toks
+            if not (0 <= a <= b <= len(lam_toks)):
+                continue
+            key = (id(lam_toks), a)
             if key in self.active_lambdas or len(self.active_lambdas) > 4:
                 continue
             saved = {name: self.env.get(name) for name in params}
@@ -5467,7 +5610,7 @@ class RubyAnalyzer(_FuncBase):
             self.funclit_depth += 1
             saved_depth = self.depth
             try:
-                self.body(toks, a, b, ())
+                self.body(lam_toks, a, b, ())
             finally:
                 self.depth = saved_depth
                 self.funclit_depth -= 1
@@ -5675,7 +5818,9 @@ class RubyAnalyzer(_FuncBase):
             if any(t.kind == "sym" and t.value in ("strict", "compat", "null", "json", "rails", "wab") for t in toks[x0:y0]):
                 return
         if (const in ("Marshal",) and method in ("load", "restore")) or (const in ("YAML", "Psych") and method in ("load", "unsafe_load", "load_stream")) \
-                or (const == "Oj" and method in ("load", "object_load")) or (const == "JSON" and method == "load"):
+                or (const == "Oj" and method in ("load", "object_load", "unsafe_load")) \
+                or (const == "MessagePack" and method in ("unpack", "load")) \
+                or (const == "JSON" and method == "load"):
             self._check_at("deserialize", f"{const}.{method}", taints, 0, line)
             return
         if const == "Arel" and method == "sql":
@@ -6234,10 +6379,20 @@ class RubyProject(_ProjectBase):
         return results
 
 
-def analyze_files(files: dict[str, str], language: str) -> dict[str, Any]:
+def analyze_files(files: dict[str, str], language: str | None = None) -> dict[str, Any]:
     """Proje dosyalarını (göreli yol → metin) analiz et; dosya başına :class:`taint_flow.Analysis`."""
     if language == "go":
         return GoProject(files).analyze()
     if language == "ruby":
         return RubyProject(files).analyze()
+    if language is None:
+        out: dict[str, Any] = {}
+        go_files = {k: v for k, v in files.items() if k.endswith(".go")}
+        rb_files = {k: v for k, v in files.items() if not k.endswith(".go")}
+        if go_files:
+            out.update(GoProject(go_files).analyze())
+        if rb_files:
+            out.update(RubyProject(rb_files).analyze())
+        return out
     return {}
+

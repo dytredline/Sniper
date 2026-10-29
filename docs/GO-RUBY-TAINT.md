@@ -57,6 +57,10 @@ Saf Python belirteç + yapı ayrıştırıcısı; harici ikili ya da kütüphane
   argümanlar (`params.permit(...)`, parantezli veya parantezsiz karma şemalı Rails 8 `params.expect`/`params.expect!`, `where(anahtar: x)`);
   skaler `params.expect(:anahtar)`, `params.expect :anahtar` ve bunların `expect!` biçimleri SQL parçası olarak izlenmeye devam eder; model sorgularının sonucu istek verisi sayılmaz;
   denetleyici/iş yöntemleri ada göre başka sınıflara bağlanmaz.
+  Go'da gerçek `path/filepath` içe aktarmasının `!filepath.IsLocal(ad)` koşulu yalnız olumsuz dal işlev
+  düzeyinde kesin `return` ile bittiğinde, sonraki dosya hedefleri için `ad` değişkenini yol bakımından
+  arındırır. Takma adlı içe aktarma desteklenir. Pozitif/karmaşık koşullar, dönmeyen dallar, yalnız iç bloktan
+  dönen dallar ve gölgelenmiş paket adları kanıt sayılmaz; doğrulamadan sonraki yeniden atama arındırmayı taşımaz.
 
 ## Ölçüm (13. tur, scratchpad `gr_eval.py`, `gr_joern_score.py`)
 

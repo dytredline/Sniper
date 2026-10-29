@@ -44,7 +44,7 @@ zamanı davranışının veya güvenliğin kanıtı değildir.
 | **Yerleşik** | Kotlin: Spring, Ktor, Javalin, http4k, gRPC, Android | Java motoru üzerinden kaynak-hedef akışları |
 | **Yerleşik** | C#: ASP.NET Core, minimal API, Razor Pages/Blazor, WebForms, ASMX/WCF, EF/ADO.NET | Rota, görünüm, veri erişimi ve genel tür/çağrı bağlamı |
 | **Yerleşik** | PHP: süper küreseller, PDO/mysqli, Twig/Smarty, Laravel, Symfony, CodeIgniter, Slim, WordPress | İstek girdisi, SQL/çıktı hedefleri ve WordPress yönetici bağlamı |
-| **Yerleşik** | Go: `net/http`, gin, echo, fiber, chi, `database/sql`, GORM | İşlev değerleri dahil dosyalar arası akış ve saklanan veri |
+| **Yerleşik** | Go: `net/http`, gin, echo, fiber, chi, `database/sql`, GORM | İşlev değerleri dahil dosyalar arası akış ve saklanan veri; kesin sonlanan `!filepath.IsLocal` yerellik koruması |
 | **Yerleşik** | Ruby: Rails, Sinatra, Grape, Hanami, Roda/Sequel, ActiveRecord | Rota, sorgu, görünüm ve saklanan veri akışları |
 | **Yerleşik** | Rust: actix-web, axum, rocket, warp | Web girdileri, tehlikeli hedefler ve `unsafe`/FFI bilgi notları |
 | **Yerleşik** | C/C++: `argv`, `getenv`, stdin, ağ ve CGI kaynakları | Komut, biçim dizgesi, SQL, yol ve bellek kopyalama/taşma hedefleri |
@@ -54,11 +54,35 @@ güvensiz serileştirme, XXE/ifade dili ve LDAP gibi desteklenen hedefleri kapsa
 güvenliği kontrolleri de bulunur. Sniper doğrulanmış akışları olası çok çağrılı akışlardan ayırır; akış yolu uygun
 olduğunda SARIF `codeFlows` içinde taşınır. Yetki veya nonce kontrolü görülen yöntemler ayrıca işaretlenir.
 
+Bulgu odaklı fuzz-harness üreticisi C/C++ için LibFuzzer, Rust için cargo-fuzz, Go için yerleşik `testing.F`,
+Python için Atheris, Java için Jazzer ve JavaScript/TypeScript için fast-check iskeleti döndürür. Go, Python,
+Java ve JS/TS dilimlerinde kaynak metninden tek ve desteklenen bir parser/decoder/normalizer hedefi çözülür;
+yorum veya literal içindeki sahte hedefler, güvenli olmayan göreli yollar, belirsiz adaylar ve desteklenmeyen
+imzalar fail-closed reddedilir. Go çıktısı çevrimdışı derleme ve fuzz komutları; Python ile JS/TS çıktısı gerçek
+hedef yükleme kontrolü ve runtime-readiness alanları; Java çıktısı kaynak SHA-256 bağı ve Jazzer sınıf/komut
+bilgisini taşır. Atheris, Jazzer ve fast-check için `execute_sanitizer_fuzz_runtime` yalnız operatörün verdiği
+mutlak runtime/modül/JAR yollarını SHA-256 ile sabitleyerek çalışır; motoru ağdan kurmaz veya PATH'ten seçmez.
+Seed, iterasyon, girdi, duvar saati ve çıktı limitleri sabittir; süreç ağacı zaman aşımında öldürülür ve bwrap
+ağ ad alanı ile seccomp uygulanır. Eksik motor/config `runtime_missing/not_run`, yalıtım yokluğu ise
+`sandbox_unavailable/not_run` olarak kalır; bunlar gerçek fuzz koşusu kanıtı değildir.
+
+Python ve JavaScript/TypeScript işlev özetlerinde bir proje yardımcısının yalnız `sanitize`, `clean` veya `escape`
+benzeri adı arındırma kanıtı sayılmaz. Temizlik ancak yardımcının gövdesindeki tanınmış arındırıcı bütün kirli dönüş
+yollarına egemense çağırana taşınır; koşullu/istisna ile atlanan dönüş taint'i korur. `async`/`await`, desteklenen
+yerel geri çağırmalar ve dosyalar arası çağrılar aynı özet kuralını kullanır. Dinamik çağrı çözülemiyorsa Python
+hedefi belirsiz kalır; özyineleme veya 30 çağrılık özet derinliği sınırında parametreler temiz sayılmadan temkinli
+biçimde dönüşe taşınır. Bu sınırlar bütün dinamik Python/JavaScript çağrılarını çözdüğü iddiası değildir.
+
+Python yol analizinde gerçek standart kütüphane `realpath` sonucu, aynı kökle iki öğeli `commonpath` eşitliğiyle
+denetlenip güvensiz dal `return`/`raise`/`abort` ile kesin sonlandığında yalnız kanonik aday dosya yolu için koruma
+kanıtı oluşur. `commonprefix`, yanlış koşul yönü, koşullu kanonikleştirme, tainted kök, yeniden kullanılan ham girdi
+ve komut hedefi bu kanıtla temizlenmez.
+
 ### Kimlik, yetki, sır ve uzman denetçileri
 
 | Tür | Denetim alanı | Neye bakar |
 | --- | --- | --- |
-| **Yerleşik** | Rota/yetki envanteri | Korumasız rota adayları (CWE-862), nesne kimliği kullanan IDOR adayları (CWE-639), rol ve nonce bağlamı |
+| **Yerleşik** | Rota/yetki envanteri | Python, JavaScript/TypeScript, Ruby/Rails, Spring ve ASP.NET için korumasız rota adayları (CWE-862), nesne kimliği kullanan IDOR adayları (CWE-639), rol/policy ve nonce bağlamı |
 | **Yerleşik** | Sır istihbaratı | Sağlayıcı kalıpları, entropi ve kaynak/yapılandırmadaki olası kimlik bilgileri; kanıtta sır değerini açık etmeden sınıflandırma |
 | **Yerleşik** | Gizlilik veri akışı | Kişisel veri kaynaklarından günlük, yanıt, depolama veya üçüncü taraf hedeflerine giden KVKK/GDPR odaklı akışlar |
 | **Yerleşik** | Ana makine sertleştirme | `sshd`, `sysctl`, `sudoers` ve desteklenen CIS yapılandırma sinyalleri |
@@ -73,16 +97,77 @@ olduğunda SARIF `codeFlows` içinde taşınır. Yetki veya nonce kontrolü gör
 | **Yerleşik** | AI/LLM | AI, RAG ve MCP kaynak/yapılandırmalarında OWASP LLM Top 10 odaklı ipuçları |
 | **Yerleşik** | Bulut IAM/RBAC | AWS/GCP/Azure IAM, Kubernetes RBAC ve PodSecurity yapılandırma sinyalleri |
 | **Yerleşik** | Protokol güvenliği | gRPC, WebSocket ve Webhook yapılandırma/uygulama örüntüleri |
+| **Yerleşik, toplu yerel analiz** | OpenAPI servis grafiği | OpenAPI JSON sunucu+operation kanıtını farklı depodaki exact literal HTTP istemci çağrısıyla eşler; ham origin/URL döndürmez |
+| **Yerleşik, toplu yerel analiz** | Webhook grafiği | OpenAPI JSON içindeki webhook-benzeri POST/PUT alıcısını başka depodaki literal producer çağrısıyla eşler; statik auth/imza sinyali ve göreli çağrı kanıtı üretir |
+| **Yerleşik, toplu yerel analiz** | Kafka mesaj grafiği | Python `kafka-python`/`confluent-kafka` literal topic publisher ve consumer kanıtını farklı depolar arasında bağlar; broker endpoint ve credential çıkarmaz |
+| **Yerleşik, toplu yerel analiz** | GraphQL servis grafiği | Yerel SDL `Query`/`Mutation`/`Subscription` root alanını farklı depodaki adlandırılmış literal operation, aynı-belge named root fragment veya SHA-256 doğrulanmış Apollo persisted manifest ile eşler; federation/stitching root extension'larını destekler ve ham endpoint/token çıkarmaz |
+| **Yerleşik, toplu yerel analiz** | Gözlemlenmiş servis kenarı korelasyonu | Seçili depo kökündeki bütünlüğü doğrulanmış `sniper-runtime-service-trace.json` girdisini statik HTTP/webhook/Kafka/GraphQL kenarıyla exact repository + protocol + operation anahtarında eşler; yalnız sayaç ve `observed` işareti ekler |
 | **Yerleşik** | Kimlik protokolleri | JWT, OAuth 2.0/OIDC ve SAML 2.0 artefaktları ve doğrulama ayarları |
+| **Yerleşik, toplu yerel analiz** | Auth sözleşmesi grafiği | `sniper-auth-contracts.json` içindeki literal HTTPS issuer+audience için farklı producer/consumer depolarındaki scope ve tenant uyuşmazlığını secretsiz gösterir |
 | **Yerleşik** | OpenAPI güvenliği | Şema kontrolleri; kod rotasıyla karşılaştırıldığında gölge uç ve kimlik doğrulama uyuşmazlığı |
+| **Yerleşik** | GraphQL sözleşme ve Ruby resolver yetkilendirmesi | SDL kök alanını Ruby resolver metoduna veya açık `resolver: X` / `BaseResolver#resolve` zincirine bağlayarak görünür sahiplik, tenant ya da policy koruması olmayan yüksek güvenli BOLA inceleme adayları |
 | **Yerleşik** | Masaüstü | Electron ve Tauri güvenlik yapılandırmaları |
-| **Yerleşik** | Tedarik zinciri/SLSA | Derleme bütünlüğü, bağımlılık karışıklığı/typosquatting ve lisans ipuçları |
+| **Yerleşik** | Tedarik zinciri/SLSA | Derleme bütünlüğü, bağımlılık karışıklığı/typosquatting, lisans ipuçları; yerel ve exact commit-SHA sabitli/offline mirror-lock ile çözülen uzak reusable GitHub workflow caller/callee izin–sır grafiği ve PR artifact üretici/tüketici grafiği |
 | **Yerleşik** | Mobil | Android, iOS, Flutter ve React Native manifest/yapılandırma yüzeyi; OWASP MASVS/Mobile Top 10 eşlemesi |
 | **Yerleşik** | Web altyapısı | Kaynakta bulunan DNS ve e-posta güvenlik yapılandırma kanıtı |
 | **Yerleşik** | Risk ve ilişkilendirme | CVSS 3.1/4.0 ve CISA SSVC önceliği, STRIDE/LINDDUN tehdit modeli, saldırı yolu korelasyonu ve savunma kuralı taslakları |
+| **Yerleşik, toplu yerel analiz** | Dependency lineage | Desteklenen `requirements*.txt/.in` dosyalarındaki tek-anlamlı exact `==` PyPI pinlerini PEP 503 adına göre bağlar; farklı sürümler için göreli dosya/satır kanıtlı `version-drift` kenarı üretir |
 
 Bu denetçiler kaynak ve yapılandırmada gördükleri statik kanıta göre sonuç üretir. Örneğin “iş mantığı” satırı,
 uygulamanın bütün iş kurallarının otomatik olarak anlaşıldığı anlamına gelmez.
+
+Altı graph yalnız başarılı veya değişmediği için atlanmış depoları kullanır ve birbirinden bağımsız fail-closed sonuç
+üretir. OpenAPI ve webhook dilimleri JSON sözleşme + literal URL, Kafka dilimi desteklenen Python AST şekilleri,
+GraphQL dilimi yerel SDL + adlandırılmış literal query/mutation/subscription, aynı-belge named root fragment ve
+SHA-256 doğrulanmış `persisted-query-manifest.json`; dependency-lineage exact koşulsuz PyPI pinleri ile
+sınırlıdır. Dinamik endpoint/topic/query/pin, self-edge ve eşleşmeyen kimlikler çıkarımsal kenara dönüştürülmez. Her
+edge graph en çok 1.000 kenar; auth graph en çok 500 bulgu döndürür. Bu statik kanıt runtime çağrı, imza doğrulaması,
+broker ACL'si, token uygulaması, GraphQL resolver erişimi, paket uyumluluğu veya zafiyet kanıtı değildir. Ham
+istemci/service/GraphQL origin'i (korelasyon kimliği olan açık auth issuer alanı hariç), broker bağlantısı, private
+package index ve bunlardaki credential çıktıya taşınmaz.
+
+GraphQL korelasyonu `graphql_service_graph` sonucunda yalnız farklı depolar arasındaki `exact operation type + root
+field` eşleşmesini taşır. Named fragment yalnız aynı belgede, operation root türüyle uyumlu ve döngüsüz olduğunda
+çözülür. Persisted operation yalnız Apollo v1 manifest gövdesinin SHA-256 kimliği birebir doğrulandığında kabul
+edilir. Dynamic/interpolated sorgu, inline/çözülemeyen/döngülü fragment, introspection, hash/type/name uyuşmazlığı,
+aynı-depo eşleşmesi, birden çok producer ile belirsizleşen anahtar, symlink ve boyut/adet sınırını aşan dosya veya
+manifest fail-closed dışarıda kalır.
+
+İsteğe bağlı runtime-trace korelasyonu ağ veya servis çalıştırmaz. Her seçili depo kökünde en fazla bir exact-name
+`sniper-runtime-service-trace.json` okunur; exact şema/sürüm, manifestin kendi depo kimliği, UTC timestamp, 32-hex
+nonce ve kanonik içeriğin SHA-256 bütünlüğü doğrulanır. Yalnız manifestin kendi deposundan başka bir seçili depoya
+giden exact HTTP/webhook/Kafka/GraphQL operation anahtarı mevcut statik kenarla birebir eşleşirse kenara `observed`,
+`runtime_evidence_count` ve `runtime_event_count` eklenir. Trace yokluğu, eşleşmeyen observation veya reddedilen
+manifest statik kenarı silmez. Manifest hash'i imza ya da kaynak kimlik doğrulaması değildir; gözlem girdisi ayrıca
+inceleme kapsamındaki güvenilir üretim hattından gelmelidir. Ham operation, timestamp, nonce, hash, URL, token, body
+ve secret graph çıktısına kopyalanmaz.
+
+Auth korelasyonu için seçili depo kökünde isteğe bağlı `sniper-auth-contracts.json` bulunabilir. Format
+`sniper-auth-contracts/1`; her contract tam olarak `role` (`producer`/`consumer`), literal HTTPS `issuer`, `audience`,
+benzersiz literal `scopes` listesi ve `tenant` alanlarını içerir. Dinamik, kısmi, secret/token biçimli, self-edge veya
+birden çok producer nedeniyle belirsiz eşleşmeler fail-closed dışlanır.
+
+### IDOR ve manuel sızma testi desteği
+
+Rota/yetki envanteri, desteklenen Python, JavaScript/TypeScript, Ruby/Rails, Spring ve ASP.NET çatılarında korumasız rota adaylarını
+(CWE-862) ve istekten gelen nesne kimliğinin görünür bir kullanıcı, sahiplik ya da rol denetimi olmadan kullanıldığı
+IDOR adayı yolları (CWE-639) işaretler. Rails analizi exact cross-file controller inheritance ile action-scoped
+`before_action`/`skip_before_action` bağlamını uygular; dinamik callback predicate'ini garanti saymaz. Dosya, rota ve
+satır kanıtı üretir. Spring ve ASP.NET analizi yalnız literal rota/handler tanımlarını doğrudan authorization
+annotation/attribute, rol/policy ve görünür principal/owner filtresiyle ilişkilendirir; dinamik rota ifadesini korumalı
+saymaz. Çıktı, yetkili bir uzmanın ayrı test kullanıcıları, rolleri ve sentetik nesneleriyle doğrulamasını önceliklendirir.
+
+Her IDOR adayı, yetkili test kapsamında iki ayrı kullanıcı/rol ve sentetik nesnelerle manuel doğrulama için kanıtlı
+bir başlangıç noktası sunar. Uzman; ağ geçidi, ara katman, politika servisi ve çalışma zamanı iş kurallarını da bu
+doğrulama sırasında değerlendirir.
+
+### App Store ve Google Play öncesi AI destekli uygulama incelemesi
+
+Sniper; desteklenen Android, iOS, Flutter ve React Native kaynaklarını ve mobil manifestleri API yolları, sır
+ipuçları, bağımlılıklar, SBOM verisi ve CI yapılandırmasıyla aynı yayın-öncesi incelemede birleştirir. MCP üzerinden
+bağlanan yapay zeka bulguları kanıtlarıyla açıklayabilir, ilgili riskleri gruplayabilir ve düzeltme önceliği
+oluşturabilir. Bu akış App Store/Google Play gönderimi, web sitesi veya API yayını ve release pull request'i öncesinde
+ekiplere ortak bir güvenlik kontrol noktası sunar.
 
 ### Altyapı kodu, bulut ve CI
 
@@ -93,7 +178,7 @@ uygulamanın bütün iş kurallarının otomatik olarak anlaşıldığı anlamı
 | **Yerleşik** | Kubernetes proje grafiği | Ingress/Gateway API route → Service → Workload → ServiceAccount → Role ilişkisi; NodePort/LoadBalancer/genel `externalIPs`, listener protokolü, namespace seçicisi ve `ReferenceGrant` koşulları |
 | **Yerleşik** | Dockerfile/Containerfile | Sabitlenmemiş taban, `curl | sh`, root kullanıcı, uzak `ADD`, `sudo`, ENV/ARG sırrı, `chmod 777`, TLS/imza doğrulamasını kapatma, SSH portu ve HEALTHCHECK bilgisi |
 | **Yerleşik** | docker-compose | Ayrıcalıklı/host ağ-PID-IPC, Docker soketi, capability, unconfined seccomp/AppArmor, ortam sırrı, sabitlenmemiş imaj ve root kullanıcı |
-| **Yerleşik** | GitHub Actions/GitLab CI | Güvenilmeyen olay verisinin `GITHUB_ENV`, step/job output veya GitLab dotenv üzerinden sonraki komuta taşınması |
+| **Yerleşik** | GitHub Actions/GitLab CI | Güvenilmeyen olay verisinin `GITHUB_ENV`, step/job output veya GitLab dotenv üzerinden sonraki komuta taşınması; yerel veya doğrulanmış offline mirror-lock girdili reusable workflow'larda etkin yazma izni ve sır devri; literal `pull_request` artifact üreticisi ile ayrı `workflow_run` indirme/çalıştırma tüketicisinin bağlanması |
 | **İsteğe bağlı yerel motor** | Trivy yapılandırma profilleri | Dockerfile, Terraform ve Kubernetes yanlış yapılandırma bulguları; yalnız motor hazırsa çalışır |
 
 Yerleşik motor dosyaları çalıştırmaz ve ağ açmaz. Dinamik veya çözülemeyen Terraform/Helm değerlerini güvenli
@@ -103,15 +188,24 @@ varsaymak yerine bilinmeyen/kısmi olarak bırakır; desteklenmeyen sözdizimi �
 
 | Tür | Yetenek | Kapsam ve sınır |
 | --- | --- | --- |
-| **Yerleşik** | Bağımlılık envanteri | npm/yarn/pnpm; Python requirements, pip-tools, PEP 621/723/735, Poetry, uv, PDM, Pipfile, Conda, tox/Nox ve desteklenen paketleme biçimleri; Go modules; Maven/Gradle; RubyGems, Cargo, Composer, NuGet ve Hex kilitleri; alt dizin manifestleri |
+| **Yerleşik** | Bağımlılık envanteri | npm/yarn/pnpm; Python requirements, pip-tools, PEP 621/723/735, Poetry, uv, PDM, Pipfile, Conda, tox/Nox ve desteklenen paketleme biçimleri; Go modules; Maven/Gradle; RubyGems, Cargo, Composer, NuGet/Paket ve Hex kilitleri; Terraform `.terraform.lock.hcl` provider seçimleri; alt dizin manifestleri |
 | **Yerleşik + önkoşullu** | Çevrimdışı açık eşleme | Yerel, bütünlüğü doğrulanan OSV veritabanıyla npm, PyPI, Go, Maven, RubyGems, crates.io, Packagist, NuGet, Pub, Hex ve yapılandırılmış işletim sistemi ekosistemleri. Tarama ağsızdır; veri tabanı ayrıca hazırlanmalı ve bayatlık durumu izlenmelidir. |
 | **Yerleşik** | Erişilebilirlik | Python, JavaScript, Go, Rust, Java/JVM ve .NET için içe aktarma ve çağrı kanıtıyla kullanılıyor/kullanılmıyor/geçişli/bilinmiyor bağlamı; yansıma ve otomatik yapılandırma nedeniyle Maven/NuGet sonucu kesin “etkisiz” sayılmaz. |
 | **Yerleşik** | Öncelik | Önem, erişilebilirlik, düzeltme sürümü ve doğrudan/geçişli durumuyla 0–100 öncelik; kötü amaçlı paket daima 100 |
 | **Yerleşik + önkoşullu veri** | Kötü amaçlı paket | Yerel OpenSSF `MAL-` ve GitHub malware kayıtları; bağımlılık karışıklığı, npm kurulum betiği ve özel kayıt deposu varlık sinyalleri |
 | **Yerleşik + önkoşullu önbellek** | Lisans | Yerel manifest/paket önbelleklerinden lisans envanteri; izinli/dikkat/yasak/bilinmiyor politikası |
+| **Yerleşik** | GitHub artifact güven grafiği | `pull_request` iş akışındaki literal `upload-artifact` üreticisini ayrı `workflow_run` tüketicisindeki aynı adlı `download-artifact` ve sonraki çalıştırma adımıyla bağlar; `cosign`/`gh`/`slsa-verifier` veya checksum komut adını yalnız `declared_unverified` sayar, azaltıcı sinyal yalnız sır referansı görülmeyen açık salt-okunur token iznidir |
 | **Yerleşik** | SBOM | CycloneDX 1.5 ve SPDX 2.3 JSON dışa aktarma; CycloneDX JSON/XML ve SPDX JSON/tag-value içe alma; dış SBOM için 32 MB ve 50.000 bileşen sınırı |
 | **Yerleşik** | VEX | OpenVEX/CycloneDX VEX; `not_affected` ancak gerekçeli analist kararı, tedarikçi VEX'i veya paketin kilitte bulunmamasıyla verilir |
 | **Kayıtlı rapor** | Harici SCA kanıtı | Trivy, OSV, npm audit ve Dependabot çıktılarının sınırlandırılmış özeti; rapor kaynağını yeniden çalıştırmaz |
+
+Reusable-workflow grafiği aynı commit'teki sabit yerel `uses: ./.github/workflows/...` çağrılarını doğrudan çözer.
+`owner/repo/.github/workflows/file.yml@<40-hex-commit>` biçimli uzak çağrı ancak kökteki
+`.sniper-workflow-mirror.lock.json` exact şeması, kanonik küçük harf depo kimliği/SHA'sı ve no-follow okunan en çok
+1 MB mirror dosyasının SHA-256'sı birlikte doğrulanırsa yetki–sır zincirine katılır. Tag/dal/dinamik ref, eksik,
+yinelenen, yanlış özetli, sembolik bağlı veya sınırı aşan mirror fail-closed kalır. Artifact grafiği yalnız tam literal workflow/artifact adı,
+`github.event.workflow_run.id` ve GitHub token girdisi çözüldüğünde kenar üretir. Dinamik matris adları, belirsiz çoklu
+üreticiler ve çalışma zamanı artifact içeriği doğrulanmış sayılmaz; iki grafik de workflow dosyalarını çalıştırmaz.
 
 ### Konteyner ve artefakt analizi
 
@@ -120,6 +214,7 @@ varsaymak yerine bilinmeyen/kısmi olarak bırakır; desteklenmeyen sözdizimi �
 | **Yerleşik + önkoşullu OSV verisi** | `docker save` tar, OCI image layout/tar, açılmış rootfs veya rootfs tar | Docker daemon ve ağ olmadan katman/manifest bütünlüğü; dpkg, apk ve desteklenen RPM SQLite paket envanteri; Debian, Ubuntu, Alpine/Wolfi/Chainguard, Alma/Rocky, RHEL, Amazon Linux, SLES/openSUSE eşlemesi |
 | **Yerleşik** | Aynı konteyner girdileri | PyPI metadata, npm paketleri ve jar/war içindeki Maven bileşenleri; CycloneDX SBOM üretimi |
 | **Yerleşik** | OCI/tar katmanları | SHA-256 ve boyut doğrulama; whiteout/opaque dizin semantiği; kök dışına çıkma, aygıt/FIFO ve güvensiz sembolik bağ engeli; dosya, katman ve toplam boyut bütçeleri |
+| **Yerleşik + isteğe bağlı yerel güven kökü** | OCI in-toto/SLSA DSSE provenance | Seçilen imaj subject özeti, builder kimliği ve artifact lineage için sınırlandırılmış yerel yapısal doğrulama; exact SHA-256 ile sabitlenmiş no-follow Ed25519 PEM verilirse gerçek DSSE PAE imza doğrulaması. Anahtar yoksa `structural_only/not_run`, komut adı hiçbir zaman `verified` değildir. |
 | **Yerleşik** | İsteğe bağlı Dockerfile | Son aşamada kurulan/kaldırılan paketleri gerçek imaj envanteriyle ilişkilendirme |
 | **İsteğe bağlı yerel motor + önkoşullu DB** | Trivy image profile | Ayrı sabitlenmiş çevrimdışı Trivy veritabanı hazırsa imaj zafiyet profili |
 
@@ -166,7 +261,7 @@ rapor veya insan incelemesine eşler. Aşağıdaki sayı, metodoloji envanteridi
 | **Katalog; yerleşik/rapor/insan** | Kayıt ve olay müdahalesi | 8 | Savunma sistemi gerekli | Uygulama, WAF, kimlik günlükleri ve alarm erişimi |
 | **Katalog; harici/insan** | Özel onaylı doğrulamalar | 3 | Harici kanıt | Sentetik hesap veya staging; yalnız maskeli sonuç |
 
-## Beş isteğe bağlı yerel motor
+## Yedi isteğe bağlı yerel motor
 
 `python3 scripts/setup-community --accept-third-party-licenses` uygun Linux ARM64/x86-64 sistemlerde aşağıdaki
 kilitli profili kurmayı dener. İndirilen artefakt tam SHA-256 değeriyle doğrulanır; doğrulanmamış veya eksik motor
@@ -225,6 +320,24 @@ kilitli profili kurmayı dener. İndirilen artefakt tam SHA-256 değeriyle doğr
   yerleşik kural paketinden gelir. `--taint-intrafile` aynı dosyadaki işlevler arasında akış izler; bu profil tam
   program veya bütün diller için derin veri akışı kanıtı değildir.
 
+### Syft 1.55.0 — Apache-2.0
+
+- **Tür:** İsteğe bağlı yerel SBOM motoru.
+- **Görev:** Desteklenen bağımlılık manifestlerinden çevrimdışı Syft JSON SBOM üretmek.
+- **Girdi:** Kullanıcının açıkça onayladığı yerel proje; yalnız desteklenen manifest ve kilit dosyaları özel çalışma
+  alanına kopyalanır, kaynak kodu kopyalanmaz.
+- **Önkoşul:** SHA-256 doğrulanmış ikili, özel çalışma dizini ve yerel girdi onayı.
+- **Çıktı sınırı:** Paket/ilişki sayımları ve SBOM SHA-256; mutlak yerel yollar yanıta eklenmez.
+
+### Grype 0.121.0 — Apache-2.0
+
+- **Tür:** İsteğe bağlı, çevrimdışı SBOM zafiyet eşleştirme motoru.
+- **Görev:** Aynı iş akışında üretilen Syft SBOM'u sabitlenmiş Grype veritabanıyla eşleştirmek.
+- **Girdi:** Geçici Syft JSON SBOM; kullanıcıdan ham SBOM veya ağ hedefi alınmaz.
+- **Önkoşul:** SHA-256 doğrulanmış Grype ikilisi ve tam SHA-256, şema ve oluşturulma zamanı doğrulanan ayrı çevrimdışı DB.
+- **Çıktı sınırı:** En çok 200 maskeli bulgu, önem/fix-state sayımları, DB metaverisi ve rapor SHA-256; ağ güncellemesi
+  kapalıdır ve ham mutlak yollar döndürülmez.
+
 ## Kayıtlı rapor içe alma
 
 Bu yolların tamamı **Kayıtlı rapor** türündedir. Dosya şemasını, boyutunu ve kayıt sayısını sınırlar; uygun yerde
@@ -256,7 +369,7 @@ hash, sayım veya maskeli özet üretir. Hedefe bağlanmaz ve aşağıdaki araç
 | Tür | Yetenek | Çıktı |
 | --- | --- | --- |
 | **Yerleşik** | Bulgu takibi | Satır kaymasına dayanıklı parmak izi; yeni/açık/sürüyor/düzeldi/yeniden açıldı/yanlış alarm/risk kabulü; sahip, son tarih ve yorum |
-| **Yerleşik** | Analiz farkı ve “yalnız değişenler” | Git referansı veya önceki analiz tabanı; yeni/değişmeyen bulgu bağlamı ve kısmi tarama uyarısı |
+| **Yerleşik** | Analiz farkı ve “yalnız değişenler” | Git referansı veya önceki analiz tabanı; değişen dosya + geçişli çağıran konisi, deterministik invalidation/iş telemetrisi, yeni/değişmeyen bulgu bağlamı ve güvenli tam-tarama geri dönüşü |
 | **Yerleşik** | Raporlama | JSON, HTML; desteklenen yerel PDF yolu; Türkçe/İngilizce proje ve yönetici özeti |
 | **Yerleşik** | CI kalite kapısı | Ağsız proje analizi + çevrimdışı SCA; SARIF 2.1.0, GitLab SAST/dependency JSON, Markdown/JSON karar; grup eşiği, `new_only`, süreli istisna ve baseline |
 | **Yerleşik** | SBOM/VEX | CycloneDX, SPDX, OpenVEX ve CycloneDX VEX |
@@ -388,6 +501,10 @@ Gelecek commitler test toplamlarını değiştirebilir; bir motorun CI'da veya b
 - İnsan onay kutusu ya da MCP plan onayı yasal hedef yetkisi oluşturmaz. İzniniz olmayan sistemleri taramayın.
 - stdio MCP'yi ağsız model garantisi olarak sunmaz; dış AI istemcisi veriyi sağlayıcısına gönderebilir.
 - Sınırlı runtime-proof rotalarını genel exploit motoru veya açık bulunmadığına dair kanıt olarak kullanmaz.
+- CWE-918 runtime kanıtı yalnız kayıtlı, kritik olmayan loopback uygulama fikstüründe sabit GET, POST, gecikmeli
+  callback, tek aynı-origin yönlendirme veya yerel DNS/OOB-korelasyon profili çalıştırır. İlk tetikleme sayısı birdir;
+  callback sayısı bir, yönlendirme sayısı en çok birdir. Yalnız doğrulanmış `http` + `127.0.0.1` + aynı port
+  yönlendirmesi izlenir. Dış hedef/canary kabul edilmez; hedef gövdesi, callback adresi/tokenı veya sır saklanmaz.
 - Bilinmeyen/dinamik IaC, ayrıştırılamayan bağımlılık veya desteklenmeyen paket veritabanını “temiz” kabul etmez;
   sınırlama, kısmi sonuç veya `na` olarak raporlar.
 - AI önerisini uzman kararı yerine koymaz. Bulguyu güvenli bir ortamda yeniden üretin ve düzeltme kararını yetkili

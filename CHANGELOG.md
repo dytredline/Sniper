@@ -3,6 +3,16 @@
 All notable changes to Sniper Community are recorded here. The project follows semantic versioning for public
 Community releases.
 
+## Unreleased
+
+- Clarified IDOR (CWE-639), missing-authorization (CWE-862), and authorized manual penetration-testing support across
+  the public README, AI discovery index, use cases, capability map, and localized introductions, with validation
+  guidance for separate test identities, roles, and synthetic objects.
+- Added benefit-led discovery highlights for supported injection/data-flow analysis, secrets and privacy, software
+  supply chain, containers and infrastructure, risk prioritization, reporting, and AI/CLI/web workflows.
+- Added multilingual AI-assisted release-preflight guidance for mobile store submissions, website/API launches, and
+  release pull requests.
+
 ## Sniper Community 1.0.0 — 2026-10-24
 
 - Added local-first source, configuration, dependency, container, and report workflows.
