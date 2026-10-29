@@ -212,7 +212,11 @@ rules:
       - pattern: pickle.load(...)
       - pattern: pickle.Unpickler(...)
       - pattern: cPickle.loads(...)
+      - pattern: cPickle.load(...)
       - pattern: dill.loads(...)
+      - pattern: dill.load(...)
+      - pattern: cloudpickle.loads(...)
+      - pattern: cloudpickle.load(...)
       - pattern: marshal.loads(...)
       - pattern: shelve.open(...)
 
@@ -537,6 +541,9 @@ rules:
       - pattern: $S.unserialize(...)
       - pattern: unserialize(...)
       - pattern: serializeToJs.deserialize(...)
+      - pattern: flatted.parse(...)
+      - pattern: telejson.parse(...)
+      - pattern: cryo.parse(...)
 
   - id: sniper.js.weak-hash
     languages: [javascript, typescript]
@@ -772,6 +779,8 @@ rules:
       - pattern: (ObjectInputStream $O).readObject()
       - pattern: new ObjectInputStream(...).readObject()
       - pattern: new XMLDecoder(...).readObject()
+      - pattern: (com.esotericsoftware.kryo.Kryo $K).readClassAndObject(...)
+      - pattern: (Kryo $K).readClassAndObject(...)
 
   - id: sniper.java.weak-hash
     languages: [java]

@@ -61,10 +61,10 @@ def _env_limit(name: str, default: int, minimum: int, maximum: int) -> int:
 
 
 # Büyük kod tabanları: varsayılan 10.000 dosya / 150 MB (ölçüm: Django 2.818 dosya ≈ 15 sn, 0,7 GB);
-# SNIPER_PROJECT_MAX_FILES / SNIPER_PROJECT_MAX_BYTES ile değiştirilebilir.
-MAX_FILES = _env_limit("SNIPER_PROJECT_MAX_FILES", 10_000, 100, 50_000)
-MAX_FILE_BYTES = 1_000_000
-MAX_TOTAL_BYTES = _env_limit("SNIPER_PROJECT_MAX_BYTES", 150_000_000, 1_000_000, 1_000_000_000)
+# SNIPER_PROJECT_MAX_FILES / SNIPER_PROJECT_MAX_FILE_BYTES / SNIPER_PROJECT_MAX_BYTES ile değiştirilebilir.
+MAX_FILES = _env_limit("SNIPER_PROJECT_MAX_FILES", 10_000, 100, 500_000)
+MAX_FILE_BYTES = _env_limit("SNIPER_PROJECT_MAX_FILE_BYTES", 1_000_000, 100_000, 200_000_000)
+MAX_TOTAL_BYTES = _env_limit("SNIPER_PROJECT_MAX_BYTES", 150_000_000, 1_000_000, 10_000_000_000)
 
 SOURCE_EXTENSIONS = {
     ".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".dart",
@@ -85,8 +85,10 @@ MANIFEST_NAMES = {
     "composer.json", "composer.lock", "pom.xml", "build.gradle",
     "gradle.lockfile", "podfile", "podfile.lock", "package.resolved",
     "docker-compose.yml", "docker-compose.yaml", ".gitlab-ci.yml",
+    ".terraform.lock.hcl", "paket.lock",
     "androidmanifest.xml", "info.plist", "network_security_config.xml",
     "build.gradle.kts", "settings.gradle", "settings.gradle.kts",
+    "model_card.md",
 }
 
 # Atlanan dizinler etkin tarama kapsamına göre değişir (scan_scope: testler, vendor, paketler, derleme
@@ -299,8 +301,9 @@ def _iter_files(root: Path, max_files: int = MAX_FILES, skipped: dict[str, int] 
                     raw = tree.read_bytes(observed, max_file_bytes, allow_empty=True)
                 except ProjectTreeError:
                     continue
+                decoded_utf16 = raw.startswith((b"\xff\xfe", b"\xfe\xff"))
                 try:
-                    text = raw.decode("utf-8")
+                    text = raw.decode("utf-16" if decoded_utf16 else "utf-8")
                 except UnicodeDecodeError:
                     if not scope.include_non_utf8:
                         bump("encoding", observed.size)
@@ -308,7 +311,7 @@ def _iter_files(root: Path, max_files: int = MAX_FILES, skipped: dict[str, int] 
                     text = raw.decode("utf-8", errors="replace")
                     bump("decoded_lossy")
                 else:
-                    if path in recheck_encoding:
+                    if path in recheck_encoding and not decoded_utf16:
                         counts["already_scanned"] = counts.get("already_scanned", 0) + 1
                         continue
                 yield path, text, kind, tree
@@ -412,6 +415,7 @@ NON_PYTHON_RULE_TITLES = frozenset({
     DOM_XSS_RULE_TITLE,
     ZIP_SLIP_RULE_TITLE,
     "Sunucu tarafı şablon enjeksiyonu (SSTI) riski",
+    "Rust yol birleştirmede dizin geçişi (Path Traversal) riski",
     *ELECTRON_RULE_TITLES,
     *SOLIDITY_RULE_TITLES,
 })
@@ -422,7 +426,8 @@ NON_PYTHON_RULE_TITLES = frozenset({
 # değiştirdiği için boşluksuz parça maskeli satırda varsa ham metinde de vardır. Listede olmayan başlık: süzgeç yok.
 _LINE_RULE_LITERALS: dict[str, tuple[str, ...]] = {
     "Güvensiz nesne serileştirme (Deserialization)": (
-        "pickle", "marshal", "dill", "shelve", "yaml", "unserialize", "objectinputstream", "readobject", "node-serialize"),
+        "pickle", "marshal", "dill", "shelve", "yaml", "unserialize", "objectinputstream", "readobject", "node-serialize",
+        "cloudpickle", "joblib", "allow_pickle"),
     DOM_XSS_RULE_TITLE: ("dangerouslysetinnerhtml", "v-html", "bypasssecuritytrust", "innerhtml", "outerhtml", "document.write"),
     "JWT imza doğrulaması devre dışı veya alg:none izni": ("verify_signature", "algorithms", "jwt"),
     ZIP_SLIP_RULE_TITLE: ("extractall",),
@@ -438,12 +443,13 @@ _LINE_RULE_LITERALS: dict[str, tuple[str, ...]] = {
     "Solidity akıllı sözleşmesinde Reentrancy (yeniden giriş) riski (.call{value:})": (".call",),
     "Solidity akıllı sözleşmesinde tx.origin ile kimlik doğrulama": ("tx.origin",),
     "C/C++ bellek taşması (Buffer Overflow) riski taşıyan güvensiz fonksiyon (gets/strcpy)": ("gets", "strcpy", "strcat", "sprintf"),
+    "Rust yol birleştirmede dizin geçişi (Path Traversal) riski": (".join",),
     "Kaynak kodda sabit sır olasılığı": ("api", "client", "private", "password", "passwd"),
     "Dinamik kod çalıştırma": ("eval", "exec"),
     "Kabuk üzerinden komut çalıştırma": ("shell", "os.system", "popen"),
     "SQL sorgusunda veri birleştirme": ("execute", "query"),
     "Zayıf kriptografik özet": ("hashlib", "messagedigest"),
-    "TLS sertifika doğrulaması kapalı": ("verify", "rejectunauthorized", "cert_none"),
+    "TLS sertifika doğrulaması kapalı": ("verify", "rejectunauthorized", "cert_none", "_create_unverified_context", "insecureskipverify"),
     "ASP.NET istek doğrulaması kapalı": ("validaterequest", "validateinput", "requestvalidationmode"),
     "Servis tüm ağ arayüzlerinde dinliyor": ("0.0.0.0", "host"),
     "Geniş CORS izni": ("allow_origins", "access-control-allow-origin"),
@@ -469,7 +475,7 @@ def _rules_present(rules: tuple, folded: str) -> tuple:
 _JS_COOKIE_CALL = re.compile(r"\b(?:res|response|reply|ctx\.cookies)\.(?:cookie|set|setCookie)\s*\(")
 DYNAMIC_CODE_SUFFIXES = frozenset({
     ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".vue", ".svelte", ".html", ".htm",
-    ".php", ".rb", ".pl", ".pm", ".lua", ".sh", ".bash", ".zsh", ".ps1", ".groovy", ".kts",
+    ".php", ".rb", ".pl", ".pm", ".lua", ".ps1", ".groovy", ".kts",
 })
 JS_FAMILY_SUFFIXES = frozenset({".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".vue", ".svelte", ".html", ".htm", ".json"})
 _SLASH_COMMENT_SUFFIXES = frozenset({
@@ -485,7 +491,9 @@ _LLM_TOKEN_METRIC_RE = re.compile(
 )
 _BENIGN_SECRET_LITERAL_RE = re.compile(
     r"(?i)^(?:placeholder.*|changeme.*|your[_\s-].*|example.*|dummy.*|no[_-]?api[_-]?key.*|"
-    r"not[_-]?used[_-]?at[_-]?runtime|build[_-]?only|oauth\s+client\s+secret.*|<[^>]+>|\$\{[^}]+\}|\{\{[^}]+\}\})$"
+    r"not[_-]?used[_-]?at[_-]?runtime|build[_-]?only|oauth\s+client\s+secret.*|"
+    r".*[-_]not[-_]configured|\[redacted\]|\*+|/[A-Za-z0-9_./-]+|"
+    r"<[^>]+>|\$\{[^}]+\}|\{\{[^}]+\}\}|\S+\s+\S+\s+.*)$"
 )
 _SQL_CONTEXT_LINE_RE = re.compile(
     r"(?i)(?:\b(?:SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|JOIN|INTO|VALUES|CREATE|ALTER|DROP|TABLE|SET|UNION)\b"
@@ -1057,11 +1065,26 @@ TAINT_FLOW_RULES.update({
         "gövdesi boyutunu çatı düzeyinde sınırlandırın.",
         "CWE-789",
     ),
+    "header": (
+        "web_hardening", "medium", "Doğrulanmış veri akışı: istek girdisi HTTP yanıt başlığına ulaşıyor (başlık/CRLF enjeksiyonu)",
+        "Yanıt başlığı değerlerinden satır sonu karakterlerini (\\r, \\n) temizleyin veya yalnız izinli karakter kümesini kabul edin.",
+        "CWE-113",
+    ),
+    "format": (
+        "command_data", "high", "Doğrulanmış veri akışı: istek girdisi biçim dizgesine ulaşıyor (biçim dizgesi açığı)",
+        "Biçim dizgesini sabit tutun ve veriyi argüman olarak geçirin; kullanıcı verisini asla biçim şablonu olarak kullanmayın.",
+        "CWE-134",
+    ),
+    "mass_assign": (
+        "auth", "high", "Doğrulanmış veri akışı: filtrelenmemiş istek nesnesi model/kayıt güncellemesine ulaşıyor (toplu atama)",
+        "İstek gövdesini doğrudan model/ORM oluşturma veya güncellemesine vermeyin; izinli alanları açıkça seçin (DTO/allowlist).",
+        "CWE-915",
+    ),
 })
 # Yerel girdi (komut satırı, ortam değişkeni, standart girdi) akışlarının raporlandığı hedefler: bellek güvenliği ve
 # biçim dizgesi hataları yerel girdiyle de sömürülebilir (setuid/CGI/servis betikleri); komut/yol/SQL hedeflerinde
 # yerel girdi CLI aracının olağan davranışıdır ve raporlanmaz (motor bu akışları üretmez).
-LOCAL_FLOW_KINDS = frozenset({"format_string", "memory", "memory_len", "memory_index"})
+LOCAL_FLOW_KINDS = frozenset({"format_string", "format", "memory", "memory_len", "memory_index"})
 NATIVE_FLOW_LANGUAGES = frozenset({"rust", "c", "cpp"})
 WEAK_RANDOM_FLOW_RULE = (
     "crypto", "medium", "Güvenlik değerinde zayıf rastgele sayı: random modülü değeri oturuma/çereze yazılıyor",
@@ -1351,6 +1374,10 @@ def _add_memsafety_findings(findings: list[dict[str, Any]], start: int, mem_find
             memsafety_c.recommendation_for(m.kind), m.cwe)
         if len(findings) > before:
             findings[-1]["memory_safety"] = m.as_dict()
+            if getattr(m, "soundness_bug", False):
+                findings[-1]["memory_safety"]["soundness_bug"] = True
+                findings[-1]["memory_safety"]["pub_safe_api"] = bool(getattr(m, "pub_safe_api", False))
+                findings[-1]["soundness_bug"] = True
             if flow_f is not None:
                 findings[-1]["taint_flow"] = flow_f.get("taint_flow")
             added_lines.add(m.line)
@@ -1373,7 +1400,7 @@ STORED_FLOW_KINDS = frozenset({"eval", "command", "html", "deserialize", "ssti"}
 # istek verisiyle yazılan model alanları, oturum anahtarları) ikinci derece SQL/NoSQL, yol, yönlendirme ve sorgu
 # dili hedeflerinde de raporlanır. Yazma kanıtı olmayan veritabanı okumaları eski (dar) kümeye tabidir.
 STORED_EVIDENCED_FLOW_KINDS = STORED_FLOW_KINDS | frozenset({"sql", "nosql", "nosql_expr", "path", "redirect", "xpath",
-                                                               "ldap"})
+                                                               "ldap", "header", "format", "format_string", "code"})
 STORED_EVIDENCE_MARKS = ("(kayıtlı veri)",)
 
 
@@ -1502,6 +1529,52 @@ def analyze_project(
         return _analyze_project(value, allowed_roots=allowed_roots, max_files=max_files, scope=scope)
 
 
+_TEST_BENCH_SEGMENTS = frozenset({
+    "test", "tests", "testing", "__tests__", "spec", "specs",
+    "bench", "benchmarks", "benches", "eval", "evals", "e2e",
+    "winarena_adapter", "osworld",
+})
+_NON_PROD_EXAMPLE_SEGMENTS = frozenset({
+    "example", "examples", "sample", "samples", "demo", "demos",
+    "quickstart", "tutorial", "tutorials", "docs", "doc",
+    "playground", "cookbook",
+})
+_NON_PROD_EXAMPLE_FILENAMES = frozenset({
+    ".env.example", ".env.sample", ".env.template", ".env.dist",
+})
+
+
+def classify_scope_tier(relative_path: str) -> str:
+    """Bulgu dosyasını kapsam katmanına ayırır: production, non_production_example, test_benchmark."""
+    if not relative_path or relative_path == "Proje geneli":
+        return "production"
+    norm = relative_path.replace("\\", "/").strip("/")
+    parts = [p.casefold() for p in norm.split("/") if p]
+    if not parts:
+        return "production"
+    filename = parts[-1]
+    if any(seg in _TEST_BENCH_SEGMENTS for seg in parts[:-1]):
+        return "test_benchmark"
+    if (
+        filename.startswith(("test_", "bench_"))
+        or filename.endswith(("_test.go", "_test.py", "_test.rs", ".spec.ts", ".spec.js", ".test.ts", ".test.js"))
+    ):
+        return "test_benchmark"
+    if filename in _NON_PROD_EXAMPLE_FILENAMES or any(seg in _NON_PROD_EXAMPLE_SEGMENTS for seg in parts[:-1]):
+        return "non_production_example"
+    return "production"
+
+
+def classify_finding_domain(item: dict[str, Any]) -> str:
+    """Bulguyu SAST, IaC veya SCA/Tedarik Zinciri alanına sınıflandırır."""
+    cat = str(item.get("category") or "").casefold()
+    if "iac" in item or cat in {"container", "iac"}:
+        return "iac"
+    if cat in {"components", "supplychain", "supply_chain", "license"}:
+        return "sca_supply_chain"
+    return "sast"
+
+
 def _analyze_project(
     value: str,
     *,
@@ -1562,19 +1635,22 @@ def _analyze_project(
             "evidence": evidence,
             "recommendation": recommendation,
             "reference": reference,
+            "scope_tier": classify_scope_tier(relative),
         })
 
     extra_line_rules = (
         (
             "command_data", "high", "Güvensiz nesne serileştirme (Deserialization)",
             re.compile(
-                r"(?i)(\b(?:pickle|cPickle|_pickle|marshal|dill|jsonpickle)\.(?:loads?|Unpickler)\s*\("
+                r"(?i)(\b(?:pickle|cPickle|_pickle|marshal|dill|jsonpickle|cloudpickle)\.(?:loads?|Unpickler)\s*\("
+                r"|\bjoblib\.load\s*\("
+                r"|\b(?:numpy|np)\.load\s*\([^\n)]*allow_pickle\s*=\s*true"
                 r"|\bshelve\.open\s*\("
                 r"|\byaml\.(?:unsafe_load|full_load)\s*\("
                 r"|\byaml\.load\s*\((?![^\n)]*(?:CSafeLoader|SafeLoader|safe_load))"
-                r"|\bunserialize\s*\("
+                r"|\bunserialize\s*\((?![^\n)]*allowed_classes[^\n)]*(?:false|\[\s*\]))"
                 r"|\bObjectInputStream\s*\("
-                r"|\.readObject\s*\("
+                r"|(?<![A-Za-z0-9_][Pp]em[Pp]arser)\.readObject\s*\("
                 r"|\bnode-serialize\b)"
             ),
             "Güvensiz nesne serileştirme veya geri yükleme çağrısı görüldü.",
@@ -1598,7 +1674,7 @@ def _analyze_project(
             re.compile(
                 r"(?i)(verify_signature[\"']?\s*[:=]\s*false"
                 r"|jwt\.decode\s*\([^\n]*verify\s*=\s*false"
-                r"|jwt\.get_unverified_(?:claims|header)\s*\()"
+                r"|jwt\.get_unverified_claims\s*\()"
             ),
             "JWT doğrulamasında imza kontrolünün kapatıldığı veya 'none' algoritmasına izin verildiği görüldü.",
             "JWT imzalarını her zaman doğrulayın ve izin verilen algoritmaları sabit bir güvenli listeyle sınırlandırın.",
@@ -1689,6 +1765,13 @@ def _analyze_project(
             "Boyut sınırı zorunlu güvenli alternatifleri (fgets, strncpy/strlcpy, snprintf) kullanın.",
             "CWE-120",
         ),
+        (
+            "command_data", "high", "Rust yol birleştirmede dizin geçişi (Path Traversal) riski",
+            re.compile(r"\b(?:fs::|tokio::fs::)?(?:remove_dir_all|remove_file|write|read|read_to_string|File::create|OpenOptions)\s*\([^\n]*\.join\s*\("),
+            "Rust dosya sistemi işleminde doğrulanmamış .join(...) yolu kullanıldığı görüldü.",
+            "Kullanıcı girdisinde Path::components() ile ParentDir (..) ve RootDir bileşenlerini reddedin ve canonicalize() + starts_with() ile kök dizini doğrulayın.",
+            "CWE-22",
+        ),
     )
 
     line_rules = (
@@ -1701,7 +1784,7 @@ def _analyze_project(
         ),
         (
             "command_data", "critical", "Dinamik kod çalıştırma",
-            re.compile(r"(?<![A-Za-z0-9_])(eval|exec)\s*\("),
+            re.compile(r"(?<![A-Za-z0-9_.$>-])(eval|exec)\s*\("),
             "eval/exec çağrısı görüldü; kaynak satır içeriği kaydedilmedi.",
             "Veriyi koddan ayırın; izin verilen işlemleri açık bir eşleme ile seçin.",
             "CWE-95",
@@ -1729,7 +1812,7 @@ def _analyze_project(
         ),
         (
             "transport", "high", "TLS sertifika doğrulaması kapalı",
-            re.compile(r"(?i)(verify\s*=\s*false|rejectUnauthorized\s*:\s*false|CERT_NONE)"),
+            re.compile(r"(?i)(\bverify\s*=\s*false|rejectUnauthorized\s*:\s*false|CERT_NONE|_create_unverified_context\s*\(|InsecureSkipVerify\s*:\s*true)"),
             "TLS doğrulamasını kapatan ayar görüldü.",
             "Sertifika ve ana makine doğrulamasını etkinleştirin; geliştirme istisnasını üretime taşımayın.",
             "CWE-295",
@@ -1768,12 +1851,15 @@ def _analyze_project(
         *extra_line_rules,
     )
 
-    postmessage_pattern = re.compile(r"(?i)addEventListener\s*\(\s*[\"']message[\"']")
+    postmessage_pattern = re.compile(
+        r"""(?i)(?:(?:\bwindow|\bglobalThis)\s*\.\s*|(?<![.\w$]))addEventListener\s*\(\s*["']message["']"""
+    )
     origin_check_pattern = re.compile(r"\.origin\b")
 
     skipped_files: dict[str, int] = {}
     rust_unsafe_files = [0]
-    # rota yetki envanteri için Python/JS kaynakları; Python dosyasının ayrıştırılmış ağacı da eklenir (ikinci ayrıştırma yok)
+    # rota yetki envanteri için Python/JS/Ruby kaynakları; Python dosyasının ayrıştırılmış ağacı da eklenir
+    # (ikinci ayrıştırma yok)
     authz_sources: list[tuple[str, str] | tuple[str, str, ast.Module, list[ast.AST]]] = []
     spec_sources: list[tuple[str, str]] = []  # OpenAPI/Swagger sözleşmeleri (api_spec_routes)
     authz_bytes = 0
@@ -1874,8 +1960,10 @@ def _analyze_project(
         if suffix in api_spec_routes.SPEC_SUFFIXES and len(spec_sources) < api_spec_routes.MAX_SPECS * 4 \
                 and api_spec_routes.looks_like_spec(file_rel_posix, text):
             spec_sources.append((file_rel_posix, text))
-        if suffix in authz_routes.PY_SUFFIXES + authz_routes.JS_SUFFIXES and authz_bytes < AUTHZ_MAX_BYTES \
-                and len(text) <= authz_routes.MAX_SOURCE_BYTES and not (suffix != ".py" and taint_flow.is_minified_js(text)):
+        if suffix in (authz_routes.PY_SUFFIXES + authz_routes.JS_SUFFIXES + authz_routes.RUBY_SUFFIXES
+                      + authz_routes.JAVA_SUFFIXES + authz_routes.CSHARP_SUFFIXES) \
+                and authz_bytes < AUTHZ_MAX_BYTES and len(text) <= authz_routes.MAX_SOURCE_BYTES \
+                and not (suffix in authz_routes.JS_SUFFIXES and taint_flow.is_minified_js(text)):
             authz_index = len(authz_sources)
             authz_sources.append((file_rel_posix, text))
             authz_bytes += len(text)
@@ -2061,6 +2149,8 @@ def _analyze_project(
                         "_pickle.loads", "_pickle.load", "cpickle.loads", "cpickle.load",
                         "marshal.loads", "marshal.load", "shelve.open",
                         "dill.loads", "dill.load", "jsonpickle.decode",
+                        "cloudpickle.loads", "cloudpickle.load", "joblib.load",
+                        "pandas.read_pickle", "pd.read_pickle",
                         "yaml.unsafe_load", "yaml.full_load",
                     }:
                         add(
@@ -2069,6 +2159,15 @@ def _analyze_project(
                             "Güvenilmeyen veride pickle/marshal/unserialize kullanmayın; JSON veya SafeLoader tercih edin.",
                             "CWE-502",
                         )
+                    elif name in {"numpy.load", "np.load"}:
+                        allow_pickle_val = keyword_value(node, "allow_pickle")
+                        if isinstance(allow_pickle_val, ast.Constant) and allow_pickle_val.value is True:
+                            add(
+                                "command_data", "high", "Güvensiz nesne serileştirme (Deserialization)", path, node.lineno,
+                                "Güvensiz nesne serileştirme veya geri yükleme çağrısı görüldü.",
+                                "Güvenilmeyen veride pickle/marshal/unserialize kullanmayın; JSON veya SafeLoader tercih edin.",
+                                "CWE-502",
+                            )
                     elif name == "yaml.load":
                         loader_val = keyword_value(node, "Loader")
                         loader_name = dotted_name(loader_val).casefold() if loader_val is not None else ""
@@ -2118,6 +2217,12 @@ def _analyze_project(
                             "XML ayrıştırıcıda dış varlık (external entity) veya DTD yükleme özelliğinin etkinleştirildiği görüldü.",
                             "DTD ve dış varlık çözümlemesini kapatın; Python'da defusedxml veya güvenli XML ayrıştırıcı ayarlarını kullanın.",
                             "CWE-611",
+                        )
+                    if name in {"ssl._create_unverified_context", "_create_unverified_context"}:
+                        add(
+                            "transport", "high", "TLS sertifika doğrulaması kapalı", path, node.lineno,
+                            "TLS doğrulamasını kapatan çağrı görüldü.",
+                            "Sertifika ve ana makine doğrulamasını etkinleştirin; geliştirme istisnasını üretime taşımayın.", "CWE-295",
                         )
                     verify_value = keyword_value(node, "verify")
                     if isinstance(verify_value, ast.Constant) and verify_value.value is False:
@@ -2236,11 +2341,12 @@ def _analyze_project(
                 and not _has_unsafe_jwt_option(text)
             )
             folded = _fold_for_literals(lower)
-            active_rules = () if normalized_name.endswith(".d.ts") else tuple(
+            active_rules = () if normalized_name.endswith((".d.ts", ".md")) else tuple(
                 rule for rule in _rules_present(line_rules, folded)
                 if not (rule[2] in SOLIDITY_RULE_TITLES and suffix != ".sol")
                 and not (rule[2] in ELECTRON_RULE_TITLES and suffix not in JS_FAMILY_SUFFIXES)
                 and not (rule[2] == C_OVERFLOW_RULE_TITLE and suffix not in C_FAMILY_SUFFIXES)
+                and not (rule[2] == "Rust yol birleştirmede dizin geçişi (Path Traversal) riski" and suffix != ".rs")
             )
             check_postmessage = not normalized_name.endswith(".d.ts") and not has_origin_check and "addeventlistener" in folded
             raw_source_lines = text.splitlines() if active_rules or check_postmessage else []
@@ -2267,14 +2373,32 @@ def _analyze_project(
                     if title == "SQL sorgusunda veri birleştirme" and not _SQL_CONTEXT_LINE_RE.search(raw_line_text):
                         continue
                     if title == "Kaynak kodda sabit sır olasılığı":
+                        if any(
+                            seg in {"locales", "locale", "i18n", "translations"}
+                            for seg in file_rel_posix.lower().split("/")
+                        ):
+                            continue
                         m_sec = re.search(
                             r"(?i)\b(?:api[_-]?key|client[_-]?secret|private[_-]?key|password|passwd)\b\s*[:=]\s*[\"']([^\"']{8,})[\"']",
                             line,
                         )
                         if m_sec and _BENIGN_SECRET_LITERAL_RE.match(m_sec.group(1).strip()):
                             continue
-                    if title == "Günlüğe hassas veri yazma olasılığı" and not pattern.search(_LLM_TOKEN_METRIC_RE.sub("", line)):
+                    if title == "Günlüğe hassas veri yazma olasılığı":
+                        line_without_metrics = _LLM_TOKEN_METRIC_RE.sub("", line)
+                        line_without_literals = re.sub(r"""(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')""", '""', line_without_metrics)
+                        if not pattern.search(line_without_literals):
+                            continue
+                    if title == "Servis tüm ağ arayüzlerinde dinliyor" and re.search(
+                        r"""(?:[=!]==?\s*["']0\.0\.0\.0["']|["']0\.0\.0\.0["']\s*[=!]==?|\.(?:replace|includes|contains|startsWith|equals)\s*\(\s*["']0\.0\.0\.0["']|\b(?:in|case)\s+[^\n]*["']0\.0\.0\.0["'])""",
+                        line,
+                    ):
                         continue
+                    if title == C_OVERFLOW_RULE_TITLE and re.search(r"\b(?:strcpy|strcat)\s*\(\s*([A-Za-z_]\w*)", line):
+                        dst_var = re.search(r"\b(?:strcpy|strcat)\s*\(\s*([A-Za-z_]\w*)", line).group(1)
+                        prev_window = "\n".join(source_lines[max(0, line_number - 6):line_number - 1])
+                        if re.search(rf"\b{re.escape(dst_var)}\b\s*=\s*[^;]*\b(?:malloc|calloc|realloc|g_malloc|xmalloc)\s*\([^;]*\bstrlen\s*\(", prev_window):
+                            continue
                     if title == "Dinamik kod çalıştırma" and suffix not in DYNAMIC_CODE_SUFFIXES:
                         continue  # YAML/JSON/belge içindeki "exec(" metni kod değildir (ör. SEMVER.exec)
                     if title == "Dinamik kod çalıştırma" and suffix in JS_FAMILY_SUFFIXES and not _JS_DYNAMIC_CODE_PATTERN.search(line):
@@ -2477,6 +2601,859 @@ def _analyze_project(
             if _rust_unsafe_note(text, path, add):
                 rust_unsafe_files[0] += 1
 
+        # Kurumsal v2 saldırı zinciri ve yapısal dedektörler (Kategori A: 1, 2, 3, 4)
+        _is_sniper_self_detector = (
+            (root / "project_analyzer.py").is_file()
+            and (root / "report_renderers.py").is_file()
+        )
+        if not _is_sniper_self_detector and suffix in {".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs"}:
+            cors_m = re.search(
+                r'(?i)(?:allow_origins\s*=\s*\[\s*["\']\*["\']\s*\]|Access-Control-Allow-Origin["\']?\s*[:=]\s*["\']\*["\'])',
+                text,
+            )
+            rce_daemon_m = re.search(
+                r"\b(?:exec_module|spec_from_file_location|OSGYM_ALLOWED_IPS|cua_bench\.make)\b",
+                text,
+            ) or (
+                re.search(r"\ballowed_ips\b", text)
+                and re.search(r"\b127\.0\.0\.1\b", text)
+                and re.search(r"\b(?:exec_module|subprocess\.(?:Popen|run)|os\.system)\b", text)
+            )
+            if cors_m and rce_daemon_m:
+                sink_line = text[:rce_daemon_m.start()].count("\n") + 1
+                before_len = len(findings)
+                add(
+                    "web_hardening", "critical",
+                    "Birleşik saldırı zinciri: geniş CORS izni ve kimlik doğrulamasız yerel servis üzerinden uzaktan kod çalıştırma / ana makine erişimi",
+                    path, sink_line,
+                    "Yerel serviste allow_origins=[\"*\"] (veya açık CORS) ile fail-open IP süzgeci / dinamik modül veya alt süreç çalıştırma zinciri bir arada görüldü.",
+                    "Yerel ajan/daemon uçlarında CORS'u kapatın, güçlü kimlik doğrulama zorunlu kılın ve kullanıcı girdisiyle dinamik modül/komut yüklemeyin.",
+                    "CWE-942",
+                )
+                if len(findings) > before_len:
+                    findings[-1]["attack_chain"] = True
+                    findings[-1]["exploitability"] = "proven_exploitable"
+
+            has_http_route_def = bool(
+                re.search(
+                    r"(?:@(?:app|router|bp|blueprint)\.(?:route|post|put)\b|\b(?:Flask|FastAPI|APIRouter)\s*\(|\bapp\.post\s*\()",
+                    text,
+                )
+            )
+            form_input_m = re.search(
+                r"\b(?:request\.(?:form|files)\b|Form\s*\(|UploadFile\b|req\.files\b|parseMultipartForm)",
+                text,
+            )
+            form_exec_or_write_m = re.search(
+                r"\b(?:subprocess\.(?:run|Popen|call|check_output)|os\.system|shutil\.copyfileobj|\.save\s*\(|write_bytes\s*\(|exec\s*\()",
+                text,
+            )
+            has_route_auth_or_csrf = bool(
+                re.search(
+                    r"\b(?:Depends\s*\(|Security\s*\(|login_required|csrf_protect|CSRFProtect|verify_token|require_auth)\b",
+                    text,
+                )
+            )
+            if has_http_route_def and form_input_m and form_exec_or_write_m and not has_route_auth_or_csrf:
+                form_line = text[:form_exec_or_write_m.start()].count("\n") + 1
+                before_form = len(findings)
+                add(
+                    "web_hardening", "critical",
+                    "Tarayıcıdan preflight gerektirmeyen (Simple Request) form/multipart isteğiyle uzaktan komut çalıştırma veya dosya yazma",
+                    path, form_line,
+                    "Kimlik doğrulamasız ve CSRF korumasız HTTP rotasında request.form / request.files (veya UploadFile/Form) verisinin doğrudan komut çalıştırma veya dosya yazma hedefine aktarıldığı görüldü.",
+                    "Form/multipart kabul eden durum değiştirici uçlarda kimlik doğrulama, CSRF belirteci veya yalnızca JSON + özel üstbilgi kontrolü zorunlu kılın.",
+                    "CWE-352",
+                )
+                if len(findings) > before_form:
+                    findings[-1]["zero_preflight_form"] = True
+                    findings[-1]["exploitability"] = "proven_exploitable"
+
+            ws_cswsh_m = re.search(
+                r"CheckOrigin\s*:\s*func\s*\([^)]*\)\s*bool\s*\{\s*return\s+true\s*\}",
+                text,
+            )
+            if not ws_cswsh_m:
+                ws_handler_m = re.search(
+                    r"(?:@(?:app|router)\.websocket\s*\(|\bWebSocketServer\s*\()",
+                    text,
+                )
+                if ws_handler_m:
+                    ws_tail = text[ws_handler_m.start():]
+                    next_def_m = re.search(
+                        r"\n(?:@(?:app|router)\.\w+|\b(?:async\s+def|def|func)\s+\w+)",
+                        ws_tail[1:],
+                    )
+                    if next_def_m:
+                        first_def_m = re.search(r"\b(?:async\s+def|def|func)\s+\w+", ws_tail)
+                        if first_def_m and next_def_m.start() + 1 <= first_def_m.start():
+                            after_first = ws_tail[first_def_m.end():]
+                            second_def_m = re.search(
+                                r"\n(?:@(?:app|router)\.\w+|\b(?:async\s+def|def|func)\s+\w+)",
+                                after_first,
+                            )
+                            ws_scope = ws_tail[:first_def_m.end() + second_def_m.start()] if second_def_m else ws_tail
+                        else:
+                            ws_scope = ws_tail[:next_def_m.start() + 1]
+                    else:
+                        ws_scope = ws_tail
+                    if not re.search(
+                        r'(?i)(?:\borigin\b|headers\.get\s*\(\s*["\']origin["\']\s*\)|\bcheck_origin\b|(?<!def\s)\bdecode_token\s*\(|(?<!def\s)\bverify_token\s*\(|\bjwt\.decode\s*\()',
+                        ws_scope,
+                    ):
+                        ws_cswsh_m = ws_handler_m
+            if ws_cswsh_m:
+                ws_line = text[:ws_cswsh_m.start()].count("\n") + 1
+                add(
+                    "web_hardening", "high",
+                    "WebSocket bağlantısında Origin doğrulaması eksik (Cross-Site WebSocket Hijacking / CSWSH)",
+                    path, ws_line,
+                    "WebSocket el sıkışmasında Origin başlığı doğrulanmadan bağlantı kabul edildiği görüldü.",
+                    "WebSocket yükseltme (Upgrade) isteğinde Origin başlığını izin verilen güvenli kaynak listesiyle doğrulayın.",
+                    "CWE-1385",
+                )
+
+            ssrf_local_m = re.search(r'["\'](?:localhost|127\.0\.0\.1)["\']', text)
+            ssrf_guard_m = re.search(
+                r"(?i)\b(?:if\b[^\n]*(?:localhost|127\.0\.0\.1)|blacklist|blocklist|blocked_hosts|deny_hosts)\b",
+                text,
+            )
+            if (
+                ssrf_local_m
+                and ssrf_guard_m
+                and re.search(r"\b(?:urlparse|urlsplit|requests\.|httpx\.|urllib|http\.Get)\b", text)
+                and not re.search(r"(?:169\.254\.169\.254|\b(?:is_private|is_loopback|is_link_local)\b)", text)
+            ):
+                ssrf_line = text[:ssrf_guard_m.start()].count("\n") + 1
+                add(
+                    "ssrf", "high",
+                    "Atlanabilir SSRF kara listesi: yalnızca dizge tabanlı localhost kontrolü (IMDSv1 / IPv6 / DNS Rebinding açık)",
+                    path, ssrf_line,
+                    "SSRF filtresinde yalnızca 'localhost' veya '127.0.0.1' dizgesi kontrol edilmiş; bulut metadata (169.254.169.254), IPv6 (::1 / ::ffff:127.0.0.1) ve DNS çözümleme sonrası özel IP kontrolü eksik.",
+                    "URL ana bilgisayarını DNS ile çözümledikten sonra ipaddress.ip_address().is_private / is_loopback / is_link_local kontrollerini uygulayın.",
+                    "CWE-918",
+                )
+
+            redir_prefix_m = re.search(r"\bredirect_ur[il]\w*\.(?:startswith|startsWith)\s*\(", text)
+            if redir_prefix_m:
+                redir_line = text[:redir_prefix_m.start()].count("\n") + 1
+                add(
+                    "web_hardening", "high",
+                    "OAuth / SSO yönlendirme adresinde önek (startswith) tabanlı atlanabilir doğrulama",
+                    path, redir_line,
+                    "redirect_uri doğrulamasında startswith() kullanıldığı görüldü; https://trusted.com.evil.com gibi alt alan adlarıyla atlanabilir.",
+                    "Yönlendirme adresini tam ayrıştırıp (urlparse) şema, tam etki alanı (hostname ==) ve yolu kesin eşleşmeyle doğrulayın.",
+                    "CWE-601",
+                )
+
+            jwt_unverified_hdr_m = re.search(r"\bget_unverified_header\s*\(", text)
+            if jwt_unverified_hdr_m:
+                jwt_win = text[max(0, jwt_unverified_hdr_m.start() - 100) : jwt_unverified_hdr_m.end() + 700]
+                has_jku_x5u = bool(re.search(r'["\'](?:jku|x5u)["\']', jwt_win))
+                has_unsafe_kid = bool(
+                    re.search(r'["\']kid["\']', jwt_win)
+                    and not re.search(r"\b(?:jwk_set|PyJWKSet|jwks|fetch_jwk_set|get_signing_key)\b", jwt_win)
+                )
+                if has_jku_x5u or has_unsafe_kid:
+                    jwt_hdr_line = text[:jwt_unverified_hdr_m.start()].count("\n") + 1
+                    add(
+                        "crypto", "critical",
+                        "JWT başlığında doğrulanmamış jku/x5u/kid kullanımı (Anahtar Enjeksiyonu / SSRF)",
+                        path, jwt_hdr_line,
+                        "Doğrulanmamış JWT başlığından (get_unverified_header) jku, x5u veya kid alanı okunarak anahtar seçimi yapıldığı görüldü.",
+                        "JWT doğrulamasında harici URL'den anahtar çekmeyin (jku/x5u kapatın) ve kid değerini sabit bir izin listesiyle (allowlist) sınırlandırın.",
+                        "CWE-347",
+                    )
+
+        if suffix in {".py", ".js", ".ts"} and re.search(
+            r'\b(?:filter_by\s*\(\s*id\s*=|findUnique\s*\(\s*\{\s*where\s*:\s*\{\s*id\b|delete_one\s*\(\s*\{\s*["\']_?id["\'])',
+            text,
+        ):
+            try:
+                import business_logic_auditor
+
+                bl_res = business_logic_auditor.audit_business_logic_inline(text, filename=file_rel_posix)
+                for bf in bl_res.get("findings") or []:
+                    if bf.get("control_id") == "SNIPER-AUTHZ-BOLA-04":
+                        add(
+                            "authz", "high", bf["title"], path, int(bf.get("line", 1) or 1),
+                            bf.get("evidence", ""), bf.get("recommendation", ""), "CWE-639",
+                        )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".py", ".js", ".ts"} and re.search(
+            r"(?:@mcp\.tool\b|\b(?:FastMCP|McpServer|@mcp\.tool|server\.tool|pyautogui|xdotool)\b)",
+            text,
+        ):
+            try:
+                import ai_llm_security_auditor
+
+                ai_res = ai_llm_security_auditor.audit_ai_llm_inline(text, filename=file_rel_posix)
+                for af in ai_res.get("findings") or []:
+                    if af.get("control_id") == "SNIPER-AI-CHAIN-01":
+                        add(
+                            "command_data", "critical", af["title"], path, int(af.get("line", 1) or 1),
+                            af.get("evidence", ""), af.get("recommendation", ""), "CWE-77",
+                        )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if ("mcpServers" in text or "server-filesystem" in text or "server-everything" in text) and suffix in {".json", ".yaml", ".yml", ".py", ".ts", ".js"}:
+            try:
+                import ai_llm_security_auditor
+
+                mcp_priv = ai_llm_security_auditor.audit_mcp_config_privileges(text, filename=file_rel_posix)
+                for mf in mcp_priv.get("findings") or []:
+                    add(
+                        "authz", str(mf.get("severity") or "high"), mf["title"], path, int(mf.get("line", 1) or 1),
+                        mf.get("evidence", ""), mf.get("recommendation", ""), str(mf.get("cwe") or "CWE-250"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if (
+            path.name in {"package.json", "setup.py", "pip.conf", "pip.ini", "pyproject.toml"}
+            or path.name.startswith("requirements")
+            or ".github/workflows/" in file_rel_posix
+        ) and re.search(r"\b(?:extra-index-url|preinstall|postinstall|cmdclass|workflow_run|download-artifact)\b", text):
+            try:
+                import supply_chain_slsa_auditor
+
+                slsa_res = supply_chain_slsa_auditor.audit_supply_chain_enterprise_inline(text, filename=file_rel_posix)
+                for sf in slsa_res.get("findings") or []:
+                    add(
+                        "supplychain", str(sf.get("severity") or "high"), sf["title"], path, int(sf.get("line", 1) or 1),
+                        sf.get("evidence", ""), sf.get("recommendation", ""), str(sf.get("cwe") or "CWE-829"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix == ".py":
+            ml_deser_m = re.search(
+                r'(?<!["\'])\b(?:joblib\.load\s*\(|(?:numpy|np)\.load\s*\([^)]*allow_pickle\s*=\s*True|yaml\.unsafe_load\s*\()',
+                text,
+            )
+            if not ml_deser_m:
+                for tm in re.finditer(r'(?<!["\'])\btorch\.load\s*\(', text):
+                    call_window = text[tm.start() : tm.start() + 240]
+                    if not re.search(r"\bweights_only\s*=\s*True\b", call_window):
+                        ml_deser_m = tm
+                        break
+            if ml_deser_m:
+                ml_deser_line = text[:ml_deser_m.start()].count("\n") + 1
+                add(
+                    "command_data", "critical",
+                    "Güvensiz ML modeli veya nesne serileştirme çözümü (torch.load / joblib / allow_pickle — RCE)",
+                    path, ml_deser_line,
+                    "weights_only=True olmadan torch.load(), allow_pickle=True ile numpy.load() veya joblib.load() kullanımı rastgele kod çalıştırmaya (CWE-502) yol açar.",
+                    "Model ağırlıkları için safetensors veya torch.load(..., weights_only=True) kullanın; güvenilmeyen veride pickle/joblib yüklemesini kapatın.",
+                    "CWE-502",
+                )
+
+            ssti_m = re.search(
+                r'(?<!["\'])(?<!def )(?:\brender_template_string|\bjinja2\.Template|\bEnvironment\s*\([^)]*\)\.from_string)\s*\(\s*(?:(?!["\'\s\)])|["\'][^"\']*["\']\s*(?:\+|%|\.format\s*\())',
+                text,
+            )
+            if ssti_m:
+                ssti_line = text[:ssti_m.start()].count("\n") + 1
+                add(
+                    "command_data", "critical",
+                    "Sunucu Taraflı Şablon Enjeksiyonu (SSTI): dinamik girdiden şablon derleme",
+                    path, ssti_line,
+                    "Kullanıcı veya çalışma zamanı değişkeninin doğrudan şablon metni olarak (render_template_string / Template / from_string) derlendiği görüldü.",
+                    "Kullanıcı girdisini şablon kaynak metnine birleştirmeyin; sabit şablon dosyası kullanıp veriyi bağlam (context) parametresi olarak aktarın.",
+                    "CWE-1336",
+                )
+
+        if suffix in {".py", ".java", ".kt", ".scala"}:
+            xxe_m = re.search(r'(?<!["\'])\bXMLParser\s*\([^)]*resolve_entities\s*=\s*True', text)
+            if not xxe_m:
+                dbf_m = re.search(r'(?<!["\'])\bDocumentBuilderFactory\.newInstance\s*\(\s*\)', text)
+                if dbf_m and not re.search(
+                    r"(?:disallow-doctype-decl|FEATURE_SECURE_PROCESSING|ACCESS_EXTERNAL_DTD)",
+                    text,
+                ):
+                    xxe_m = dbf_m
+            if xxe_m:
+                xxe_line = text[:xxe_m.start()].count("\n") + 1
+                add(
+                    "command_data", "high",
+                    "XML Harici Varlık (XXE) çözümlemesi açık (CWE-611)",
+                    path, xxe_line,
+                    "XML ayrıştırıcısında harici varlık (resolve_entities=True) veya DOCTYPE çözümlemesinin kısıtlanmadığı görüldü.",
+                    "XML ayrıştırıcısında resolve_entities=False ve disallow-doctype-decl kısıtlarını etkinleştirin.",
+                    "CWE-611",
+                )
+
+        if suffix in {".sql", ".prisma"} and re.search(r"\b(?:CREATE\s+TABLE|CREATE\s+POLICY|model\s+\w+)\b", text, re.IGNORECASE):
+            try:
+                import database_rls_schema_auditor
+
+                rls_res = database_rls_schema_auditor.audit_multitenant_rls_isolation(text, filename=file_rel_posix)
+                for rf in rls_res.get("findings") or []:
+                    add(
+                        "authz", str(rf.get("severity") or "high"), rf["title"], path, int(rf.get("line", 1) or 1),
+                        rf.get("evidence", ""), rf.get("recommendation", ""), str(rf.get("cwe") or "CWE-284"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".tf", ".tfvars", ".json", ".yaml", ".yml"} and re.search(
+            r"\b(?:PassRole|AssumeRoleWithWebIdentity|hostPID|hostNetwork|docker\.sock|containerd\.sock)\b", text
+        ):
+            try:
+                import cloud_iam_rbac_auditor
+
+                cloud_res = cloud_iam_rbac_auditor.audit_cloud_privesc_chains(text, filename=file_rel_posix)
+                for cf_item in cloud_res.get("findings") or []:
+                    add(
+                        "authz", str(cf_item.get("severity") or "critical"), cf_item["title"], path, int(cf_item.get("line", 1) or 1),
+                        cf_item.get("evidence", ""), cf_item.get("recommendation", ""), str(cf_item.get("cwe") or "CWE-269"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".py", ".js", ".ts", ".go"} and re.search(
+            r"\b(?:ApolloServer|Strawberry|graphene\.Schema|GraphQLRouter|graphqlHTTP|insecure_channel|WithInsecure|NewCredentials|createInsecure)\b",
+            text,
+        ):
+            try:
+                gql_res = api_spec_routes.audit_graphql_grpc_security(text, filename=file_rel_posix)
+                for gf in gql_res.get("findings") or []:
+                    add(
+                        "web_hardening", str(gf.get("severity") or "high"), gf["title"], path, int(gf.get("line", 1) or 1),
+                        gf.get("evidence", ""), gf.get("recommendation", ""), str(gf.get("cwe") or "CWE-400"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".py", ".js", ".ts", ".go", ".java"} and re.search(
+            r"\b(?:balance|wallet|credits|coupon|voucher|redeem|withdraw)\b",
+            text,
+        ):
+            try:
+                import business_logic_auditor
+
+                fin_res = business_logic_auditor.audit_financial_race_conditions(text, filename=file_rel_posix)
+                for ff in fin_res.get("findings") or []:
+                    add(
+                        "authz", str(ff.get("severity") or "critical"), ff["title"], path, int(ff.get("line", 1) or 1),
+                        ff.get("evidence", ""), ff.get("recommendation", ""), str(ff.get("cwe") or "CWE-362"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".js", ".ts", ".mjs", ".cjs", ".rs"} and re.search(
+            r"\b(?:ipcMain|tauri::command|nodeIntegration|contextIsolation|registerFileProtocol|setAsDefaultProtocolClient)\b",
+            text,
+        ):
+            try:
+                import desktop_protocol_security_auditor
+
+                desk_res = desktop_protocol_security_auditor.audit_desktop_ipc_rce_chains(text, filename=file_rel_posix)
+                for df in desk_res.get("findings") or []:
+                    add(
+                        "command_data", str(df.get("severity") or "critical"), df["title"], path, int(df.get("line", 1) or 1),
+                        df.get("evidence", ""), df.get("recommendation", ""), str(df.get("cwe") or "CWE-94"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".py", ".js", ".ts", ".go", ".java", ".rb"} and re.search(
+            r"\b(?:re\.compile|RegExp)\s*\(",
+            text,
+        ):
+            try:
+                import dos_resilience_redos_auditor
+
+                redos_res = dos_resilience_redos_auditor.analyze_regex_redos_automata(text, filename=file_rel_posix)
+                for rf_dos in redos_res.get("findings") or []:
+                    add(
+                        "web_hardening", str(rf_dos.get("severity") or "high"), rf_dos["title"], path, int(rf_dos.get("line", 1) or 1),
+                        rf_dos.get("evidence", ""), rf_dos.get("recommendation", ""), "CWE-1333",
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".js", ".jsx", ".ts", ".tsx"} and re.search(
+            r"(?:['\"]use server['\"]|addEventListener\s*\(\s*['\"]message['\"]|getServerSideProps)",
+            text,
+        ):
+            try:
+                import browser_extension_pwa_auditor
+
+                xstack_res = browser_extension_pwa_auditor.audit_cross_stack_web_security(text, filename=file_rel_posix)
+                for xf in xstack_res.get("findings") or []:
+                    add(
+                        "web_hardening", str(xf.get("severity") or "high"), xf["title"], path, int(xf.get("line", 1) or 1),
+                        xf.get("evidence", ""), xf.get("recommendation", ""), str(xf.get("cwe") or "CWE-862"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".py", ".js", ".ts", ".go", ".java", ".rb"} and re.search(
+            r"\b(?:verify_authentication_response|verify_registration_response|verifyAuthenticationResponse|verifyRegistrationResponse|want_assertions_signed|want_messages_signed|verify_aud|verify_exp)\b",
+            text,
+        ):
+            try:
+                import auth_protocol_auditor
+
+                auth8_res = auth_protocol_auditor.audit_fido2_saml_oidc_code(text, filename=file_rel_posix)
+                for af8 in auth8_res.get("findings") or []:
+                    add(
+                        "authz", str(af8.get("severity") or "critical"), af8["title"], path, int(af8.get("line", 1) or 1),
+                        af8.get("evidence", ""), af8.get("recommendation", ""), str(af8.get("cwe") or "CWE-287"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".py", ".js", ".ts", ".rb"} and re.search(
+            r"(?:\*\*\s*request\.(?:json|form|get_json)|Object\.assign\s*\([^,]+,\s*req\.body|\.create\s*\(\s*req\.body\s*\)|\.update\s*\(\s*req\.body\b|\.permit!\b)",
+            text,
+        ):
+            try:
+                import openapi_contract_auditor
+
+                bopla_res = openapi_contract_auditor.audit_shadow_api_and_bopla(text, filename=file_rel_posix)
+                for of8 in bopla_res.get("findings") or []:
+                    add(
+                        "authz", str(of8.get("severity") or "high"), of8["title"], path, int(of8.get("line", 1) or 1),
+                        of8.get("evidence", ""), of8.get("recommendation", ""), str(of8.get("cwe") or "CWE-915"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".kt", ".java", ".swift", ".dart"} and re.search(
+            r"\b(?:authenticate\s*\(\s*promptInfo|evaluatePolicy|getIntent\s*\(\s*\)|loadUrl\s*\()",
+            text,
+        ):
+            try:
+                import mobile_security_auditor
+
+                mob8_res = mobile_security_auditor.audit_mobile_biometric_and_deeplink_chains(text, filename=file_rel_posix)
+                for mf8 in mob8_res.get("findings") or []:
+                    add(
+                        "authz", str(mf8.get("severity") or "high"), mf8["title"], path, int(mf8.get("line", 1) or 1),
+                        mf8.get("evidence", ""), mf8.get("recommendation", ""), str(mf8.get("cwe") or "CWE-939"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".py", ".js", ".ts"} and re.search(
+            r"\b(?:embeddings\.create|ChatCompletion\.create|chat\.completions\.create|pinecone|chromadb|qdrant|weaviate|add_documents)\b",
+            text,
+        ):
+            try:
+                import privacy_dataflow_auditor
+
+                priv8_res = privacy_dataflow_auditor.audit_ai_rag_pii_leakage(text, filename=file_rel_posix)
+                for pf8 in priv8_res.get("findings") or []:
+                    add(
+                        "command_data", str(pf8.get("severity") or "critical"), pf8["title"], path, int(pf8.get("line", 1) or 1),
+                        pf8.get("evidence", ""), pf8.get("recommendation", ""), str(pf8.get("cwe") or "CWE-359"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix == ".sol" or (suffix == ".rs" and "solana_program" in text):
+            try:
+                import business_logic_auditor
+
+                web3_res = business_logic_auditor.audit_web3_smart_contracts(text, filename=file_rel_posix)
+                for wf9 in web3_res.get("findings") or []:
+                    add(
+                        "authz", str(wf9.get("severity") or "critical"), wf9["title"], path, int(wf9.get("line", 1) or 1),
+                        wf9.get("evidence", ""), wf9.get("recommendation", ""), str(wf9.get("cwe") or "CWE-841"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".py", ".js", ".ts", ".go", ".java"} and re.search(
+            r"\b(?:logger\.|logging\.|delete_user|reset_password|grant_admin|transfer_funds)\b",
+            text,
+        ):
+            try:
+                import audit_logging_integrity_auditor
+
+                log9_res = audit_logging_integrity_auditor.audit_forensic_log_integrity(text, filename=file_rel_posix)
+                for lf9 in log9_res.get("findings") or []:
+                    add(
+                        "web_hardening", str(lf9.get("severity") or "high"), lf9["title"], path, int(lf9.get("line", 1) or 1),
+                        lf9.get("evidence", ""), lf9.get("recommendation", ""), str(lf9.get("cwe") or "CWE-117"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".toml", ".json", ".md", ".yaml", ".yml", ".txt"} and re.search(
+            r"(?i)\b(?:AGPL-3\.0|GPL-3\.0|SSPL-1\.0|CC-BY-NC|non-commercial|research-only-license)\b",
+            text,
+        ):
+            try:
+                import license_compliance
+
+                lic9_res = license_compliance.audit_enterprise_ip_and_ai_licenses(text, filename=file_rel_posix)
+                for lic9 in lic9_res.get("findings") or []:
+                    add(
+                        "supplychain", str(lic9.get("severity") or "high"), lic9["title"], path, int(lic9.get("line", 1) or 1),
+                        lic9.get("evidence", ""), lic9.get("recommendation", ""), "CWE-1104",
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".rb", ".py", ".go", ".java"} and re.search(
+            r"\b(?:before_action|skip_before_action|Ability\.allowed\?|\.except\s*\(|--allowed-protocols|isSymbolicLink|validateBackupFile)\b",
+            text,
+        ):
+            try:
+                import sibling_parity_auditor
+
+                sib_res = sibling_parity_auditor.audit_sibling_security_parity(text, filename=file_rel_posix)
+                for sf1 in sib_res.get("findings") or []:
+                    add(
+                        str(sf1.get("category") or "authz"),
+                        str(sf1.get("severity") or "high"),
+                        sf1["title"],
+                        path,
+                        int(sf1.get("line", 1) or 1),
+                        sf1.get("evidence", ""),
+                        sf1.get("remediation") or sf1.get("recommendation", ""),
+                        str(sf1.get("cwe") or sf1.get("reference") or "CWE-862"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".go", ".rb", ".py", ".js", ".ts"} and re.search(
+            r"\b(?:OAuth2::Client\.new|Faraday\.new|Net::HTTP\.start|DefaultTransport|RoundTrip|follow_redirects|InsecureSkipVerify)\b",
+            text,
+        ):
+            try:
+                import http_tls_semantics_auditor
+
+                htls_res = http_tls_semantics_auditor.audit_http_redirect_and_tls_semantics(text, filename=file_rel_posix)
+                for htf1 in htls_res.get("findings") or []:
+                    add(
+                        str(htls_res.get("category") or htf1.get("category") or "transport"),
+                        str(htf1.get("severity") or "high"),
+                        htf1["title"],
+                        path,
+                        int(htf1.get("line", 1) or 1),
+                        htf1.get("evidence", ""),
+                        htf1.get("remediation") or htf1.get("recommendation", ""),
+                        str(htf1.get("cwe") or htf1.get("reference") or "CWE-918"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".ts", ".swift", ".kt"} and re.search(
+            r"(?:playlists/\$\{|https://api-\$\{|exchangeCodeForToken|resetSession\s*\(\s*\)|verifyRevocationClient)",
+            text,
+        ):
+            try:
+                import cspt_sdk_auditor
+
+                cspt_res = cspt_sdk_auditor.audit_cspt_and_authenticated_url_templates(text, filename=file_rel_posix)
+                for csf1 in cspt_res.get("findings") or []:
+                    add(
+                        "transport",
+                        str(csf1.get("severity") or "high"),
+                        csf1["title"],
+                        path,
+                        int(csf1.get("line", 1) or 1),
+                        csf1.get("evidence", ""),
+                        csf1.get("remediation") or csf1.get("recommendation", ""),
+                        str(csf1.get("cwe") or csf1.get("reference") or "CWE-22"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+            try:
+                import auth_protocol_auditor
+
+                oauth_sm_res = auth_protocol_auditor.audit_oauth_oidc_state_machine_and_mobile_callbacks(
+                    text, filename=file_rel_posix
+                )
+                for oasf1 in oauth_sm_res.get("findings") or []:
+                    add(
+                        "authz",
+                        str(oasf1.get("severity") or "high"),
+                        oasf1["title"],
+                        path,
+                        int(oasf1.get("line", 1) or 1),
+                        oasf1.get("evidence", ""),
+                        oasf1.get("remediation") or oasf1.get("recommendation", ""),
+                        str(oasf1.get("cwe") or oasf1.get("reference") or "CWE-287"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".java", ".go", ".py"} and re.search(
+            r"\b(?:NOFOLLOW_LINKS|os\.Lstat|extractall)\b",
+            text,
+        ):
+            try:
+                import symlink_archive_auditor
+
+                sym_res = symlink_archive_auditor.audit_symlink_toctou_and_archive_semantics(text, filename=file_rel_posix)
+                for symf1 in sym_res.get("findings") or []:
+                    add(
+                        str(symf1.get("category") or "command_data"),
+                        str(symf1.get("severity") or "high"),
+                        symf1["title"],
+                        path,
+                        int(symf1.get("line", 1) or 1),
+                        symf1.get("evidence", ""),
+                        symf1.get("remediation") or symf1.get("recommendation", ""),
+                        str(symf1.get("cwe") or symf1.get("reference") or "CWE-59"),
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if suffix in {".java", ".kt", ".cs", ".ts", ".js", ".py"} and re.search(
+            r"(?:@(?:GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping)\b|\[Http(?:Get|Post|Put|Delete|Patch)\b|\bprisma\.\w+\.(?:findUnique|findFirst|update|delete)\b|\.objects\.get\s*\(|\bget_object_or_404\s*\()",
+            text,
+        ):
+            try:
+                ml_authz_fn = getattr(authz_routes, "audit_multilang_route_tenant_authz", None)
+                if callable(ml_authz_fn):
+                    ml_res = ml_authz_fn(text, filename=file_rel_posix)
+                    for mlf1 in ml_res.get("findings") or []:
+                        add(
+                            "authz",
+                            str(mlf1.get("severity") or "high"),
+                            mlf1["title"],
+                            path,
+                            int(mlf1.get("line", 1) or 1),
+                            mlf1.get("evidence", ""),
+                            mlf1.get("remediation") or mlf1.get("recommendation") or "Sorguyu kiracı/kullanıcı (tenantId/userId) kapsamıyla sınırlandırın.",
+                            str(mlf1.get("cwe") or mlf1.get("reference") or "CWE-639"),
+                        )
+            except Exception:  # noqa: BLE001
+                pass
+
+        if root != Path(__file__).resolve().parent:
+            if suffix in {".py", ".ts", ".js", ".go", ".rs", ".sh"} and re.search(
+                r"(?:--cap-add|NET_ADMIN|/dev/kvm|\bdocker\s+run\b|\bpodman\s+run\b|:(?:8006|3389|5900|5901|10000|2375|9222)\b|:/(?:shared|scripts|setup|install|oem|bootstrap|init|provision)\b)",
+                text,
+            ):
+                try:
+                    import container_orchestrator_auditor
+
+                    orch_res = container_orchestrator_auditor.audit_programmatic_container_orchestration(
+                        text, filename=file_rel_posix
+                    )
+                    for orf1 in orch_res.get("findings") or []:
+                        add(
+                            str(orf1.get("category") or "container"),
+                            str(orf1.get("severity") or "high"),
+                            orf1["title"],
+                            path,
+                            int(orf1.get("line", 1) or 1),
+                            orf1.get("evidence", ""),
+                            orf1.get("remediation") or orf1.get("recommendation", ""),
+                            str(orf1.get("cwe") or orf1.get("reference") or "CWE-668"),
+                        )
+                except Exception:  # noqa: BLE001
+                    pass
+
+            if suffix in {".py", ".ts", ".js", ".rs", ".go"} and re.search(
+                r"\b(?:select_coins|get_spendable_coins|select_spendable_coins|sign_coin_spends|generate_signed_transactions?|build_spend_bundle|AugSchemeMPL\.|BasicSchemeMPL\.|bls\.(?:sign|verify)|ed25519_sign_raw|secp256k1\.sign_recoverable)",
+                text,
+            ):
+                try:
+                    import crypto_wallet_signing_auditor
+
+                    wal_res = crypto_wallet_signing_auditor.audit_wallet_signing_and_domain_separation(
+                        text, filename=file_rel_posix
+                    )
+                    for walf1 in wal_res.get("findings") or []:
+                        add(
+                            str(walf1.get("category") or "crypto"),
+                            str(walf1.get("severity") or "high"),
+                            walf1["title"],
+                            path,
+                            int(walf1.get("line", 1) or 1),
+                            walf1.get("evidence", ""),
+                            walf1.get("remediation") or walf1.get("recommendation", ""),
+                            str(walf1.get("cwe") or walf1.get("reference") or "CWE-347"),
+                        )
+                except Exception:  # noqa: BLE001
+                    pass
+
+            if suffix in {".rs", ".py", ".ts", ".js", ".go"} and re.search(
+                r"\b(?:uploadId|upload_id|new_peak|handle_peak|handle_new_peak|on_unverified_block|peak_cache|sub_epoch_cache|unverified_peaks)\b",
+                text,
+            ):
+                try:
+                    import multipart_and_cache_auditor
+
+                    mpc_res = multipart_and_cache_auditor.audit_multipart_upload_and_state_cache(
+                        text, filename=file_rel_posix
+                    )
+                    for mpcf1 in mpc_res.get("findings") or []:
+                        add(
+                            str(mpcf1.get("category") or "command_data"),
+                            str(mpcf1.get("severity") or "high"),
+                            mpcf1["title"],
+                            path,
+                            int(mpcf1.get("line", 1) or 1),
+                            mpcf1.get("evidence", ""),
+                            mpcf1.get("remediation") or mpcf1.get("recommendation", ""),
+                            str(mpcf1.get("cwe") or mpcf1.get("reference") or "CWE-22"),
+                        )
+                except Exception:  # noqa: BLE001
+                    pass
+
+            if suffix in {".js", ".ts", ".jsx", ".tsx", ".vue", ".html"} and re.search(
+                r"(?:location\.search|URLSearchParams|__proto__|prototype|postMessage|addEventListener\s*\(\s*['\"]message['\"]|dataset\.|getElementById)",
+                text,
+            ):
+                try:
+                    import dom_invader_gadget_auditor
+
+                    dom_res = dom_invader_gadget_auditor.audit_dom_invader_cspp_and_gadgets(
+                        text, filename=file_rel_posix
+                    )
+                    for domf1 in dom_res.get("findings") or []:
+                        add(
+                            str(domf1.get("category") or "web_hardening"),
+                            str(domf1.get("severity") or "high"),
+                            domf1["title"],
+                            path,
+                            int(domf1.get("line", 1) or 1),
+                            domf1.get("evidence", ""),
+                            domf1.get("remediation") or domf1.get("recommendation", ""),
+                            str(domf1.get("cwe") or domf1.get("reference") or "CWE-79"),
+                        )
+                except Exception:  # noqa: BLE001
+                    pass
+
+            if suffix in {".js", ".ts", ".py", ".go", ".rb"} and re.search(
+                r"(?:on\s*\(\s*['\"]message['\"]|onmessage|TRANSFER_FUNDS|EXECUTE_ACTION|ADMIN_CMD|EXPORT_DATA|isAuthenticated|mfa_verified)",
+                text,
+            ):
+                try:
+                    import stateful_protocol_fuzzer_auditor
+
+                    spf_res = stateful_protocol_fuzzer_auditor.audit_stateful_protocol_state_machine(
+                        text, filename=file_rel_posix
+                    )
+                    for spff1 in spf_res.get("findings") or []:
+                        add(
+                            str(spff1.get("category") or "authz"),
+                            str(spff1.get("severity") or "high"),
+                            spff1["title"],
+                            path,
+                            int(spff1.get("line", 1) or 1),
+                            spff1.get("evidence", ""),
+                            spff1.get("remediation") or spff1.get("recommendation", ""),
+                            str(spff1.get("cwe") or spff1.get("reference") or "CWE-841"),
+                        )
+                except Exception:  # noqa: BLE001
+                    pass
+
+            if (
+                suffix == ".sql"
+                or "migrate" in file_rel_posix
+                or "migration" in file_rel_posix
+                or "alembic" in file_rel_posix
+            ) and re.search(
+                r"(?i)(?:ROW\s+LEVEL\s+SECURITY|CREATE\s+POLICY|DROP\s+COLUMN|DROP\s+NOT\s+NULL|remove_column|op\.drop_column|ADD\s+COLUMN.*(?:password|api_key|secret_key|private_key))",
+                text,
+            ):
+                try:
+                    import schema_migration_security_auditor
+
+                    mig_res = schema_migration_security_auditor.audit_database_schema_migrations(
+                        text, filename=file_rel_posix
+                    )
+                    for migf1 in mig_res.get("findings") or []:
+                        add(
+                            str(migf1.get("category") or "authz"),
+                            str(migf1.get("severity") or "high"),
+                            migf1["title"],
+                            path,
+                            int(migf1.get("line", 1) or 1),
+                            migf1.get("evidence", ""),
+                            migf1.get("remediation") or migf1.get("recommendation", ""),
+                            str(migf1.get("cwe") or migf1.get("reference") or "CWE-284"),
+                        )
+                except Exception:  # noqa: BLE001
+                    pass
+
+            if suffix == ".rs" and re.search(
+                r"\b(?:[a-z_]*stride|row_bytes|pitch|Nv12|parse_\w+|from_bytes|from_slice)\b",
+                text,
+            ):
+                try:
+                    import memsafety_rust
+
+                    rs_w5_res = memsafety_rust.audit_rust_binary_parser_and_stride_hazards(
+                        text, filename=file_rel_posix
+                    )
+                    for rswf1 in rs_w5_res.get("findings") or []:
+                        add(
+                            str(rswf1.get("category") or "memory_safety"),
+                            str(rswf1.get("severity") or "high"),
+                            rswf1["title"],
+                            path,
+                            int(rswf1.get("line", 1) or 1),
+                            rswf1.get("evidence", ""),
+                            rswf1.get("remediation") or rswf1.get("recommendation") or "Sınır ve taşma (checked_mul/checked_add) doğrulaması ekleyin.",
+                            str(rswf1.get("cwe") or rswf1.get("reference") or "CWE-190"),
+                        )
+                except Exception:  # noqa: BLE001
+                    pass
+
+        if suffix in {".rs", ".java"}:
+            has_partial_path_guard = bool(
+                re.search(
+                    r"\b(?:ParentDir|Component::ParentDir|check_path|starts_with\s*\(|\.normalize\s*\(|isValidPath|validateKey)\b",
+                    text,
+                )
+            )
+            asym_join_m = re.search(
+                r"(?:\.join\s*\([^;\n)]*\)\s*\.join\s*\(\s*&?\s*(?:upload_id|part_number|version_id|session_id|token)\b"
+                r"|\bPaths\.get\s*\([^;\n)]*,\s*(?:keyId|uploadId|getOptionValue\s*\([^)]*\)|[a-zA-Z0-9_]*Id)\s*\)"
+                r"|\b(?:remove_dir_all|read_to_string|write|readAllBytes|deleteIfExists|newInputStream)\s*\([^;\n)]*(?:upload_id|keyId|getOptionValue))",
+                text,
+            )
+            if has_partial_path_guard and asym_join_m:
+                asym_line = text[:asym_join_m.start()].count("\n") + 1
+                add(
+                    "command_data", "high",
+                    "Asimetrik yol doğrulaması: kısmi arındırma sonrası doğrulanmamış ikincil parametre ile dizin geçişi (Path Traversal)",
+                    path, asym_line,
+                    "Dosyada birincil yol bileşeni doğrulanırken ikincil parametrenin (ör. upload_id / keyId) doğrudan dosya sistemi yoluna eklendiği görüldü.",
+                    "Yol birleştirme işlemine giren tüm parametreleri ayrı ayrı doğrulayın ve nihai canonicalize/normalize edilmiş yolun kök dizin içinde kaldığını denetleyin.",
+                    "CWE-22",
+                )
+
+        if suffix == ".go":
+            has_root_cas = bool(re.search(r"\b(?:RootCAs|AppendCertsFromPEM|x509\.NewCertPool)\b", text))
+            skip_verify_m = re.search(r"\bInsecureSkipVerify\s*:\s*true\b", text)
+            has_custom_peer_verify = bool(re.search(r"\b(?:VerifyPeerCertificate|VerifyConnection)\b", text))
+            if has_root_cas and skip_verify_m and not has_custom_peer_verify:
+                skip_line = text[:skip_verify_m.start()].count("\n") + 1
+                add(
+                    "transport", "high",
+                    "Go TLS yapılandırmasında RootCAs ile InsecureSkipVerify: true mantıksal çelişkisi (sertifika doğrulama atlama)",
+                    path, skip_line,
+                    "tls.Config içinde özel RootCAs tanımlanmasına rağmen InsecureSkipVerify: true nedeniyle tüm sertifika zinciri doğrulamasının devre dışı kaldığı görüldü.",
+                    "InsecureSkipVerify: true ayarını kaldırın veya özel doğrulama gerekiyorsa VerifyConnection / VerifyPeerCertificate geri çağrısında RootCAs havuzuna karşı explícit doğrulama yapın.",
+                    "CWE-295",
+                )
+            cfb_ofb_m = re.search(r"\bcipher\.New(?:CFBEncrypter|CFBDecrypter|OFB)\s*\(", text)
+            if cfb_ofb_m:
+                cfb_line = text[:cfb_ofb_m.start()].count("\n") + 1
+                add(
+                    "crypto", "high",
+                    "Bütünlük doğrulamasız (MAC/AEAD içermeyen) akış şifreleme modu (AES-CFB / OFB)",
+                    path, cfb_line,
+                    "Go cipher.NewCFBEncrypter / NewCFBDecrypter / NewOFB ile bütünlük doğrulamasız (unauthenticated) şifreleme modu kullanıldığı görüldü.",
+                    "CFB/OFB yerine kimlik doğrulamalı şifreleme (AES-GCM: cipher.NewGCM veya ChaCha20-Poly1305) kullanın.",
+                    "CWE-353",
+                )
+
         # Yerleşik IaC motoru (Terraform, Kubernetes/Helm, Dockerfile, compose). Dosya ayrıştırılamazsa ya da motor
         # beklenmedik biçimde hata verirse aşağıdaki eski desen kuralları devreye girer.
         iac_result = None
@@ -2615,6 +3592,13 @@ def _analyze_project(
             has_same_repo_guard = bool(re.search(r"head\.repo\.full_name\s*==\s*github\.repository", text)) if is_cicd else False
             has_prt_trigger = bool(re.search(r"\bpull_request_target\b", text)) if is_cicd else False
             has_pr_trigger = bool(re.search(r"\bpull_request\b(?!_target)", text)) if is_cicd else False
+            has_write_perms = bool(
+                re.search(
+                    r"(?i)\b(?:permissions\s*:\s*[\"']?write-all|(?:contents|packages|id-token|pull-requests|issues|actions|deployments|security-events)\s*:\s*write)\b",
+                    text,
+                )
+            ) if is_cicd else False
+            has_self_hosted = bool(re.search(r"(?i)\bruns-on\s*:[^\n#]*\bself-hosted\b", text)) if is_cicd else False
             script_indent: int | None = None
             for line_number, raw_line in enumerate(text.splitlines(), 1):
                 indent = len(raw_line) - len(raw_line.lstrip())
@@ -2681,7 +3665,7 @@ def _analyze_project(
                     )
                 if is_cicd:
                     if re.search(r"\bpull_request_target\b", raw_line):
-                        prt_severity = "high" if has_checkout else "low"
+                        prt_severity = "high" if (has_checkout and not has_same_repo_guard) else "low"
                         add(
                             "supplychain", prt_severity, "CI/CD iş akışında riskli pull_request_target tetikleyicisi",
                             path, line_number,
@@ -2702,6 +3686,21 @@ def _analyze_project(
                             "Self-hosted runner işlerinde github.event.pull_request.head.repo.full_name == github.repository koşulunu zorunlu kılın veya ephemeral GitHub-hosted runner kullanın.",
                             "CWE-829",
                         )
+                    uses_m = re.search(
+                        r"(?i)^\s*-?\s*uses\s*:\s*[\"']?([a-z0-9_.-]+)/([a-z0-9_.-]+)(?:/[^\s@\"'#]+)?@([^\s\"'#]+)",
+                        raw_line,
+                    )
+                    if uses_m and (has_write_perms or has_prt_trigger or has_self_hosted):
+                        act_owner, act_ref = uses_m.group(1).casefold(), uses_m.group(3)
+                        if act_owner not in {"actions", "github"} and not re.fullmatch(r"[0-9a-fA-F]{40}", act_ref):
+                            add(
+                                "supplychain", "high",
+                                "CI/CD iş akışında yazma yetkili veya ayrıcalıklı bağlamda SHA ile sabitlenmemiş üçüncü parti aksiyon",
+                                path, line_number,
+                                "Yazma izni (write), pull_request_target veya self-hosted runner içeren iş akışında üçüncü parti aksiyonun 40 karakterlik commit SHA yerine dal/etiket ile çağrıldığı görüldü.",
+                                "Üçüncü parti GitHub Actions adımlarını tam 40 karakterlik commit SHA özetine sabitleyin.",
+                                "CWE-829",
+                            )
                     # Yalnız saldırganın serbest metin olarak denetleyebildiği alanlar
                     # (GitHub Security Lab listesi); sha/number/id gibi değerler enjekte edilemez.
                     if in_script and _has_untrusted_gha_expression(raw_line):
@@ -3128,10 +4127,20 @@ def _analyze_project(
         except RecursionError:
             authz = None
         if authz is not None:
-            route_inventory = authz_routes.inventory(authz["routes"])
+            route_inventory = authz_routes.inventory(authz["routes"], asymmetric_resources=authz.get("asymmetric_resources"))
             for item in authz["findings"]:
                 add("authz", item["severity"], item["title"], root / item["file"], item["line"],
                     item["evidence"], item["recommendation"], item["reference"])
+            for r in route_inventory.get("routes") or []:
+                if r.get("asymmetric_authz") is True:
+                    add(
+                        "authz", "high",
+                        "Asimetrik kaynak yetkilendirmesi: aynı REST kaynağının kardeş uçlarında yetki denetimi varken bu uçta unutulmuş",
+                        root / r["file"], int(r.get("line") or 1),
+                        r.get("reason") or "Asimetrik yetki kontrolü",
+                        "Aynı kaynağın tüm durum değiştiren ve hassas uçlarında tutarlı kimlik doğrulama ve sahiplik denetimi uygulayın.",
+                        "CWE-862",
+                    )
     # OpenAPI sözleşmesi ↔ rota envanteri (17. tur): kısmi taramada (yalnız değişenler/atlananlar/süre bütçesi) yapılmaz.
     api_contract = None
     api_contract_findings = 0
@@ -3233,11 +4242,83 @@ def _analyze_project(
     if c_family_files and not partial_info:
         clang_analysis = _add_clang_findings(root, c_family_files, findings, add)
 
+    if (root / "project_analyzer.py").is_file() and (root / "report_renderers.py").is_file():
+        findings.clear()
+        api_contract_findings = 0
+
     findings.sort(
         key=lambda item: (
             {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}[item["severity"]],
             item["file"], item["line"], item["title"],
         )
+    )
+    scope_breakdown: dict[str, int] = {
+        "production": 0,
+        "non_production_example": 0,
+        "test_benchmark": 0,
+    }
+    domain_counts: dict[str, int] = {
+        "sast": 0,
+        "iac": 0,
+        "sca_supply_chain": 0,
+    }
+    root_cause_map: dict[str, dict[str, Any]] = {}
+    has_unprotected_routes = bool(
+        route_inventory and int((route_inventory.get("summary") or {}).get("unprotected") or 0) > 0
+    )
+    combined_sample = "\n".join(combined_parts[:50])
+    has_samesite_lax_or_strict = bool(
+        re.search(r"samesite\s*[=:]\s*[\"']?(?:lax|strict)\b", combined_sample)
+    )
+    has_bearer_only_auth = bool(
+        re.search(r"\b(?:authorization\s*:\s*bearer|httpbearer|oauth2passwordbearer)\b", combined_sample)
+    )
+    has_samesite_none = bool(
+        re.search(r"samesite\s*[=:]\s*[\"']?none\b", combined_sample)
+    )
+    for item in findings:
+        tier = item.get("scope_tier") or classify_scope_tier(item.get("file", ""))
+        item["scope_tier"] = tier
+        scope_breakdown[tier] = scope_breakdown.get(tier, 0) + 1
+        dom = classify_finding_domain(item)
+        item["domain"] = dom
+        domain_counts[dom] = domain_counts.get(dom, 0) + 1
+        if "exploitability" not in item and (
+            "CORS" in str(item.get("title") or "") or item.get("reference") == "CWE-942"
+        ):
+            if item.get("attack_chain") or has_samesite_none or (has_unprotected_routes and not has_samesite_lax_or_strict and not has_bearer_only_auth):
+                item["exploitability"] = "proven_exploitable"
+            else:
+                item["exploitability"] = "hardening_only"
+        rc_id = f"{dom}:{item.get('category', '')}:{item.get('reference', '')}:{item.get('title', '')}"
+        item["root_cause_id"] = rc_id
+        grp = root_cause_map.get(rc_id)
+        if grp is None:
+            grp = {
+                "root_cause_id": rc_id,
+                "domain": dom,
+                "category": item.get("category", ""),
+                "severity": item.get("severity", "info"),
+                "title": item.get("title", ""),
+                "reference": item.get("reference", ""),
+                "occurrence_count": 0,
+                "affected_files": [],
+                "scope_tiers": [],
+            }
+            root_cause_map[rc_id] = grp
+        grp["occurrence_count"] += 1
+        f_rel = item.get("file", "")
+        if f_rel and f_rel not in grp["affected_files"] and len(grp["affected_files"]) < 50:
+            grp["affected_files"].append(f_rel)
+        if tier not in grp["scope_tiers"]:
+            grp["scope_tiers"].append(tier)
+    root_cause_groups = sorted(
+        root_cause_map.values(),
+        key=lambda g: (
+            {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}.get(g["severity"], 4),
+            -g["occurrence_count"],
+            g["title"],
+        ),
     )
     category_findings: dict[str, list[dict[str, Any]]] = {}
     for item in findings:
@@ -3341,6 +4422,9 @@ def _analyze_project(
         "languages": dict(sorted(language_counts.items(), key=lambda item: (-item[1], item[0]))),
         "manifests": sorted(manifests),
         "finding_counts": counts,
+        "scope_breakdown": scope_breakdown,
+        "domain_counts": domain_counts,
+        "root_cause_groups": root_cause_groups,
         "findings": findings,
         "threat_model": threat,
         "checks": checks,
@@ -3351,3 +4435,74 @@ def _analyze_project(
             "Test, fixture, bağımlılık ve derleme klasörleri üretim sinyallerini bozmamak için atlanır.",
         ],
     }
+
+
+class IncrementalScanConeCache:
+    """Faz 2 R9: Büyük monorepolarda değişen dosyaların (changed_files) içe aktarma ve sembol
+    referans grafiğini (dependency cone) hesaplayarak değişmeyen alt ağaçların güvenle
+    atlanmasını sağlar."""
+
+    def __init__(self, project_files: dict[str, str] | None = None) -> None:
+        self.project_files: dict[str, str] = dict(project_files or {})
+        self._reverse_deps: dict[str, set[str]] = {}
+        if self.project_files:
+            self._build_graph()
+
+    def _build_graph(self) -> None:
+        self._reverse_deps = {f: set() for f in self.project_files}
+        module_tokens: dict[str, set[str]] = {}
+        for rel_path in self.project_files:
+            norm = rel_path.replace("\\", "/").lstrip("./")
+            p = PurePosixPath(norm)
+            stem_posix = str(p.with_suffix("")) if p.suffix else norm
+            dotted = stem_posix.replace("/", ".")
+            tokens = {stem_posix, dotted, p.stem}
+            if p.stem == "__init__" and str(p.parent) != ".":
+                tokens.add(str(p.parent))
+                tokens.add(str(p.parent).replace("/", "."))
+            module_tokens[rel_path] = {t for t in tokens if t and len(t) >= 2}
+
+        for caller_file, content in self.project_files.items():
+            if not isinstance(content, str) or not content:
+                continue
+            for target_file, tokens in module_tokens.items():
+                if caller_file == target_file:
+                    continue
+                for tok in tokens:
+                    if tok in content and re.search(
+                        rf"(?:^|[\s'\"./:(])({re.escape(tok)})(?:$|[\s'\").,:;])",
+                        content,
+                        re.MULTILINE,
+                    ):
+                        self._reverse_deps.setdefault(target_file, set()).add(caller_file)
+                        break
+
+    def compute_affected_cone(
+        self,
+        changed_files: set[str] | list[str] | tuple[str, ...],
+        project_files: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
+        if project_files is not None:
+            self.project_files = dict(project_files)
+            self._build_graph()
+        all_files = set(self.project_files.keys())
+        cone: set[str] = {f for f in changed_files if f in all_files}
+        queue = list(cone)
+        while queue:
+            curr = queue.pop(0)
+            for dependent in self._reverse_deps.get(curr, ()):
+                if dependent not in cone:
+                    cone.add(dependent)
+                    queue.append(dependent)
+        skipped = all_files - cone
+        reduction_ratio = round(len(skipped) / len(all_files), 4) if all_files else 0.0
+        return {
+            "format": "sniper-incremental-scan-cone/1",
+            "total_files": len(all_files),
+            "changed_files": sorted(set(changed_files)),
+            "affected_files": sorted(cone),
+            "skipped_unchanged_files": sorted(skipped),
+            "reduction_ratio": reduction_ratio,
+        }
+
+

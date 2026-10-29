@@ -26,7 +26,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
         self.store_path = self.data_dir / "zap_leases.json"
         self.env = patch.dict(os.environ, {"SNIPER_DATA_DIR": str(self.data_dir)})
         self.env.start()
-        normalized = normalize_target("https://example.test/")
+        normalized = normalize_target("https://target.example/")
         self.target = {
             "id": "target-1",
             "url": normalized.url,
@@ -51,7 +51,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
         lease = store.issue_lease(
             actor_id="actor.sec_01:lead-a",
             job_id="job:zap_active-01",
-            target_origin="https://example.test/",
+            target_origin="https://target.example/",
             ttl_seconds=180.0,
             now=now,
         )
@@ -62,7 +62,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
         )
         self.assertEqual(lease.actor_id, "actor.sec_01:lead-a")
         self.assertEqual(lease.job_id, "job:zap_active-01")
-        self.assertEqual(lease.target_origin, "https://example.test/")
+        self.assertEqual(lease.target_origin, "https://target.example/")
         self.assertEqual(lease.generation, 1)
         self.assertEqual(lease.expires_at_epoch, now + 180.0)
 
@@ -70,7 +70,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
             lease,
             expected_actor="actor.sec_01:lead-a",
             expected_job_id="job:zap_active-01",
-            expected_target="https://example.test/",
+            expected_target="https://target.example/",
             store_path=self.store_path,
             now=now + 30.0,
         )
@@ -84,7 +84,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
         lease = store.issue_lease(
             actor_id="actor-alpha",
             job_id="job-100",
-            target_origin="https://example.test/",
+            target_origin="https://target.example/",
             now=now,
         )
 
@@ -93,7 +93,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
                 lease,
                 expected_actor="actor-alpha",
                 expected_job_id="job-200",
-                expected_target="https://example.test/",
+                expected_target="https://target.example/",
                 store_path=self.store_path,
                 now=now + 1.0,
             )
@@ -103,7 +103,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
                 lease,
                 expected_actor="actor-beta",
                 expected_job_id="job-100",
-                expected_target="https://example.test/",
+                expected_target="https://target.example/",
                 store_path=self.store_path,
                 now=now + 1.0,
             )
@@ -125,7 +125,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
                 rebound_job,
                 expected_actor="actor-alpha",
                 expected_job_id="job-200",
-                expected_target="https://example.test/",
+                expected_target="https://target.example/",
                 store_path=self.store_path,
                 now=now + 1.0,
             )
@@ -137,7 +137,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
                 rebound_actor,
                 expected_actor="actor-beta",
                 expected_job_id="job-100",
-                expected_target="https://example.test/",
+                expected_target="https://target.example/",
                 store_path=self.store_path,
                 now=now + 1.0,
             )
@@ -158,7 +158,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
         lease2 = store.issue_lease(
             actor_id="actor-alpha",
             job_id="job-200",
-            target_origin="https://example.test/",
+            target_origin="https://target.example/",
             now=now + 2.0,
         )
         self.assertEqual(lease2["generation"], 2)
@@ -167,7 +167,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
                 lease,
                 expected_actor="actor-alpha",
                 expected_job_id="job-100",
-                expected_target="https://example.test/",
+                expected_target="https://target.example/",
                 store_path=self.store_path,
                 now=now + 3.0,
             )
@@ -178,7 +178,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
         lease = store.issue_lease(
             actor_id="actor-1",
             job_id="job-1",
-            target_origin="https://example.test/",
+            target_origin="https://target.example/",
             ttl_seconds=60.0,
             now=now,
         )
@@ -187,7 +187,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
         unissued_dict = {
             "actor_id": "actor-1",
             "job_id": "job-1",
-            "target_origin": "https://example.test/",
+            "target_origin": "https://target.example/",
             "generation": 1,
             "expires_at_epoch": now + 60.0,
         }
@@ -196,7 +196,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
                 unissued_dict,
                 expected_actor="actor-1",
                 expected_job_id="job-1",
-                expected_target="https://example.test/",
+                expected_target="https://target.example/",
                 store_path=self.store_path,
                 now=now + 5.0,
             )
@@ -211,7 +211,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
                         forged,
                         expected_actor="actor-1",
                         expected_job_id="job-1",
-                        expected_target="https://example.test/",
+                        expected_target="https://target.example/",
                         store_path=self.store_path,
                         now=now + 5.0,
                     )
@@ -223,14 +223,14 @@ class ZapActorJobLeaseTests(unittest.TestCase):
                     store.issue_lease(
                         actor_id=bad_id,
                         job_id="job-ok",
-                        target_origin="https://example.test/",
+                        target_origin="https://target.example/",
                         now=now,
                     )
                 with self.assertRaises(ZapLeaseError):
                     store.issue_lease(
                         actor_id="actor-ok",
                         job_id=bad_id,
-                        target_origin="https://example.test/",
+                        target_origin="https://target.example/",
                         now=now,
                     )
 
@@ -240,7 +240,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
                 lease,
                 expected_actor="actor-1",
                 expected_job_id="job-1",
-                expected_target="https://example.test/",
+                expected_target="https://target.example/",
                 store_path=self.store_path,
                 now=now + 60.0,
             )
@@ -253,7 +253,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
                 lease,
                 expected_actor="actor-1",
                 expected_job_id="job-1",
-                expected_target="https://example.test/",
+                expected_target="https://target.example/",
                 store_path=self.store_path,
                 now=now + 10.0,
             )
@@ -261,7 +261,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
         lease_actor_revoke = store.issue_lease(
             actor_id="actor-1",
             job_id="job-2",
-            target_origin="https://example.test/",
+            target_origin="https://target.example/",
             ttl_seconds=60.0,
             now=now,
         )
@@ -273,7 +273,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
                 lease_actor_revoke,
                 expected_actor="actor-1",
                 expected_job_id="job-2",
-                expected_target="https://example.test/",
+                expected_target="https://target.example/",
                 store_path=self.store_path,
                 now=now + 10.0,
             )
@@ -303,7 +303,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
         lease = store.issue_lease(
             actor_id="actor-runner",
             job_id="job-active-1",
-            target_origin="https://example.test/",
+            target_origin="https://target.example/",
         )
 
         fake_systemd = self.root / "fake-systemd-run"
@@ -339,7 +339,7 @@ class ZapActorJobLeaseTests(unittest.TestCase):
         lease2 = store.issue_lease(
             actor_id="actor-runner",
             job_id="job-spider-1",
-            target_origin="https://example.test/",
+            target_origin="https://target.example/",
         )
         other_norm = normalize_target("https://other.example/")
         other_target = {

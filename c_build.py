@@ -167,13 +167,28 @@ class _Flags:
 class _PathPolicy:
     """Include yolu / -include dosyası kabul kuralı: proje kökü içinde ya da sistem dizini; var olmalı."""
 
-    def __init__(self, root: Path, *, directories: set[str] | None = None,
-                 files: set[str] | None = None) -> None:
+    def __init__(self, root: Path, files: Iterable[str] | None = None, *,
+                 directories: Iterable[str] | None = None) -> None:
         normalized = _lexical_absolute(root)
         if normalized is None:
             raise ValueError("Proje kok yolu mutlak olmali.")
         self.root = normalized
-        if directories is None or files is None:
+        if files is not None and directories is None:
+            dirs = {"."}
+            for item in files:
+                parent = PurePosixPath(item).parent.as_posix()
+                while parent and parent not in dirs:
+                    dirs.add(parent)
+                    parent = PurePosixPath(parent).parent.as_posix()
+            try:
+                with ProjectTree(str(self.root)) as tree:
+                    for entry in tree.walk(skip_dirs=SKIP_WALK_DIRS, reject_unsafe=False):
+                        dirs.add(entry.directory.as_posix())
+                        dirs.update(path.as_posix() for path in entry.directories)
+            except ProjectTreeError:
+                pass
+            directories = dirs
+        elif directories is None or files is None:
             directories, files = {"."}, set()
             try:
                 with ProjectTree(str(self.root)) as tree:
@@ -562,6 +577,12 @@ def parse_cmake(text: str, cdir: Path, root: Path, project_source_dir: Path, pol
             add_defs(args, False)
         elif name == "target_compile_definitions" and len(args) >= 2:
             add_defs([a for a in args[1:] if a not in ("PRIVATE", "PUBLIC", "INTERFACE")], False)
+        elif name == "add_compile_options":
+            opts = [p.strip() for v in args if v != "BEFORE" for p in v.split(";") if p.strip()]
+            flags = flags.merged(filter_args(opts, cdir, policy, allow_defines=not cond, allow_std=not cond))
+        elif name == "target_compile_options" and len(args) >= 2:
+            opts = [p.strip() for v in args[1:] if v not in ("BEFORE", "PRIVATE", "PUBLIC", "INTERFACE") for p in v.split(";") if p.strip()]
+            flags = flags.merged(filter_args(opts, cdir, policy, allow_defines=not cond, allow_std=not cond))
         elif name == "set_property" and len(args) >= 4 and args[0] == "DIRECTORY" and args[1] in ("APPEND", "PROPERTY"):
             try:
                 k = args.index("PROPERTY")
@@ -573,6 +594,9 @@ def parse_cmake(text: str, cdir: Path, root: Path, project_source_dir: Path, pol
                     add_inc(values, False)
                 elif prop == "COMPILE_DEFINITIONS":
                     add_defs(values, False)
+                elif prop == "COMPILE_OPTIONS":
+                    opts = [p.strip() for v in values for p in v.split(";") if p.strip()]
+                    flags = flags.merged(filter_args(opts, cdir, policy, allow_defines=not cond, allow_std=not cond))
         elif name == "set" and len(args) >= 2 and not cond:
             var, val = args[0], args[1]
             if var == "CMAKE_C_STANDARD" and val in ("90", "99", "11", "17", "23"):
@@ -583,6 +607,12 @@ def parse_cmake(text: str, cdir: Path, root: Path, project_source_dir: Path, pol
                 ext_c = val.upper() not in ("OFF", "FALSE", "NO", "0", "N")
             elif var == "CMAKE_CXX_EXTENSIONS":
                 ext_cxx = val.upper() not in ("OFF", "FALSE", "NO", "0", "N")
+            elif var in ("CMAKE_C_FLAGS", "CMAKE_CXX_FLAGS"):
+                try:
+                    opts = shlex.split(" ".join(args[1:]))
+                except ValueError:
+                    opts = " ".join(args[1:]).split()
+                flags = flags.merged(filter_args(opts, cdir, policy, allow_defines=True, allow_std=True))
     if std_c:
         flags.std.append(f"-std={'gnu' if ext_c else 'c'}{std_c}")
     if std_cxx:

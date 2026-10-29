@@ -356,6 +356,39 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         "Oyun içi bakiye ve envanteri sunucu otoriteli tutun; yerel önbellekte bütünlük imzası (HMAC) kullanın.",
         r"PlayerPrefs\.Set(?:Int|Float|String)\s*\(\s*[\"'](?:coins?|gems?|gold|score|diamonds?|balance|lives)[\"']",
     ),
+    (
+        "SNIPER-MOB-AUTH-03",
+        "high",
+        "MASVS-AUTH",
+        "M3",
+        ("all", "finance", "ecommerce", "health", "social", "enterprise"),
+        "Mobil OAuth 2.0 PKCE akışında zayıf 'plain' code_challenge_method kullanımı",
+        "OAuth 2.0 yetkilendirme kodunu koruyan PKCE akışında S256 (SHA-256) yerine düz metin (plain) code_challenge_method kullanılıyor; özel şema (custom URI scheme) dinleyen zararlı uygulamalar yetkilendirme kodunu çalabilir.",
+        "Tüm mobil OAuth 2.0 / OIDC akışlarında code_challenge_method='S256' zorunlu kılın ve Universal Links / App Links kullanın.",
+        r"code_challenge_method\s*[=:]\s*[\"']?plain[\"']?\b",
+    ),
+    (
+        "SNIPER-MOB-RES-01",
+        "high",
+        "MASVS-RESILIENCE",
+        "M8",
+        ("all", "finance", "ecommerce", "health", "social", "enterprise"),
+        "Üretim kodunda WebView uzaktan hata ayıklama açık (setWebContentsDebuggingEnabled(true))",
+        "WebView.setWebContentsDebuggingEnabled(true) çağrısı üretim derlemesinde etkin bırakıldığında ADB veya yerel soket üzerinden tüm WebView DOM'u, çerezleri ve oturum jetonları okunabilir.",
+        "setWebContentsDebuggingEnabled(false) ayarlayın veya yalnızca BuildConfig.DEBUG kontrolü altında etkinleştirin.",
+        r"setWebContentsDebuggingEnabled\s*\(\s*true\s*\)",
+    ),
+    (
+        "SNIPER-MOB-PLAT-05",
+        "high",
+        "MASVS-CODE",
+        "M2",
+        ("all", "finance", "enterprise"),
+        "Android dinamik kod yükleme (DexClassLoader / PathClassLoader / InMemoryDexClassLoader)",
+        "Çalışma zamanında harici veya yazılabilir dizinden DEX/JAR kodu yüklenmesi, kriptografik imza doğrulaması yoksa rastgele kod çalıştırılmasına (RCE) yol açar.",
+        "Dinamik DEX yüklemesinden kaçının; zorunluysa yalnızca salt-okunur uygulama paketinden ve kriptografik imza doğrulamasıyla yükleyin.",
+        r"\b(?:DexClassLoader|PathClassLoader|InMemoryDexClassLoader)\s*\(",
+    ),
 )
 
 
@@ -1202,3 +1235,108 @@ def audit_mobile_package_archive(
             "embedded_sensitive_files": embedded_secret_files[:25],
         },
     }
+
+
+_BIOMETRIC_WEAK_ANDROID_RE = re.compile(r"\.authenticate\s*\(\s*promptInfo\s*\)")
+_BIOMETRIC_IOS_POLICY_RE = re.compile(r"evaluatePolicy\s*\([^)]*deviceOwnerAuthentication")
+_BIOMETRIC_IOS_KEYCHAIN_RE = re.compile(r"(?:SecItemCopyMatching|Keychain)", re.IGNORECASE)
+
+_DEEPLINK_INTENT_SOURCE_RE = re.compile(
+    r"(?:getIntent\s*\(\s*\)\.(?:getData|getStringExtra|getParcelableExtra)|intent\.(?:data|getStringExtra|getParcelableExtra))"
+)
+_DEEPLINK_SINK_RE = re.compile(r"(?:loadUrl\s*\(|startActivity\s*\(|evaluateJavascript\s*\()")
+_DEEPLINK_HOST_GUARD_RE = re.compile(r"(?:allowedHosts|host\s*==)")
+
+
+def audit_mobile_biometric_and_deeplink_chains(
+    raw_content: str,
+    *,
+    filename: str = "MainActivity.kt",
+) -> dict[str, Any]:
+    """Audit mobile source for weak biometric authentication (no CryptoObject/Keychain) and unvalidated deep-link/intent routing chains."""
+    clean_filename = filename.strip() if isinstance(filename, str) and filename.strip() else "MainActivity.kt"
+    if not isinstance(raw_content, str) or not raw_content.strip():
+        return {
+            "format": "sniper-mobile-biometric-deeplink-audit/1",
+            "filename": clean_filename,
+            "count": 0,
+            "findings": [],
+        }
+
+    findings: list[dict[str, Any]] = []
+
+    bio_match = _BIOMETRIC_WEAK_ANDROID_RE.search(raw_content)
+    if bio_match is None:
+        ios_match = _BIOMETRIC_IOS_POLICY_RE.search(raw_content)
+        if ios_match is not None and not _BIOMETRIC_IOS_KEYCHAIN_RE.search(raw_content):
+            bio_match = ios_match
+
+    if bio_match is not None:
+        line_no = raw_content[: bio_match.start()].count("\n") + 1
+        evidence_line = raw_content.splitlines()[line_no - 1].strip() if raw_content.splitlines() else bio_match.group(0)
+        finding = _mobile_finding(
+            rule_id="SNIPER-MOB-BIO-01",
+            severity="high",
+            masvs="MASVS-AUTH",
+            m_top10="M3",
+            title="Mobil biyometrik doğrulamada kriptografik bağlama (CryptoObject / Keychain) eksikliği (Frida Bypass)",
+            description=(
+                "Biyometrik doğrulama çağrısı Android Keystore CryptoObject veya iOS Keychain SecItemCopyMatching "
+                "ile kriptografik olarak bağlanmamış; yalnızca boolean/callback sonucuna güvenilmesi Frida ile "
+                "onAuthenticationSucceeded kancalanarak kolayca atlatılabilir."
+            ),
+            evidence=f"{clean_filename}:{line_no} · {evidence_line[:240]}",
+            recommendation=(
+                "Android BiometricPrompt.authenticate(promptInfo, cryptoObject) ile Keystore anahtarını "
+                "zorunlu kılın; iOS'ta LAContext yerine kSecAccessControlBiometryCurrentSet korumalı "
+                "SecItemCopyMatching Keychain öğesi kullanın."
+            ),
+            file_path=clean_filename,
+            line=line_no,
+        )
+        finding["rule_id"] = "SNIPER-MOB-BIO-01"
+        finding["control_id"] = "SNIPER-MOB-BIO-01"
+        finding["cwe"] = "CWE-287"
+        finding["reference"] = "CWE-287"
+        finding["category"] = "authentication"
+        findings.append(finding)
+
+    intent_source = _DEEPLINK_INTENT_SOURCE_RE.search(raw_content)
+    intent_sink = _DEEPLINK_SINK_RE.search(raw_content)
+    if intent_source is not None and intent_sink is not None and not _DEEPLINK_HOST_GUARD_RE.search(raw_content):
+        line_no = raw_content[: intent_sink.start()].count("\n") + 1
+        lines = raw_content.splitlines()
+        evidence_line = lines[line_no - 1].strip() if lines and line_no - 1 < len(lines) else intent_sink.group(0)
+        finding = _mobile_finding(
+            rule_id="SNIPER-MOB-INTENT-02",
+            severity="critical",
+            masvs="MASVS-PLATFORM",
+            m_top10="M4",
+            title="Mobil derin bağlantı (Deep-Link / Intent) üzerinden doğrulanmamış WebView URL yükleme veya Intent yönlendirme zinciri",
+            description=(
+                "Gelen Intent / Deep-Link verisi (getData / getStringExtra / getParcelableExtra) ana bilgisayar "
+                "(allowedHosts / host ==) doğrulaması yapılmadan doğrudan WebView.loadUrl, evaluateJavascript "
+                "veya startActivity çağrısına aktarılıyor."
+            ),
+            evidence=f"{clean_filename}:{line_no} · {evidence_line[:240]}",
+            recommendation=(
+                "Deep-Link URI şemasını (yalnızca https) ve host değerini katı bir izinli etki alanı listesiyle "
+                "(allowedHosts) doğrulayın; doğrulanmamış Intent nesnelerini asla doğrudan yönlendirmeyin."
+            ),
+            file_path=clean_filename,
+            line=line_no,
+        )
+        finding["rule_id"] = "SNIPER-MOB-INTENT-02"
+        finding["control_id"] = "SNIPER-MOB-INTENT-02"
+        finding["cwe"] = "CWE-939"
+        finding["reference"] = "CWE-939"
+        finding["category"] = "mobile"
+        findings.append(finding)
+
+    return {
+        "format": "sniper-mobile-biometric-deeplink-audit/1",
+        "filename": clean_filename,
+        "count": len(findings),
+        "findings": findings,
+    }
+

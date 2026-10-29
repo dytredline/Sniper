@@ -3,7 +3,7 @@
 Some tests must reproduce an unsafe pattern so Sniper can prove that it detects
 the pattern. This code is confined to the test suite:
 
-- `test_dast_runtime_engine.py` and `test_runtime_proof_open_redirect.py` start
+- `test_dast_runtime_engine.py`, `test_dast_runtime_ssrf.py`, and `test_runtime_proof_open_redirect.py` start
   ephemeral servers on `127.0.0.1`. Their reflected CORS and redirect headers
   are intentional targets for bounded runtime-proof tests; they are never
   registered as application routes.

@@ -9,14 +9,15 @@ database.
 
 | Host path | Community v1 status |
 | --- | --- |
-| Linux ARM64 | Supported and release-tested for the native source setup and five locked optional engines |
+| Linux ARM64 | Supported and release-tested for the native source setup and seven locked optional engines |
 | Linux x86-64 | Locked artifacts are provided; GitHub CI validates the source/container path |
 | macOS native (Apple Silicon) | Supported and real-host verified for the native source setup (`--core-only`: `.venv`, built-in SAST/SCA/IaC analyzers, MCP, CLI, and loopback web interface); optional third-party Linux engine binaries run via the verified Docker Desktop profile below |
 | macOS Apple Silicon + Docker Desktop | Supported and real-host verified for the five-engine Linux container profile (`./scripts/deploy-community-tools --accept-third-party-licenses`) |
-| Windows native / WSL2 / Docker Desktop | Supported via `--core-only` native source setup (`python3 scripts/setup-community --core-only`), WSL2, or Docker Desktop Linux container profiles (`community-core` and license-gated `community-tools`) |
+| Windows core-only | Supported by the portable setup contract (`python3 scripts/setup-community --core-only`); this release does not claim a real Windows-host run |
+| WSL2 / Docker Desktop | Linux core and explicit seven-engine container profiles are provided and contract-tested; the five-engine macOS Docker path has separate real-host evidence |
 
-The default container runs the Sniper web application and does not bundle the five separately licensed optional
-engines. The distinct `community-tools` build target installs exactly the five Linux artifacts in
+The default container runs the Sniper web application and does not bundle the seven separately licensed optional
+engines. The distinct `community-tools` build target installs exactly the seven Linux artifacts in
 `COMMUNITY-TOOLS.lock.json` after an explicit license acknowledgement. Linux-specific isolation profiles such as
 bubblewrap/seccomp do not become native Windows or macOS capabilities merely because a Linux container is used.
 
@@ -68,7 +69,7 @@ file is bound to loopback.
 ```
 
 Plain `docker build .` and the default Compose build select `community-core` and never download optional engines.
-To build the five-engine image after reviewing the licenses recorded in `COMMUNITY-TOOLS.lock.json`, run:
+To build the seven-engine image after reviewing the licenses recorded in `COMMUNITY-TOOLS.lock.json`, run:
 
 ```bash
 python3 scripts/build-community-tools-image --accept-third-party-licenses --dry-run
@@ -95,7 +96,7 @@ Docker Desktop on Windows (PowerShell), core profile:
 docker compose up -d sniper
 ```
 
-Docker Desktop on Windows (PowerShell), explicit five-engine profile:
+Docker Desktop on Windows (PowerShell), explicit seven-engine profile:
 
 ```powershell
 $env:SNIPER_ACCEPT_THIRD_PARTY_LICENSES = "1"

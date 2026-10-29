@@ -109,6 +109,7 @@ class TestCommunitySourceSeparation(unittest.TestCase):
                 violations.append(path.relative_to(self.output).as_posix())
         self.assertEqual(violations, [])
         self.assertTrue((self.output / "scripts/install_joern.py").is_file())
+        self.assertTrue((self.output / "scripts/install_nuclei_catalog.py").is_file())
         self.assertTrue((self.output / "tests/test_install_joern.py").is_file())
 
     def test_validation_evidence_is_required_in_the_public_tree(self) -> None:
@@ -129,6 +130,12 @@ class TestCommunitySourceSeparation(unittest.TestCase):
             self.assertEqual(mode & 0o077, 0, relative)
         for path in (self.output / "plugins").glob("*/*.py"):
             self.assertEqual(path.stat().st_mode & 0o077, 0, path.name)
+
+    def test_public_tree_normalizes_inherited_executable_bits(self) -> None:
+        for relative in ("cli_reports.py", "static/app.js", "static/app.css", "tests/test_reports.py"):
+            self.assertEqual(self.output.joinpath(relative).stat().st_mode & 0o777, 0o644, relative)
+        for relative in ("scripts/setup-community", "scripts/sniper-mcp", "scripts/install-community-tools"):
+            self.assertEqual(self.output.joinpath(relative).stat().st_mode & 0o777, 0o755, relative)
 
     def test_community_server_and_mcp_import_without_closed_modules(self) -> None:
         smoke = subprocess.run(
@@ -361,6 +368,34 @@ assert 'entitlement' not in payload
         self.assertFalse((output / ".codebase-memory").exists())
         self.assertTrue((output / "COMMUNITY_VERSION").is_file())
 
+    def test_builder_excludes_git_worktree_pointer_without_reading_it(self) -> None:
+        builder = _load(BUILDER, "community_git_worktree_pointer_exclusion_test")
+        source = self.root / "minimal-git-worktree-source"
+        source.mkdir()
+        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
+        git_pointer = source / ".git"
+        git_pointer.write_text(
+            "gitdir: /home/community-user/project/.git/worktrees/community\n",
+            encoding="utf-8",
+        )
+        output = self.root / "git-worktree-output"
+
+        real_open = builder.os.open
+        opened_pointer = False
+
+        def observing_open(path, flags, *args, **kwargs):
+            nonlocal opened_pointer
+            if path == ".git" and kwargs.get("dir_fd") is not None:
+                opened_pointer = True
+                raise AssertionError("Git worktree pointer was opened")
+            return real_open(path, flags, *args, **kwargs)
+
+        with mock.patch.object(builder.os, "open", side_effect=observing_open):
+            builder.build(source, output)
+        self.assertFalse(opened_pointer)
+        self.assertFalse((output / ".git").exists())
+        self.assertTrue((output / "COMMUNITY_VERSION").is_file())
+
     def test_builder_excludes_deployment_secrets_and_archives(self) -> None:
         builder = _load(BUILDER, "community_deployment_secret_exclusion_test")
         source = self.root / "minimal-secret-name-source"
@@ -402,6 +437,24 @@ assert 'entitlement' not in payload
             environment.unlink()
 
         self.assertTrue(any("forbidden secret-bearing filename: .env" in failure for failure in failures), failures)
+        self.assertFalse(any("manifest:" in failure for failure in failures), failures)
+
+    def test_validator_rejects_manifest_listed_git_worktree_pointer(self) -> None:
+        validator = _load(VALIDATOR, "community_git_pointer_rejection_validator_test")
+        self.assertEqual(validator.validate(self.output, scan_release_tree=True), [])
+        pointer = self.output / ".git"
+        pointer.write_text("gitdir: /neutral/worktree/path\n", encoding="utf-8")
+        source_manifest = self.output / "COMMUNITY-SOURCE-MANIFEST.sha256"
+        original_manifest = source_manifest.read_bytes()
+        entry = f"{hashlib.sha256(pointer.read_bytes()).hexdigest()}  .git\n".encode("utf-8")
+        source_manifest.write_bytes(original_manifest + entry)
+        try:
+            failures = validator.validate(self.output, scan_release_tree=True)
+        finally:
+            source_manifest.write_bytes(original_manifest)
+            pointer.unlink()
+
+        self.assertIn("release tree: forbidden installed/runtime record: .git", failures)
         self.assertFalse(any("manifest:" in failure for failure in failures), failures)
 
     def test_validator_rejects_manifest_listed_nested_runtime_artifacts(self) -> None:

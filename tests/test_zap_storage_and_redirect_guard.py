@@ -34,14 +34,14 @@ class ZapWalApprovalStoreAndRedirectGuardTests(unittest.TestCase):
         self.env = patch.dict(os.environ, {"SNIPER_DATA_DIR": str(self.data_dir)})
         self.env.start()
 
-        self.root_target = self.store.create_target(normalize_target("https://example.test/"))
-        self.sub_target = self.store.create_target(normalize_target("https://example.test/app"))
+        self.root_target = self.store.create_target(normalize_target("https://target.example/"))
+        self.sub_target = self.store.create_target(normalize_target("https://target.example/app"))
         self.window = "2026-10-17T10:00:00Z/2026-10-17T14:00:00Z"
         self.engagement = self.store.create_engagement(
             target_id=self.root_target["id"],
             name="WAL Authorized Engagement",
             authorization_ref="AUTH-WAL-2026-01",
-            scope_notes="FULL_ORIGIN_ACTIVE_SCAN https://example.test",
+            scope_notes="FULL_ORIGIN_ACTIVE_SCAN https://target.example",
             out_of_scope="",
             test_window=self.window,
             special_approvals={},
@@ -195,7 +195,7 @@ class ZapWalApprovalStoreAndRedirectGuardTests(unittest.TestCase):
                     )
 
     def test_redirect_origin_guard_enforces_origin_port_scope_and_ip_pins(self) -> None:
-        source = "https://example.test/app"
+        source = "https://target.example/app"
         self.assertEqual(
             validate_redirect_target(
                 source,
@@ -205,29 +205,29 @@ class ZapWalApprovalStoreAndRedirectGuardTests(unittest.TestCase):
                 approved_ips=["93.184.216.34"],
                 resolved_ips=["93.184.216.34"],
             ),
-            "https://example.test/app/login?next=1",
+            "https://target.example/app/login?next=1",
         )
         self.assertEqual(
-            verify_redirect_origin(source, "https://example.test/app/dashboard"),
-            "https://example.test/app/dashboard",
+            verify_redirect_origin(source, "https://target.example/app/dashboard"),
+            "https://target.example/app/dashboard",
         )
         self.assertTrue(check_redirect_origin_guard(source, "/app/sub"))
         self.assertFalse(check_redirect_origin_guard(source, "/outside"))
 
         rejected_locations = (
             "https://evil.example/app",
-            "http://example.test/app",
-            "https://example.test:8443/app",
+            "http://target.example/app",
+            "https://target.example:8443/app",
             "//evil.example/app",
             "/outside",
-            "https://example.test/outside",
+            "https://target.example/outside",
             "/app/../outside",
             "/app/%2e%2e/outside",
             "/app%2f../outside",
             "/app\\..\\outside",
             "/app;jsessionid=123",
             "/app/admin/settings",
-            "https://user:pass@example.test/app",
+            "https://user:pass@target.example/app",
             "javascript:alert(1)",
             "/app/login#frag",
         )
@@ -261,13 +261,13 @@ class ZapWalApprovalStoreAndRedirectGuardTests(unittest.TestCase):
         # Redirect chain validation
         hops = validate_redirect_chain(
             source,
-            ["/app/step1", "https://example.test/app/step2"],
+            ["/app/step1", "https://target.example/app/step2"],
             allowed_paths=["/app"],
             approved_ips=["93.184.216.34"],
         )
         self.assertEqual(
             hops,
-            ["https://example.test/app/step1", "https://example.test/app/step2"],
+            ["https://target.example/app/step1", "https://target.example/app/step2"],
         )
         with self.assertRaises(RedirectOriginError):
             validate_redirect_chain(
@@ -301,7 +301,7 @@ class ZapWalApprovalStoreAndRedirectGuardTests(unittest.TestCase):
             res_v2 = run_zap_target_active(
                 self.root_target,
                 engagement=self.engagement,
-                redirect_locations=["/login", "https://example.test/dashboard"],
+                redirect_locations=["/login", "https://target.example/dashboard"],
             )
             self.assertEqual(res_v2["format"], "zap-target-active-v2")
             self.assertEqual(res_v2["profile"], "full-origin-active-v2")
@@ -312,7 +312,7 @@ class ZapWalApprovalStoreAndRedirectGuardTests(unittest.TestCase):
             with self.assertRaises(RedirectOriginError):
                 run_zap_target_active(
                     self.sub_target,
-                    redirect_locations=["https://example.test/outside"],
+                    redirect_locations=["https://target.example/outside"],
                 )
 
 

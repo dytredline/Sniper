@@ -66,7 +66,7 @@ import scheduler as sniper_scheduler
 import auth_routes
 import request_context
 from risk import calculate_cvss31, normalize_cwe
-from storage import Store, _guard_live_path
+from storage import DependencyExportTooLarge, Store, _guard_live_path
 from job_queue import DuplicateJob, JobQueue, JobQueueError, QueueFull
 from tool_catalog import tooling_payload
 from dependency_security import DependencySecurityError, generate_cyclonedx_sbom, import_report
@@ -156,6 +156,12 @@ from gitleaks_git_active import (
 )
 from npm_audit_active import run_local_npm_audit_local, NpmAuditUnavailable, NpmAuditBusy, NpmAuditExecutionError
 from osv_active import run_local_osv_scanner, OSVUnavailable, OSVBusy, OSVExecutionError
+from syft_grype_active import (
+    run_local_syft_grype,
+    SyftGrypeUnavailable,
+    SyftGrypeBusy,
+    SyftGrypeExecutionError,
+)
 from trivy_config_active import (
     run_local_trivy_terraform,
     run_local_trivy_dockerfile,
@@ -467,8 +473,8 @@ def get_broad_nuclei_jobs() -> BroadNucleiJobs:
                     binary_sha256="f27098e0be0cc370af52274611608ad61896d7f0a024e35b136327d39e725477",
                     catalog_root=catalog,
                     pin_path=catalog / "SNIPER-HTTP-CATALOG-PIN-v2.json",
-                    expected_pin_sha256="6ebcb6355094e859aa474760fa41cffdf395a0d925841090b1a62b1608bc903e",
-                    expected_index_sha256="3fdf439545e40caab9b7cd6256c8099abb8734da0eff6654c29abe05d628dc36",
+                    expected_pin_sha256="0458128285de1a22a9b5bbdf247323451663644607bdddf3252ff2b6e31f099e",
+                    expected_index_sha256="c6e3589ad085a9b15529b49fe8b6397b36e9c2b77461f603e1f7f3787a31856a",
                     expected_template_count=11655,
                     mapping_sha256="201335d35f4ebf4dee6b15fc879bacb6b24d41870168191bce3e613e523e05b6",
                 )
@@ -583,6 +589,7 @@ JOB_ROUTES = frozenset({
     "/api/tool-runs/gitleaks", "/api/tool-runs/gitleaks-git-history", "/api/tools/gitleaks/git-history",
     "/api/tool-runs/trufflehog-filesystem", "/api/tool-runs/trufflehog-git-history",
     "/api/tool-runs/semgrep", "/api/tool-runs/osv-scanner-local", "/api/tool-runs/npm-audit-local",
+    "/api/tool-runs/syft-grype",
     "/api/tool-runs/nuclei-loopback", "/api/tool-runs/openssl-x509-loopback",
     "/api/tool-runs/openssl-x509-authorized", "/api/tool-runs/qa-broker-probe",
     "/api/tool-runs/k6-authorized", "/api/tool-runs/schemathesis-authorized",
@@ -616,7 +623,7 @@ JOB_ROUTES = frozenset({
 # Çift çalıştırma denetiminde hedefi tanımlayan gövde alanları.
 _JOB_TARGET_KEYS = (
     "target_id", "engagement_id", "url", "target", "host", "hostname", "path", "project_path",
-    "repo_path", "image_path", "dockerfile_path", "archive_path", "directory", "directories", "file", "scope", "sbom_path",
+    "repo_path", "image_path", "dockerfile_path", "provenance_public_key_path", "archive_path", "directory", "directories", "file", "scope", "sbom_path",
 )
 
 
@@ -1502,8 +1509,32 @@ class SniperHandler(BaseHTTPRequestHandler):
             return self._json({"databases": osv_offline.database_status(),
                                "configured": osv_db_refresh.configured_ecosystems()})
         if path in {"/api/dependency-security", "/api/dependency-security/report.json"}:
-            disposition = 'attachment; filename="sniper-dependency-security.json"' if path.endswith("report.json") else None
-            return self._json(STORE.dependency_security(), disposition=disposition)
+            complete_export = path.endswith("report.json")
+            disposition = 'attachment; filename="sniper-dependency-security.json"' if complete_export else None
+            params = parse_qs(parsed.query, keep_blank_values=True)
+            try:
+                if any(len(params.get(key, [])) > 1 for key in ("limit", "offset", "query", "source", "severity", "status")):
+                    raise ValueError("Repeated dependency filter")
+                # A report download must never silently inherit listing pagination.
+                if complete_export and ("limit" in params or "offset" in params):
+                    raise ValueError("Paging is not supported for complete export")
+                limit = int(params.get("limit", ["500"])[0])
+                if not 1 <= limit <= 500:
+                    raise ValueError("Invalid public dependency page limit")
+                page = STORE.dependency_security(
+                    limit=limit,
+                    offset=int(params.get("offset", ["0"])[0]),
+                    query=params.get("query", [""])[0],
+                    source=params.get("source", ["all"])[0],
+                    severity=params.get("severity", ["all"])[0],
+                    status=params.get("status", ["all"])[0],
+                    complete_export=complete_export,
+                )
+            except DependencyExportTooLarge:
+                return self._error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Tam JSON raporu sınırı aşıldı; filtre uygulayın.")
+            except ValueError:
+                return self._error(HTTPStatus.BAD_REQUEST, "Geçersiz bağımlılık filtre veya sayfa parametresi.")
+            return self._json(page, disposition=disposition, max_bytes=32_000_000 if complete_export else None)
         if path == "/api/audit-log":
             return self._json({"events": STORE.recent_audit_log()})
         if path == "/api/audit-log/verify":
@@ -1941,6 +1972,129 @@ class SniperHandler(BaseHTTPRequestHandler):
             if len(parts) == 4 and parts[3] == "compliance-matrix":
                 from compliance_crosswalk import build_compliance_crosswalk
                 return self._json(build_compliance_crosswalk(project_audit=audit))
+            if len(parts) == 4 and parts[3] == "ghsa-bundles":
+                from report_renderers import render_ghsa_advisory_bundles
+                repo_param = (parse_qs(parsed.query).get("repository") or [str(audit.get("project_name") or "org/repo")])[0]
+                eco_param = (parse_qs(parsed.query).get("ecosystem") or ["pip"])[0]
+                pkg_param = (parse_qs(parsed.query).get("package_name") or [""])[0]
+                return self._json(render_ghsa_advisory_bundles(audit, repository=repo_param, ecosystem=eco_param, package_name=pkg_param))
+            if len(parts) == 4 and parts[3] == "openvex":
+                import vex_export
+                reachability_items = (audit.get("dependency_reachability") or {}).get("items") or audit.get("dependency_findings") or []
+                return self._json(vex_export.build_automated_reachability_openvex({"items": reachability_items}))
+            if len(parts) == 4 and parts[3] == "virtual-patches":
+                import blue_team_rule_synthesizer
+                return self._json(blue_team_rule_synthesizer.synthesize_precision_virtual_patches(audit.get("findings") or []))
+            if len(parts) == 4 and parts[3] == "attack-graph":
+                import attack_path_correlator
+                return self._json(attack_path_correlator.synthesize_multi_hop_exploit_chains(audit.get("findings") or []))
+            if len(parts) == 4 and parts[3] == "regression-tests":
+                import auto_remediation_patcher
+                tests = [
+                    auto_remediation_patcher.generate_security_regression_test(f)
+                    for f in (audit.get("findings") or [])
+                    if isinstance(f, dict) and str(f.get("severity") or "").lower() in {"critical", "high"}
+                ]
+                return self._json({"format": "sniper-security-regression-suite/1", "test_count": len(tests), "tests": tests})
+            if len(parts) == 4 and parts[3] == "enriched-sarif":
+                from project_audit_diff import build_enterprise_enriched_sarif
+                return self._json(build_enterprise_enriched_sarif(audit))
+            if len(parts) == 4 and parts[3] == "threat-model-mermaid":
+                import threat_model
+                return self._json(threat_model.synthesize_executable_threat_model(audit.get("findings") or [], project_name=str(audit.get("project_name") or "sniper-project")))
+            if len(parts) == 4 and parts[3] == "ssvc-decisions":
+                import cvss_ssvc_prioritizer
+                return self._json(cvss_ssvc_prioritizer.evaluate_cisa_ssvc_decisions(audit.get("findings") or []))
+            if len(parts) == 4 and parts[3] == "regulatory-attestation":
+                import compliance_crosswalk
+                return self._json(compliance_crosswalk.generate_regulatory_attestation_bundle(audit))
+            if len(parts) == 4 and parts[3] == "ropa-dpia":
+                import privacy_dataflow_auditor
+                return self._json(privacy_dataflow_auditor.generate_automated_ropa_dpia_report(audit))
+            if len(parts) == 4 and parts[3] == "ciso-briefing":
+                import executive_pentest_report
+                return self._json(executive_pentest_report.build_ciso_board_briefing(audit))
+            if len(parts) == 4 and parts[3] == "unified-aibom":
+                import sbom_formats
+                return self._json(sbom_formats.build_unified_aibom_sbom(audit, project_name=str(audit.get("project_name") or "sniper-project")))
+            if len(parts) == 4 and parts[3] == "runtime-profiles":
+                import host_cis_hardening_auditor
+                return self._json(host_cis_hardening_auditor.synthesize_least_privilege_runtime_profiles(audit, service_name=str(audit.get("project_name") or "sniper-app")))
+            if len(parts) == 4 and parts[3] == "ci-gate-decision":
+                import ci_gate
+                return self._json(ci_gate.evaluate_enterprise_v2_ci_gate(audit))
+            if len(parts) == 4 and parts[3] == "shared-state-attack-graph":
+                import attack_path_correlator
+                return self._json(attack_path_correlator.build_shared_state_attack_graph(audit.get("findings") or []))
+            if len(parts) == 4 and parts[3] == "cve-submission-bundle":
+                import cve_submission_pipeline
+                return self._json(cve_submission_pipeline.build_ghsa_and_hackerone_submission_payloads(audit.get("findings") or []))
+            if len(parts) == 4 and parts[3] == "evidence-tiered-triage":
+                return self._json([ai_triage.classify_finding_evidence_tier(f) for f in (audit.get("findings") or []) if isinstance(f, dict)])
+            if len(parts) == 4 and parts[3] == "submission-queue-status":
+                import cve_submission_pipeline
+                return self._json(cve_submission_pipeline.evaluate_submission_cooldown_and_status(audit.get("submissions") or []))
+            if len(parts) == 4 and parts[3] == "silent-patches-blame":
+                import silent_patch_blame_auditor
+                return self._json(silent_patch_blame_auditor.audit_silent_security_patches_and_blame(audit.get("commits") or []))
+            if len(parts) == 4 and parts[3] == "cspt-sdk-audit":
+                import cspt_sdk_auditor
+                return self._json(cspt_sdk_auditor.audit_cspt_and_authenticated_url_templates(str(audit.get("raw_content") or ""), filename=str(audit.get("project_name") or "sdk.ts")))
+            if len(parts) == 4 and parts[3] == "branch-aware-chains":
+                import attack_path_correlator
+                return self._json(attack_path_correlator.partition_chains_by_branch_constraints(audit.get("findings") or []))
+            if len(parts) == 4 and parts[3] == "scope-wave-plan":
+                import cve_submission_pipeline
+                return self._json(cve_submission_pipeline.classify_program_scopes_and_asset_linkage(audit.get("targets") or [], audit.get("structured_scopes") or []))
+            if len(parts) == 4 and parts[3] == "container-orchestrator-audit":
+                import container_orchestrator_auditor
+                return self._json(container_orchestrator_auditor.audit_programmatic_container_orchestration(str(audit.get("raw_content") or ""), filename=str(audit.get("project_name") or "cli.py")))
+            if len(parts) == 4 and parts[3] == "wallet-signing-audit":
+                import crypto_wallet_signing_auditor
+                return self._json(crypto_wallet_signing_auditor.audit_wallet_signing_and_domain_separation(str(audit.get("raw_content") or ""), filename=str(audit.get("project_name") or "wallet_rpc_api.py")))
+            if len(parts) == 4 and parts[3] == "multipart-cache-audit":
+                import multipart_and_cache_auditor
+                return self._json(multipart_and_cache_auditor.audit_multipart_upload_and_state_cache(str(audit.get("raw_content") or ""), filename=str(audit.get("project_name") or "objectstore.rs")))
+            if len(parts) == 4 and parts[3] == "http-repeater-diff":
+                import http_repeater_comparer
+                return self._json(http_repeater_comparer.compare_http_responses(audit.get("baseline_response") or {}, audit.get("mutated_response") or {}))
+            if len(parts) == 4 and parts[3] == "autorize-matrix":
+                import autorize_matrix_tester
+                return self._json(autorize_matrix_tester.evaluate_autorize_access_matrix(audit.get("autorize_probes") or []))
+            if len(parts) == 4 and parts[3] == "token-sequencer":
+                import token_sequencer
+                return self._json(token_sequencer.analyze_token_sequence_entropy(audit.get("token_samples") or [], token_label=str(audit.get("token_label") or "session_identifier")))
+            if len(parts) == 4 and parts[3] == "traffic-inspector":
+                import traffic_decoder_inspector
+                return self._json(traffic_decoder_inspector.inspect_har_or_http_exchange(audit.get("http_exchange") or {}))
+            if len(parts) == 4 and parts[3] == "dom-invader-audit":
+                import dom_invader_gadget_auditor
+                return self._json(dom_invader_gadget_auditor.audit_dom_invader_cspp_and_gadgets(str(audit.get("raw_content") or ""), filename=str(audit.get("project_name") or "app.js")))
+            if len(parts) == 4 and parts[3] == "smuggling-differential":
+                import smuggling_cache_poison_prober
+                return self._json(smuggling_cache_poison_prober.evaluate_smuggling_differential_probes(audit.get("smuggling_probes") or []))
+            if len(parts) == 4 and parts[3] == "symbolic-path-proof":
+                import symbolic_path_constraint_solver
+                return self._json(symbolic_path_constraint_solver.solve_path_constraints_and_synthesize_input(audit.get("path_guards") or []))
+            if len(parts) == 4 and parts[3] == "binary-hardening-audit":
+                import binary_security_hardening_auditor
+                return self._json(binary_security_hardening_auditor.audit_binary_security_hardening(str(audit.get("raw_content") or ""), filename=str(audit.get("project_name") or "libnative.so")))
+            if len(parts) == 4 and parts[3] == "pr-diff-review":
+                import pr_diff_security_bot
+                return self._json(pr_diff_security_bot.audit_git_diff_security_regressions(str(audit.get("git_diff") or ""), sibling_files=audit.get("sibling_files") if isinstance(audit.get("sibling_files"), dict) else None))
+            if len(parts) == 4 and parts[3] == "stateful-protocol-audit":
+                import stateful_protocol_fuzzer_auditor
+                return self._json(stateful_protocol_fuzzer_auditor.audit_stateful_protocol_state_machine(str(audit.get("raw_content") or ""), filename=str(audit.get("project_name") or "ws_handler.ts")))
+            if len(parts) == 4 and parts[3] == "schema-migration-audit":
+                import schema_migration_security_auditor
+                return self._json(schema_migration_security_auditor.audit_database_schema_migrations(str(audit.get("raw_content") or ""), filename=str(audit.get("project_name") or "0001_init.sql")))
+            if len(parts) == 4 and parts[3] == "k8s-ebpf-synthesis":
+                import k8s_admission_netpol_synthesizer
+                return self._json(k8s_admission_netpol_synthesizer.synthesize_zero_trust_k8s_and_ebpf_policies(audit.get("findings") or [], service_graph=audit.get("service_graph") if isinstance(audit.get("service_graph"), dict) else None))
+            if len(parts) == 4 and parts[3] == "bounty-readiness-cockpit":
+                import bounty_readiness_cockpit
+                return self._json(bounty_readiness_cockpit.evaluate_end_to_end_bounty_readiness((audit.get("findings") or [{}])[0] if (audit.get("findings") or []) else {}, runtime_proof=audit.get("runtime_proof") if isinstance(audit.get("runtime_proof"), dict) else None, symbolic_proof=audit.get("symbolic_proof") if isinstance(audit.get("symbolic_proof"), dict) else None))
+
 
         if len(parts) == 5 and parts[:2] == ["api", "dependency-sboms"] and parts[3] == "delta":
             try:
@@ -2290,15 +2444,31 @@ class SniperHandler(BaseHTTPRequestHandler):
         if path == "/api/container-images":
             # 18. tur: Docker daemon'suz imaj / rootfs işletim sistemi paket açığı taraması (ağ yok).
             try:
-                if not set(payload) <= {"image_path", "dockerfile_path", "ignore_unfixed"}:
-                    return self._error(HTTPStatus.BAD_REQUEST, "Yalnız image_path, dockerfile_path ve ignore_unfixed alanları kullanılabilir.")
+                allowed = {
+                    "image_path", "dockerfile_path", "ignore_unfixed", "expected_provenance_identity",
+                    "provenance_public_key_path", "provenance_public_key_sha256",
+                }
+                if not set(payload) <= allowed:
+                    return self._error(HTTPStatus.BAD_REQUEST, "Konteyner taraması isteğinde desteklenmeyen alan var.")
                 image_path = clean_text(payload, "image_path", maximum=1024, required=True)
                 dockerfile_path = clean_text(payload, "dockerfile_path", maximum=1024) or None
+                expected_provenance_identity = clean_text(
+                    payload, "expected_provenance_identity", maximum=512
+                ) or None
+                provenance_public_key_path = clean_text(
+                    payload, "provenance_public_key_path", maximum=1024
+                ) or None
+                provenance_public_key_sha256 = clean_text(
+                    payload, "provenance_public_key_sha256", maximum=64
+                ) or None
                 ignore_unfixed = payload.get("ignore_unfixed", False)
                 if not isinstance(ignore_unfixed, bool):
                     return self._error(HTTPStatus.BAD_REQUEST, "ignore_unfixed true ya da false olmalı.")
                 result = container_scan.scan_image(image_path, ignore_unfixed=ignore_unfixed,
-                                                   dockerfile_path=dockerfile_path)
+                                                   dockerfile_path=dockerfile_path,
+                                                   expected_provenance_identity=expected_provenance_identity,
+                                                   provenance_public_key_path=provenance_public_key_path,
+                                                   provenance_public_key_sha256=provenance_public_key_sha256)
                 saved = STORE.create_project_audit(result)
                 try:
                     notifications.on_project_audit_created(STORE, saved)
@@ -3111,6 +3281,29 @@ class SniperHandler(BaseHTTPRequestHandler):
             except ValueError:
                 return self._error(HTTPStatus.BAD_REQUEST, "Geçersiz testssl.sh kanıtı veya test adımı.")
 
+        if len(parts) == 5 and parts[:2] == ["api", "engagements"] and parts[3:] == ["tool-evidence", "ssllabs-host"]:
+            # A passive preview never stores evidence; this separate route requires explicit opt-in.
+            if not isinstance(payload, dict) or set(payload) != {"control_id", "report", "confirm_link"} or payload.get("confirm_link") is not True:
+                return self._error(HTTPStatus.BAD_REQUEST, "Açık kanıt bağlama onayı gerekli.")
+            engagement = STORE.get_engagement(parts[2])
+            if not engagement:
+                return self._error(HTTPStatus.NOT_FOUND, "Manuel denetim bulunamadı.")
+            if engagement["status"] != "active" or not engagement["authorization_ref"].strip() or not engagement["special_approvals"].get("redacted_data_proof"):
+                return self._error(HTTPStatus.FORBIDDEN, "Etkin, yetkili ve maskeli kanıt onaylı denetim gerekli.")
+            try:
+                control_id = clean_text(payload, "control_id", maximum=80, required=True)
+                report = payload["report"]
+                if not isinstance(report, dict):
+                    raise ValueError("Geçersiz SSL Labs raporu.")
+                canonical = json.dumps(report, sort_keys=True, separators=(",", ":")).encode("utf-8")
+                if len(canonical) > 60_000:
+                    raise ValueError("Rapor boyutu sınırı aşıldı.")
+                summary = parse_ssllabs_host_summary(report)
+                linked, created = STORE.add_ssllabs_tool_evidence(parts[2], control_id, summary)
+                return self._json(linked, status=HTTPStatus.CREATED if created else HTTPStatus.OK)
+            except ValueError:
+                return self._error(HTTPStatus.BAD_REQUEST, "Geçersiz SSL Labs kanıtı veya test adımı.")
+
         if len(parts) == 5 and parts[:2] == ["api", "engagements"] and parts[3:] == ["tool-evidence", "zap-traditional-json"]:
             if not isinstance(payload, dict) or set(payload) != {"control_id", "report", "confirm_link"} or payload.get("confirm_link") is not True:
                 return self._error(HTTPStatus.BAD_REQUEST, "Açık kanıt bağlama onayı gerekli.")
@@ -3552,6 +3745,27 @@ class SniperHandler(BaseHTTPRequestHandler):
                 )
             except GitleaksGitExecution:
                 return self._error(HTTPStatus.BAD_GATEWAY, "Gitleaks Git geçmişi taraması başarısız oldu.")
+
+        if path == "/api/tool-runs/syft-grype":
+            try:
+                if (not isinstance(payload, dict)
+                        or set(payload) != {"confirm_local", "project_path"}
+                        or payload.get("confirm_local") is not True
+                        or not isinstance(payload.get("project_path"), str)
+                        or not payload["project_path"].strip()):
+                    raise ValueError("Yalnız açık yerel onay ve project_path alanları bekleniyor.")
+                return self._json(run_local_syft_grype(payload["project_path"]))
+            except (ProjectRejected, ValueError) as exc:
+                return self._error(HTTPStatus.BAD_REQUEST, _sanitize_error_message(str(exc)))
+            except SyftGrypeBusy:
+                return self._error(HTTPStatus.CONFLICT, "Başka bir SBOM ve zafiyet analizi sürüyor.")
+            except SyftGrypeUnavailable:
+                return self._error(
+                    HTTPStatus.SERVICE_UNAVAILABLE,
+                    "Syft, Grype veya sabitlenmiş çevrimdışı veritabanı kullanılamıyor.",
+                )
+            except SyftGrypeExecutionError:
+                return self._error(HTTPStatus.BAD_GATEWAY, "SBOM ve zafiyet analizi tamamlanamadı.")
 
         if path == "/api/tool-runs/trivy-vulnerability":
             try:
@@ -5556,6 +5770,101 @@ class SniperHandler(BaseHTTPRequestHandler):
             except (ValueError, ProjectRejected) as exc:
                 return self._error(HTTPStatus.BAD_REQUEST, _sanitize_error_message(str(exc), "CVSS / SSVC önceliklendirmesi başarısız oldu."))
 
+        if path == "/api/burp-equiv/repeater-compare":
+            import http_repeater_comparer
+            base_resp = payload.get("baseline_response") if isinstance(payload.get("baseline_response"), dict) else {}
+            mut_resp = payload.get("mutated_response") if isinstance(payload.get("mutated_response"), dict) else {}
+            applied_mut = payload.get("applied_mutation") if isinstance(payload.get("applied_mutation"), dict) else None
+            return self._json(http_repeater_comparer.compare_http_responses(base_resp, mut_resp, applied_mutation=applied_mut))
+
+        if path == "/api/burp-equiv/autorize-matrix":
+            import autorize_matrix_tester
+            probes = payload.get("probes") if isinstance(payload.get("probes"), list) else []
+            return self._json(autorize_matrix_tester.evaluate_autorize_access_matrix(probes))
+
+        if path == "/api/burp-equiv/token-sequencer":
+            import token_sequencer
+            samples = payload.get("tokens") if isinstance(payload.get("tokens"), list) else []
+            label = str(payload.get("token_label") or "session_identifier")
+            return self._json(token_sequencer.analyze_token_sequence_entropy(samples, token_label=label))
+
+        if path == "/api/burp-equiv/traffic-decoder":
+            import traffic_decoder_inspector
+            if "exchange" in payload and isinstance(payload["exchange"], dict):
+                return self._json(traffic_decoder_inspector.inspect_har_or_http_exchange(payload["exchange"]))
+            return self._json(traffic_decoder_inspector.recursive_decode_and_inspect(str(payload.get("raw_value") or "")))
+
+        if path == "/api/burp-equiv/intruder-positions":
+            import intruder_param_miner
+            try:
+                return self._json(intruder_param_miner.generate_intruder_payload_positions(
+                    str(payload.get("template") or ""),
+                    payload.get("payload_sets") if isinstance(payload.get("payload_sets"), list) else [],
+                    attack_type=str(payload.get("attack_type") or "sniper"),
+                ))
+            except ValueError as exc:
+                return self._error(HTTPStatus.BAD_REQUEST, str(exc))
+
+        if path == "/api/burp-equiv/dom-invader":
+            import dom_invader_gadget_auditor
+            return self._json(dom_invader_gadget_auditor.audit_dom_invader_cspp_and_gadgets(
+                str(payload.get("raw_content") or ""),
+                filename=str(payload.get("filename") or "app.js"),
+            ))
+
+        if path == "/api/burp-equiv/smuggling-differential":
+            import smuggling_cache_poison_prober
+            probes = payload.get("probes") if isinstance(payload.get("probes"), list) else []
+            return self._json(smuggling_cache_poison_prober.evaluate_smuggling_differential_probes(probes))
+
+        if path == "/api/wave6/symbolic-solve":
+            import symbolic_path_constraint_solver
+            guards = payload.get("path_guards") if isinstance(payload.get("path_guards"), list) else []
+            return self._json(symbolic_path_constraint_solver.solve_path_constraints_and_synthesize_input(guards))
+
+        if path == "/api/wave6/binary-hardening":
+            import binary_security_hardening_auditor
+            return self._json(binary_security_hardening_auditor.audit_binary_security_hardening(
+                str(payload.get("raw_content") or ""),
+                filename=str(payload.get("filename") or "libnative.so"),
+            ))
+
+        if path == "/api/wave6/pr-diff-review":
+            import pr_diff_security_bot
+            return self._json(pr_diff_security_bot.audit_git_diff_security_regressions(
+                str(payload.get("git_diff") or ""),
+                sibling_files=payload.get("sibling_files") if isinstance(payload.get("sibling_files"), dict) else None,
+            ))
+
+        if path == "/api/wave6/stateful-protocol":
+            import stateful_protocol_fuzzer_auditor
+            return self._json(stateful_protocol_fuzzer_auditor.audit_stateful_protocol_state_machine(
+                str(payload.get("raw_content") or ""),
+                filename=str(payload.get("filename") or "ws_handler.ts"),
+            ))
+
+        if path == "/api/wave6/schema-migration":
+            import schema_migration_security_auditor
+            return self._json(schema_migration_security_auditor.audit_database_schema_migrations(
+                str(payload.get("raw_content") or ""),
+                filename=str(payload.get("filename") or "0001_init.sql"),
+            ))
+
+        if path == "/api/wave6/k8s-ebpf-synthesize":
+            import k8s_admission_netpol_synthesizer
+            return self._json(k8s_admission_netpol_synthesizer.synthesize_zero_trust_k8s_and_ebpf_policies(
+                payload.get("findings") if isinstance(payload.get("findings"), list) else [],
+                service_graph=payload.get("service_graph") if isinstance(payload.get("service_graph"), dict) else None,
+            ))
+
+        if path == "/api/wave6/bounty-readiness":
+            import bounty_readiness_cockpit
+            return self._json(bounty_readiness_cockpit.evaluate_end_to_end_bounty_readiness(
+                payload.get("finding") if isinstance(payload.get("finding"), dict) else {},
+                runtime_proof=payload.get("runtime_proof") if isinstance(payload.get("runtime_proof"), dict) else None,
+                symbolic_proof=payload.get("symbolic_proof") if isinstance(payload.get("symbolic_proof"), dict) else None,
+            ))
+
         return self._error(HTTPStatus.NOT_FOUND, "Uç nokta bulunamadı.")
 
     # -- özel taint kuralları ve otomatik düzeltme önerisi ------------------------------
@@ -6742,8 +7051,10 @@ class SniperHandler(BaseHTTPRequestHandler):
         return value
 
     def _json(self, payload, status: int = HTTPStatus.OK, disposition: str | None = None,
-              cookies: list[str] | None = None) -> None:
+              cookies: list[str] | None = None, max_bytes: int | None = None) -> None:
         body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        if max_bytes is not None and len(body) > max_bytes:
+            return self._error(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Tam JSON raporu sınırı aşıldı; filtre uygulayın.")
         self.send_response(status)
         for cookie in cookies or ():
             self.send_header("Set-Cookie", cookie)

@@ -23,6 +23,9 @@ TRUST_BOUNDARY_SPECS: tuple[dict[str, Any], ...] = (
             "cors", "headers", "web_hardening", "transport", "tls", "hsts", "cookie",
             "sri", "source_map", "disclosure", "masvs-network", "mobile_network",
             "cleartext", "cwe-319", "cwe-79", "cwe-942", "xss",
+            "browser_extension", "pwa", "service_worker", "sniper-ext", "sniper-clnt",
+            "electron", "desktop_security", "cwe-359", "cwe-668", "cwe-749",
+            "cwe-113", "cwe-444", "request smuggling", "response splitting", "crlf",
         ),
     },
     {
@@ -35,6 +38,8 @@ TRUST_BOUNDARY_SPECS: tuple[dict[str, Any], ...] = (
             "mass assignment", "sniper-apit", "sniper-sess", "sniper-auth",
             "owasp api", "cwe-287", "cwe-347", "cwe-352", "cwe-614", "cwe-400",
             "masvs-auth", "masvs-platform", "mobile_auth", "mobile_platform", "webview", "deeplink",
+            "business", "sniper-busl", "sniper-authz", "cwe-472", "cwe-915", "cwe-841", "xsw", "saml",
+            "cwe-943", "cwe-1336", "cwe-1321", "nosql", "ssti", "prototype pollution",
         ),
     },
     {
@@ -45,6 +50,9 @@ TRUST_BOUNDARY_SPECS: tuple[dict[str, Any], ...] = (
         "tokens": (
             "llm", "ai_llm", "prompt injection", "excessive agency", "output eval",
             "ssrf", "command_data", "subprocess", "cwe-77", "cwe-78", "cwe-94", "cwe-918",
+            "llm04", "llm08", "llm09", "safetensors", "torch.load", "rag", "mcp",
+            "cwe-416", "cwe-415", "cwe-787", "cwe-120", "cwe-134", "memory_safety",
+            "use-after-free", "buffer overflow", "format string",
         ),
     },
     {
@@ -57,6 +65,8 @@ TRUST_BOUNDARY_SPECS: tuple[dict[str, Any], ...] = (
             "errors", "information", "audit", "traversal", "masvs-storage", "masvs-crypto",
             "mobile_storage", "mobile_crypto", "cwe-22", "cwe-89", "cwe-200", "cwe-209",
             "cwe-327", "cwe-338", "cwe-502", "cwe-611", "cwe-798",
+            "database_rls", "row level security", "security definer", "sniper-data",
+            "pqc", "cbom", "cwe-312", "cwe-426", "cwe-598",
         ),
     },
     {
@@ -69,6 +79,8 @@ TRUST_BOUNDARY_SPECS: tuple[dict[str, Any], ...] = (
             "workflow", "pull_request_target", "dockerfile", "privileged", "slsa",
             "typosquat", "confusion", "cve-", "ghsa-", "sniper-supp", "sniper-conf-08",
             "cwe-250", "cwe-427", "cwe-829", "cwe-1104",
+            "cloud_iam", "zero_trust", "host_cis", "sniper-zt", "sniper-infr", "sniper-conf-09",
+            "imdsv1", "docker.sock", "cwe-506", "mal-",
         ),
     },
 )
@@ -82,7 +94,8 @@ STRIDE_SPECS: tuple[dict[str, Any], ...] = (
             "auth", "session", "jwt", "cors", "csrf", "spoof", "bola", "idor",
             "sniper-sess", "sniper-auth", "sniper-apit-02", "sniper-apit-03",
             "owasp api1", "owasp api2", "masvs-auth", "mobile_auth",
-            "cwe-287", "cwe-347", "cwe-352", "cwe-942",
+            "cwe-287", "cwe-290", "cwe-345", "cwe-346", "cwe-347", "cwe-352", "cwe-942",
+            "xsw", "saml",
         ),
     },
     {
@@ -93,7 +106,9 @@ STRIDE_SPECS: tuple[dict[str, Any], ...] = (
             "data_query", "sql", "xss", "deserializ", "pickle", "command_data",
             "supplychain", "integrity", "sri", "mass assignment", "unpinned",
             "typosquat", "confusion", "sniper-apit-09", "sniper-supp",
-            "cwe-78", "cwe-79", "cwe-89", "cwe-427", "cwe-502", "cwe-829",
+            "cwe-78", "cwe-79", "cwe-89", "cwe-113", "cwe-427", "cwe-444",
+            "cwe-502", "cwe-506", "cwe-829", "cwe-943", "cwe-1321",
+            "nosql", "prototype pollution", "request smuggling", "mal-",
         ),
     },
     {
@@ -102,7 +117,8 @@ STRIDE_SPECS: tuple[dict[str, Any], ...] = (
         "mitigation": "Maintain tamper-evident SHA-256 hash-chained audit logs, generate SLSA v1.0 build provenance attestations, and publish valid RFC 9116 security.txt disclosure metadata.",
         "tokens": (
             "audit", "repudiation", "logging", "disclosure", "security.txt",
-            "provenance", "slsa", "rfc 9116", "sniper-supp-02", "sniper-supp-05", "cwe-778",
+            "provenance", "slsa", "rfc 9116", "sniper-supp-02", "sniper-supp-05",
+            "cwe-117", "cwe-778", "log injection",
         ),
     },
     {
@@ -114,8 +130,8 @@ STRIDE_SPECS: tuple[dict[str, Any], ...] = (
             "source_map", "traversal", "xxe", "graphql", "introspection",
             "masvs-storage", "masvs-crypto", "masvs-network", "mobile_storage",
             "mobile_crypto", "mobile_network", "llm02", "llm07",
-            "cwe-22", "cwe-200", "cwe-209", "cwe-319", "cwe-327", "cwe-338",
-            "cwe-611", "cwe-798",
+            "cwe-22", "cwe-125", "cwe-134", "cwe-200", "cwe-209", "cwe-319",
+            "cwe-327", "cwe-338", "cwe-530", "cwe-532", "cwe-611", "cwe-798",
         ),
     },
     {
@@ -125,7 +141,7 @@ STRIDE_SPECS: tuple[dict[str, Any], ...] = (
         "tokens": (
             "rate limit", "resource", "pagination", "maxitems", "maxlength",
             "timeout", "dos", "sniper-apit-05", "owasp api4", "llm10",
-            "cwe-400", "cwe-770",
+            "cwe-400", "cwe-401", "cwe-415", "cwe-770", "cwe-1333", "redos",
         ),
     },
     {
@@ -136,7 +152,9 @@ STRIDE_SPECS: tuple[dict[str, Any], ...] = (
             "container", "privileged", "root", "ssrf", "prompt injection",
             "excessive agency", "output eval", "pull_request_target", "rbac",
             "sniper-conf-08", "llm01", "llm05", "llm06",
-            "cwe-77", "cwe-94", "cwe-250", "cwe-269", "cwe-918",
+            "cwe-77", "cwe-94", "cwe-119", "cwe-120", "cwe-250", "cwe-269",
+            "cwe-416", "cwe-787", "cwe-915", "cwe-918", "cwe-1336",
+            "ssti", "use-after-free", "buffer overflow",
         ),
     },
 )
@@ -149,8 +167,9 @@ MITRE_SPECS: tuple[dict[str, Any], ...] = (
         "mitigation": "Harden public endpoints with strict input validation, parameterized queries, SSRF allowlists, and WAF/CSP defenses.",
         "tokens": (
             "sql", "xss", "ssrf", "deserializ", "xxe", "traversal", "data_query",
-            "cwe-22", "cwe-79", "cwe-89", "cwe-502", "cwe-611", "cwe-918",
-            "sniper-apit", "owasp api",
+            "cwe-22", "cwe-79", "cwe-89", "cwe-416", "cwe-444", "cwe-502",
+            "cwe-611", "cwe-787", "cwe-918", "cwe-943", "cwe-1336",
+            "nosql", "ssti", "request smuggling", "sniper-apit", "owasp api",
         ),
     },
     {
@@ -179,9 +198,9 @@ MITRE_SPECS: tuple[dict[str, Any], ...] = (
         "tactic": "Initial Access",
         "mitigation": "Pin CI/CD GitHub Actions to 40-char commit SHAs, remediate vulnerable third-party dependencies, and guard against typosquatting/dependency confusion.",
         "tokens": (
-            "supplychain", "dependency", "components", "cve-", "ghsa-", "workflow",
+            "supplychain", "dependency", "components", "cve-", "ghsa-", "mal-", "workflow",
             "pull_request_target", "unpinned", "typosquat", "confusion",
-            "sniper-supp", "cwe-427", "cwe-829", "cwe-1104",
+            "sniper-supp", "cwe-427", "cwe-506", "cwe-829", "cwe-1104",
         ),
     },
     {
@@ -221,10 +240,58 @@ MITRE_SPECS: tuple[dict[str, Any], ...] = (
         "mitigation": "Separate untrusted user/RAG context from system instructions, enforce strict output schemas, and require human confirmation for high-impact agent tools.",
         "tokens": (
             "llm", "ai_llm", "prompt injection", "excessive agency", "llm01",
-            "llm05", "llm06", "llm07",
+            "llm05", "llm06", "llm07", "llm09",
+        ),
+    },
+    {
+        "technique_id": "AML.T0020",
+        "name": "AML.T0020 Poison Training Data",
+        "tactic": "ML Attack Staging",
+        "mitigation": "Pin Hugging Face dataset/model revisions to immutable commit SHAs, validate SFT/DPO fine-tuning corpora, and use safetensors/weights_only=True.",
+        "tokens": (
+            "llm03", "llm04", "llm08", "poison", "load_dataset", "sfttrainer",
+            "dpotrainer", "fine_tuning", "torch.load",
+        ),
+    },
+    {
+        "technique_id": "T1528",
+        "name": "T1528 Steal Application Access Token",
+        "tactic": "Credential Access",
+        "mitigation": "Enforce OAuth 2.0 PKCE S256, IMDSv2 (HttpTokens=required), Istio JWT audiences, and restrict browser extension cookie access.",
+        "tokens": (
+            "oauth", "oidc", "pkce", "sniper-ext-06", "cookies.getall",
+            "imdsv1", "http_tokens", "token_endpoint", "sniper-zt-04",
+            "cwe-359", "cwe-522", "cwe-598",
         ),
     },
 )
+
+
+def _is_false_positive(item: dict[str, Any]) -> bool:
+    triage = item.get("triage")
+    if isinstance(triage, dict) and str(triage.get("disposition") or "").strip().lower() == "false_positive":
+        return True
+    tracking = item.get("tracking")
+    if isinstance(tracking, dict) and str(tracking.get("status") or "").strip().lower() in {
+        "false_positive",
+        "resolved",
+        "closed",
+    }:
+        return True
+    if str(item.get("disposition") or "").strip().lower() == "false_positive":
+        return True
+    if str(item.get("status") or "").strip().lower() in {"false_positive", "resolved", "closed"}:
+        return True
+    return False
+
+
+def _normalize_cwe_token(raw_val: Any) -> str:
+    text = str(raw_val or "").strip()
+    if not text:
+        return ""
+    if text.isdigit():
+        return f"CWE-{int(text)}"
+    return text
 
 
 def _normalize_finding(item: dict[str, Any], default_source: str) -> dict[str, str]:
@@ -244,13 +311,16 @@ def _normalize_finding(item: dict[str, Any], default_source: str) -> dict[str, s
         or item.get("package_name")
         or "Security Finding"
     ).strip()
+    cwe_norm = _normalize_cwe_token(item.get("cwe") or item.get("cwe_id"))
     reference = str(
         item.get("reference")
-        or item.get("cwe")
+        or cwe_norm
         or item.get("vulnerability_id")
         or item.get("owasp_category")
         or ""
     ).strip()
+    if reference.isdigit():
+        reference = f"CWE-{int(reference)}"
     control_id = str(
         item.get("control_id")
         or item.get("rule_id")
@@ -266,7 +336,7 @@ def _normalize_finding(item: dict[str, Any], default_source: str) -> dict[str, s
         or item.get("target")
         or ""
     ).strip()[:240]
-    blob = " ".join((source, category, title, reference, control_id, masvs_id, location)).casefold()
+    blob = " ".join((source, category, title, reference, cwe_norm, control_id, masvs_id, location)).casefold()
     return {
         "source": source,
         "category": category,
@@ -430,7 +500,7 @@ def generate_threat_model(
         if not isinstance(items, list):
             return
         for raw in items:
-            if isinstance(raw, dict):
+            if isinstance(raw, dict) and not _is_false_positive(raw):
                 normalized.append(_normalize_finding(raw, default_source))
 
     if isinstance(scan, dict):

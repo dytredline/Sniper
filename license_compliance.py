@@ -61,7 +61,9 @@ DEFAULT_POLICY: dict[str, Any] = {
         "GPL-2.0-only WITH Classpath-exception-2.0", "GPL-2.0-or-later WITH Classpath-exception-2.0",
     ],
     "caution": ["GPL-*", "AGPL-*", "SSPL-*", "EUPL-*", "OSL-*", "CC-BY-SA-*", "CC-BY-NC*", "CC-BY-ND-*",
-                "BUSL-*", "Elastic-2.0", "JSON", "Hippocratic-*", "LicenseRef-Commons-Clause"],
+                "BUSL-*", "Elastic-2.0", "JSON", "Hippocratic-*", "LicenseRef-Commons-Clause",
+                "FSL-*", "PolyForm-*", "CAL-*", "CPAL-*", "RPL-*",
+                "LicenseRef-Llama-*", "LicenseRef-OpenRAIL-*", "LicenseRef-Gemma"],
     "denied": [],
 }
 
@@ -72,8 +74,11 @@ _KNOWN_IDS = {
     "BSL-1.0", "BlueOak-1.0.0", "Unicode-DFS-2016", "Unicode-3.0", "X11", "curl", "NCSA", "UPL-1.0", "WTFPL",
     "OFL-1.1", "Artistic-1.0", "Artistic-2.0", "Ruby", "PHP-3.0", "PHP-3.01", "MulanPSL-2.0", "AFL-2.1", "AFL-3.0",
     "PostgreSQL", "MPL-1.0", "MPL-1.1", "MPL-2.0", "MPL-2.0-no-copyleft-exception", "EPL-1.0", "EPL-2.0",
-    "CDDL-1.0", "CDDL-1.1", "EUPL-1.1", "EUPL-1.2", "OSL-3.0", "SSPL-1.0", "BUSL-1.1", "Elastic-2.0", "JSON",
-    "Hippocratic-2.1", "Beerware", "OpenSSL", "Vim", "Zlib-acknowledgement", "LGPL-2.0-only", "LGPL-2.0-or-later",
+    "CDDL-1.0", "CDDL-1.1", "EUPL-1.1", "EUPL-1.2", "OSL-1.0", "OSL-2.0", "OSL-2.1", "OSL-3.0", "SSPL-1.0",
+    "BUSL-1.1", "Elastic-2.0", "JSON", "Hippocratic-2.1", "Beerware", "OpenSSL", "Vim", "Zlib-acknowledgement",
+    "FSL-1.1-MIT", "FSL-1.1-Apache-2.0", "PolyForm-Noncommercial-1.0.0", "PolyForm-Small-Business-1.0.0",
+    "PolyForm-Shield-1.0.0", "PolyForm-Strict-1.0.0", "CAL-1.0", "CAL-1.0-Combined-Work-Exception", "CPAL-1.0",
+    "RPL-1.5", "LGPL-2.0-only", "LGPL-2.0-or-later",
     "LGPL-2.1-only", "LGPL-2.1-or-later", "LGPL-3.0-only", "LGPL-3.0-or-later", "GPL-1.0-only", "GPL-1.0-or-later",
     "GPL-2.0-only", "GPL-2.0-or-later", "GPL-3.0-only", "GPL-3.0-or-later", "AGPL-1.0-only", "AGPL-1.0-or-later",
     "AGPL-3.0-only", "AGPL-3.0-or-later", "Classpath-exception-2.0", "GCC-exception-3.1", "LLVM-exception",
@@ -134,6 +139,12 @@ _ALIASES = {
     "artistic license 2.0": "Artistic-2.0", "the perl 5 license (artistic 1 & gpl 1)": "Artistic-1.0 OR GPL-1.0-or-later",
     "python software foundation": "PSF-2.0", "historical permission notice and disclaimer (hpnd)": "LicenseRef-HPND",
     "wtfpl": "WTFPL", "universal permissive license 1.0 (upl-1.0)": "UPL-1.0", "blue oak model license 1.0.0": "BlueOak-1.0.0",
+    "functional source license": "FSL-1.1-MIT", "fsl 1.1 mit": "FSL-1.1-MIT", "fsl-1.1-mit": "FSL-1.1-MIT",
+    "fsl 1.1 apache 2.0": "FSL-1.1-Apache-2.0", "fsl-1.1-apache-2.0": "FSL-1.1-Apache-2.0",
+    "polyform noncommercial": "PolyForm-Noncommercial-1.0.0", "polyform shield": "PolyForm-Shield-1.0.0",
+    "cryptographic autonomy license": "CAL-1.0", "llama 2 community license": "LicenseRef-Llama-2",
+    "llama 3 community license": "LicenseRef-Llama-3", "openrail-m": "LicenseRef-OpenRAIL-M",
+    "creativeml-openrail-m": "LicenseRef-OpenRAIL-M", "gemma terms of use": "LicenseRef-Gemma",
 }
 _NO_LICENSE = {"", "unknown", "none", "noassertion", "n/a", "na", "other", "other/proprietary license", "proprietary",
                "unlicensed", "see license", "see license file", "license.txt", "license", "custom"}
@@ -386,6 +397,11 @@ _TEXT_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("SSPL-1.0", ("server side public license",)),
     ("BUSL-1.1", ("business source license",)),
     ("Elastic-2.0", ("elastic license 2.0",)),
+    ("FSL-1.1-MIT", ("functional source license", "mit")),
+    ("FSL-1.1-Apache-2.0", ("functional source license", "apache")),
+    ("PolyForm-Noncommercial-1.0.0", ("polyform noncommercial license",)),
+    ("PolyForm-Shield-1.0.0", ("polyform shield license",)),
+    ("CAL-1.0", ("cryptographic autonomy license",)),
     ("MPL-2.0", ("mozilla public license", "2.0")),
     ("EPL-2.0", ("eclipse public license", "2.0")),
     ("EPL-1.0", ("eclipse public license", "1.0")),
@@ -1165,3 +1181,68 @@ def executive_summary(report: dict[str, Any] | None) -> dict[str, Any] | None:
         "by_category": report.get("by_category") or {},
         "top": [{k: i[k] for k in ("name", "version", "expression", "raw", "category")} for i in flagged[:5]],
     }
+
+
+_ENTERPRISE_COPYLEFT_RE = re.compile(
+    r"\b(?:AGPL-3\.0|AGPLv3|GNU\s+Affero|SSPL-1\.0|Server\s+Side\s+Public\s+License)\b"
+)
+_ENTERPRISE_AIMODEL_RESTRICTED_RE = re.compile(
+    r"(?i)\b(?:CC-BY-NC(?:-[0-9.]+)?|Non-Commercial-ShareAlike|research-only-license|non-commercial\s+research\s+only)\b"
+)
+
+
+def audit_enterprise_ip_and_ai_licenses(
+    raw_content: str,
+    *,
+    filename: str = "pyproject.toml",
+) -> dict[str, Any]:
+    text = str(raw_content or "")
+    detected: list[dict[str, Any]] = []
+
+    for match in _ENTERPRISE_COPYLEFT_RE.finditer(text):
+        line_no = text.count("\n", 0, match.start()) + 1
+        detected.append(
+            {
+                "id": "SNIPER-LIC-COPYLEFT-01",
+                "rule_id": "SNIPER-LIC-COPYLEFT-01",
+                "control_id": "SNIPER-LIC-COPYLEFT-01",
+                "severity": "high",
+                "cwe": "CWE-1104",
+                "reference": "CWE-1104",
+                "category": "license",
+                "title": "Ticari yazılımda güçlü ağ-copyleft (AGPL-3.0 / SSPL-1.0) kaynak kodu açma yükümlülüğü riski",
+                "description": "Ağ üzerinden sunulan ticari yazılımda kaynak kodu açma yükümlülüğü doğuran güçlü copyleft lisans tespit edildi.",
+                "file": filename,
+                "line": line_no,
+                "evidence": match.group(0).strip()[:240],
+                "recommendation": "AGPL-3.0 / SSPL-1.0 bileşenlerini MIT/Apache-2.0/BSD alternatifleriyle değiştirin veya ticari lisans edinin.",
+            }
+        )
+
+    for match in _ENTERPRISE_AIMODEL_RESTRICTED_RE.finditer(text):
+        line_no = text.count("\n", 0, match.start()) + 1
+        detected.append(
+            {
+                "id": "SNIPER-LIC-AIMODEL-02",
+                "rule_id": "SNIPER-LIC-AIMODEL-02",
+                "control_id": "SNIPER-LIC-AIMODEL-02",
+                "severity": "high",
+                "cwe": "CWE-1104",
+                "reference": "CWE-1104",
+                "category": "license",
+                "title": "Yapay zeka modeli veya veri setinde ticari kullanımı kısıtlı lisans (CC-BY-NC / Research-Only)",
+                "description": "Ticari kullanımı kısıtlayan (Non-Commercial / Research-Only) yapay zeka modeli veya veri seti lisansı tespit edildi.",
+                "file": filename,
+                "line": line_no,
+                "evidence": match.group(0).strip()[:240],
+                "recommendation": "Üretim ortamında yalnızca ticari kullanıma izin veren (Apache-2.0, MIT, CC-BY-4.0) model ve veri setlerini kullanın.",
+            }
+        )
+
+    return {
+        "format": "sniper-enterprise-ip-ai-license-audit/1",
+        "filename": filename,
+        "count": len(detected),
+        "findings": detected,
+    }
+

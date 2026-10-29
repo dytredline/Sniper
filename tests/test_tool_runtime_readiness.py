@@ -29,13 +29,14 @@ class RuntimeReadinessTests(unittest.TestCase):
                                           "SNIPER_OPENGREP_BINARY": "/nonexistent/opengrep"}), \
              mock.patch("subprocess.Popen", side_effect=AssertionError("scanner started")):
             payload = runtime_readiness_payload()
-        self.assertEqual(len(payload["tools"]), 24)
+        self.assertEqual(len(payload["tools"]), 25)
         self.assertEqual(profile(payload, "semgrep", "/api/tool-runs/semgrep")["runtime"], "unavailable")
         self.assertEqual(profile(payload, "burp-suite", "/api/tool-reports/burp-sitemap/summary")["action"], "report_only")
         self.assertEqual(profile(payload, "codeql")["action"], "external_only")
         self.assertEqual(profile(payload, "codeql", "/api/tool-reports/sarif/summary")["action"], "report_only")
         self.assertEqual(profile(payload, "osv-scanner")["action"], "external_only")
         self.assertEqual(profile(payload, "osv-scanner", "/api/tool-reports/sarif/summary")["action"], "report_only")
+        self.assertEqual(profile(payload, "syft-grype", "/api/tool-runs/syft-grype")["action"], "local_input_required")
         self.assertEqual(profile(payload, "schemathesis", "/api/tool-reports/schemathesis-junit/summary")["action"], "report_only")
         self.assertEqual(profile(payload, "expert-review")["action"], "manual")
         self.assertEqual(profile(payload, "sniper-baseline", "/api/scans")["action"], "native")
@@ -206,7 +207,7 @@ class RuntimeReadinessTests(unittest.TestCase):
                     with urlopen(url, timeout=10) as response:
                         self.assertEqual(response.status, 200)
                         payload = json.load(response)
-                self.assertEqual(len(payload["tools"]), 24)
+                self.assertEqual(len(payload["tools"]), 25)
                 self.assertNotIn("SNIPER_TRIVY_BINARY", json.dumps(payload))
             finally:
                 httpd.shutdown()

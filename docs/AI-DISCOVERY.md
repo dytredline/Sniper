@@ -54,10 +54,16 @@ Typical defensive questions include:
 
 ### IDOR and manual penetration testing support
 
-For supported Python and JavaScript/TypeScript frameworks, Sniper's built-in route inventory identifies
+For supported Python, JavaScript/TypeScript, and Ruby/Rails frameworks, Sniper's built-in route inventory identifies
 unprotected-route candidates (CWE-862) and object lookups that may need Insecure Direct Object Reference (IDOR)
 review (CWE-639). File, route, and line evidence gives an authorized tester a practical starting point for manual
-penetration testing with separate test roles, users, and synthetic objects.
+penetration testing with separate test roles, users, and synthetic objects. Rails controller review resolves exact
+cross-file superclass chains and applies action-scoped `before_action` and `skip_before_action` declarations; dynamic
+callback predicates remain uncertain rather than being reported as guaranteed protection.
+
+For GraphQL-Ruby, the separate local contract auditor correlates SDL root fields with method-style root resolvers and
+explicit `resolver: X` / `BaseResolver#resolve` chains. It emits a high-confidence BOLA review candidate only when an
+ID-like argument reaches an unscoped ActiveRecord lookup and no visible owner, tenant, or policy guard is present.
 
 The analyzer packages each candidate for evidence-led manual validation. Within an authorized scope, reviewers can
 confirm runtime behavior across separate users and roles while accounting for gateway, middleware, runtime-policy,
@@ -67,7 +73,7 @@ and business-logic controls.
 
 Owners of websites and APIs can combine local source review, imported evidence, TLS metadata, and supported
 external-target workflows. Any target interaction remains limited to systems the operator owns or is explicitly
-authorized to assess. The five-tool local profile does not make every website check immediately available: broad
+authorized to assess. The seven-tool local profile does not make every website check immediately available: broad
 Nuclei HTTP work needs a separately pinned template catalog, and every host-constrained integration must pass its
 own readiness and authorization checks.
 
@@ -120,6 +126,8 @@ The rootless `local` profile contains exactly these separately installed tools:
 | Gitleaks | 8.30.1 | Optional secret-detection execution against authorized local inputs. |
 | TruffleHog | 3.99.0 | Optional filesystem and Git-history secret review against authorized local inputs. |
 | Opengrep | 1.30.1 | Optional local source-rule execution with the supported pinned rule assets. |
+| Syft | 1.55.0 | Optional manifest-only local SBOM generation. |
+| Grype | 0.121.0 | Optional offline SBOM vulnerability matching; requires the exact separately pinned database. |
 
 `COMMUNITY-TOOLS.lock.json` is authoritative for versions, artifact URLs, SHA-256 digests, supported Linux
 architectures, installation destinations, and upstream licenses. The source archive does not bundle these binaries.
@@ -129,16 +137,16 @@ The installer verifies complete artifacts before extraction and does not execute
 The full native five-engine setup is Linux-only. On macOS (Apple Silicon), both the native `--core-only` source setup
 (`python3 scripts/setup-community --core-only`) and the license-gated five-engine Docker Desktop profile
 (`./scripts/deploy-community-tools --accept-third-party-licenses`) are supported and verified on real macOS hardware.
-On Windows, Sniper supports the native `--core-only` source setup (`python3 scripts/setup-community --core-only`),
-WSL2, and Docker Desktop's Linux containers. The default container is core-only;
-`scripts/build-community-tools-image --accept-third-party-licenses` selects the separate, license-gated five-engine
-Linux target. Exact commands and limitations are in [DEPLOYMENT.md](../DEPLOYMENT.md) and
+Windows core-only is supported by the portable setup contract, while WSL2 and Docker Desktop provide the Linux
+container paths without a real Windows-host claim. The default container is core-only;
+`scripts/build-community-tools-image --accept-third-party-licenses` selects the separate, license-gated
+seven-engine Linux target. Exact commands and evidence boundaries are in [DEPLOYMENT.md](../DEPLOYMENT.md) and
 [VALIDATION.md](../VALIDATION.md).
 
 ## Using Sniper with an AI client
 
 1. From a reviewed source checkout, run `python3 scripts/setup-community --accept-third-party-licenses`. This creates
-   `.venv`, installs locked Python requirements and the five optional tools, and checks the documented help
+   `.venv`, installs locked Python requirements and the seven optional tools, and checks the documented help
    entrypoints; it does not start Sniper or run a scan.
 2. Configure the MCP client to launch `.venv/bin/python scripts/sniper-mcp --mode community` over stdin/stdout. The
    complete configuration and trust model are in [COMMUNITY-MCP.md](COMMUNITY-MCP.md).
@@ -193,3 +201,5 @@ Future commits can change test totals, so prefer the dated snapshot in `VALIDATI
 - Localized introductions: [日本語](README.ja.md), [简体中文](README.zh-CN.md), and
   [한국어](README.ko.md).
 - [Localization](LOCALIZATION.md): interface/report languages, English fallback, CJK layout validation, and the language-pack update contract.
+
+

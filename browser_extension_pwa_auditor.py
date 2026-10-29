@@ -124,6 +124,14 @@ HTML_SINK_RE = re.compile(
 )
 STORAGE_SYNC_SET_RE = re.compile(r"\b(?:chrome|browser)\.storage\.sync\.set\s*\(")
 SECRET_TOKEN_RE = re.compile(r"token|password|passwd|secret|api_?key|credential", re.IGNORECASE)
+COOKIES_READ_RE = re.compile(r"\b(?:chrome|browser)\.cookies\.(?:getAll|get)\s*\(")
+NETWORK_EXFIL_RE = re.compile(
+    r"\b(?:fetch\s*\(|new\s+XMLHttpRequest\b|navigator\.sendBeacon\s*\(|new\s+WebSocket\s*\()"
+)
+DEBUGGER_COMMAND_RE = re.compile(r"\b(?:chrome|browser)\.debugger\.sendCommand\s*\(")
+DANGEROUS_CDP_METHOD_RE = re.compile(
+    r"""['"`](?:Runtime\.evaluate|Page\.addScriptToEvaluateOnNewDocument|Network\.getAllCookies|Network\.getCookies|Fetch\.enable)['"`]"""
+)
 
 IMPORT_SCRIPTS_RE = re.compile(r"\bimportScripts\s*\(")
 ABSOLUTE_URL_RE = re.compile(r"""['"`](?:https?:)?//[^'"`\s]+['"`]""", re.IGNORECASE)
@@ -839,6 +847,39 @@ def audit_extension_script_inline(
                     idx + 1,
                 )
 
+        if COOKIES_READ_RE.search(line) and NETWORK_EXFIL_RE.search(window):
+            _emit(
+                "critical",
+                "Oturum çerezleri (chrome.cookies) harici ağ isteğine aktarılıyor",
+                "chrome.cookies.getAll/get ile okunan oturum çerezleri yakın satırlarda fetch/XMLHttpRequest/"
+                "sendBeacon/WebSocket çağrısıyla ağa gönderiliyor; HttpOnly oturum çerezlerinin sızdırılması "
+                "tam hesap ele geçirmeye yol açar.",
+                stripped,
+                "Eklenti içinde çerez değerlerini harici sunuculara iletmeyin; oturum doğrulamasını tarayıcının "
+                "kendi çerez mekanizmasına bırakın ve cookies iznini kaldırın.",
+                "CWE-359",
+                "SNIPER-EXT-06",
+                idx + 1,
+            )
+
+        debugger_cmd = DEBUGGER_COMMAND_RE.search(line)
+        if debugger_cmd:
+            arguments = _call_arguments(lines, idx, debugger_cmd.end() - 1, max_lines=6)
+            if DANGEROUS_CDP_METHOD_RE.search(arguments):
+                _emit(
+                    "high",
+                    "chrome.debugger.sendCommand ile tehlikeli DevTools komutu yürütülüyor",
+                    "chrome.debugger.sendCommand üzerinden Runtime.evaluate, Network.getAllCookies veya "
+                    "Page.addScriptToEvaluateOnNewDocument çağrılıyor; bu yöntemler CSP ve HttpOnly sınırlarını "
+                    "tamamen atlatır.",
+                    stripped,
+                    "debugger API'sini üretim eklentilerinde kullanmayın; standart scripting veya declarativeNetRequest "
+                    "API'lerini tercih edin.",
+                    "CWE-94",
+                    "SNIPER-EXT-02",
+                    idx + 1,
+                )
+
     findings = sink.findings
     score, grade = calculate_score(findings)
     finding_groups = summarize_finding_groups(findings)
@@ -1149,3 +1190,126 @@ def audit_extension_pwa_project(
         "findings": findings,
         "controls_evaluated": list(EXTENSION_PWA_CONTROLS_EVALUATED),
     }
+
+
+_XSTACK_USE_SERVER_RE = re.compile(r"""["']use server["']""")
+_XSTACK_DB_MUTATION_RE = re.compile(
+    r"\b(?:prisma|db)\.[A-Za-z0-9_]+\.(?:delete|deleteMany|update|updateMany|create|upsert)\s*\("
+    r"|\b(?:DELETE\s+FROM|UPDATE\s+\w+\s+SET|INSERT\s+INTO)\b",
+    re.IGNORECASE,
+)
+_XSTACK_AUTH_CHECK_RE = re.compile(
+    r"\b(?:auth\s*\(|getServerSession|currentUser|verifySession|requireAuth|checkPermission|getSession)\b"
+)
+_XSTACK_POSTMESSAGE_RE = re.compile(
+    r"""(?:(?:\bwindow|\bglobalThis)\s*\.\s*|(?<![.\w$]))addEventListener\s*\(\s*["']message["']"""
+)
+_XSTACK_SSR_LOADER_RE = re.compile(r"\bgetServerSideProps\b|export\s+(?:async\s+)?function\s+loader\b")
+_XSTACK_SSR_SECRET_ENV_RE = re.compile(
+    r"process\.env(?:\.[A-Za-z0-9_]*(?:SECRET|KEY|TOKEN|PASSWORD|DATABASE_URL)\b|\s*[,\}\)])"
+)
+
+
+def audit_cross_stack_web_security(
+    raw_content: str,
+    *,
+    filename: str = "actions.ts",
+) -> dict[str, Any]:
+    """Next.js Server Actions, postMessage origin ve SSR veri yükleyici çapraz katman güvenlik denetimi."""
+    if not isinstance(raw_content, str) or not raw_content.strip():
+        return {"findings": [], "count": 0, "finding_count": 0, "filename": filename}
+
+    findings: list[dict[str, Any]] = []
+
+    if _XSTACK_USE_SERVER_RE.search(raw_content) and not _XSTACK_AUTH_CHECK_RE.search(raw_content):
+        for match in _XSTACK_DB_MUTATION_RE.finditer(raw_content):
+            line_no = raw_content.count("\n", 0, match.start()) + 1
+            findings.append(
+                {
+                    "control_id": "SNIPER-XSTACK-SA-01",
+                    "severity": "high",
+                    "cwe": "CWE-862",
+                    "reference": "CWE-862",
+                    "category": "authorization",
+                    "title": (
+                        "Next.js Server Action ('use server') içinde kimlik/yetki doğrulaması "
+                        "olmadan doğrudan veritabanı mutasyonu"
+                    ),
+                    "description": (
+                        "Server Action doğrudan dış HTTP POST uç noktası olarak çağrılabilir; "
+                        "oturum ve yetki doğrulaması olmadan veritabanı mutasyonu yetkisiz erişime yol açar."
+                    ),
+                    "file": filename,
+                    "line": line_no,
+                    "evidence": match.group(0)[:200],
+                    "recommendation": (
+                        "Server Action içinde veritabanı mutasyonundan önce getServerSession / auth() "
+                        "ile oturum ve yetki doğrulaması uygulayın."
+                    ),
+                }
+            )
+
+    for match in _XSTACK_POSTMESSAGE_RE.finditer(raw_content):
+        window_text = raw_content[match.start() : match.end() + 450]
+        if ".origin" not in window_text:
+            line_no = raw_content.count("\n", 0, match.start()) + 1
+            findings.append(
+                {
+                    "control_id": "SNIPER-XSTACK-MSG-02",
+                    "severity": "high",
+                    "cwe": "CWE-346",
+                    "reference": "CWE-346",
+                    "category": "web_hardening",
+                    "title": (
+                        "window.addEventListener('message') işleyicisinde event.origin "
+                        "doğrulaması eksik (Cross-Origin postMessage DOM XSS)"
+                    ),
+                    "description": (
+                        "postMessage dinleyicisi gelen mesajın event.origin kaynağını doğrulamadan "
+                        "veriyi işliyor; çapraz kaynaklı pencerelerden DOM XSS veya durum manipülasyonu tetiklenebilir."
+                    ),
+                    "file": filename,
+                    "line": line_no,
+                    "evidence": match.group(0)[:200],
+                    "recommendation": (
+                        "postMessage işleyicisinde mesaj verisini kullanmadan önce event.origin "
+                        "değerini katı bir güvenilir kaynak listesiyle (allowlist) doğrulayın."
+                    ),
+                }
+            )
+
+    if _XSTACK_SSR_LOADER_RE.search(raw_content):
+        for match in _XSTACK_SSR_SECRET_ENV_RE.finditer(raw_content):
+            line_no = raw_content.count("\n", 0, match.start()) + 1
+            findings.append(
+                {
+                    "control_id": "SNIPER-XSTACK-SSR-03",
+                    "severity": "high",
+                    "cwe": "CWE-200",
+                    "reference": "CWE-200",
+                    "category": "web_hardening",
+                    "title": (
+                        "SSR veri yükleyicisinde (getServerSideProps / loader) gizli ortam "
+                        "değişkeninin istemciye sızdırılması"
+                    ),
+                    "description": (
+                        "SSR veri yükleyicisi (getServerSideProps / loader) içinde gizli ortam "
+                        "değişkeni veya tüm process.env nesnesi istemciye serileştirilen props içine aktarılıyor."
+                    ),
+                    "file": filename,
+                    "line": line_no,
+                    "evidence": match.group(0)[:200],
+                    "recommendation": (
+                        "SSR yükleyicilerinde gizli ortam değişkenlerini yalnızca sunucu tarafında "
+                        "kullanın ve istemciye serileştirilen props nesnesine dahil etmeyin."
+                    ),
+                }
+            )
+
+    return {
+        "findings": findings,
+        "count": len(findings),
+        "finding_count": len(findings),
+        "filename": filename,
+    }
+

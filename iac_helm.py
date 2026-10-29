@@ -127,6 +127,15 @@ def _lookup(path: str, scope: dict) -> Any:
         rest = match.group(2) or ""
     elif path.startswith("."):
         base, rest = scope["dot"], path[1:]
+        first_seg = rest.split(".", 1)[0] if rest else ""
+        if (
+            first_seg
+            and isinstance(base, dict)
+            and first_seg not in base
+            and isinstance(scope.get("root"), dict)
+            and first_seg in scope["root"]
+        ):
+            base = scope["root"]
     else:
         return UNKNOWN
     if base is UNKNOWN:
@@ -215,18 +224,69 @@ def _eval_command(words: list[str], scope: dict, piped: Any = None, has_piped: b
         if value is UNKNOWN or isinstance(value, (dict, list)):
             return UNKNOWN
         return (str(value).lower() if isinstance(value, bool) else str(value)).strip() if value is not None else ""
+    if head in ("lower", "upper", "title") and len(vals) == 1:
+        value = vals[0]
+        if value is UNKNOWN or isinstance(value, (dict, list)):
+            return UNKNOWN
+        text = "" if value is None else (str(value).lower() if isinstance(value, bool) else str(value))
+        return text.lower() if head == "lower" else (text.upper() if head == "upper" else text.title())
+    if head in ("squote", "Squote") and len(vals) == 1:
+        value = vals[0]
+        if value is UNKNOWN or isinstance(value, (dict, list)):
+            return UNKNOWN
+        text = "" if value is None else (str(value).lower() if isinstance(value, bool) else str(value))
+        return "'" + text.replace("'", "''") + "'"
     if head == "int" and len(vals) == 1:
         try:
             return int(vals[0])
         except (TypeError, ValueError):
             return UNKNOWN
-    if head == "not" and len(vals) == 1:
+    if head in ("not", "empty") and len(vals) == 1:
         e = _empty(vals[0])
         return UNKNOWN if e is None else e
+    if head == "coalesce" and vals:
+        for item in vals:
+            e = _empty(item)
+            if e is None:
+                return UNKNOWN
+            if not e:
+                return item
+        return None
+    if head == "ternary" and len(vals) == 3:
+        cond_empty = _empty(vals[2])
+        if cond_empty is None:
+            return UNKNOWN
+        return vals[1] if cond_empty else vals[0]
     if head in ("eq", "ne") and len(vals) == 2:
         if UNKNOWN in vals:
             return UNKNOWN
         return (vals[0] == vals[1]) if head == "eq" else (vals[0] != vals[1])
+    if head in ("gt", "lt", "ge", "le") and len(vals) == 2:
+        if UNKNOWN in vals or not isinstance(vals[0], (int, float, str)) or type(vals[0]) is not type(vals[1]) or isinstance(vals[0], bool):
+            return UNKNOWN
+        a, b = vals[0], vals[1]
+        return a > b if head == "gt" else (a < b if head == "lt" else (a >= b if head == "ge" else a <= b))
+    if head == "has" and len(vals) == 2:
+        if vals[0] is UNKNOWN or not isinstance(vals[1], list):
+            return UNKNOWN
+        return vals[0] in vals[1]
+    if head == "hasKey" and len(vals) == 2:
+        if not isinstance(vals[0], dict) or not isinstance(vals[1], str):
+            return UNKNOWN
+        return vals[1] in vals[0]
+    if head in ("trimPrefix", "trimSuffix") and len(vals) == 2:
+        if not isinstance(vals[0], str) or not isinstance(vals[1], str):
+            return UNKNOWN
+        return vals[1].removeprefix(vals[0]) if head == "trimPrefix" else vals[1].removesuffix(vals[0])
+    if head == "replace" and len(vals) == 3:
+        if not all(isinstance(v, str) for v in vals):
+            return UNKNOWN
+        return vals[2].replace(vals[0], vals[1])
+    if head == "trunc" and len(vals) == 2:
+        if not isinstance(vals[0], int) or isinstance(vals[0], bool) or not isinstance(vals[1], str):
+            return UNKNOWN
+        n = vals[0]
+        return vals[1][:n] if n >= 0 else vals[1][n:]
     if head in ("and", "or") and len(vals) >= 2:
         flags = [_empty(v) for v in vals]
         if head == "and":

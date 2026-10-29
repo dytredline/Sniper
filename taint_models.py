@@ -29,6 +29,11 @@ KNOWN_KINDS = frozenset({
     "log", "sql", "command", "eval", "html", "regex", "path", "ssrf", "deserialize", "redirect",
     "ldap", "xpath", "xxe", "session", "cookie",
 })
+EXTRA_KINDS = frozenset({
+    "nosql", "nosql_expr", "ssti", "header", "format", "format_string",
+    "prototype", "mass_assign", "code", "memory", "memory_len", "memory_index",
+})
+VALID_KINDS = KNOWN_KINDS | EXTRA_KINDS
 MAX_MODEL_BYTES = 512_000
 MAX_ENTRIES = 5_000
 MAX_NAME_LENGTH = 200
@@ -145,7 +150,7 @@ def _names(value: Any, label: str) -> list[str]:
 
 def _kinds(value: Any) -> frozenset[str]:
     kinds = frozenset(_names(value, "kinds"))
-    unknown = kinds - KNOWN_KINDS
+    unknown = kinds - VALID_KINDS
     if unknown:
         raise ValueError(f"bilinmeyen hedef türü: {', '.join(sorted(unknown))}")
     return kinds
@@ -184,7 +189,7 @@ def _merge(target: LanguageModels, data: Any, origin: str) -> None:
         if not isinstance(raw, dict):
             raise ValueError("sink kaydı nesne olmalı")
         kind = raw.get("kind")
-        if kind not in KNOWN_KINDS:
+        if kind not in VALID_KINDS:
             raise ValueError(f"bilinmeyen hedef türü: {kind!r}")
         names = _names(raw.get("names"), "names")
         args = raw.get("args", [])

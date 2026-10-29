@@ -13,6 +13,7 @@ from pathlib import Path
 import secrets
 import stat
 import sys
+from typing import Any
 
 from nuclei_aggregate_history import AggregateHistoryError, AggregateHistoryJournal
 
@@ -357,7 +358,11 @@ def export_dependency_vex(project_path: str, output: Path, fmt: str = "openvex",
 
 def scan_container_image(image_path: str, *, view: str = "table", sbom: Path | None = None, save: bool = False,
                          ignore_unfixed: bool = False, osv_root: Path | None = None, fail_on: str | None = None,
-                         dockerfile_path: str | None = None, db_path: Path | None = None) -> int:
+                         dockerfile_path: str | None = None,
+                         expected_provenance_identity: str | None = None,
+                         provenance_public_key_path: str | None = None,
+                         provenance_public_key_sha256: str | None = None,
+                         db_path: Path | None = None) -> int:
     """Konteyner imajı / rootfs işletim sistemi paket taraması (Docker daemon yok, ağ yok). Çıkış kodu: --fail-on
     verilirse o önemde ya da üstünde bulgu varsa 1."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -369,6 +374,9 @@ def scan_container_image(image_path: str, *, view: str = "table", sbom: Path | N
             osv_root=osv_root,
             ignore_unfixed=ignore_unfixed,
             dockerfile_path=dockerfile_path,
+            expected_provenance_identity=expected_provenance_identity,
+            provenance_public_key_path=provenance_public_key_path,
+            provenance_public_key_sha256=provenance_public_key_sha256,
         )
     except container_scan.ContainerScanError as exc:
         print(f"Konteyner taraması başarısız: {exc}", file=sys.stderr)
@@ -2594,6 +2602,20 @@ def build_parser() -> argparse.ArgumentParser:
         dest="dockerfile_path",
         help="Son aşamadaki paketleri imaj envanteriyle eşlemek için yerel Dockerfile yolu",
     )
+    image_parser.add_argument(
+        "--provenance-identity",
+        dest="expected_provenance_identity",
+        help="Beklenen SLSA builder kimliği (çıktıda yalnız SHA-256 parmak izi tutulur)",
+    )
+    image_parser.add_argument(
+        "--provenance-public-key",
+        dest="provenance_public_key_path",
+        help="Yerel Ed25519 DSSE doğrulama genel anahtarı (PEM; sembolik bağ kabul edilmez)",
+    )
+    image_parser.add_argument(
+        "--provenance-public-key-sha256",
+        help="Yerel provenance genel anahtarının tam küçük harf SHA-256 özeti",
+    )
     image_parser.add_argument("--fail-on", choices=("low", "medium", "high", "critical"), help="Bu önemde bulgu varsa çıkış kodu 1")
 
     vex_parser = subparsers.add_parser("vex", parents=[common], help="Kayıtlı bağımlılık bulgularından VEX (OpenVEX / CycloneDX) üret")
@@ -2931,6 +2953,9 @@ def main() -> None:
         raise SystemExit(scan_container_image(args.image_path, view=args.view, sbom=args.sbom, save=args.save,
                                               ignore_unfixed=args.ignore_unfixed, osv_root=args.osv_root,
                                               fail_on=args.fail_on, dockerfile_path=args.dockerfile_path,
+                                              expected_provenance_identity=args.expected_provenance_identity,
+                                              provenance_public_key_path=args.provenance_public_key_path,
+                                              provenance_public_key_sha256=args.provenance_public_key_sha256,
                                               db_path=db_path))
     elif args.command == "vex":
         export_dependency_vex(args.project_path, args.out, args.format, db_path=db_path, dev_not_affected=args.dev_not_affected)
@@ -2974,6 +2999,488 @@ def main() -> None:
         )
     else:
         parser.print_help()
+
+
+def export_ghsa_bundles_json(
+    report: dict[str, Any],
+    *,
+    repository: str = "org/repo",
+    ecosystem: str = "pip",
+    package_name: str = "",
+) -> str:
+    """Proje denetimi raporundan GHSA / CVE bildirim paketlerini JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import report_renderers
+
+    payload = report_renderers.render_ghsa_advisory_bundles(
+        report,
+        repository=repository,
+        ecosystem=ecosystem,
+        package_name=package_name,
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_automated_openvex_json(
+    reachability_report: dict[str, Any],
+    *,
+    product_id: str = "pkg:generic/sniper-audited-app@local",
+    author: str = "Sniper Enterprise Automated VEX Engine",
+) -> str:
+    """Erişilebilirlik raporundan sembol kanıtlı otomatik OpenVEX v0.2.0 belgesini JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import vex_export
+
+    payload = vex_export.build_automated_reachability_openvex(
+        reachability_report,
+        product_id=product_id,
+        author=author,
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def _filter_verified_production_findings(report: dict[str, Any]) -> list[dict[str, Any]]:
+    triage_obj = report.get("deterministic_triage") if isinstance(report.get("deterministic_triage"), dict) else None
+    verified_keys: set[tuple[str, int]] | None = None
+    if isinstance(triage_obj, dict) and isinstance(triage_obj.get("verified_production_findings"), list):
+        verified_keys = {
+            (str(it.get("file") or "").strip().lstrip("./"), int(it.get("line") or 0))
+            for it in triage_obj.get("verified_production_findings") or []
+            if isinstance(it, dict)
+        }
+    return [
+        f
+        for f in (report.get("findings") or [])
+        if isinstance(f, dict)
+        and f.get("scope_tier", "production") == "production"
+        and f.get("exploitability", "") != "hardening_only"
+        and f.get("triage_verdict", "verified_true_positive") == "verified_true_positive"
+        and (
+            verified_keys is None
+            or (str(f.get("file") or "").strip().lstrip("./"), int(f.get("line") or 0)) in verified_keys
+        )
+    ]
+
+
+def export_attack_graph_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundan çok adımlı saldırı grafiğini JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import attack_path_correlator
+
+    payload = attack_path_correlator.synthesize_multi_hop_exploit_chains(_filter_verified_production_findings(report))
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_regression_tests_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki yüksek ve kritik bulgular için güvenlik regresyon testlerini JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import auto_remediation_patcher
+
+    tests = [
+        auto_remediation_patcher.generate_security_regression_test(f)
+        for f in (report.get("findings") or [])
+        if isinstance(f, dict) and str(f.get("severity") or "").lower() in {"critical", "high"}
+    ]
+    payload = {"format": "sniper-security-regression-suite/1", "test_count": len(tests), "tests": tests}
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_enriched_sarif_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundan zenginleştirilmiş kurumsal SARIF v2.1.0 belgesini JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import project_audit_diff
+
+    payload = project_audit_diff.build_enterprise_enriched_sarif(report)
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_executable_threat_model_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundan çalıştırılabilir Mermaid DFD ve STRIDE tehdit modelini JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import threat_model
+
+    payload = threat_model.synthesize_executable_threat_model(
+        report.get("findings") or [],
+        project_name=str(report.get("project_name") or "sniper-project"),
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_cisa_ssvc_decisions_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundan CISA SSVC v2.1 karar ağacı değerlendirmesini JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import cvss_ssvc_prioritizer
+
+    payload = cvss_ssvc_prioritizer.evaluate_cisa_ssvc_decisions(report.get("findings") or [])
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_regulatory_attestation_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundan kriptografik mühürlü regülasyon uyumluluk (ISO 27001, SOC 2, PCI-DSS, NIST, KVKK/GDPR) kanıt paketini JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import compliance_crosswalk
+
+    payload = compliance_crosswalk.generate_regulatory_attestation_bundle(report)
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_ropa_dpia_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundan KVKK Madde 16 VERBİS ve GDPR Madde 30/35 RoPA + DPIA mahremiyet etki analizini JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import privacy_dataflow_auditor
+
+    payload = privacy_dataflow_auditor.generate_automated_ropa_dpia_report(report)
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_ciso_board_briefing_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundan CISO yönetim kurulu siber risk ve finansal maruziyet (FAIR) brifingini JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import executive_pentest_report
+
+    payload = executive_pentest_report.build_ciso_board_briefing(report)
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_unified_aibom_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundan birleşik CycloneDX v1.6 AI-BOM + SBOM envanterini JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import sbom_formats
+
+    payload = sbom_formats.build_unified_aibom_sbom(
+        report,
+        project_name=str(report.get("project_name") or "sniper-project"),
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_runtime_profiles_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundan en az ayrıcalıklı çalışma zamanı (AppArmor, Seccomp-BPF, K8s SecurityContext) profillerini JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import host_cis_hardening_auditor
+
+    payload = host_cis_hardening_auditor.synthesize_least_privilege_runtime_profiles(
+        report,
+        service_name=str(report.get("project_name") or "sniper-app"),
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_ci_gate_decision_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundan Enterprise v2 birleşik CI/CD güvenlik kapısı kararını JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import ci_gate
+
+    payload = ci_gate.evaluate_enterprise_v2_ci_gate(report)
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_shared_state_attack_graph_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundan paylaşılan durum (shared-state) çok adımlı saldırı grafiğini JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import attack_path_correlator
+
+    payload = attack_path_correlator.build_shared_state_attack_graph(report.get("findings") or [])
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_cve_submission_bundle_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundan 1-e-1 GHSA bültenlerini ve HackerOne gönderim yüklerini JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import cve_submission_pipeline
+
+    payload = cve_submission_pipeline.build_ghsa_and_hackerone_submission_payloads(report.get("findings") or [])
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_evidence_tiered_triage_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki bulguların 4 kademeli kanıt sınıflandırmasını (evidence-tiered triage) JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import ai_triage
+
+    payload = [
+        ai_triage.classify_finding_evidence_tier(f)
+        for f in (report.get("findings") or [])
+        if isinstance(f, dict)
+    ]
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_submission_queue_status_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki bug bounty / GHSA gönderim kuyruğu ve soğuma süresi durumunu JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import cve_submission_pipeline
+
+    payload = cve_submission_pipeline.evaluate_submission_cooldown_and_status(report.get("submissions") or [])
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_silent_patches_blame_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki sessiz güvenlik yamalarını (silent security fixes) ve git blame eşleşmelerini JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import silent_patch_blame_auditor
+
+    payload = silent_patch_blame_auditor.audit_silent_security_patches_and_blame(
+        report.get("commits") or [],
+        file_blame_map=report.get("file_blame_map") if isinstance(report.get("file_blame_map"), dict) else None,
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_cspt_sdk_audit_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki CSPT ve kimlik doğrulamalı URL şablonu bulgularını JSON dizgesi olarak dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import cspt_sdk_auditor
+
+    payload = cspt_sdk_auditor.audit_cspt_and_authenticated_url_templates(
+        str(report.get("raw_content") or ""),
+        filename=str(report.get("project_name") or "sdk.ts"),
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_branch_aware_chains_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki bulguları dal kısıtlarına (branch constraints) göre ayrıştırılmış saldırı zincirleri olarak JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import attack_path_correlator
+
+    payload = attack_path_correlator.partition_chains_by_branch_constraints(report.get("findings") or [])
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_scope_wave_plan_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki hedefleri ve HackerOne kapsamlarını (structured_scopes) Wave-1 / Wave-2 / Hardening planı olarak JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import cve_submission_pipeline
+
+    payload = cve_submission_pipeline.classify_program_scopes_and_asset_linkage(
+        report.get("targets") or [],
+        report.get("structured_scopes") or [],
+        program_handle=str(report.get("program_handle") or "spotify"),
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_container_orchestrator_audit_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki ham kaynak kodunu programatik konteyner orkestrasyonu ve bağlama (bind-mount) zafiyetleri açısından JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import container_orchestrator_auditor
+
+    payload = container_orchestrator_auditor.audit_programmatic_container_orchestration(
+        str(report.get("raw_content") or ""),
+        filename=str(report.get("project_name") or "cli.py"),
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_wallet_signing_audit_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki ham kaynak kodunu cüzdan RPC imzalama ve alan ayrımı (domain separation) zafiyetleri açısından JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import crypto_wallet_signing_auditor
+
+    payload = crypto_wallet_signing_auditor.audit_wallet_signing_and_domain_separation(
+        str(report.get("raw_content") or ""),
+        filename=str(report.get("project_name") or "wallet_rpc_api.py"),
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_multipart_cache_audit_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki ham kaynak kodunu çok parçalı yükleme (uploadId) silme ve P2P durum önbelleği zehirlenmesi zafiyetleri açısından JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import multipart_and_cache_auditor
+
+    payload = multipart_and_cache_auditor.audit_multipart_upload_and_state_cache(
+        str(report.get("raw_content") or ""),
+        filename=str(report.get("project_name") or "objectstore.rs"),
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_http_repeater_diff_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki temel ve mutasyonlu HTTP yanıtlarını karşılaştırıp JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import http_repeater_comparer
+
+    payload = http_repeater_comparer.compare_http_responses(
+        report.get("baseline_response") or {},
+        report.get("mutated_response") or {},
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_autorize_matrix_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki çoklu oturum (Autorize) erişim matrisini JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import autorize_matrix_tester
+
+    payload = autorize_matrix_tester.evaluate_autorize_access_matrix(report.get("autorize_probes") or [])
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_token_sequencer_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki belirteç (token) örnekleminin entropi ve tahmin edilebilirlik analizini JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import token_sequencer
+
+    payload = token_sequencer.analyze_token_sequence_entropy(
+        report.get("token_samples") or [],
+        token_label=str(report.get("token_label") or "session_identifier"),
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_traffic_inspector_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki yakalanan HTTP/HAR değişimini çözümleyip Repeater/Autorize şablonlarıyla JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import traffic_decoder_inspector
+
+    payload = traffic_decoder_inspector.inspect_har_or_http_exchange(report.get("http_exchange") or {})
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_dom_invader_audit_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki istemci tarafı kodunu DOM Invader (CSPP, Script Gadget, DOM Clobbering, postMessage) açısından JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import dom_invader_gadget_auditor
+
+    payload = dom_invader_gadget_auditor.audit_dom_invader_cspp_and_gadgets(
+        str(report.get("raw_content") or ""),
+        filename=str(report.get("project_name") or "app.js"),
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_smuggling_differential_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki HTTP Request Smuggling (CL.TE / TE.CL / H2.CL) diferansiyel kanıtlarını JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import smuggling_cache_poison_prober
+
+    payload = smuggling_cache_poison_prober.evaluate_smuggling_differential_probes(report.get("smuggling_probes") or [])
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_symbolic_path_proof_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki dal kısıtlarını (path_guards) çözerek SAT/UNSAT kanıtını ve tanık girdiyi JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import symbolic_path_constraint_solver
+
+    payload = symbolic_path_constraint_solver.solve_path_constraints_and_synthesize_input(report.get("path_guards") or [])
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_binary_hardening_audit_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki ikili dosya/sembol dökümünü (ELF/PE/Mach-O/WASM) bellek sertleştirme açısından JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import binary_security_hardening_auditor
+
+    payload = binary_security_hardening_auditor.audit_binary_security_hardening(
+        str(report.get("raw_content") or ""),
+        filename=str(report.get("project_name") or "libnative.so"),
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_pr_diff_review_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki Git yama farkını (git_diff) güvenlik gerilemeleri ve kardeş dosya paritesi açısından JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import pr_diff_security_bot
+
+    payload = pr_diff_security_bot.audit_git_diff_security_regressions(
+        str(report.get("git_diff") or ""),
+        sibling_files=report.get("sibling_files") if isinstance(report.get("sibling_files"), dict) else None,
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_stateful_protocol_audit_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki durum bilgili protokol işleyicisini durum atlama ve tekrar oynatma açıkları açısından JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import stateful_protocol_fuzzer_auditor
+
+    payload = stateful_protocol_fuzzer_auditor.audit_stateful_protocol_state_machine(
+        str(report.get("raw_content") or ""),
+        filename=str(report.get("project_name") or "ws_handler.ts"),
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_schema_migration_audit_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki veritabanı göç (migration) kodunu RLS ve kiracı izolasyonu açısından JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import schema_migration_security_auditor
+
+    payload = schema_migration_security_auditor.audit_database_schema_migrations(
+        str(report.get("raw_content") or ""),
+        filename=str(report.get("project_name") or "0001_init.sql"),
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_k8s_ebpf_synthesis_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki bulgular ve servis grafiğinden sıfır güven Kubernetes ve Tetragon eBPF politikalarını JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import k8s_admission_netpol_synthesizer
+
+    payload = k8s_admission_netpol_synthesizer.synthesize_zero_trust_k8s_and_ebpf_policies(
+        report.get("findings") or [],
+        service_graph=report.get("service_graph") if isinstance(report.get("service_graph"), dict) else None,
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def export_bounty_readiness_cockpit_json(report: dict[str, Any]) -> str:
+    """Proje denetimi raporundaki bulguyu 5 kapılı Bug Bounty / CVE teslim hazırlık kokpitinden geçirip JSON dizgesine dışa aktarır."""
+    if str(APP_DIR) not in sys.path:
+        sys.path.insert(0, str(APP_DIR))
+    import bounty_readiness_cockpit
+
+    findings = report.get("findings") if isinstance(report.get("findings"), list) else []
+    first_finding = findings[0] if findings and isinstance(findings[0], dict) else (
+        report.get("finding") if isinstance(report.get("finding"), dict) else {}
+    )
+    payload = bounty_readiness_cockpit.evaluate_end_to_end_bounty_readiness(
+        first_finding,
+        runtime_proof=report.get("runtime_proof") if isinstance(report.get("runtime_proof"), dict) else None,
+        symbolic_proof=report.get("symbolic_proof") if isinstance(report.get("symbolic_proof"), dict) else None,
+    )
+    return json.dumps(payload, ensure_ascii=False, indent=2)
 
 
 if __name__ == "__main__":

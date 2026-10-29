@@ -130,10 +130,22 @@ def _to_str(value: Any) -> str | None:
     return None
 
 
+def _flatten_list(items: list[Any]) -> list[Any]:
+    out: list[Any] = []
+    for item in items:
+        if isinstance(item, list):
+            out.extend(_flatten_list(item))
+        else:
+            out.append(item)
+    return out
+
+
 def _call(name: str, args: list[Any]) -> Any:
     """Bilinen saf işlevler; bilinmeyen argüman ya da işlevde Unknown/Call döner."""
     if name == "jsonencode":
         return Call(name, args)
+    if name == "can" and len(args) == 1:
+        return not isinstance(args[0], Unknown)
     if name == "try":
         for arg in args:
             if not isinstance(arg, Unknown):
@@ -146,6 +158,13 @@ def _call(name: str, args: list[Any]) -> Any:
             if arg is not None and arg != "":
                 return arg
         return None
+    if name == "coalescelist":
+        for arg in args:
+            if isinstance(arg, Unknown):
+                return Unknown("coalescelist(...)")
+            if isinstance(arg, list) and len(arg) > 0:
+                return list(arg)
+        return []
     if not all(known(a) for a in args):
         return Call(name, args) if name not in ("lookup", "merge", "concat") else Unknown(f"{name}(...)")
     if name == "lookup" and len(args) in (2, 3) and isinstance(args[0], dict):
@@ -159,6 +178,43 @@ def _call(name: str, args: list[Any]) -> Any:
         return merged
     if name == "concat" and all(isinstance(a, list) for a in args):
         return [v for a in args for v in a]
+    if name == "compact" and len(args) == 1 and isinstance(args[0], list):
+        return [v for v in args[0] if v != "" and v is not None]
+    if name == "distinct" and len(args) == 1 and isinstance(args[0], list):
+        out_dist: list[Any] = []
+        for v in args[0]:
+            if v not in out_dist:
+                out_dist.append(v)
+        return out_dist
+    if name == "flatten" and len(args) == 1 and isinstance(args[0], list):
+        return _flatten_list(args[0])
+    if name == "keys" and len(args) == 1 and isinstance(args[0], dict):
+        return list(args[0].keys())
+    if name == "values" and len(args) == 1 and isinstance(args[0], dict):
+        return list(args[0].values())
+    if name == "contains" and len(args) == 2 and isinstance(args[0], list):
+        return args[1] in args[0]
+    if name == "one" and len(args) == 1 and isinstance(args[0], list):
+        return args[0][0] if len(args[0]) == 1 else (None if len(args[0]) == 0 else Unknown("one(...)"))
+    if name == "join" and len(args) == 2 and isinstance(args[0], str) and isinstance(args[1], list):
+        strs = [_to_str(v) for v in args[1]]
+        if all(s is not None for s in strs):
+            return args[0].join(s for s in strs if s is not None)
+    if name == "split" and len(args) == 2 and isinstance(args[0], str) and isinstance(args[1], str):
+        return args[1].split(args[0])
+    if name == "trimspace" and len(args) == 1 and isinstance(args[0], str):
+        return args[0].strip()
+    if name == "trimprefix" and len(args) == 2 and isinstance(args[0], str) and isinstance(args[1], str):
+        return args[0].removeprefix(args[1])
+    if name == "trimsuffix" and len(args) == 2 and isinstance(args[0], str) and isinstance(args[1], str):
+        return args[0].removesuffix(args[1])
+    if name == "replace" and len(args) == 3 and all(isinstance(a, str) for a in args):
+        return args[0].replace(args[1], args[2])
+    if name in ("min", "max") and args:
+        nums = [_num(a) for a in args]
+        if all(n is not None for n in nums):
+            val = min(nums) if name == "min" else max(nums)  # type: ignore[type-var]
+            return int(val) if isinstance(val, float) and val.is_integer() else val
     if name in ("tolist", "toset") and len(args) == 1 and isinstance(args[0], list):
         return list(args[0])
     if name == "tomap" and len(args) == 1 and isinstance(args[0], dict):

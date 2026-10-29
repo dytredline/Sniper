@@ -26,7 +26,7 @@ class ToolCatalogTests(unittest.TestCase):
     def test_tool_workflows_match_source_routes_and_do_not_overstate_execution(self):
         payload = tooling_payload()
         self.assertEqual(payload["summary"]["native_execution_count"], 3)
-        self.assertEqual(payload["summary"]["integrated_workflow_tool_count"], 23)
+        self.assertEqual(payload["summary"]["integrated_workflow_tool_count"], 24)
         self.assertIn("düşük etkili", payload["policy"]["native"])
         self.assertIn("ikili", payload["policy"]["external"])
         routes_source = (Path(__file__).resolve().parents[1] / "server.py").read_text()
@@ -54,6 +54,7 @@ class ToolCatalogTests(unittest.TestCase):
         self.assertEqual({workflow["mode"] for workflow in by_id["k6"]["workflows"]}, {"report_import", "external"})
         self.assertEqual({workflow["mode"] for workflow in by_id["siem-review"]["workflows"]}, {"report_import", "external"})
         self.assertEqual({workflow["mode"] for workflow in by_id["trivy"]["workflows"]}, {"local", "report_import"})
+        self.assertEqual({workflow["mode"] for workflow in by_id["syft-grype"]["workflows"]}, {"local"})
         self.assertEqual({workflow["mode"] for workflow in by_id["nmap"]["workflows"]}, {"authorized", "report_import"})
         self.assertEqual({workflow["mode"] for workflow in by_id["nuclei"]["workflows"]}, {"local", "authorized", "report_import"})
         self.assertEqual({workflow["mode"] for workflow in by_id["gitleaks"]["workflows"]}, {"local", "report_import"})

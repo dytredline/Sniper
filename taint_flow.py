@@ -11,7 +11,9 @@ kullanılır:
   proje modüllerine, ``self.metot`` / ``Sınıf.metot`` ve basit tür izlemeyle
   (``s = Servis(); s.calistir(x)``) metotlara çözülür. Doğrulama koşulları (``if x not in
   IZINLI: abort()``, ``x.isdigit()``, ``re.fullmatch``, ``startswith``) ve sonlanan dallar
-  (return/raise/abort) arındırıcı bariyer sayılır.
+  (return/raise/abort) arındırıcı bariyer sayılır. Yol uygulanabilirliğinde gerçek stdlib ``realpath`` sonucu,
+  aynı kökle iki öğeli ``commonpath`` eşitliği doğrulanıp güvensiz dal sonlandığında yalnız kanonik aday için
+  yol bariyeri sayılır; ``commonprefix``, ham girdi ve yalnız ``abspath`` bu kanıtı sağlamaz.
 * JavaScript/TypeScript: yorum, dize, şablon dizesi (``${}``) ve düzenli ifade
   sabitlerini ayıran bir belirteçleyici üzerinde deklarasyon/atama izleme;
   ``const {a} = req.body`` yapısı, Express/Koa işleyicileri ve dosyalar arası
@@ -84,11 +86,11 @@ RUST_SUFFIXES = frozenset({".rs"})
 CFAMILY_SUFFIXES = frozenset({".c", ".h", ".cc", ".cpp", ".cxx", ".c++", ".hpp", ".hh", ".hxx"})
 _CPP_SUFFIXES = frozenset({".cc", ".cpp", ".cxx", ".c++", ".hpp", ".hh", ".hxx"})
 NATIVE_SUFFIXES = RUST_SUFFIXES | CFAMILY_SUFFIXES
-MAX_SOURCE_BYTES = 1_000_000
+MAX_SOURCE_BYTES = max(65_536, min(200_000_000, int(os.environ.get("SNIPER_PROJECT_MAX_FILE_BYTES", "1000000") or 1000000)))
 MAX_ORIGINS = 8
 # Proje geneli analiz sınırları (project_analyzer ile aynı ortam değişkenleri).
-MAX_PROJECT_FILES = max(100, min(50_000, int(os.environ.get("SNIPER_PROJECT_MAX_FILES", "10000") or 10000)))
-MAX_PROJECT_BYTES = max(1_000_000, min(1_000_000_000, int(os.environ.get("SNIPER_PROJECT_MAX_BYTES", "150000000") or 150000000)))
+MAX_PROJECT_FILES = max(100, min(500_000, int(os.environ.get("SNIPER_PROJECT_MAX_FILES", "10000") or 10000)))
+MAX_PROJECT_BYTES = max(1_000_000, min(10_000_000_000, int(os.environ.get("SNIPER_PROJECT_MAX_BYTES", "150000000") or 150000000)))
 
 PiiClassifier = Callable[[str], bool]
 
@@ -497,7 +499,7 @@ _TORNADO_ARG_METHODS = frozenset({"get_argument", "get_arguments", "get_query_ar
                                   "get_body_argument", "get_body_arguments", "get_cookie", "decode_argument"})
 _TORNADO_VERBS = frozenset({"get", "post", "put", "patch", "delete", "head", "options", "on_message", "open"})
 # İkinci derece (kayıtlı) veri: veritabanından okunan değerler "stored" etiketli kaynaktır.
-_PY_DB_FETCH_METHODS = frozenset({"fetchone", "fetchall", "fetchmany"})
+_PY_DB_FETCH_METHODS = frozenset({"fetchone", "fetchall", "fetchmany", "fetch", "fetchrow", "fetchval"})
 _PY_ORM_READ_METHODS = frozenset({
     "get", "filter", "first", "last", "all", "values", "values_list", "get_or_none", "one", "one_or_none",
     "scalar", "scalars", "scalar_one", "scalar_one_or_none", "find_one", "find",
@@ -526,7 +528,10 @@ _PY_STRING_METHODS = frozenset({
     "model_dump", "first", "all", "read", "readline", "readlines",
 })
 _PY_LOG_METHODS = frozenset({"debug", "info", "warning", "warn", "error", "exception", "critical", "fatal", "log"})
-_PY_SQL_METHODS = frozenset({"execute", "executemany", "executescript", "raw", "read_sql", "read_sql_query", "mogrify"})
+_PY_SQL_METHODS = frozenset({
+    "execute", "executemany", "executescript", "raw", "read_sql", "read_sql_query", "mogrify",
+    "exec_driver_sql", "fetch", "fetchrow", "fetchval",
+})
 _PY_SUBPROCESS = frozenset({
     "subprocess.call", "subprocess.run", "subprocess.Popen", "subprocess.check_output",
     "subprocess.check_call", "call", "run", "Popen", "check_output", "check_call",
@@ -547,6 +552,8 @@ _PY_REQUEST_TYPES = frozenset({
     "aiohttp.web_request.Request", "aiohttp.web.BaseRequest", "sanic.Request", "sanic.request.Request",
     "tornado.httputil.HTTPServerRequest", "falcon.Request", "litestar.Request", "bottle.BaseRequest",
     "azure.functions.HttpRequest", "azure.functions._http.HttpRequest", "azure.functions.http.HttpRequest",
+    "blacksheep.Request", "robyn.Request", "litestar.connection.Request",
+    "fastapi.WebSocket", "starlette.websockets.WebSocket",
 })
 # Çatı giriş noktaları (dekoratör/rota tablosu dışında çağrılan işleyiciler). Kaynak sayılmayan parametreler:
 # GraphQL ``info``/kök nesne, Connexion güvenlik parametreleri, sunucusuz ``context``.
@@ -610,6 +617,10 @@ _URL_FIXED_HOST_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*://[^/{}\s%]+/")
 _HTML_LITERAL_RE = re.compile(r"<[a-zA-Z/!]")
 _PREFIX_KINDS = frozenset({"path", "ssrf", "redirect"})
 _PATH_TRAVERSAL_LITERALS = frozenset({"..", "../", "..\\", "/", "\\"})
+# İç kanıt işaretleri sink türü değildir. ``realpath`` işareti dal birleşimlerinde ancak bütün canlı
+# kökenler kanonik kaldığında korunur; containment işareti ise temizlik kaynak girdiye geri yayılmasın der.
+_REALPATH_PROOF = "§python-realpath"
+_LOCAL_PATH_PROOF = "§python-local-path"
 _PY_FILE_STEPS = 200_000
 _PY_STEPS_PER_PROJECT_FILE = 40_000
 
@@ -1079,6 +1090,19 @@ class _PySummary:
         # Dönüş değerinin önek durumu (yönlendirme/SSRF): "clean" (her dönüş güvenli önekle başlar),
         # k (her dönüş k. parametrenin değeriyle başlar) veya None (bilinmiyor).
         self.ret_prefix: dict[str, Any] = {}
+
+    @classmethod
+    def conservative_passthrough(cls, params: tuple[str, ...]) -> "_PySummary":
+        """Return a fail-closed summary for a cycle/depth-limited call.
+
+        The callee body is not proven at that boundary, so every supplied
+        parameter may reach the return value and none is considered cleaned.
+        This stays finite while preventing a recursion/depth guard from
+        silently turning attacker-controlled data into a clean value.
+        """
+        summary = cls(params)
+        summary.ret_params = {index: frozenset() for index in range(len(params))}
+        return summary
 
     def add_return_shape(self, value: Any, parts: list[Taint] | dict[str, Taint] | None) -> None:
         """Dönüş ifadesinin biçimini kaydet; demet/sözlük olmayan dönüş biçimi geçersiz kılar."""
@@ -1969,7 +1993,8 @@ class _PyProject:
             return cached
         if key in self._active or self._depth > self.MAX_DEPTH:
             # Özyineleme veya çok derin zincir: bu çağrı yerinde özet bilinmiyor sayılır.
-            return _PySummary(())
+            arguments = [*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs]
+            return _PySummary.conservative_passthrough(tuple(arg.arg for arg in arguments))
         self._active.add(key)
         self._depth += 1
         self._deps_stack.append(set())
@@ -3046,13 +3071,17 @@ class _PyScope:
 
         if target is not None:
             # Proje içinde tanımlı fonksiyon/metot: ad tabanlı kısayollar (str.find → int, ORM .get →
-            # kayıtlı veri …) uygulanmaz; davranış özetten gelir. Ad, arındırıcı adıysa ek temizlik.
+            # kayıtlı veri …) uygulanmaz; davranış özetten gelir.
             # Sanal çağrı: alt sınıfların geçersiz kıldığı metotlar da birleştirilir (önce onlar, en son
-            # statik hedef: çağrı etkisi statik hedefinki kalır).
+            # statik hedef: çağrı etkisi statik hedefinki kalır). Proje içi bir
+            # yardımcının adı arındırıcıya benzese bile yalnız gövde özeti ve
+            # bütün dönüş yollarının kesişimi temizlik kanıtı sağlayabilir.
             extra = [self._apply_summary(node, other, arg_taints, kw_taints) for other in self._override_targets(node, target)]
-            result = _union(self._apply_summary(node, target, arg_taints, kw_taints), *extra)
-            named = _named_sanitizer_kinds(name) if name else None
-            return _clean(result, named) if named is not None else result
+            return _union(self._apply_summary(node, target, arg_taints, kw_taints), *extra)
+        if self._trusted_stdlib_call(name, "os.path.realpath"):
+            # realpath tek başına arındırıcı değildir. İşaret yalnız aşağıdaki kesin commonpath
+            # containment bariyerinin kanonik aday kullandığını kanıtlamak için taşınır.
+            return _clean(all_args, frozenset({_REALPATH_PROOF}))
         if name in _PY_FULL_SANITIZERS or last in {"isdigit", "isnumeric", "isalnum", "startswith", "endswith", "count", "index", "find"}:
             return _EMPTY
         if last in _PY_DECODING_CALLS and (base in {"", "urllib.parse", "parse", "urllib", "html"} or name in _PY_DECODING_CALLS):
@@ -3158,8 +3187,7 @@ class _PyScope:
         if kinds is None and any(models.propagates(alias) for alias in model_names):
             return _union(all_args, receiver)
         if target is not None:
-            result = self._apply_summary(node, target, arg_taints, kw_taints)
-            return _clean(result, kinds) if kinds is not None else result
+            return self._apply_summary(node, target, arg_taints, kw_taints)
         if kinds is not None:
             return _clean(_union(receiver, all_args), kinds)
         dispatched = self._dispatch_by_name(node, arg_taints, kw_taints)
@@ -4032,6 +4060,25 @@ class _PyScope:
         target = self.m.imports.get(head)
         return f"{target}.{rest}" if target and rest else (target or name)
 
+    def _trusted_stdlib_call(self, name: str, expected: str) -> bool:
+        """Resolve an imported stdlib call without trusting a locally rebound import name."""
+        if not name or self._canonical(name) != expected:
+            return False
+        head = name.partition(".")[0]
+        if self.local_names is not None and head in self.local_names:
+            return False
+        for stmt in self.m.tree.body:
+            targets: list[ast.AST] = []
+            if isinstance(stmt, ast.Assign):
+                targets = list(stmt.targets)
+            elif isinstance(stmt, (ast.AnnAssign, ast.AugAssign)):
+                targets = [stmt.target]
+            elif isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and stmt.name == head:
+                return False
+            if any(isinstance(target, ast.Name) and target.id == head for target in targets):
+                return False
+        return True
+
     def _is_weak_random(self, name: str, last: str) -> bool:
         if not name or "SystemRandom" in name:
             return False
@@ -4694,6 +4741,45 @@ class _PyScope:
                 self._emit("html", "web.Response", node.lineno, body)
 
     # -- doğrulama koşulları (bariyerler) -------------------------------------------
+    def _commonpath_guard(self, test: ast.Compare) -> tuple[Guard, Guard] | None:
+        """Exact realpath/commonpath containment proof for one canonical candidate.
+
+        ``commonprefix`` is intentionally excluded. The candidate must carry a
+        proof from the real stdlib ``realpath`` call, and the compared root must
+        be the same expression present in the two-item ``commonpath`` input.
+        """
+        if len(test.ops) != 1 or not isinstance(test.ops[0], (ast.Eq, ast.NotEq)):
+            return None
+        call: ast.Call | None = None
+        root: ast.AST | None = None
+        if isinstance(test.left, ast.Call):
+            call, root = test.left, test.comparators[0]
+        elif isinstance(test.comparators[0], ast.Call):
+            call, root = test.comparators[0], test.left
+        if call is None or root is None or call.keywords or len(call.args) != 1:
+            return None
+        if not self._trusted_stdlib_call(_dotted(call.func), "os.path.commonpath"):
+            return None
+        values = call.args[0]
+        if not isinstance(values, (ast.List, ast.Tuple)) or len(values.elts) != 2:
+            return None
+        root_key = ast.dump(root, include_attributes=False)
+        matches = [index for index, value in enumerate(values.elts)
+                   if ast.dump(value, include_attributes=False) == root_key]
+        if len(matches) != 1:
+            return None
+        candidate = values.elts[1 - matches[0]]
+        if not isinstance(candidate, ast.Name):
+            return None
+        root_name = _dotted(root)
+        if root_name and self.env.get(root_name):
+            return None
+        taint = self.env.get(candidate.id, _EMPTY)
+        if not taint or not all(_REALPATH_PROOF in origin.cleaned for origin in taint):
+            return None
+        entry = [(candidate.id, frozenset({"path", _LOCAL_PATH_PROOF}))]
+        return (entry, []) if isinstance(test.ops[0], ast.Eq) else ([], entry)
+
     def _guard(self, test: ast.AST) -> tuple[Guard, Guard]:
         """(koşul doğruysa, koşul yanlışsa) arındırılan adlar ve hedef türleri."""
         if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
@@ -4705,6 +4791,9 @@ class _PyScope:
             when_false = [entry for value in test.values for entry in self._guard(value)[1]]
             return [], when_false + self._quoted_literal_guard(test.values)
         if isinstance(test, ast.Compare) and len(test.ops) == 1:
+            commonpath = self._commonpath_guard(test)
+            if commonpath is not None:
+                return commonpath
             op, left, right = test.ops[0], test.left, test.comparators[0]
             if isinstance(op, (ast.In, ast.NotIn)) and isinstance(left, ast.Constant) and left.value in {"'", '"'}:
                 # Tırnak içermeyen değer, aynı tırnakla sınırlanmış XPath değişmezinden taşamaz.
@@ -4772,13 +4861,18 @@ class _PyScope:
 
     def _apply_guard(self, entries: Guard) -> None:
         for name, kinds in entries:
+            local_path = _LOCAL_PATH_PROOF in kinds
+            effective = kinds - {_LOCAL_PATH_PROOF}
             taint = self.env.get(name)
             if taint:
-                self.env[name] = _clean(taint, kinds)
+                self.env[name] = _clean(taint, effective)
+            if local_path:
+                continue
             # url = urlparse(x) / p = realpath(x) doğrulandıysa x de yol/SSRF/yönlendirme için doğrulanmıştır.
             source = self.derived.get(name.split(".")[0])
             if source and self.env.get(source):
-                self.env[source] = _clean(self.env[source], kinds & _PREFIX_KINDS or kinds & frozenset({"path", "ssrf", "redirect"}))
+                self.env[source] = _clean(self.env[source], effective & _PREFIX_KINDS
+                                          or effective & frozenset({"path", "ssrf", "redirect"}))
 
     # -- atama ve deyimler ------------------------------------------------------
     def assign(self, target: ast.AST, taint: Taint) -> None:
@@ -7108,3 +7202,60 @@ def project_js_handler_names(
         if ".get(" in text or ".post(" in text or ".put(" in text or ".delete(" in text or ".patch(" in text or ".use(" in text or ".all(" in text:
             names |= collect_js_route_handlers(text)
     return frozenset(names)
+
+_HELPER_PATH_GUARD_MARKERS = re.compile(
+    r"\b(?:filepath\.Rel|filepath\.IsLocal|os\.path\.commonpath|os\.path\.realpath|resolve\s*\(|relative_to\s*\(|starts_with\s*\(|HasPrefix\s*\([^)]*\.\.|\.\.)"
+)
+_GO_HELPER_DEF_RE = re.compile(
+    r"func\s+([A-Za-z_]\w*)\s*\([^)]*\)\s*(?:error|bool|\([^)]*\))\s*\{(?P<body>(?:[^{}]|\{[^{}]*\})*)\}",
+    re.DOTALL,
+)
+_PY_HELPER_DEF_RE = re.compile(
+    r"def\s+([A-Za-z_]\w*)\s*\([^)]*\)\s*(?:->\s*[^:]+)?\s*:(?P<body>(?:\n(?:[ \t]+[^\n]*|\s*))+)"
+)
+
+
+def has_interprocedural_helper_path_guard(code: str, var_name: str = "") -> bool:
+    """Faz 2 R8: Yardımcı doğrulayıcı fonksiyonun tanımlanıp var_name üzerinde erken çıkışla çağrıldığını doğrular."""
+    text = str(code or "")
+    if not text or not _HELPER_PATH_GUARD_MARKERS.search(text):
+        return False
+
+    var_pat = re.escape(var_name.strip()) if var_name and var_name.strip() else r"[A-Za-z0-9_.\[\]]+"
+
+    # 1) Go yardımcı fonksiyonları: func validate...(p string) error / bool
+    for gm in _GO_HELPER_DEF_RE.finditer(text):
+        helper_name = gm.group(1)
+        body = gm.group("body") or ""
+        if not _HELPER_PATH_GUARD_MARKERS.search(body):
+            continue
+        outside = text[: gm.start()] + "\n" + text[gm.end() :]
+        err_guard_re = re.compile(
+            rf"(?:if\s+[A-Za-z0-9_]+\s*:?=\s*{re.escape(helper_name)}\s*\([^)]*\b{var_pat}\b[^)]*\)\s*;\s*[A-Za-z0-9_]+\s*!=\s*nil\s*\{{[^}}]*\b(?:return|panic)\b"
+            rf"|[A-Za-z0-9_]+\s*:?=\s*{re.escape(helper_name)}\s*\([^)]*\b{var_pat}\b[^)]*\)[\s\S]{{0,120}}?if\s+[A-Za-z0-9_]+\s*!=\s*nil\s*\{{[^}}]*\b(?:return|panic)\b"
+            rf"|if\s*!\s*{re.escape(helper_name)}\s*\([^)]*\b{var_pat}\b[^)]*\)\s*\{{[^}}]*\b(?:return|panic)\b)"
+        )
+        if err_guard_re.search(outside):
+            return True
+
+    # 2) Python yardımcı fonksiyonları: def ensure_safe_path(p): / def validate_path(p):
+    for pm in _PY_HELPER_DEF_RE.finditer(text):
+        helper_name = pm.group(1)
+        body = pm.group("body") or ""
+        if not _HELPER_PATH_GUARD_MARKERS.search(body):
+            continue
+        outside = text[: pm.start()] + "\n" + text[pm.end() :]
+        helper_raises = bool(re.search(r"\braise\s+[A-Za-z0-9_]+", body))
+        if helper_raises:
+            call_re = re.compile(rf"\b{re.escape(helper_name)}\s*\([^)]*\b{var_pat}\b[^)]*\)")
+            if call_re.search(outside):
+                return True
+        bool_guard_re = re.compile(
+            rf"if\s+not\s+{re.escape(helper_name)}\s*\([^)]*\b{var_pat}\b[^)]*\)\s*:[\s\S]{{0,80}}?\b(?:return|raise)\b"
+        )
+        if bool_guard_re.search(outside):
+            return True
+
+    return False
+
+

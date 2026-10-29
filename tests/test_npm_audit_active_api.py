@@ -76,9 +76,15 @@ class NpmAuditActiveApiTests(unittest.TestCase):
     def fake_audit(self, report):
         calls = []
 
-        class FakeNode:
-            path = "/opt/node/bin/node"
-            argv0 = "/proc/self/fd/123"
+        class _FakePinnedNode:
+            argv0 = "/opt/node/bin/node"
+            path = Path("/opt/node/bin/node")
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
 
             def popen_kwargs(self, **kwargs):
                 return kwargs
@@ -86,20 +92,14 @@ class NpmAuditActiveApiTests(unittest.TestCase):
             def close(self):
                 pass
 
-            def __enter__(self):
-                return self
-
-            def __exit__(self, *_exc):
-                self.close()
-
-        def fake_run(cmd, *, cwd, env, stdout, stderr, timeout, check, **_kwargs):
+        def fake_run(cmd, *, cwd, env, stdout, stderr, timeout, check, stdin=None, **_extra):
             calls.append({"cmd": cmd, "cwd": str(cwd), "env": env, "timeout": timeout})
             stdout.write(json.dumps(report).encode())
             return subprocess.CompletedProcess(cmd, 0)
 
-        with patch.object(npm_audit_active, "open_pinned", return_value=FakeNode()), \
-                patch.object(npm_audit_active, "_pinned_runtime", return_value=Path("/opt/node/lib/npm-cli.js")), \
-                patch.object(npm_audit_active.subprocess, "run", side_effect=fake_run):
+        with patch.object(npm_audit_active, "open_pinned", return_value=_FakePinnedNode()), patch.object(
+            npm_audit_active, "_pinned_runtime", return_value=Path("/opt/node/lib/npm-cli.js")
+        ), patch.object(npm_audit_active.subprocess, "run", side_effect=fake_run):
             yield calls
 
     def test_runtime_result_redacted_and_fixed_command(self):

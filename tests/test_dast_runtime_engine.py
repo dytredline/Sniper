@@ -116,11 +116,13 @@ class DastRuntimeEngineTests(unittest.TestCase):
         self.httpd.server_close()
         self.thread.join(timeout=2)
 
-    def test_catalog_and_four_bounded_profiles_produce_linked_evidence(self) -> None:
+    def test_catalog_and_bounded_profiles_produce_linked_evidence(self) -> None:
         catalog = dast_runtime.catalog()
         self.assertEqual({row["id"] for row in catalog["profiles"]},
-                         {"open_redirect", "reflected_html", "cors_credentials", "clickjacking_headers"})
-        self.assertTrue(all(row["max_requests"] == 1 for row in catalog["profiles"]))
+                         {"open_redirect", "reflected_html", "cors_credentials", "clickjacking_headers",
+                          "ssrf_callback", "ssrf_callback_post", "ssrf_callback_redirect",
+                          "ssrf_callback_delayed", "ssrf_callback_dns"})
+        self.assertTrue(all(row["max_requests"] in {1, 2} for row in catalog["profiles"]))
         self.assertEqual(catalog["target_policy"], "registered_noncritical_loopback_only")
 
         redirect = _audit(self.store, self.root / "redirect", "CWE-601", "redirect")

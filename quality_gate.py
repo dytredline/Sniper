@@ -16,6 +16,9 @@ def _is_false_positive(finding: dict[str, Any]) -> bool:
         return True
     if str(finding.get("disposition") or "").strip().lower() == "false_positive":
         return True
+    tracking = finding.get("tracking")
+    if isinstance(tracking, dict) and str(tracking.get("status") or "").strip().lower() == "false_positive":
+        return True
     return False
 
 
@@ -373,13 +376,23 @@ def _ci_policy_decision(project_audit: Any, dep_active: list[dict[str, Any]],
     effective = ci_gate.validate_policy(policy)
     items: list[dict[str, Any]] = [dict(f) for f in project_audit.get("findings") or [] if isinstance(f, dict)]
     for dep in dep_active:
+        vuln_id = str(dep.get("vulnerability_id") or dep.get("id") or "")
         items.append({
             "_kind": "sca",
             "severity": str(dep.get("severity") or "medium"),
-            "title": str(dep.get("title") or dep.get("vulnerability_id") or ""),
+            "title": str(dep.get("title") or vuln_id or ""),
+            "vulnerability_id": vuln_id,
+            "package_name": str(dep.get("package_name") or ""),
+            "installed_version": str(dep.get("installed_version") or ""),
+            "ecosystem": str(dep.get("ecosystem") or dep.get("source") or ""),
+            "file": str(dep.get("file") or dep.get("source_path") or ""),
             "malicious": dependency_security.is_malicious_finding(dep),
             "priority": {"tier": dep.get("priority_tier") or ""},
         })
+    if effective.get("exceptions"):
+        import datetime as dt
+
+        ci_gate.apply_exceptions(items, effective["exceptions"], dt.date.today())
     decision = ci_gate.evaluate(items, effective, compared=False)
     failing = [{"title": f.get("title"), "severity": f.get("severity"), "group": ci_gate.group_of(f), "why": f.get("_why"),
                 "location": f"{f.get('file')}:{f.get('line')}" if f.get("file") else ""}

@@ -11,6 +11,7 @@ from scripts import eval_pipeline
 
 
 APP = Path(__file__).resolve().parents[1]
+REFERENCE_DOCS = APP / "docs" / "olcum"
 
 
 class GroundTruthReviewTests(unittest.TestCase):
@@ -127,10 +128,7 @@ class GroundTruthReviewTests(unittest.TestCase):
         with self.assertRaises(review.GroundTruthReviewError):
             review.source_manifest(self.root, ["c-one"], source_profiles=["shell"])
 
-    @unittest.skipUnless(
-        (APP / "docs" / "olcum" / "c-reference-set1.manifest.json").is_file(),
-        "maintainer reference bundle is not shipped in Community source",
-    )
+    @unittest.skipUnless(REFERENCE_DOCS.is_dir(), "maintainer reference bundles are not distributed")
     def test_installed_reference_bundle_is_valid_and_scores_without_execution(self) -> None:
         root = APP / "tests" / "fixtures" / "c-reference-set1"
         manifest = APP / "docs" / "olcum" / "c-reference-set1.manifest.json"
@@ -145,10 +143,7 @@ if __name__ == "__main__":
     unittest.main()
 
 class SyntheticLanguageReferenceTests(unittest.TestCase):
-    @unittest.skipUnless(
-        (APP / "docs" / "olcum" / "python-reference-set1.manifest.json").is_file(),
-        "maintainer reference bundle is not shipped in Community source",
-    )
+    @unittest.skipUnless(REFERENCE_DOCS.is_dir(), "maintainer reference bundles are not distributed")
     def test_python_and_javascript_contract_sets_validate_without_human_claim(self):
         app = Path(__file__).resolve().parents[1]
         for name, profile in (("python-reference-set1", "python"),

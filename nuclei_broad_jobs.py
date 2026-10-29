@@ -368,6 +368,8 @@ class BroadNucleiJobs:
             include_excluded=include_excluded,
             selected_template_paths=selected_template_paths,
         )
+        if _authorized_direct:
+            args = [a for a in args if a not in ("-lna", "-dut")]
 
         # Parent-death wrapper
         parent_death = Path(__file__).resolve().parent / "nuclei_parent_death.py"
@@ -380,6 +382,15 @@ class BroadNucleiJobs:
         try:
             job_dir.mkdir(mode=0o700)
             created_job_dir = True
+            nuclei_cfg_dir = job_dir / ".config" / "nuclei"
+            nuclei_cfg_dir.mkdir(parents=True, exist_ok=True)
+            (nuclei_cfg_dir / ".templates-config.json").write_text(
+                json.dumps({
+                    "nuclei-templates-directory": str(self._catalog_root),
+                    "nuclei-templates-version": "v10.5.0",
+                }),
+                encoding="utf-8",
+            )
             if not hasattr(os, "O_NOFOLLOW"):
                 raise NucleiBroadUnavailable("Güvenli rapor oluşturma kullanılamıyor")
             flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
@@ -527,7 +538,7 @@ class BroadNucleiJobs:
             engagement,
             True,
             template_ids=list(AUTHORIZED_ORIGIN_TEMPLATE_IDS),
-            include_excluded=False,
+            include_excluded=True,
             _authorized_direct=True,
             _timeout_seconds=AUTHORIZED_ORIGIN_TIMEOUT_SECONDS,
             _max_report_bytes=AUTHORIZED_ORIGIN_MAX_REPORT_BYTES,

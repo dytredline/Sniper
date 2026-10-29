@@ -140,6 +140,55 @@ _DEPRECATED_CLASSICAL_RULES: tuple[tuple[str, str, str, re.Pattern[str], str, st
         "DES, 3DES, RC4, Blowfish veya ECB modu veri gizliliğini ve bütünlüğünü koruyamaz.",
         "Simetrik şifrelemede Grover algoritmasına karşı 256-bit anahtarlı AES-256-GCM veya ChaCha20-Poly1305 AEAD kullanın.",
     ),
+    (
+        "Unauthenticated-Stream-Cipher-CFB-OFB",
+        "stream-cipher",
+        "high",
+        re.compile(
+            r"(?i)(?:\bcipher\.NewCFB(?:Encrypter|Decrypter)\b"
+            r"|\bcipher\.NewOFB\b"
+            r"|\bAES\.MODE_(?:CFB|OFB)\b"
+            r"|\bAES/(?:CFB|OFB)\b"
+            r"|\bmodes\.(?:CFB|CFB8|OFB)\s*\()"
+        ),
+        "Bütünlük doğrulamasız (MAC/AEAD içermeyen) akış şifreleme modu (AES-CFB / OFB)",
+        "AES-CFB ve OFB modları bütünlük doğrulaması (MAC/AEAD) içermez; değiştirilebilir şifreli metin (malleable ciphertext) ve bit-flipping saldırılarına açıktır.",
+        "Kimlik doğrulamalı şifreleme (AEAD) sağlayan AES-256-GCM veya ChaCha20-Poly1305 kullanın; geriye dönük CFB/OFB yedek (fallback) yollarını kaldırın.",
+    ),
+    (
+        "AES-128-Grover-Weak",
+        "block-cipher",
+        "medium",
+        re.compile(
+            r"(?i)\b(?:AES[-_]?128(?:[-_](?:CBC|GCM|CTR|CFB|OFB))?|aes-128-(?:cbc|gcm|ctr))\b"
+        ),
+        "Grover kuantum algoritmasına karşı etkin güvenliği 64-bite düşen 128-bit simetrik şifreleme (AES-128)",
+        "128-bit simetrik anahtarlar Grover kuantum arama algoritması altında ~2^64 etkin güvenlik seviyesine geriler ve CNSA 2.0 kuantum-direnç eşiğini karşılamaz.",
+        "Kuantum-sonrası simetrik güvenlik için 256-bit anahtarlı AES-256-GCM veya ChaCha20-Poly1305 AEAD algoritmalarına geçin.",
+    ),
+    (
+        "Static-IV-Nonce-Reuse",
+        "iv-nonce",
+        "critical",
+        re.compile(
+            r"(?i)\b(?:iv|nonce)\s*[:=]\s*(?:b['\"](?:\\x00){4,}|['\"]0{8,}['\"]|bytes\s*\(\s*(?:12|16)\s*\)|Buffer\.alloc\s*\(\s*(?:12|16)\s*\))"
+        ),
+        "Sabit veya sıfır dolu IV / Nonce kullanımı (Static IV / Nonce Reuse)",
+        "Şifreleme işleminde sabit veya tamamı sıfır (all-zero) IV/Nonce kullanılması AES-GCM'de kimlik doğrulama anahtarının (GHASH) ele geçirilmesine ve düz metnin açığa çıkmasına yol açar.",
+        "Her şifreleme işlemi için os.urandom(12) / secrets.token_bytes(12) veya crypto.randomBytes(12) ile kriptografik olarak benzersiz IV/Nonce üretin.",
+    ),
+    (
+        "Weak-KDF-Iterations",
+        "kdf",
+        "high",
+        re.compile(
+            r"(?i)(?:\bpbkdf2_hmac\s*\([^)\n]*,\s*[1-9]\d{0,4}\s*\)"
+            r"|\bgensalt\s*\(\s*(?:rounds\s*=\s*)?[4-9]\s*\))"
+        ),
+        "Yetersiz anahtar türetme (KDF) iterasyon/maliyet sayısı (PBKDF2 < 100.000 / bcrypt < 10)",
+        "Parola özeti veya anahtar türetme işleminde OWASP/NIST alt sınırının altında iterasyon sayısı kullanılıyor; GPU/ASIC kaba kuvvet saldırılarına karşı kırılgandır.",
+        "Parola ve anahtar türetmede Argon2id (m>=64MB, t>=3) veya PBKDF2-HMAC-SHA256 için en az 600.000 iterasyon kullanın.",
+    ),
 )
 
 _PQC_READY_PATTERNS: tuple[tuple[str, str, int, re.Pattern[str]], ...] = (
@@ -321,6 +370,47 @@ def _scan_text_for_crypto(
                     }
                 )
 
+    if (
+        re.search(r"\b(?:RootCAs|AppendCertsFromPEM|NewCertPool)\b", raw_content)
+        and re.search(r"\bInsecureSkipVerify\s*:\s*true\b", raw_content)
+        and not re.search(r"\b(?:VerifyPeerCertificate|VerifyConnection)\s*:", raw_content)
+    ):
+        for line_no, raw_line in enumerate(raw_content.splitlines(), 1):
+            stripped = raw_line.strip()
+            if stripped.startswith("//") or stripped.startswith("#"):
+                continue
+            if re.search(r"\bInsecureSkipVerify\s*:\s*true\b", raw_line):
+                tls_title = "Go TLS yapılandırmasında RootCAs ile InsecureSkipVerify: true mantıksal çelişkisi (sertifika doğrulama atlama)"
+                key = (tls_title, rel_file, line_no)
+                if key not in seen_finding_keys:
+                    seen_finding_keys.add(key)
+                    d_count += 1
+                    cbom_assets.append(
+                        {
+                            "name": "TLS-RootCAs-InsecureSkipVerify-Contradiction",
+                            "primitive": "tls-policy",
+                            "quantum_category": "deprecated_classical",
+                            "quantum_safe": False,
+                            "nist_quantum_security_level": 0,
+                            "file": rel_file,
+                            "line": line_no,
+                        }
+                    )
+                    findings.append(
+                        _make_finding(
+                            "high",
+                            "crypto",
+                            tls_title,
+                            "tls.Config içinde özel RootCAs / sertifika havuzu tanımlanmasına rağmen InsecureSkipVerify: true bırakıldığı için Go standart kütüphanesi RootCAs doğrulamasını tamamen atlar.",
+                            "RootCAs + InsecureSkipVerify: true (VerifyPeerCertificate olmadan)",
+                            "InsecureSkipVerify: false yapın veya özel doğrulama gerekiyorsa VerifyConnection / VerifyPeerCertificate içinde x509.Certificate.Verify(x509.VerifyOptions{Roots: rootCAs}) çağırın.",
+                            "CWE-295",
+                            "SNIPER-CRYP-05",
+                            file=rel_file,
+                            line=line_no,
+                        )
+                    )
+
     return q_count, d_count, p_count
 
 
@@ -444,4 +534,174 @@ def audit_crypto_pqc_project(
         "cbom_assets_truncated": len(cbom_assets) > MAX_CBOM_ASSET_ROWS,
         "cyclonedx_cbom": cyclonedx_cbom,
         "controls_evaluated": ["SNIPER-CRYP-01", "SNIPER-CRYP-03", "SNIPER-CRYP-05"],
+    }
+
+
+_PQC_SIG_TOKEN_RE = re.compile(
+    r"(?i)(?:\b(?:ECDSA|Ed25519|RSA[-_]?PSS|PKCS1v15)\b|\bpadding\.(?:PSS|PKCS1v15)\b|\b(?<!ML[-_])(?<!SLH[-_])DSA\b)"
+)
+_PQC_KEM_TOKEN_RE = re.compile(
+    r"(?i)\b(?:RSA|ECDH|DiffieHellman|DH|X25519(?!(?:Kyber|MLKEM|_Kyber|[-_]MLKEM)))\b"
+)
+_PQC_SYM_TOKEN_RE = re.compile(
+    r"(?i)\b(?:MD4|MD5|SHA-?1|3DES|TripleDES|DES|RC4|ARC4|AES[-_]?128|MODE_ECB|MODE_CBC|ECB|CBC)\b"
+)
+
+
+def _classify_pqc_migration_target(
+    asset_name: str,
+    primitive: str,
+    src_line: str,
+) -> tuple[str, str, str, bool]:
+    if (
+        asset_name == "ECDSA-ECC"
+        or primitive == "signature"
+        or (
+            asset_name in {"RSA-1024", "RSA-2048"}
+            and _PQC_SIG_TOKEN_RE.search(src_line) is not None
+        )
+        or (
+            asset_name == "ECDH-DH-DSA"
+            and re.search(r"(?i)\bdsa\b", src_line) is not None
+            and re.search(r"(?i)\b(?:ECDH|DiffieHellman|X25519)\b", src_line) is None
+        )
+    ):
+        return (
+            "digital_signature",
+            "NIST FIPS 204 (ML-DSA-65 / ML-DSA-87) veya FIPS 205 (SLH-DSA)",
+            "ECDSA-P256 + ML-DSA-65",
+            False,
+        )
+    if asset_name in {"RSA-1024", "RSA-2048", "ECDH-DH-DSA"} or primitive in {
+        "pke",
+        "key-agree",
+        "kem",
+    }:
+        return (
+            "asymmetric_kem_key_exchange",
+            "NIST FIPS 203 (ML-KEM-768 / ML-KEM-1024)",
+            "X25519MLKEM768",
+            True,
+        )
+    return (
+        "weak_symmetric_or_hash",
+        "CNSA 2.0 (AES-256-GCM + SHA-384 / SHA3-256)",
+        "AES-256-GCM",
+        True,
+    )
+
+
+def generate_pqc_cbom_migration_plan(
+    raw_content: str,
+    *,
+    filename: str = "crypto.py",
+) -> dict[str, Any]:
+    report = audit_crypto_pqc_inline(raw_content, filename=filename)
+    lines = raw_content.splitlines()
+    migration_steps: list[dict[str, Any]] = []
+    covered_lines: set[int] = set()
+
+    for asset in report.get("cbom_assets", []):
+        if asset.get("quantum_safe"):
+            continue
+        line_no = int(asset.get("line", 0))
+        src_line = lines[line_no - 1] if 1 <= line_no <= len(lines) else ""
+        asset_name = str(asset.get("name", "unknown"))
+        primitive = str(asset.get("primitive", "unknown"))
+        step_category, target_standard, hybrid_transition, hndl_vulnerable = (
+            _classify_pqc_migration_target(asset_name, primitive, src_line)
+        )
+        covered_lines.add(line_no)
+        migration_steps.append(
+            {
+                "asset_name": asset_name,
+                "current_algorithm": asset_name,
+                "primitive": primitive,
+                "category": step_category,
+                "file": str(asset.get("file", filename)),
+                "line": line_no,
+                "target_standard": target_standard,
+                "hybrid_transition": hybrid_transition,
+                "hndl_vulnerable": hndl_vulnerable,
+            }
+        )
+
+    for line_no, raw_line in enumerate(lines, 1):
+        if line_no in covered_lines:
+            continue
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith("//") or stripped.startswith("#"):
+            continue
+        if any(pat.search(raw_line) for _, _, _, pat in _PQC_READY_PATTERNS):
+            continue
+        sig_match = _PQC_SIG_TOKEN_RE.search(raw_line)
+        if sig_match:
+            token = sig_match.group(0)
+            migration_steps.append(
+                {
+                    "asset_name": token,
+                    "current_algorithm": token,
+                    "primitive": "signature",
+                    "category": "digital_signature",
+                    "file": filename,
+                    "line": line_no,
+                    "target_standard": "NIST FIPS 204 (ML-DSA-65 / ML-DSA-87) veya FIPS 205 (SLH-DSA)",
+                    "hybrid_transition": "ECDSA-P256 + ML-DSA-65",
+                    "hndl_vulnerable": False,
+                }
+            )
+            covered_lines.add(line_no)
+            continue
+        kem_match = _PQC_KEM_TOKEN_RE.search(raw_line)
+        if kem_match:
+            token = kem_match.group(0)
+            migration_steps.append(
+                {
+                    "asset_name": token,
+                    "current_algorithm": token,
+                    "primitive": "key-agree",
+                    "category": "asymmetric_kem_key_exchange",
+                    "file": filename,
+                    "line": line_no,
+                    "target_standard": "NIST FIPS 203 (ML-KEM-768 / ML-KEM-1024)",
+                    "hybrid_transition": "X25519MLKEM768",
+                    "hndl_vulnerable": True,
+                }
+            )
+            covered_lines.add(line_no)
+            continue
+        sym_match = _PQC_SYM_TOKEN_RE.search(raw_line)
+        if sym_match:
+            token = sym_match.group(0)
+            migration_steps.append(
+                {
+                    "asset_name": token,
+                    "current_algorithm": token,
+                    "primitive": "block-cipher",
+                    "category": "weak_symmetric_or_hash",
+                    "file": filename,
+                    "line": line_no,
+                    "target_standard": "CNSA 2.0 (AES-256-GCM + SHA-384 / SHA3-256)",
+                    "hybrid_transition": "AES-256-GCM",
+                    "hndl_vulnerable": True,
+                }
+            )
+            covered_lines.add(line_no)
+
+    has_hndl = any(bool(step.get("hndl_vulnerable")) for step in migration_steps)
+    if has_hndl or int(report.get("quantum_vulnerable_count", 0)) > 0:
+        hndl_risk_level = "critical"
+    elif int(report.get("deprecated_crypto_count", 0)) > 0 or len(migration_steps) > 0:
+        hndl_risk_level = "medium"
+    else:
+        hndl_risk_level = "low"
+
+    return {
+        "format": "sniper-pqc-cbom-migration-plan/1",
+        "filename": filename,
+        "pqc_readiness_score": report["pqc_readiness_score"],
+        "hndl_risk_level": hndl_risk_level,
+        "cyclonedx_cbom_v1_6": report["cyclonedx_cbom"],
+        "migration_step_count": len(migration_steps),
+        "migration_steps": migration_steps,
     }

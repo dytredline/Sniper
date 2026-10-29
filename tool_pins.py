@@ -48,6 +48,26 @@ class ToolPin:
 
 
 PINS: dict[str, ToolPin] = {
+    "syft": ToolPin(
+        tool="syft", label="Syft", version="1.55.0",
+        env_binary="SNIPER_SYFT_BINARY", env_sha256="SNIPER_SYFT_BINARY_SHA256",
+        source_url="https://github.com/anchore/syft/releases/tag/v1.55.0",
+        digests={"aarch64": {
+            "4f8068b25551a42991a292a42078519fdc739a97a6f6310e1dcf1367a258c1c2":
+                "resmi Linux arm64 sürüm ikilisi (v1.55.0 yayın checksum kaydıyla doğrulandı)",
+        }},
+        default_binary=Path.home() / ".local" / "state" / "sniper-tool-runtimes" / "syft-1.55.0" / "syft",
+    ),
+    "grype": ToolPin(
+        tool="grype", label="Grype", version="0.121.0",
+        env_binary="SNIPER_GRYPE_BINARY", env_sha256="SNIPER_GRYPE_BINARY_SHA256",
+        source_url="https://github.com/anchore/grype/releases/tag/v0.121.0",
+        digests={"aarch64": {
+            "e81fd2b6669c5a9ab7fee756e63e769cc40163310c11e546420b4d93e2118543":
+                "resmi Linux arm64 sürüm ikilisi (v0.121.0 yayın checksum kaydıyla doğrulandı)",
+        }},
+        default_binary=Path.home() / ".local" / "state" / "sniper-tool-runtimes" / "grype-0.121.0" / "grype",
+    ),
     "gitleaks": ToolPin(
         tool="gitleaks", label="Gitleaks", version="8.30.1",
         env_binary="SNIPER_GITLEAKS_BINARY", env_sha256="SNIPER_GITLEAKS_SHA256",
@@ -369,4 +389,3 @@ def tree_pin_status(name: str) -> dict[str, object]:
         return result
     result.update(state="pinned", reason_code="digest_matches_pin", provenance=pin.provenance)
     return result
-

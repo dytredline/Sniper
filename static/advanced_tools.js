@@ -217,7 +217,7 @@
         if (!Number.isInteger(findingIndex) || findingIndex < 0) throw new Error("Bulgu sırası negatif olmayan tam sayı olmalı.");
         return { target: v.target, path: v.path, parameter: v.parameter, confirm_local: true };
       } },
-    { id: "bounded-dast-runtime-proof", group: "Yalıtılmış test", label: "Sabit profilli tek istekli loopback DAST kanıtı", method: "POST",
+    { id: "bounded-dast-runtime-proof", group: "Yalıtılmış test", label: "Sabit profilli sınırlı loopback DAST kanıtı", method: "POST",
       route: "/api/project-audits/{audit_id}/findings/{finding_index}/runtime-proof/dast",
       fields: [{ name: "audit_id", label: "Proje analizi kimliği", type: "text", required: true },
         { name: "finding_index", label: "Bulgu sırası (0 tabanlı)", type: "text", required: true },
@@ -225,15 +225,22 @@
           ["open_redirect", "Açık yönlendirme (CWE-601)"],
           ["reflected_html", "Yansıyan HTML (CWE-79)"],
           ["cors_credentials", "Kimlik bilgili CORS yansıması (CWE-942)"],
-          ["clickjacking_headers", "Clickjacking başlıkları (CWE-1021)"]] },
+          ["clickjacking_headers", "Clickjacking başlıkları (CWE-1021)"],
+          ["ssrf_callback", "SSRF loopback callback (CWE-918)"],
+          ["ssrf_callback_post", "SSRF loopback POST callback (CWE-918)"],
+          ["ssrf_callback_redirect", "SSRF tek aynı-origin redirect callback (CWE-918)"],
+          ["ssrf_callback_delayed", "SSRF gecikmeli loopback callback (CWE-918)"],
+          ["ssrf_callback_dns", "SSRF yerel DNS/OOB korelasyonu (CWE-918)"]] },
         { name: "target", label: "Kayıtlı loopback hedef (http://127.0.0.1:PORT)", type: "text", required: true },
         { name: "path", label: "Tek istek yolu", type: "text", value: "/", required: true },
-        { name: "parameter", label: "Parametre (CORS için boş; yönlendirme: next; HTML: q)", type: "text" },
-        consent("confirm_local", "Seçilen sabit profille tek loopback isteğini onaylıyorum")],
+        { name: "parameter", label: "Parametre (CORS/clickjacking boş; yönlendirme: next; HTML: q; SSRF: url)", type: "text" },
+        consent("confirm_local", "Seçilen sabit profille bir tetikleme ve gerekirse tek loopback callback isteğini onaylıyorum")],
       build(v) {
         const findingIndex = Number(v.finding_index);
         if (!Number.isInteger(findingIndex) || findingIndex < 0) throw new Error("Bulgu sırası negatif olmayan tam sayı olmalı.");
-        const defaults = { open_redirect: "next", reflected_html: "q", cors_credentials: "", clickjacking_headers: "" };
+        const defaults = { open_redirect: "next", reflected_html: "q", cors_credentials: "", clickjacking_headers: "",
+          ssrf_callback: "url", ssrf_callback_post: "url", ssrf_callback_redirect: "url",
+          ssrf_callback_delayed: "url", ssrf_callback_dns: "url" };
         const parameter = v.parameter || defaults[v.profile_id] || "";
         return { profile_id: v.profile_id, target: v.target, path: v.path, parameter,
           confirm_local: true };

@@ -107,9 +107,9 @@ _IMPORT_RES = {
 # --- şablon satırı seçimi --------------------------------------------------------------------------------------------
 _EXPR_MARK = re.compile(r"""\{\{|\{%|<%|\$\{|#\{|\{!!|@[\w(]|th:|!\{|^\s*(?:!=|=|-)\s|\{\$|\$\w|\[\[""")
 _UNESCAPED = re.compile(
-    r"""\|\s*safe\b|\|\s*raw\b|\|\s*noescape\b|\bautoescape\b|\{\{\{|<%-|<%==|\braw\s*\(|\.html_safe\b|th:utext|"""
+    r"""\|\s*safe\b|\|\s*raw\b|\|\s*noescape\b|\bautoescape\b|\{\{\{|\{\{&\s*\w|\{@html\b|\[innerHTML\]|<%-|<%==|\braw\s*\(|\.html_safe\b|th:utext|"""
     r"""Html\.Raw|\{!!|!\{|^\s*!=|\bmark_safe\b|\bMarkup\s*\(|\btemplate\.HTML\b|escape(?:Xml)?\s*=\s*["']?false|"""
-    r"""\|n\b|\bv-html\b|dangerouslySetInnerHTML|\binnerHTML\b|<%=\s*raw\b|\bsafeHTML\b|\bnoescape\b""", re.I)
+    r"""\|n\b|\bv-html\b|dangerouslySetInnerHTML|\b(?:innerHTML|outerHTML)\b|<%=\s*raw\b|\bsafeHTML\b|\bnoescape\b""", re.I)
 _AUTOESCAPE = re.compile(r"""\bautoescape\b|<%@\s*page\b[^%]*isELIgnored|\bescape(?:Xml)?\s*=\s*["']?false""", re.I)
 _KWARG = re.compile(r"\b([A-Za-z_]\w*)\s*=(?![=>~])")
 _QUOTED_KEY = re.compile(r"""["']([A-Za-z_$][\w$]*)["']\s*(?::|=>)""")
@@ -131,10 +131,12 @@ _WRITE_SITE = re.compile(r"yazıldığı yer:\s*([^\s:;()\[\]\"'<>]{1,300}):(\d{
 
 # --- çatı / şablon motoru algılama (manifestler) ---------------------------------------------------------------------
 _PY_DEPS = (("flask", "Flask"), ("django", "Django"), ("fastapi", "FastAPI"), ("starlette", "Starlette"),
+            ("litestar", "Litestar"), ("blacksheep", "BlackSheep"), ("robyn", "Robyn"),
             ("tornado", "Tornado"), ("pyramid", "Pyramid"), ("bottle", "Bottle"), ("sanic", "Sanic"),
             ("quart", "Quart"), ("falcon", "Falcon"), ("aiohttp", "aiohttp"), ("web.py", "web.py"),
             ("jinja2", "Jinja2"), ("mako", "Mako"), ("chameleon", "Chameleon"), ("genshi", "Genshi"))
 _JS_DEPS = {"express": "Express", "koa": "Koa", "fastify": "Fastify", "@nestjs/core": "NestJS", "next": "Next.js",
+            "hono": "Hono", "elysia": "Elysia", "astro": "Astro",
             "@hapi/hapi": "hapi", "hapi": "hapi", "restify": "restify", "sails": "Sails", "loopback": "LoopBack",
             "@loopback/core": "LoopBack", "nuxt": "Nuxt", "@sveltejs/kit": "SvelteKit", "ejs": "EJS", "pug": "Pug",
             "jade": "Jade", "handlebars": "Handlebars", "hbs": "Handlebars (hbs)",

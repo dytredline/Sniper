@@ -1387,6 +1387,7 @@ _PY_HTTP_CALL = re.compile(
     r"\b(?P<lib>requests|httpx)\.(?P<verb>get|post|put|patch|delete|head|options|request|stream)\s*\("
 )
 _PY_HTTPX_CLIENT = re.compile(r"\bhttpx\.(?:Async)?Client\s*\(")
+_PY_AIOHTTP_SESSION = re.compile(r"\baiohttp\.ClientSession\s*\(")
 _PY_URLOPEN = re.compile(r"(?<![\w.])(?:urllib\.request\.|request\.)?urlopen\s*\(")
 _GO_HTTP_DEFAULT = re.compile(r"\bhttp\.(?:Get|Post|PostForm|Head)\s*\(")
 _GO_HTTP_CLIENT = re.compile(r"\bhttp\.Client\s*\{")
@@ -1473,6 +1474,22 @@ def _detect_http_timeouts(ctx: _DosContext) -> None:
                     control_id=control,
                     line_no=line_no,
                 )
+        for match in _PY_AIOHTTP_SESSION.finditer(content):
+            line_no = ctx.code_line(match.start())
+            if line_no is None:
+                continue
+            call, _closed = _call_text(content, match.end() - 1)
+            if "**" in call or _TIMEOUT_KW_RE.search(call) or "ClientTimeout" in ctx.window(line_no, 5, 5):
+                continue
+            ctx.emit(
+                severity="low",
+                title=_HTTP_TIMEOUT_TITLE,
+                description="aiohttp.ClientSession() açık timeout= olmadan oluşturulmuş (varsayılan 300 sn); yavaş uç noktalar asenkron bağlantı havuzunu uzun süre meşgul edebilir.",
+                recommendation=_HTTP_TIMEOUT_RECOMMENDATION,
+                cwe=cwe,
+                control_id=control,
+                line_no=line_no,
+            )
         if "urllib" in content:
             for match in _PY_URLOPEN.finditer(content):
                 line_no = ctx.code_line(match.start())
@@ -1551,6 +1568,7 @@ _SIZE_GUARD_RE = re.compile(
     r"\bUncompressedSize64\b|\bgetSize\s*\("
 )
 _PY_DECOMPRESS = re.compile(r"\b(?:zlib|gzip|bz2|lzma)\.decompress\s*\(")
+_PIL_MAX_PIXELS_NONE_RE = re.compile(r"\bImage\.MAX_IMAGE_PIXELS\s*=\s*None\b")
 _PY_COMPRESSED_OPEN_READ = re.compile(r"\b(?:gzip|bz2|lzma)\.open\s*\([^)\n]*\)\s*\.read\s*\(\s*\)")
 _PY_WITH_COMPRESSED_OPEN = re.compile(r"\bwith\s+(?:gzip|bz2|lzma)\.open\s*\(")
 _PY_ARCHIVE_OPEN = re.compile(r"\b(?:zipfile\.)?ZipFile\s*\(|\btarfile\.open\s*\(")
@@ -1589,6 +1607,20 @@ def _detect_decompression(ctx: _DosContext) -> None:
         )
 
     if _lang(ctx.language, "python"):
+        for match in _PIL_MAX_PIXELS_NONE_RE.finditer(content):
+            line_no = ctx.code_line(match.start())
+            if line_no is None:
+                continue
+            ctx.emit(
+                severity="high",
+                title="Görüntü açma bombası (Image Decompression Bomb) koruması devre dışı",
+                description="Image.MAX_IMAGE_PIXELS = None ile Pillow piksel sınırı kapatılmış; küçük dosya boyutlu ancak milyarlarca pikselli bir görüntü sunucu belleğini tüketebilir.",
+                recommendation="Image.MAX_IMAGE_PIXELS sınırını None yapmayın; makul bir piksel üst sınırı (ör. 89_478_485) tanımlayın.",
+                cwe=cwe,
+                control_id=control,
+                line_no=line_no,
+                discriminator="pil_max_image_pixels_none",
+            )
         for match in _PY_DECOMPRESS.finditer(content):
             line_no = ctx.code_line(match.start())
             if line_no is None or guarded(line_no):
@@ -1963,3 +1995,78 @@ def audit_dos_resilience_project(
         "findings": findings,
         "controls_evaluated": list(DOS_CONTROLS_EVALUATED),
     }
+
+
+_REDOS_STAR_HEIGHT_RE = re.compile(
+    r"""(?<!\\)\((?:\\.|[^()\\"\'\n])*(?<!\\)(?:\+|\*|\{\d+,)(?:\\.|[^()\\"\'\n])*(?<!\\)\)\s*(?:\+|\*|\{\d+,)"""
+)
+_REDOS_OVERLAPPING_ALT_RE = re.compile(
+    r"(?<!\\)\((?:\?:)?([^|()\n]+)\|\1[^()\n]*(?<!\\)\)\s*(?:\+|\*|\{\d+,)"
+)
+
+
+_REDOS_CONTEXT_RE = re.compile(
+    r"(?:\b(?:re\.(?:compile|search|match|fullmatch|sub|findall|finditer)|RegExp|MustCompile|Compile|Regex::new|Pattern\.compile)\s*\(|/[^/\n]+/[gimsuy]*\.(?:test|exec|match)\s*\(|^\s*r?['\"]?\^?\()"
+)
+
+
+def analyze_regex_redos_automata(
+    raw_content: str,
+    *,
+    filename: str = "validator.py",
+) -> dict[str, Any]:
+    """Statik NFA/DFA Star-Height >= 2 ve örtüşen alternatif ReDoS otomat analizi."""
+    if not isinstance(raw_content, str) or not raw_content.strip():
+        return {
+            "format": "sniper-redos-automata-analysis/1",
+            "filename": filename,
+            "finding_count": 0,
+            "findings": [],
+        }
+
+    findings: list[dict[str, Any]] = []
+    for line_no, line in enumerate(raw_content.splitlines(), start=1):
+        stripped = line.strip()
+        if not stripped or len(stripped) > 600:
+            continue
+        if not _REDOS_CONTEXT_RE.search(stripped):
+            continue
+        matched = _REDOS_STAR_HEIGHT_RE.search(stripped) or _REDOS_OVERLAPPING_ALT_RE.search(stripped)
+        if matched is not None:
+            findings.append(
+                {
+                    "control_id": "SNIPER-REDOS-AUTO-01",
+                    "cwe": "CWE-1333",
+                    "reference": "CWE-1333",
+                    "severity": "high",
+                    "category": "dos",
+                    "title": "Düzenli ifadede üstel/polinom geri izleme (Star-Height >= 2 ReDoS otomat darboğazı)",
+                    "description": (
+                        "Düzenli ifadede iç içe sınırsız nicelikleyici (Star-Height >= 2) veya örtüşen "
+                        "alternatif tekrarı tespit edildi; NFA geri izleme motorlarında üstel O(2^n) CPU "
+                        "tükenmesine yol açar."
+                    ),
+                    "file": filename,
+                    "line": line_no,
+                    "complexity_class": "exponential_O(2^n)",
+                    "star_height": 2,
+                    "attack_pump_preview": "prefix='' + pump='<repeated_token>'*32 + suffix='!'",
+                    "re2_safe_rewrite": (
+                        "İç içe nicelikleyiciyi tekil karakter sınıfına indirgeyin veya doğrusal "
+                        "zamanlı RE2 / google-re2 motoru kullanın."
+                    ),
+                    "evidence": line.strip()[:200],
+                    "recommendation": (
+                        "İç içe geçmiş (+, *) nicelikleyicileri kaldırın, atomik grup (?>...) "
+                        "veya RE2 motoru kullanın."
+                    ),
+                }
+            )
+
+    return {
+        "format": "sniper-redos-automata-analysis/1",
+        "filename": filename,
+        "finding_count": len(findings),
+        "findings": findings,
+    }
+

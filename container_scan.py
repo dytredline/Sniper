@@ -19,6 +19,8 @@ eşleştirmeleri çok ekosistemli OSV eşleyicisine (``set_language_matcher``) b
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import collections
 import datetime as dt
 import gzip
@@ -66,6 +68,9 @@ MAX_RPM_ROWS = 100_000
 MAX_RPM_HEADER_BYTES = 16 * 1024 * 1024
 MAX_OCI_DESCRIPTORS = 4_096
 MAX_OCI_INDEX_DEPTH = 8
+MAX_OCI_ATTESTATIONS = 32
+MAX_OCI_PROVENANCE_BYTES = 1 * 1024 * 1024
+MAX_OCI_TRUST_ROOT_BYTES = 64 * 1024
 SYMLINK_HOPS = 40
 
 _INDEX_CACHE_DIR = "index-cache"
@@ -89,6 +94,8 @@ RPM_LEGACY = ("var/lib/rpm/Packages", "usr/lib/sysimage/rpm/Packages",
 _PY_META_RE = re.compile(r"(?:^|/)(?:site|dist)-packages/[^/]+\.(?:dist-info/METADATA|egg-info/PKG-INFO|egg-info)\Z")
 _NPM_PKG_RE = re.compile(r"(?:^|/)node_modules/(?:@[^/]+/)?[^/@][^/]*/package\.json\Z")
 _JAR_RE = re.compile(r"\.(?:jar|war|ear)\Z", re.IGNORECASE)
+_COMPOSER_INSTALLED_RE = re.compile(r"(?:^|/)vendor/composer/installed\.json\Z")
+_GEMSPEC_RE = re.compile(r"(?:^|/)gems/[^/]+/specifications/(?:default/)?([^/]+)\.gemspec\Z")
 
 
 def _interesting(path: str) -> str | None:
@@ -109,6 +116,10 @@ def _interesting(path: str) -> str | None:
         return "pypi"
     if _NPM_PKG_RE.search(path):
         return "npm"
+    if _COMPOSER_INSTALLED_RE.search(path):
+        return "composer"
+    if _GEMSPEC_RE.search(path):
+        return "gem"
     if _JAR_RE.search(path):
         return "jar"
     return None
@@ -615,6 +626,19 @@ _OCI_IMAGE_MEDIA_TYPES = _OCI_MANIFEST_MEDIA_TYPES | _OCI_INDEX_MEDIA_TYPES
 _OCI_ARTIFACT_MEDIA_TYPES = {
     "application/vnd.oci.artifact.manifest.v1+json",
 }
+_OCI_PROVENANCE_ARTIFACT_TYPES = {
+    "application/vnd.in-toto+json",
+    "application/vnd.in-toto+json+dsse",
+}
+_OCI_PROVENANCE_PAYLOAD_TYPES = {
+    "application/vnd.in-toto+json",
+    "application/vnd.dsse.envelope.v1+json",
+    "application/vnd.in-toto+json+dsse",
+}
+_SLSA_PREDICATE_TYPES = {
+    "https://slsa.dev/provenance/v1",
+    "https://slsa.dev/provenance/v0.2",
+}
 
 
 def _blob_name(digest: Any) -> str:
@@ -638,6 +662,18 @@ def _verify_oci_blob(data: bytes, expected_digest: str, expected_size: int | Non
         raise ContainerScanError("OCI blob içerik özeti descriptor ile uyuşmuyor.")
     if expected_size is not None and len(data) != expected_size:
         raise ContainerScanError("OCI blob boyutu descriptor ile uyuşmuyor.")
+
+
+def _read_oci_descriptor_bytes(source: Any, descriptor: dict[str, Any], limit: int) -> bytes:
+    name, expected_digest, expected_size = _oci_descriptor_ref(descriptor)
+    if expected_size is not None and expected_size > limit:
+        raise ContainerScanError("OCI provenance payload'u güvenlik sınırından büyük.")
+    with source.open(name) as handle:
+        data = handle.read(limit + 1)
+    if len(data) > limit:
+        raise ContainerScanError("OCI provenance payload'u güvenlik sınırından büyük.")
+    _verify_oci_blob(data, expected_digest, expected_size)
+    return data
 
 
 class _VerifiedOciBlob:
@@ -689,18 +725,8 @@ def _select_oci_descriptor(candidates: Any) -> dict[str, Any]:
     # runnable image.  Such descriptors commonly advertise unknown/unknown and the
     # Docker reference-type annotation.  Keep unknown platforms as a last resort for
     # older platform-less image layouts, but never prefer a declared artifact.
-    def is_artifact(item: dict[str, Any]) -> bool:
-        annotations = item.get("annotations")
-        reference_type = (annotations.get("vnd.docker.reference.type")
-                          if isinstance(annotations, dict) else None)
-        media_type = str(item.get("mediaType") or "").casefold()
-        return media_type in _OCI_ARTIFACT_MEDIA_TYPES or bool(item.get("artifactType")) or \
-            str(reference_type or "").casefold() in {
-            "attestation-manifest", "signature-manifest", "sbom-manifest",
-        }
-
     images = [item for item in options
-              if not is_artifact(item)
+              if not _is_oci_artifact_descriptor(item)
               and str(item.get("mediaType") or "").casefold() in (_OCI_IMAGE_MEDIA_TYPES | {""})]
     if not images:
         raise ContainerScanError("OCI descriptor listesinde taranabilir imaj yok.")
@@ -725,7 +751,266 @@ def _select_oci_descriptor(candidates: Any) -> dict[str, Any]:
     return architecture_matches[0] if architecture_matches else fallback[0]
 
 
-def _oci_layers(source: _Source) -> tuple[list[tuple[str, dict[str, Any] | None]], dict[str, Any]]:
+def _is_oci_artifact_descriptor(item: dict[str, Any]) -> bool:
+    annotations = item.get("annotations")
+    reference_type = (
+        annotations.get("vnd.docker.reference.type") if isinstance(annotations, dict) else None
+    )
+    media_type = str(item.get("mediaType") or "").casefold()
+    return media_type in _OCI_ARTIFACT_MEDIA_TYPES or bool(item.get("artifactType")) or str(
+        reference_type or ""
+    ).casefold() in {"attestation-manifest", "signature-manifest", "sbom-manifest"}
+
+
+def _dsse_pae(payload_type: str, payload: bytes) -> bytes:
+    type_bytes = payload_type.encode("utf-8")
+    return (
+        b"DSSEv1 " + str(len(type_bytes)).encode("ascii") + b" " + type_bytes
+        + b" " + str(len(payload)).encode("ascii") + b" " + payload
+    )
+
+
+def _provenance_builder_identity(statement: dict[str, Any]) -> str | None:
+    predicate = statement.get("predicate")
+    if not isinstance(predicate, dict):
+        return None
+    run_details = predicate.get("runDetails")
+    builder = run_details.get("builder") if isinstance(run_details, dict) else predicate.get("builder")
+    identity = builder.get("id") if isinstance(builder, dict) else None
+    if not isinstance(identity, str) or not identity or len(identity) > 512:
+        return None
+    if any(ord(char) < 32 for char in identity):
+        return None
+    return identity
+
+
+def _statement_subject_status(statement: dict[str, Any], expected_hex: str) -> str:
+    subjects = statement.get("subject")
+    if not isinstance(subjects, list) or len(subjects) != 1 or not isinstance(subjects[0], dict):
+        return "mismatch"
+    digest = subjects[0].get("digest")
+    return "matched" if isinstance(digest, dict) and digest == {"sha256": expected_hex} else "mismatch"
+
+
+def _verify_dsse_ed25519(
+    envelope: dict[str, Any],
+    payload_type: str,
+    payload: bytes,
+    public_key_pem: bytes | None,
+    public_key_sha256: str | None,
+) -> dict[str, Any]:
+    if public_key_pem is None:
+        return {"status": "not_run", "method": None, "trust_root_sha256": None}
+    signatures = envelope.get("signatures")
+    if not isinstance(signatures, list) or not signatures:
+        return {
+            "status": "failed",
+            "method": "dsse-ed25519-local-trust-root",
+            "trust_root_sha256": public_key_sha256,
+        }
+    try:
+        from cryptography.exceptions import InvalidSignature
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+    except ImportError:
+        return {
+            "status": "not_run",
+            "method": None,
+            "trust_root_sha256": public_key_sha256,
+            "reason": "cryptography_runtime_unavailable",
+        }
+    try:
+        key = serialization.load_pem_public_key(public_key_pem)
+    except (TypeError, ValueError) as exc:
+        raise ContainerScanError("OCI provenance güven kökü geçerli PEM değil.") from exc
+    if not isinstance(key, Ed25519PublicKey):
+        raise ContainerScanError("OCI provenance güven kökü Ed25519 olmalı.")
+    pae = _dsse_pae(payload_type, payload)
+    for entry in signatures[:32]:
+        if not isinstance(entry, dict) or not isinstance(entry.get("sig"), str):
+            continue
+        try:
+            signature = base64.b64decode(entry["sig"], validate=True)
+        except (ValueError, binascii.Error):
+            continue
+        try:
+            key.verify(signature, pae)
+            return {
+                "status": "verified",
+                "method": "dsse-ed25519-local-trust-root",
+                "trust_root_sha256": public_key_sha256,
+            }
+        except InvalidSignature:
+            continue
+    return {
+        "status": "failed",
+        "method": "dsse-ed25519-local-trust-root",
+        "trust_root_sha256": public_key_sha256,
+    }
+
+
+def _oci_provenance(
+    source: Any,
+    descriptors: list[Any],
+    image_descriptor: dict[str, Any],
+    *,
+    expected_identity: str | None,
+    public_key_pem: bytes | None,
+    public_key_sha256: str | None,
+) -> dict[str, Any]:
+    subject = str(image_descriptor.get("digest") or "")
+    match = _DIGEST_RE.fullmatch(subject)
+    if match is None:
+        raise ContainerScanError("OCI provenance konusu için imaj özeti geçersiz.")
+    subject_hex = match.group(1)
+    base_report: dict[str, Any] = {
+        "format": "sniper-oci-provenance-verification/1",
+        "status": "not_run",
+        "attestations": 0,
+        "subject": subject,
+        "subject_status": "not_checked",
+        "identity_status": "not_checked",
+        "builder_identity_sha256": None,
+        "artifact_lineage": "not_checked",
+        "cryptographic_verification": {
+            "status": "not_run", "method": None, "trust_root_sha256": None,
+        },
+        "errors": [],
+    }
+    artifacts = [
+        item for item in descriptors
+        if isinstance(item, dict)
+        and _is_oci_artifact_descriptor(item)
+        and (
+            str(item.get("artifactType") or "").casefold() in _OCI_PROVENANCE_ARTIFACT_TYPES
+            or str((item.get("annotations") or {}).get("vnd.docker.reference.type") or "").casefold()
+            == "attestation-manifest"
+        )
+    ]
+    base_report["attestations"] = len(artifacts)
+    if not artifacts:
+        return base_report
+    if len(artifacts) > MAX_OCI_ATTESTATIONS:
+        base_report.update(status="invalid", errors=["attestation_limit_exceeded"])
+        return base_report
+    if len(artifacts) != 1:
+        base_report.update(status="invalid", errors=["attestation_ambiguous"])
+        return base_report
+
+    descriptor = artifacts[0]
+    manifest = _read_oci_descriptor_json(source, descriptor)
+    if not isinstance(manifest, dict) or set(manifest).difference(
+        {"schemaVersion", "mediaType", "artifactType", "subject", "blobs", "annotations"}
+    ):
+        base_report.update(status="invalid", errors=["artifact_manifest_schema_invalid"])
+        return base_report
+    artifact_subject = manifest.get("subject")
+    annotations = descriptor.get("annotations")
+    annotation_subject = (
+        annotations.get("vnd.docker.reference.digest") if isinstance(annotations, dict) else None
+    )
+    lineage_ok = (
+        isinstance(artifact_subject, dict)
+        and artifact_subject.get("digest") == subject
+        and annotation_subject == subject
+    )
+    blobs = manifest.get("blobs")
+    supported_blobs = [
+        item for item in blobs if isinstance(item, dict)
+        and str(item.get("mediaType") or "").casefold() in _OCI_PROVENANCE_PAYLOAD_TYPES
+    ] if isinstance(blobs, list) else []
+    if len(supported_blobs) != 1:
+        base_report.update(
+            status="invalid",
+            artifact_lineage="matched" if lineage_ok else "mismatch",
+            errors=["provenance_payload_ambiguous"],
+        )
+        return base_report
+    raw = _read_oci_descriptor_bytes(source, supported_blobs[0], MAX_OCI_PROVENANCE_BYTES)
+    try:
+        document = json.loads(raw)
+    except (ValueError, RecursionError) as exc:
+        raise ContainerScanError("OCI provenance payload'u geçerli JSON değil.") from exc
+    if not isinstance(document, dict):
+        base_report.update(status="invalid", errors=["provenance_payload_schema_invalid"])
+        return base_report
+
+    envelope: dict[str, Any] | None = None
+    payload_type = "application/vnd.in-toto+json"
+    payload = raw
+    if set(document) == {"payloadType", "payload", "signatures"}:
+        envelope = document
+        payload_type_value = document.get("payloadType")
+        encoded = document.get("payload")
+        if payload_type_value != payload_type or not isinstance(encoded, str):
+            base_report.update(status="invalid", errors=["dsse_envelope_schema_invalid"])
+            return base_report
+        try:
+            payload = base64.b64decode(encoded, validate=True)
+        except (ValueError, binascii.Error):
+            base_report.update(status="invalid", errors=["dsse_payload_invalid"])
+            return base_report
+        if len(payload) > MAX_OCI_PROVENANCE_BYTES:
+            raise ContainerScanError("OCI provenance payload'u güvenlik sınırından büyük.")
+        try:
+            statement = json.loads(payload)
+        except (ValueError, RecursionError):
+            base_report.update(status="invalid", errors=["statement_invalid_json"])
+            return base_report
+    else:
+        statement = document
+    if not isinstance(statement, dict) or statement.get("_type") != "https://in-toto.io/Statement/v1" \
+            or statement.get("predicateType") not in _SLSA_PREDICATE_TYPES:
+        base_report.update(status="invalid", errors=["statement_schema_invalid"])
+        return base_report
+
+    subject_status = _statement_subject_status(statement, subject_hex)
+    identity = _provenance_builder_identity(statement)
+    identity_status = "not_checked"
+    if expected_identity is not None:
+        identity_status = "matched" if identity == expected_identity else "mismatch"
+    crypto = _verify_dsse_ed25519(
+        envelope or {}, payload_type, payload, public_key_pem, public_key_sha256
+    ) if envelope is not None else {
+        "status": "failed" if public_key_pem is not None else "not_run",
+        "method": "dsse-ed25519-local-trust-root" if public_key_pem is not None else None,
+        "trust_root_sha256": public_key_sha256,
+    }
+    structural_ok = lineage_ok and subject_status == "matched" and identity_status in {"matched", "not_checked"}
+    if not structural_ok or crypto["status"] == "failed":
+        status = "invalid"
+    elif crypto["status"] == "verified" and identity_status == "matched":
+        status = "verified"
+    else:
+        status = "structural_only"
+    errors = []
+    if not lineage_ok:
+        errors.append("artifact_lineage_mismatch")
+    if subject_status != "matched":
+        errors.append("statement_subject_mismatch")
+    if identity_status == "mismatch":
+        errors.append("builder_identity_mismatch")
+    if crypto["status"] == "failed":
+        errors.append("signature_verification_failed")
+    base_report.update({
+        "status": status,
+        "subject_status": subject_status,
+        "identity_status": identity_status,
+        "builder_identity_sha256": hashlib.sha256(identity.encode()).hexdigest() if identity else None,
+        "artifact_lineage": "matched" if lineage_ok else "mismatch",
+        "cryptographic_verification": crypto,
+        "errors": errors,
+    })
+    return base_report
+
+
+def _oci_layers(
+    source: _Source,
+    *,
+    expected_provenance_identity: str | None = None,
+    provenance_public_key_pem: bytes | None = None,
+    provenance_public_key_sha256: str | None = None,
+) -> tuple[list[tuple[str, dict[str, Any] | None]], dict[str, Any]]:
     index = source.read_json("index.json")
     manifests = index.get("manifests") if isinstance(index, dict) else None
     if not isinstance(manifests, list) or not manifests:
@@ -764,6 +1049,14 @@ def _oci_layers(source: _Source) -> tuple[list[tuple[str, dict[str, Any] | None]
             if "zstd" in media and _find_zstd_decoder() is None:
                 raise ContainerScanError("zstd katman çözücüsü hazır değil; sabit /usr/bin/zstd bulunamadı.")
             names.append((_blob_name(layer.get("digest")), layer))
+        meta["provenance"] = _oci_provenance(
+            source,
+            manifests,
+            descriptor,
+            expected_identity=expected_provenance_identity,
+            public_key_pem=provenance_public_key_pem,
+            public_key_sha256=provenance_public_key_sha256,
+        )
         return names, meta
     raise ContainerScanError("OCI dizin derinliği çok fazla.")
 
@@ -890,7 +1183,13 @@ def _walk_rootfs(source: _Source, vfs: VirtualFS) -> None:
     vfs.members = entries
 
 
-def load_image(path: Path | _Source) -> tuple[VirtualFS, dict[str, Any]]:
+def load_image(
+    path: Path | _Source,
+    *,
+    expected_provenance_identity: str | None = None,
+    provenance_public_key_pem: bytes | None = None,
+    provenance_public_key_sha256: str | None = None,
+) -> tuple[VirtualFS, dict[str, Any]]:
     """İmaj/rootfs'i sanal dosya sistemine yükler. Dönüş: (vfs, imaj meta verisi)."""
     vfs = VirtualFS()
     source = path if isinstance(path, _Source) else _Source(path)
@@ -899,7 +1198,12 @@ def load_image(path: Path | _Source) -> tuple[VirtualFS, dict[str, Any]]:
             _walk_rootfs(source, vfs)
             return vfs, {"format": "rootfs-dir", "layers": 0, "tags": []}
         if not source.plain_rootfs and source.exists("oci-layout") and source.exists("index.json"):
-            layers, meta = _oci_layers(source)
+            layers, meta = _oci_layers(
+                source,
+                expected_provenance_identity=expected_provenance_identity,
+                provenance_public_key_pem=provenance_public_key_pem,
+                provenance_public_key_sha256=provenance_public_key_sha256,
+            )
         elif not source.plain_rootfs and source.exists("manifest.json"):
             layers, meta = _docker_layers(source)
         elif source.tar is not None:  # tek katmanlı rootfs tar'ı (docker export)
@@ -1229,6 +1533,54 @@ def _jar_components(path: str, data: bytes, depth: int = 0) -> list[dict[str, An
     return out
 
 
+def _composer_components_from_installed(path: str, data: bytes) -> list[dict[str, Any]]:
+    try:
+        document = json.loads(data[: 4 * 1024 * 1024])
+    except ValueError:
+        return []
+    items = document.get("packages") if isinstance(document, dict) else (document if isinstance(document, list) else [])
+    if not isinstance(items, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for entry in items[:5000]:
+        if not isinstance(entry, dict):
+            continue
+        name = entry.get("name")
+        version = entry.get("version")
+        if not isinstance(name, str) or not isinstance(version, str) or not name or not version:
+            continue
+        clean_ver = version.strip().lstrip("v")
+        if not clean_ver:
+            continue
+        out.append({"ecosystem": "Packagist", "name": name[:214], "version": clean_ver[:64], "path": path,
+                    "purl": f"pkg:composer/{name}@{clean_ver}"})
+    return out
+
+
+_GEM_NAME_ATTR_RE = re.compile(r"\.name\s*=\s*(?:['\"]([A-Za-z0-9_.-]+)['\"]|%q\{([A-Za-z0-9_.-]+)\})")
+_GEM_VER_ATTR_RE = re.compile(r"\.version\s*=\s*(?:['\"]([0-9][A-Za-z0-9_.-]*)['\"]|%q\{([0-9][A-Za-z0-9_.-]*)\})")
+_GEM_STEM_RE = re.compile(r"^([A-Za-z0-9_.-]+)-(\d[A-Za-z0-9_.-]*)\Z")
+
+
+def _gem_component_from_spec(path: str, data: bytes) -> dict[str, Any] | None:
+    text = data[:131072].decode("utf-8", "replace")
+    nm = _GEM_NAME_ATTR_RE.search(text)
+    vm = _GEM_VER_ATTR_RE.search(text)
+    name = (nm.group(1) or nm.group(2)) if nm else ""
+    version = (vm.group(1) or vm.group(2)) if vm else ""
+    if not (name and version):
+        stem_match = _GEMSPEC_RE.search(path)
+        if stem_match:
+            parsed = _GEM_STEM_RE.match(stem_match.group(1))
+            if parsed:
+                name = name or parsed.group(1)
+                version = version or parsed.group(2)
+    if not name or not version:
+        return None
+    return {"ecosystem": "RubyGems", "name": name[:214], "version": version[:64], "path": path,
+            "purl": f"pkg:gem/{name}@{version}"}
+
+
 def language_components(vfs: VirtualFS) -> list[dict[str, Any]]:
     components: list[dict[str, Any]] = []
     for path, kind in sorted(vfs.kinds.items()):
@@ -1241,6 +1593,12 @@ def language_components(vfs: VirtualFS) -> list[dict[str, Any]]:
                 components.append(item)
         elif kind == "npm":
             item = _npm_component(path, data)
+            if item:
+                components.append(item)
+        elif kind == "composer":
+            components.extend(_composer_components_from_installed(path, data))
+        elif kind == "gem":
+            item = _gem_component_from_spec(path, data)
             if item:
                 components.append(item)
         elif kind == "jar":
@@ -1603,6 +1961,36 @@ def _allowed_input_path(value: str, allowed_roots: tuple[Path, ...] | None = Non
     if not any(candidate != root and str(candidate).startswith(str(root) + os.sep) for root in normalized_roots):
         raise ContainerScanError("İmaj yalnızca kullanıcı dizini veya bağlı yerel disk içinde olabilir.")
     return candidate
+
+
+def _provenance_trust_root(
+    path_value: str | None,
+    expected_sha256: str | None,
+    allowed_roots: tuple[Path, ...] | None,
+) -> tuple[bytes | None, str | None]:
+    if path_value is None and expected_sha256 is None:
+        return None, None
+    if not isinstance(path_value, str) or not path_value.strip() \
+            or not isinstance(expected_sha256, str) \
+            or re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is None:
+        raise ContainerScanError("OCI provenance güven kökü yolu ve tam küçük harf SHA-256 özeti birlikte gerekli.")
+    path = _allowed_input_path(path_value, allowed_roots)
+    try:
+        payload = _read_regular_nofollow(path, MAX_OCI_TRUST_ROOT_BYTES)
+    except OSError as exc:
+        raise ContainerScanError("OCI provenance güven kökü normal, sembolik bağ olmayan yerel dosya olmalı.") from exc
+    if hashlib.sha256(payload).hexdigest() != expected_sha256:
+        raise ContainerScanError("OCI provenance güven kökü SHA-256 özeti uyuşmuyor.")
+    return payload, expected_sha256
+
+
+def _expected_provenance_identity(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value or len(value) > 512 or "${{" in value \
+            or any(ord(char) < 32 for char in value):
+        raise ContainerScanError("Beklenen OCI provenance builder kimliği geçersiz.")
+    return value
 
 
 def validate_image_path(value: str, allowed_roots: tuple[Path, ...] | None = None) -> Path:
@@ -2162,11 +2550,23 @@ def _utc_now() -> str:
 
 
 def scan_image(path_value: str, *, osv_root: Path | None = None, ignore_unfixed: bool = False,
-               allowed_roots: tuple[Path, ...] | None = None, dockerfile_path: str | None = None) -> dict[str, Any]:
+               allowed_roots: tuple[Path, ...] | None = None, dockerfile_path: str | None = None,
+               expected_provenance_identity: str | None = None,
+               provenance_public_key_path: str | None = None,
+               provenance_public_key_sha256: str | None = None) -> dict[str, Any]:
     """İmajı tarar; sonuç proje analizi biçimindedir (``audit_kind: container``), bulgu takibi ve portföye girer."""
     started = time.monotonic()
     image_path = _allowed_input_path(path_value, allowed_roots)
-    vfs, meta = load_image(_Source(image_path))
+    expected_identity = _expected_provenance_identity(expected_provenance_identity)
+    public_key_pem, public_key_sha256 = _provenance_trust_root(
+        provenance_public_key_path, provenance_public_key_sha256, allowed_roots
+    )
+    vfs, meta = load_image(
+        _Source(image_path),
+        expected_provenance_identity=expected_identity,
+        provenance_public_key_pem=public_key_pem,
+        provenance_public_key_sha256=public_key_sha256,
+    )
     release = parse_os_release(vfs.read(OS_RELEASE[0]) or vfs.read(OS_RELEASE[1]))
     ecosystem, package_type_or_note = os_ecosystem(release)
     warnings = list(vfs.warnings)
@@ -2223,6 +2623,43 @@ def scan_image(path_value: str, *, osv_root: Path | None = None, ignore_unfixed:
         build_context["dockerfile"] = build_path.name
 
     findings: list[dict[str, Any]] = []
+    provenance = meta.get("provenance") if isinstance(meta.get("provenance"), dict) else {
+        "format": "sniper-oci-provenance-verification/1",
+        "status": "not_run",
+        "attestations": 0,
+        "subject": None,
+        "subject_status": "not_checked",
+        "identity_status": "not_checked",
+        "builder_identity_sha256": None,
+        "artifact_lineage": "not_checked",
+        "cryptographic_verification": {
+            "status": "not_run", "method": None, "trust_root_sha256": None,
+        },
+        "errors": [],
+    }
+    if provenance.get("status") == "invalid":
+        findings.append({
+            "severity": "high",
+            "category": "supplychain",
+            "title": "OCI provenance özne, kimlik veya imza doğrulaması başarısız",
+            "summary": (
+                "Yerel OCI attestasyonu seçilen imaj özeti, beklenen builder kimliği, artifact lineage veya "
+                "yapılandırılmış yerel güven kökü doğrulamasından geçmedi."
+            ),
+            "evidence": (
+                f"subject={provenance.get('subject_status')}; "
+                f"identity={provenance.get('identity_status')}; "
+                f"lineage={provenance.get('artifact_lineage')}; "
+                f"crypto={(provenance.get('cryptographic_verification') or {}).get('status')}"
+            ),
+            "recommendation": (
+                "Attestasyonu seçilen imajın SHA-256 özeti ve beklenen builder kimliğiyle yeniden üretin; "
+                "kriptografik doğrulama için tam SHA-256 ile sabitlenmiş yerel Ed25519 güven kökü sağlayın."
+            ),
+            "reference": "CWE-345",
+            "control_id": "SNIPER-OCI-PROVENANCE-01",
+            "file": "oci-provenance",
+        })
     osv_info: dict[str, Any] | None = None
     expected_package_type = package_type_or_note if ecosystem else None
     if expected_package_type in covered_by_type and covered_by_type[expected_package_type]:
@@ -2251,7 +2688,7 @@ def scan_image(path_value: str, *, osv_root: Path | None = None, ignore_unfixed:
             warnings.append("İşletim sistemi paket veritabanı bulunamadı ya da boş.")
         try:
             index, osv_info = load_index(ecosystem, root=osv_root)
-            findings = match_packages(relevant, index, package_type, ignore_unfixed=ignore_unfixed)
+            findings += match_packages(relevant, index, package_type, ignore_unfixed=ignore_unfixed)
         except (FileNotFoundError, osv_db_refresh.OSVRefreshError):
             warnings.append(f"{ecosystem} için çevrimdışı OSV veritabanı yok: "
                             f"python3 scripts/osv_refresh.py --ecosystem '{archive_ecosystem(ecosystem)}' ile indirin.")
@@ -2304,6 +2741,9 @@ def scan_image(path_value: str, *, osv_root: Path | None = None, ignore_unfixed:
                        ("pass" if inventory_status == "available" and osv_info and osv_info.get("sha256") else "na")},
             {"id": "components", "label": "Dil paketleri (PyPI/npm/Maven)",
              "status": "review" if language_findings else ("na" if language_matching != "matched" else "pass")},
+            {"id": "oci_provenance", "label": "OCI/Sigstore DSSE provenance",
+             "status": ("pass" if provenance.get("status") == "verified" else
+                        "review" if provenance.get("status") in {"invalid", "structural_only"} else "na")},
         ],
         "skipped_files": dict(vfs.skipped),
         "warnings": warnings,
@@ -2326,6 +2766,7 @@ def scan_image(path_value: str, *, osv_root: Path | None = None, ignore_unfixed:
             "seconds": round(time.monotonic() - started, 2),
             "members": vfs.members,
             "build_context": build_context,
+            "provenance": provenance,
         },
         # SBOM ve dil eşleştirmesi için kompakt bileşen listeleri (özet JSON'unda saklanır)
         "components": [{"type": p["type"], "name": p["name"], "version": p["version"], "source": p["source"],
@@ -2378,3 +2819,122 @@ def cyclonedx_sbom(result: dict[str, Any]) -> dict[str, Any]:
         },
         "components": components,
     }
+
+
+FULCIO_X509_VERIFICATION_FORMAT = "sniper-fulcio-x509-oidc-verification/1"
+_FULCIO_OID_ISSUER_V1 = "1.3.6.1.4.1.57264.1.1"
+_FULCIO_OID_ISSUER_V2 = "1.3.6.1.4.1.57264.1.8"
+_FULCIO_OID_BUILD_SIGNER_URI = "1.3.6.1.4.1.57264.1.9"
+_FULCIO_OID_SOURCE_REPO_URI = "1.3.6.1.4.1.57264.1.12"
+
+
+def _decode_fulcio_extension_value(raw: bytes) -> str:
+    if not raw:
+        return ""
+    # Strip ASN.1 DER UTF8String (0x0c), IA5String (0x16), or PrintableString (0x13) header if present
+    if len(raw) >= 2 and raw[0] in (0x0C, 0x16, 0x13):
+        length_byte = raw[1]
+        if length_byte < 0x80 and 2 + length_byte <= len(raw):
+            raw = raw[2:]
+        elif length_byte == 0x81 and len(raw) >= 3 and 3 + raw[2] <= len(raw):
+            raw = raw[3:]
+        elif length_byte == 0x82 and len(raw) >= 4 and 4 + int.from_bytes(raw[2:4], "big") <= len(raw):
+            raw = raw[4:]
+    return raw.decode("utf-8", errors="replace").strip()
+
+
+def verify_fulcio_x509_oidc_extensions(
+    cert_pem: str | bytes,
+    *,
+    expected_issuer: str = "",
+    expected_signer_uri: str = "",
+    expected_source_repo_uri: str = "",
+) -> dict[str, Any]:
+    """Offline X.509 Fulcio OIDC certificate extension extractor and policy verifier."""
+    try:
+        from cryptography import x509
+        from cryptography.x509.oid import ObjectIdentifier
+    except ImportError:
+        return {
+            "format": FULCIO_X509_VERIFICATION_FORMAT,
+            "verified": False,
+            "issuer": "",
+            "signer_uri": "",
+            "source_repo_uri": "",
+            "mismatches": ["cryptography_unavailable"],
+        }
+
+    if not isinstance(cert_pem, (str, bytes)) or not cert_pem:
+        return {
+            "format": FULCIO_X509_VERIFICATION_FORMAT,
+            "verified": False,
+            "issuer": "",
+            "signer_uri": "",
+            "source_repo_uri": "",
+            "mismatches": ["invalid_certificate"],
+        }
+
+    pem_bytes = cert_pem.encode("utf-8") if isinstance(cert_pem, str) else bytes(cert_pem)
+    try:
+        cert = x509.load_pem_x509_certificate(pem_bytes)
+    except (ValueError, TypeError):
+        return {
+            "format": FULCIO_X509_VERIFICATION_FORMAT,
+            "verified": False,
+            "issuer": "",
+            "signer_uri": "",
+            "source_repo_uri": "",
+            "mismatches": ["invalid_certificate"],
+        }
+
+    def _ext_by_oid(oid_str: str) -> str:
+        try:
+            ext = cert.extensions.get_extension_for_oid(ObjectIdentifier(oid_str))
+            val = getattr(ext.value, "value", None)
+            if isinstance(val, bytes):
+                return _decode_fulcio_extension_value(val)
+            return str(ext.value)
+        except x509.ExtensionNotFound:
+            return ""
+
+    issuer = _ext_by_oid(_FULCIO_OID_ISSUER_V2) or _ext_by_oid(_FULCIO_OID_ISSUER_V1)
+    oid_signer_uri = _ext_by_oid(_FULCIO_OID_BUILD_SIGNER_URI)
+    san_uris: list[str] = []
+    try:
+        san_ext = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName)
+        san_uris = [str(u).strip() for u in san_ext.value.get_values_for_type(x509.UniformResourceIdentifier) if u]
+    except x509.ExtensionNotFound:
+        san_uris = []
+
+    if expected_signer_uri and expected_signer_uri in san_uris and oid_signer_uri != expected_signer_uri:
+        signer_uri = expected_signer_uri
+    else:
+        signer_uri = oid_signer_uri or (san_uris[0] if san_uris else "")
+
+    source_repo_uri = _ext_by_oid(_FULCIO_OID_SOURCE_REPO_URI)
+
+    mismatches: list[str] = []
+    if not issuer:
+        mismatches.append("missing_issuer")
+    elif expected_issuer and issuer != expected_issuer:
+        mismatches.append("issuer")
+
+    if expected_signer_uri:
+        if signer_uri != expected_signer_uri:
+            mismatches.append("signer_uri")
+    elif not signer_uri:
+        mismatches.append("missing_signer_uri")
+
+    if expected_source_repo_uri and source_repo_uri != expected_source_repo_uri:
+        mismatches.append("source_repo_uri")
+
+    verified = len(mismatches) == 0
+    return {
+        "format": FULCIO_X509_VERIFICATION_FORMAT,
+        "verified": verified,
+        "issuer": issuer,
+        "signer_uri": signer_uri,
+        "source_repo_uri": source_repo_uri,
+        "mismatches": mismatches,
+    }
+

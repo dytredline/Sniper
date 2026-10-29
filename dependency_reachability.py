@@ -25,7 +25,7 @@ from pathlib import Path, PurePosixPath
 import posixpath
 import re
 import zipfile
-from typing import Any, Iterable, Iterator
+from typing import Any, Iterable, Iterator, Mapping
 
 from project_tree import ProjectTree, ProjectTreeError
 
@@ -71,6 +71,24 @@ CURATED_SYMBOLS: dict[str, tuple[str, ...]] = {
     "express-fileupload": ("mv",),
     "mongoose": ("find", "findOne", "where", "$where"),
     "sequelize": ("query", "literal"),
+    "lxml": ("fromstring", "XML", "HTML", "parse", "XMLParser"),
+    "defusedxml": ("fromstring", "parse"),
+    "cryptography": ("load_pem_private_key", "load_der_private_key", "PKCS1v15", "ECB"),
+    "paramiko": ("AutoAddPolicy", "WarningPolicy", "exec_command", "Transport"),
+    "torch": ("load", "jit.load"),
+    "transformers": ("from_pretrained", "pipeline", "AutoModel.from_pretrained"),
+    "langchain": ("load_prompt", "PythonREPLTool", "PALChain", "SQLDatabaseChain"),
+    "adm-zip": ("extractAllTo", "extractEntryTo"),
+    "unzipper": ("Extract", "Open"),
+    "tar": ("extract", "x"),
+    "xml2js": ("parseString", "parseStringPromise", "Parser"),
+    "fast-xml-parser": ("XMLParser", "parse"),
+    "vm2": ("VM", "NodeVM", "VMScript"),
+    "shell-quote": ("parse", "quote"),
+    "minimatch": ("minimatch", "makeRe"),
+    "semver": ("satisfies", "validRange", "coerce"),
+    "tough-cookie": ("Cookie.parse", "CookieJar", "setCookie"),
+    "urllib3": ("PoolManager", "request", "urlopen"),
 }
 
 # Danışma metninde "fonksiyon olmayan" sık geçen adlar.
@@ -131,6 +149,10 @@ LOADER_PACKAGES: dict[str, tuple[str, ...]] = {
     "axios": ("follow-redirects", "form-data", "proxy-from-env"),
     "jsonwebtoken": ("jws", "jwa", "ms", "semver"),
     "request": ("tough-cookie", "qs", "form-data", "har-validator", "extend"),
+    "prisma": ("@prisma/client", "@prisma/engines"),
+    "next": ("react", "react-dom", "styled-jsx"),
+    "langchain": ("langchain-core", "langchain-community", "openai", "tiktoken", "sqlalchemy"),
+    "transformers": ("torch", "safetensors", "huggingface-hub", "tokenizers"),
 }
 # Paket adlarının dize olarak geçtiği (yapılandırmayla yüklenen) dosyalar: kod ve şablonlar. JSON/YAML gibi veri
 # dosyaları hariç (tarama raporları, fikstürler "paket@sürüm" dizeleriyle gürültü yapar).
@@ -3429,3 +3451,517 @@ def cli_tool_mentions(
                 for match in pattern.finditer(line):
                     found.setdefault(match.group(1), {"file": rel, "line": line_no, "via": "script"})
     return found
+
+
+_SEMVER_PREFIX_RE = re.compile(r"^v?(\d+(?:\.\d+){1,3})(?:[-+].*)?$")
+_TOML_PKG_BLOCK_RE = re.compile(
+    r"\[\[package\]\][^\[]*?\bname\s*=\s*\"([^\"]+)\"[^\[]*?\bversion\s*=\s*\"([^\"]+)\"",
+    re.DOTALL,
+)
+
+
+def _parse_semver_tuple(ver: str) -> tuple[int, ...] | None:
+    m = _SEMVER_PREFIX_RE.match(ver.strip())
+    if not m:
+        return None
+    try:
+        return tuple(int(p) for p in m.group(1).split("."))
+    except ValueError:
+        return None
+
+
+def _semver_ge(rt: tuple[int, ...], ft: tuple[int, ...]) -> bool:
+    width = max(len(rt), len(ft))
+    pa = rt + (0,) * (width - len(rt))
+    pb = ft + (0,) * (width - len(ft))
+    return pa >= pb
+
+
+def is_lockfile_patched(fixed_version: Any, resolved_versions: set[str]) -> bool:
+    """Kilit dosyasındaki çözümlenmiş sürümlerin tamamı kendi dalındaki fixed_version (yama sürümü) veya üzerinde mi?"""
+    if not resolved_versions:
+        return False
+    if isinstance(fixed_version, (list, tuple, set)):
+        fixed_candidates = [str(v).strip() for v in fixed_version if str(v).strip()]
+    elif isinstance(fixed_version, str):
+        fixed_candidates = [p.strip() for p in re.split(r"[,;|\s]+", fixed_version) if p.strip()]
+    else:
+        return False
+    fixed_tuples = sorted({t for c in fixed_candidates if (t := _parse_semver_tuple(c)) is not None})
+    if not fixed_tuples:
+        return False
+    resolved_tuples = [_parse_semver_tuple(v) for v in resolved_versions]
+    if any(rt is None for rt in resolved_tuples):
+        return False
+
+    def _is_one_patched(rt: tuple[int, ...]) -> bool:
+        if len(fixed_tuples) == 1:
+            return _semver_ge(rt, fixed_tuples[0])
+        same_major = [ft for ft in fixed_tuples if ft[0] == rt[0]]
+        if same_major:
+            if len(same_major) == 1:
+                return _semver_ge(rt, same_major[0])
+            same_minor = [ft for ft in same_major if len(ft) >= 2 and len(rt) >= 2 and ft[:2] == rt[:2]]
+            if same_minor:
+                return _semver_ge(rt, min(same_minor))
+            higher_minor = [ft for ft in same_major if len(ft) >= 2 and len(rt) >= 2 and ft[1] >= rt[1]]
+            target = min(higher_minor) if higher_minor else max(same_major)
+            return _semver_ge(rt, target)
+        max_major_fix = max(fixed_tuples)
+        if rt[0] > max_major_fix[0]:
+            return _semver_ge(rt, max_major_fix)
+        return False
+
+    return all(rt is not None and _is_one_patched(rt) for rt in resolved_tuples)
+
+
+_PNPM_PKG_RE = re.compile(
+    r"(?m)^\s{2,4}['\"]?/?(@?[a-zA-Z0-9._-]+(?:/[a-zA-Z0-9._-]+)?)@(\d+\.\d+\.\d+[^:(\s'\"]*)['\"]?\s*:"
+)
+_YARN_PKG_RE = re.compile(
+    r"(?m)^\"?(@?[a-zA-Z0-9._-]+(?:/[a-zA-Z0-9._-]+)?)@(?:npm:)?[^\":\n]+\"?(?:,\s*\"?[^\":\n]+\"?)*:\s*\n\s+version\s*:?\s+\"?(\d+\.\d+\.\d+[^\"\s\n]*)\"?"
+)
+_LOCKFILE_SKIP_DIRS = frozenset({
+    "node_modules", ".git", "target", "vendor", ".venv", "venv", "dist", "build", "__pycache__",
+})
+
+
+def lockfile_resolved_versions(
+    root: Path,
+    *,
+    project_tree: ProjectTree | None = None,
+) -> dict[str, set[str]]:
+    """Kök ve monorepo alt dizinlerindeki package-lock.json, pnpm-lock.yaml, yarn.lock, Cargo.lock ve poetry.lock sürümlerini çıkarır."""
+    resolved: dict[str, set[str]] = {}
+
+    def _record(name: str, ver: str) -> None:
+        n = name.strip().casefold()
+        v = ver.strip()
+        if not n or not v:
+            return
+        resolved.setdefault(n, set()).add(v)
+        resolved.setdefault(n.replace("_", "-"), set()).add(v)
+
+    try:
+        with _borrow_project_tree(root, project_tree) as tree:
+            dirs_visited = 0
+            for dir_entry in tree.walk(skip_dirs=_LOCKFILE_SKIP_DIRS, reject_unsafe=False):
+                dirs_visited += 1
+                if dirs_visited > 200:
+                    break
+                present = {entry.name.casefold(): entry for entry in dir_entry.files}
+
+                pkg_lock = present.get("package-lock.json")
+                if pkg_lock is not None and pkg_lock.size <= _MAX_FILE_BYTES * 4:
+                    text = tree.read_text(pkg_lock, _MAX_FILE_BYTES * 4, errors="replace", allow_empty=True)
+                    if text:
+                        try:
+                            data = json.loads(text)
+                        except json.JSONDecodeError:
+                            data = {}
+                        if isinstance(data, dict):
+                            pkgs = data.get("packages")
+                            if isinstance(pkgs, dict):
+                                for k, info in pkgs.items():
+                                    if not k or not isinstance(info, dict):
+                                        continue
+                                    ver = info.get("version")
+                                    if isinstance(ver, str) and ver.strip():
+                                        pkg_name = k.split("node_modules/")[-1].strip("/")
+                                        if pkg_name:
+                                            _record(pkg_name, ver)
+                            deps = data.get("dependencies")
+                            if isinstance(deps, dict):
+                                for k, info in deps.items():
+                                    if isinstance(info, dict) and isinstance(info.get("version"), str):
+                                        _record(k, info["version"])
+
+                pnpm_lock = present.get("pnpm-lock.yaml")
+                if pnpm_lock is not None and pnpm_lock.size <= _MAX_FILE_BYTES * 4:
+                    text = tree.read_text(pnpm_lock, _MAX_FILE_BYTES * 4, errors="replace", allow_empty=True)
+                    if text:
+                        for m in _PNPM_PKG_RE.finditer(text):
+                            _record(m.group(1), m.group(2))
+
+                yarn_lock = present.get("yarn.lock")
+                if yarn_lock is not None and yarn_lock.size <= _MAX_FILE_BYTES * 4:
+                    text = tree.read_text(yarn_lock, _MAX_FILE_BYTES * 4, errors="replace", allow_empty=True)
+                    if text:
+                        for m in _YARN_PKG_RE.finditer(text):
+                            _record(m.group(1), m.group(2))
+
+                for toml_lock_name in ("cargo.lock", "poetry.lock"):
+                    lock_entry = present.get(toml_lock_name)
+                    if lock_entry is not None and lock_entry.size <= _MAX_FILE_BYTES * 4:
+                        text = tree.read_text(lock_entry, _MAX_FILE_BYTES * 4, errors="replace", allow_empty=True)
+                        if text:
+                            for m in _TOML_PKG_BLOCK_RE.finditer(text):
+                                _record(m.group(1), m.group(2))
+    except Exception:  # noqa: BLE001
+        return resolved
+    return resolved
+
+
+_LINUX_IMAGE_RE = re.compile(
+    r"(?im)^\s*FROM\s+[^\n#]*\b(?:debian|ubuntu|alpine|bookworm|bullseye|jammy|noble|fedora|ubi8|ubi9|distroless|wolfi|slim)\b"
+)
+_WINDOWS_IMAGE_RE = re.compile(
+    r"(?im)^\s*FROM\s+[^\n#]*\b(?:windows|nanoserver|servercore|mcr\.microsoft\.com/windows)\b"
+)
+_WINDOWS_ONLY_ADVISORY_RE = re.compile(
+    r"(?i)\b(?:on\s+windows|windows\s+only|windows-only|windows\s+systems|yalnızca\s+windows|in\s+windows\s+environments)\b"
+)
+_UNIX_ADVISORY_RE = re.compile(
+    r"(?i)\b(?:linux|posix|unix|debian|ubuntu|alpine|macos|darwin)\b"
+)
+
+
+def detect_project_target_platforms(
+    root: Path,
+    *,
+    project_tree: ProjectTree | None = None,
+) -> set[str]:
+    """Projenin Dockerfile/Containerfile bildirimlerinden hedef dağıtım platformunu (ör. {'linux'}) çıkarır."""
+    platforms: set[str] = set()
+    has_windows_Marker = False
+    try:
+        with _borrow_project_tree(root, project_tree) as tree:
+            dirs_visited = 0
+            for dir_entry in tree.walk(skip_dirs=_LOCKFILE_SKIP_DIRS, reject_unsafe=False):
+                dirs_visited += 1
+                if dirs_visited > 80:
+                    break
+                for f in dir_entry.files:
+                    low = f.name.casefold()
+                    if low.endswith((".csproj", ".sln", ".bat", ".ps1")):
+                        has_windows_Marker = True
+                    if low == "dockerfile" or low.startswith("dockerfile.") or low == "containerfile":
+                        if f.size <= _MAX_FILE_BYTES:
+                            txt = tree.read_text(f, _MAX_FILE_BYTES, errors="replace", allow_empty=True)
+                            if _WINDOWS_IMAGE_RE.search(txt):
+                                platforms.add("windows")
+                            elif _LINUX_IMAGE_RE.search(txt):
+                                platforms.add("linux")
+    except Exception:  # noqa: BLE001
+        return set()
+    if has_windows_Marker:
+        platforms.add("windows")
+    return platforms
+
+
+def is_platform_mismatch(item: dict[str, Any], target_platforms: set[str]) -> bool:
+    """Proje yalnızca Linux hedeflerken zafiyet danışması yalnızca Windows'u etkiliyorsa True döner."""
+    if target_platforms != {"linux"}:
+        return False
+    text = " ".join(str(item.get(k) or "") for k in ("title", "summary", "details", "description"))
+    if not text.strip():
+        return False
+    return bool(_WINDOWS_ONLY_ADVISORY_RE.search(text) and not _UNIX_ADVISORY_RE.search(text))
+
+
+_CVE_GENERIC_WORDS = frozenset({
+    "the", "and", "for", "with", "from", "version", "versions", "prior", "before", "after",
+    "allows", "allow", "remote", "attacker", "attackers", "local", "user", "users",
+    "vulnerability", "vulnerable", "affected", "issue", "flaw", "bug", "cve", "cwe", "ghsa",
+    "package", "packages", "module", "modules", "library", "libraries", "function", "functions",
+    "method", "methods", "class", "classes", "object", "objects", "string", "strings",
+    "number", "numbers", "array", "arrays", "value", "values", "input", "inputs", "output",
+    "outputs", "data", "file", "files", "path", "paths", "code", "execution", "arbitrary",
+    "injection", "denial", "service", "dos", "rce", "xss", "csrf", "ssrf", "sqli", "xxe",
+    "traversal", "overflow", "buffer", "memory", "heap", "stack", "null", "none", "true",
+    "false", "undefined", "nan", "this", "self", "via", "when", "where", "which", "while",
+    "that", "these", "those", "into", "onto", "upon", "within", "without", "under", "over",
+    "above", "below", "between", "among", "against", "during", "including", "includes",
+    "include", "using", "used", "uses", "use", "cause", "causes", "caused", "lead", "leads",
+    "leading", "result", "results", "resulting", "craft", "crafted", "malicious", "specially",
+    "payload", "request", "requests", "response", "responses", "server", "client",
+    "application", "system", "systems", "windows", "linux", "macos", "android", "ios",
+    "default", "internal", "external", "public", "private", "static", "dynamic", "certain",
+    "specific", "multiple", "various", "other", "another", "same", "different", "improper",
+    "insufficient", "missing", "validation", "sanitization", "verification", "authentication",
+    "authorization", "permission", "permissions", "privilege", "privileges", "escalation",
+    "bypass", "disclosure", "information", "sensitive", "exposure", "leak", "crash", "panic",
+    "loop", "infinite", "regex", "regular", "expression", "redos", "prototype", "pollution",
+    "through", "until", "since", "can", "may", "will", "could", "should", "would", "all",
+    "any", "some", "such", "only", "also", "not", "are", "was", "were", "has", "have", "had",
+    "been", "being", "does", "did", "done",
+})
+_NON_SYMBOL_SUFFIXES = frozenset({
+    "py", "js", "mjs", "cjs", "ts", "tsx", "jsx", "go", "rs", "java", "kt", "rb", "php",
+    "cs", "c", "h", "cpp", "hpp", "json", "yaml", "yml", "toml", "xml", "html", "htm",
+    "md", "rst", "txt", "lock", "sh", "bash", "ini", "cfg", "conf", "com", "org", "net",
+    "io", "dev", "gov", "edu", "uk", "de", "fr", "jp", "cn", "ru", "jar", "whl", "tar",
+    "gz", "zip", "tgz", "exe", "dll", "so", "dylib",
+})
+_NON_SYMBOL_OWNERS = frozenset({
+    "www", "http", "https", "github", "gitlab", "bitbucket", "cve", "cwe", "ghsa", "osv",
+    "npm", "pypi", "maven", "cargo", "crates", "golang", "nodejs", "python", "apache",
+    "redhat", "debian", "ubuntu", "fedora", "suse", "oracle", "microsoft",
+})
+_CVE_CALL_PATTERN = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]{2,})\(\)")
+_CVE_BACKTICK_PATTERN = re.compile(r"`([A-Za-z_][A-Za-z0-9_]{2,}(?:\.[A-Za-z_][A-Za-z0-9_]{2,})*)(?:\(\))?`")
+_CVE_DOTTED_PATTERN = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]{2,})(?:\(\))?\b")
+
+
+def extract_cve_vulnerable_symbols(finding: Mapping[str, Any]) -> tuple[str, ...]:
+    """CVE/danışma bulgusundan açıklı fonksiyon, yöntem veya sınıf sembollerini çıkarır."""
+    if not isinstance(finding, Mapping):
+        return ()
+
+    pkg_raw = str(finding.get("package_name") or finding.get("package") or finding.get("name") or "").strip().casefold()
+    pkg_aliases = {pkg_raw, pkg_raw.replace("-", "_"), pkg_raw.split("/")[-1], pkg_raw.split(":")[-1]} - {""}
+    if pkg_raw == "pyyaml":
+        pkg_aliases.add("yaml")
+
+    ordered: list[str] = []
+    seen: set[str] = set()
+
+    def _add(sym: str) -> None:
+        cleaned = sym.strip().removesuffix("()").strip()
+        if not cleaned or len(cleaned) < 3:
+            return
+        low = cleaned.casefold()
+        if low in _CVE_GENERIC_WORDS or low in _STOPWORDS or low in pkg_aliases:
+            return
+        if low.isupper() and (low.startswith(("cve_", "cwe_", "ghsa_")) or len(low) <= 4):
+            return
+        if cleaned not in seen:
+            seen.add(cleaned)
+            ordered.append(cleaned)
+
+    for key in ("affected_symbols", "vulnerable_functions"):
+        explicit = finding.get(key)
+        if isinstance(explicit, (list, tuple, set)):
+            for item in explicit:
+                if isinstance(item, str) and item.strip():
+                    cleaned_item = item.strip().removesuffix("()").strip()
+                    _add(cleaned_item)
+                    if "." in cleaned_item:
+                        _add(cleaned_item.rsplit(".", 1)[-1])
+
+    texts = [
+        str(finding.get(field) or "")
+        for field in ("description", "title", "summary", "details")
+        if finding.get(field)
+    ]
+    combined = " ".join(texts)
+    if combined:
+        for match in _CVE_CALL_PATTERN.finditer(combined):
+            _add(match.group(1))
+        for match in _CVE_BACKTICK_PATTERN.finditer(combined):
+            token = match.group(1)
+            if "." in token:
+                owner, member = token.split(".", 1)[0], token.rsplit(".", 1)[-1]
+                if member.casefold() not in _NON_SYMBOL_SUFFIXES and owner.casefold() not in _NON_SYMBOL_OWNERS:
+                    _add(token)
+                    _add(member)
+            else:
+                _add(token)
+        for match in _CVE_DOTTED_PATTERN.finditer(combined):
+            owner, member = match.group(1), match.group(2)
+            owner_low, member_low = owner.casefold(), member.casefold()
+            if (
+                member_low in _NON_SYMBOL_SUFFIXES
+                or owner_low in _NON_SYMBOL_OWNERS
+                or owner_low in _CVE_GENERIC_WORDS
+                or member_low in _CVE_GENERIC_WORDS
+            ):
+                continue
+            _add(f"{owner}.{member}")
+            _add(member)
+
+    return tuple(ordered)
+
+
+def _collect_project_symbols(reachability: Mapping[str, Any]) -> set[str]:
+    """Erişilebilirlik nesnesindeki içe aktarılan/çağrılan sembolleri ve çağrı noktalarını toplar."""
+    observed: set[str] = set()
+
+    def _record_token(raw: str) -> None:
+        tok = raw.strip()
+        if not tok:
+            return
+        call_m = re.match(r"^([A-Za-z_$][A-Za-z0-9_$.]*)\s*\(", tok)
+        if call_m:
+            tok = call_m.group(1)
+        else:
+            tok = tok.removesuffix("()").strip()
+        if not tok or tok in {"<import>", "()"}:
+            return
+        observed.add(tok.casefold())
+        if "." in tok:
+            observed.add(tok.rsplit(".", 1)[-1].casefold())
+
+    for key in ("imported_symbols", "called_symbols", "matched_symbols"):
+        val = reachability.get(key)
+        if isinstance(val, (list, tuple, set)):
+            for entry in val:
+                if isinstance(entry, str):
+                    _record_token(entry)
+                elif isinstance(entry, Mapping):
+                    for k in ("symbol", "function", "name"):
+                        if isinstance(entry.get(k), str):
+                            _record_token(entry[k])
+        elif isinstance(val, Mapping):
+            for k in val:
+                if isinstance(k, str):
+                    _record_token(k)
+
+    for key in ("call_sites", "evidence"):
+        val = reachability.get(key)
+        if isinstance(val, (list, tuple, set)):
+            for entry in val:
+                if isinstance(entry, str):
+                    _record_token(entry)
+                    for m in _CVE_CALL_PATTERN.finditer(entry):
+                        _record_token(m.group(1))
+                elif isinstance(entry, Mapping):
+                    for k in ("symbol", "function", "name", "target", "call"):
+                        if isinstance(entry.get(k), str):
+                            _record_token(entry[k])
+                    for k in ("snippet", "code", "line_text"):
+                        if isinstance(entry.get(k), str):
+                            for m in _CVE_CALL_PATTERN.finditer(entry[k]):
+                                _record_token(m.group(1))
+        elif isinstance(val, Mapping):
+            for k in val:
+                if isinstance(k, str):
+                    _record_token(k)
+
+    return observed
+
+
+def evaluate_symbol_level_vex(
+    finding: Mapping[str, Any],
+    reachability: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Bulgu ve erişilebilirlik kanıtlarından sembol düzeyinde OpenVEX durum ve gerekçesini hesaplar."""
+    finding_map = finding if isinstance(finding, Mapping) else {}
+    reach_map = reachability if isinstance(reachability, Mapping) else {}
+
+    vulnerable_symbols = list(extract_cve_vulnerable_symbols(finding_map))
+    if not vulnerable_symbols:
+        fallback_syms = reach_map.get("vulnerable_symbols") or reach_map.get("symbols")
+        if isinstance(fallback_syms, (list, tuple, set)):
+            vulnerable_symbols = [str(s).strip() for s in fallback_syms if isinstance(s, str) and str(s).strip()]
+
+    raw_status = str(
+        reach_map.get("status")
+        or reach_map.get("verdict")
+        or finding_map.get("reachability_status")
+        or (
+            finding_map.get("status")
+            if str(finding_map.get("status") or "").strip().casefold()
+            in {"reachable", "not_imported", "imported_not_called", "unknown", "unreachable"}
+            else ""
+        )
+        or ""
+    ).strip().casefold()
+
+    lockfile_patched = bool(reach_map.get("lockfile_patched") or finding_map.get("lockfile_patched"))
+    platform_mismatch = bool(reach_map.get("platform_mismatch") or finding_map.get("platform_mismatch"))
+
+    observed_symbols = _collect_project_symbols(reach_map) | _collect_project_symbols(finding_map)
+    matched_symbols: list[str] = []
+    for sym in vulnerable_symbols:
+        sym_low = sym.casefold()
+        sym_tail = sym.rsplit(".", 1)[-1].casefold()
+        if sym_low in observed_symbols or sym_tail in observed_symbols:
+            matched_symbols.append(sym)
+
+    if raw_status == "not_imported":
+        vulnerable_symbol_called = False
+    elif vulnerable_symbols:
+        vulnerable_symbol_called = bool(matched_symbols)
+    elif raw_status == "reachable":
+        vulnerable_symbol_called = True
+    else:
+        vulnerable_symbol_called = False
+
+    if (
+        lockfile_patched
+        or platform_mismatch
+        or raw_status in {"not_imported", "imported_not_called"}
+        or (bool(vulnerable_symbols) and not vulnerable_symbol_called)
+    ):
+        vex_status = "not_affected"
+    elif raw_status == "reachable" or vulnerable_symbol_called:
+        vex_status = "affected"
+    else:
+        vex_status = "under_investigation"
+
+    if lockfile_patched or platform_mismatch:
+        vex_justification: str | None = "vulnerable_code_not_present"
+    elif (
+        raw_status in {"not_imported", "imported_not_called"}
+        or (bool(vulnerable_symbols) and not vulnerable_symbol_called)
+    ):
+        vex_justification = "vulnerable_code_not_in_execute_path"
+    else:
+        vex_justification = None
+
+    if vex_status == "under_investigation":
+        pre_status = str(reach_map.get("vex_status") or finding_map.get("vex_status") or "").strip()
+        if pre_status in {"not_affected", "affected", "fixed", "under_investigation"}:
+            vex_status = pre_status
+            pre_just = reach_map.get("vex_justification") or finding_map.get("vex_justification")
+            if isinstance(pre_just, str) and pre_just.strip():
+                vex_justification = pre_just.strip()
+
+    return {
+        "vulnerable_symbols": vulnerable_symbols,
+        "matched_symbols": matched_symbols,
+        "vulnerable_symbol_called": vulnerable_symbol_called,
+        "vex_status": vex_status,
+        "vex_justification": vex_justification,
+    }
+
+
+def verify_protocol_and_hook_reachability(
+    source_content: str,
+    *,
+    advisory_id: str = "",
+    go_stdlib_version: str = "",
+    framework: str = "",
+) -> dict[str, Any]:
+    """Protokol (Go HTTP/2 ALPN NextProtos) ve framework yaşam döngüsü kancası (Rails Warden/Devise) erişilebilirliğini doğrular."""
+    content = source_content if isinstance(source_content, str) else ""
+    adv = str(advisory_id or "").strip().upper()
+    fw = str(framework or "").strip().lower()
+
+    if (
+        fw == "rails_devise"
+        or "SessionExpireFromInitEnforcer" in content
+        or ("throw :warden" in content and (":timeout" in content or "DeviseFailure" in content))
+        or "DeviseFailure" in content
+    ):
+        return {
+            "reachable": True,
+            "reason": "rails_warden_timeout_hook_reaches_devise_failure",
+        }
+
+    is_go_http2 = (
+        "CVE-2026-39883" in adv
+        or "net/http" in content
+        or "NextProtos" in content
+        or "TLSNextProto" in content
+        or bool(str(go_stdlib_version or "").strip())
+    )
+    if is_go_http2:
+        h2_enabled_in_next_protos = bool(
+            re.search(r"NextProtos\s*:\s*(?:\[\]string\s*)?\{[^}]*['\"]h2['\"]", content)
+        )
+        tls_next_proto_disabled = bool(
+            re.search(r"TLSNextProto\s*:\s*make\s*\(\s*map", content)
+        )
+        if not h2_enabled_in_next_protos or tls_next_proto_disabled:
+            return {
+                "reachable": False,
+                "reason": "go_http2_alpn_disabled_or_outbound_only",
+            }
+
+    return {
+        "reachable": True,
+        "reason": "default_symbol_reachability",
+    }
+

@@ -52,7 +52,6 @@ class GitleaksGitHistoryPinTests(unittest.TestCase):
     def test_pinned_binary_runs_via_proc_fd(self):
         seen = []
         real = gitleaks_git_active._run_bounded
-
         def spy(command, env, cwd, pass_fds=()):
             seen.append((command[0], pass_fds))
             return real(command, env, cwd, pass_fds)

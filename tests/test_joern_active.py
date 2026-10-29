@@ -13,6 +13,7 @@ from project_analyzer import ProjectRejected
 from verified_exec import open_verified_executable
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "joern"
+JOERN_BENCHMARK = Path(__file__).resolve().parents[1] / "scripts" / "joern_benchmark.py"
 
 
 def _line(**overrides):
@@ -496,10 +497,7 @@ class PatternAndModelTests(unittest.TestCase):
 
 
 class BenchmarkScoringTests(unittest.TestCase):
-    @unittest.skipUnless(
-        (Path(__file__).resolve().parents[1] / "scripts" / "joern_benchmark.py").is_file(),
-        "maintainer benchmark helper is not shipped in Community source",
-    )
+    @unittest.skipUnless(JOERN_BENCHMARK.is_file(), "maintainer benchmark script is not distributed")
     def test_youden_score_per_category(self):
         import importlib.util
         spec = importlib.util.spec_from_file_location("joern_benchmark", Path(__file__).resolve().parents[1] / "scripts" / "joern_benchmark.py")

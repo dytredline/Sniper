@@ -43,14 +43,14 @@ DIR_GROUP_LABELS = {
 DEFAULT_SKIP_DIRS = ALWAYS_SKIP_DIRS.union(*OPTIONAL_DIR_GROUPS.values())
 
 MB = 1_000_000
-DEFAULT_MAX_FILES = _env_limit("SNIPER_PROJECT_MAX_FILES", 10_000, 100, 50_000)
-DEFAULT_MAX_FILE_BYTES = 1 * MB
-DEFAULT_MAX_TOTAL_BYTES = _env_limit("SNIPER_PROJECT_MAX_BYTES", 150 * MB, 1 * MB, 1_000 * MB)
+DEFAULT_MAX_FILES = _env_limit("SNIPER_PROJECT_MAX_FILES", 10_000, 100, 500_000)
+DEFAULT_MAX_FILE_BYTES = _env_limit("SNIPER_PROJECT_MAX_FILE_BYTES", 1 * MB, 100_000, 200 * MB)
+DEFAULT_MAX_TOTAL_BYTES = _env_limit("SNIPER_PROJECT_MAX_BYTES", 150 * MB, 1 * MB, 10_000 * MB)
 
 # Seçeneklerle yükseltilebilen üst sınırlar.
-HARD_MAX_FILES = 50_000
-HARD_MAX_FILE_BYTES = 20 * MB
-HARD_MAX_TOTAL_BYTES = 1_000 * MB
+HARD_MAX_FILES = _env_limit("SNIPER_HARD_MAX_FILES", 50_000, 10_000, 500_000)
+HARD_MAX_FILE_BYTES = _env_limit("SNIPER_HARD_MAX_FILE_BYTES", 20 * MB, 1 * MB, 200 * MB)
+HARD_MAX_TOTAL_BYTES = _env_limit("SNIPER_HARD_MAX_TOTAL_BYTES", 1_000 * MB, 100 * MB, 10_000 * MB)
 
 _ALLOWED_KEYS = {"preset", "include_dirs", "include_generated", "include_non_utf8", "max_file_mb", "max_total_mb", "max_files",
                  "skipped_only", "changed_only", "base_ref"}

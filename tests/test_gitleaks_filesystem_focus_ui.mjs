@@ -14,8 +14,9 @@ function fixture() {
     activeElement: null,
     getElementById: id => node(id),
     querySelector(selector) {
-      if (selector === 'meta[name="sniper-local-home"]') return { content: '/Users/sniper-test' };
-      return selector === '[data-action="open-gitleaks-filesystem"]' ? launcher : null;
+      if (selector === '[data-action="open-gitleaks-filesystem"]') return launcher;
+      if (selector === 'meta[name="sniper-local-home"]') return { content: '/home/community-user' };
+      return null;
     },
     addEventListener(type, listener, capture = false) {
       listeners.set(type, [...(listeners.get(type) || []), { listener, capture: capture === true }]);
@@ -107,7 +108,7 @@ test('Tab and Shift+Tab wrap within enabled dialog controls without a scan', asy
   const backward = await f.key('Tab', true);
   assert.equal(backward.defaultPrevented, true);
   assert.equal(f.document.activeElement, f.consent);
-  await f.input('/Users/sniper-test/synthetic-project'); await f.optIn();
+  await f.input('/home/community-user/synthetic-project'); await f.optIn();
   assert.equal(f.submit.disabled, false);
   f.submit.focus(); await f.key('Tab');
   assert.equal(f.document.activeElement, f.closeButton);

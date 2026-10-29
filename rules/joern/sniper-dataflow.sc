@@ -234,7 +234,9 @@ def assignmentTargetName(node: StoredNode): Option[(Method, String)] = {
   while (result.isEmpty && current.nonEmpty && steps < 6) {
     current.get match {
       case c: Call if c.name == "<operator>.assignment" =>
-        argAt(c, 1).collect { case id: Identifier => id.name }.foreach(n => result = Some((c.method, n)))
+        argAt(c, 1).collect { case id: Identifier => id.name }.foreach(n =>
+          scala.util.Try(c.method).toOption.filter(_ != null).foreach(m => result = Some((m, n)))
+        )
       case _ =>
     }
     current = current.flatMap(n => scala.util.Try(n.astParent).toOption)
@@ -256,8 +258,9 @@ def wrongCollectionSlot(elements: List[StoredNode]): Boolean = {
     receiverName(get) match {
       case None => false
       case Some(name) =>
-        val method = get.method
-        val calls = method.call.l.filter(c => receiverName(c).contains(name)).sortBy(c => (c.lineNumber.map(_.intValue).getOrElse(0), c.columnNumber.map(_.intValue).getOrElse(0)))
+        val calls = scala.util.Try(get.method).toOption.filter(_ != null).toList.flatMap(_.call.l)
+          .filter(c => receiverName(c).contains(name))
+          .sortBy(c => (c.lineNumber.map(_.intValue).getOrElse(0), c.columnNumber.map(_.intValue).getOrElse(0)))
         argAt(get, 1) match {
           case Some(keyLit) if literalText(keyLit).nonEmpty =>
             // Map: girdiyi taşıyan put çağrılarının anahtarları
@@ -710,7 +713,7 @@ def algorithmDetail(e: Expression, depth: Int = 0): String = if (depth > 4) "{}"
         sink("path", fn("move_uploaded_file"), Seq(2)) ++
         sink("xss", graph.call.name("echo|print|printf|vprintf|print_r|exit|die"), Seq.empty, dropLiterals = true) ++
         sink("redirect", fn("header").filter(c => argAt(c, 1).exists(_.code.matches("(?is)^\\s*['\"]\\s*location\\s*:.*"))), Seq(1)) ++
-        sink("deserialize", fn("unserialize|yaml_parse"), Seq(1)) ++
+        sink("deserialize", fn("unserialize|igbinary_unserialize|yaml_parse|yaml_parse_file|msgpack_unpack"), Seq(1)) ++
         sink("ssrf", fn("curl_init|fsockopen|get_headers"), Seq(1)) ++
         sink("ssrf", fn("curl_setopt").filter(c => argAt(c, 2).exists(_.code.contains("CURLOPT_URL"))), Seq(3)) ++
         sink("ldap", fn("ldap_search|ldap_list|ldap_read"), Seq(3)) ++
@@ -776,7 +779,7 @@ def algorithmDetail(e: Expression, depth: Int = 0): String = if (depth > 4) "{}"
         sink("xss", graph.call.name("html_safe|raw|safe_concat"), Seq(0, 1)) ++
         sink("path", graph.call.name("send_file|render_file"), Seq(1)) ++
         sink("path", onReceiver("open|read|readlines|write|binread|binwrite|delete|unlink|new|foreach|rm|rm_rf|cp|mv|copy|entries|glob", "File|IO|Pathname|FileUtils|Dir"), Seq(1)) ++
-        sink("deserialize", onReceiver("load|unsafe_load|restore|load_file", "Marshal|YAML|Psych|Oj"), Seq(1)) ++
+        sink("deserialize", onReceiver("load|unsafe_load|restore|load_file|unpack", "Marshal|YAML|Psych|Oj|MessagePack"), Seq(1)) ++
         sink("ssrf", onReceiver("get|post|put|delete|head|patch|get_response|start|open", "Net::HTTP|HTTParty|RestClient|Faraday|Excon|HTTP|URI"), Seq(1))
       (request, external, sinks)
 
@@ -828,7 +831,7 @@ def algorithmDetail(e: Expression, depth: Int = 0): String = if (depth > 4) "{}"
           .filterNot(fixedPathPrefix) ++
         sink("ssrf", module("axios(:(get|post|put|delete|head|patch|request|options))?|node-fetch|got(:(get|post|put|delete|head|patch|stream))?|needle(:.*)?|superagent(:.*)?|undici:(request|fetch)|request(:(get|post))?|(node:)?https?:(get|request)|fetch"), Seq(1))
           .filterNot(fixedHost) ++
-        sink("deserialize", module("node-serialize:unserialize|serialize-to-js:deserialize|funcster:deepDeserialize"), Seq(1))
+        sink("deserialize", module("node-serialize:unserialize|serialize-to-js:deserialize|funcster:deepDeserialize|cryo:parse|flatted:parse|telejson:parse"), Seq(1))
       (request, external, sinks)
 
     case "python" =>
@@ -885,7 +888,7 @@ def algorithmDetail(e: Expression, depth: Int = 0): String = if (depth > 4) "{}"
         sink("eval", module("__builtin\\.(eval|exec|compile)"), Seq(1)) ++
         sink("ssti", module("flask\\.py:<module>\\.render_template_string|jinja2\\.py:<module>\\.(Template|Environment\\.from_string)(\\.__init__)?|" +
           "mako(/template)?\\.py:<module>\\.Template(\\.__init__)?") ++ graph.call.name("from_string|render_template_string"), Seq(1)) ++
-        sink("deserialize", module("(c?[pP]ickle|_pickle|dill|marshal|shelve|jsonpickle)\\.py:<module>\\.(loads|load|open|decode)"), Seq(1)) ++
+        sink("deserialize", module("(c?[pP]ickle|_pickle|dill|cloudpickle|joblib|torch|marshal|shelve|jsonpickle)\\.py:<module>\\.(loads|load|open|decode)"), Seq(1)) ++
         sink("deserialize", module("yaml\\.py:<module>\\.(load|load_all|unsafe_load|full_load)")
           .filterNot(c => keyword(c, "Loader").exists(_.code.contains("Safe")) || argAt(c, 2).exists(_.code.contains("Safe"))), Seq(1)) ++
         (sink("ssrf", module("(requests|httpx)\\.py:<module>\\.(get|post|put|delete|head|patch|options)"), Seq(1)) ++
@@ -1493,7 +1496,7 @@ def algorithmDetail(e: Expression, depth: Int = 0): String = if (depth > 4) "{}"
   var written = 0
   def location(n: StoredNode): String = {
     val (file, methodName) = n match {
-      case node: CfgNode => (node.method.filename, node.method.name)
+      case node: CfgNode => scala.util.Try((node.method.filename, node.method.name)).getOrElse(("", ""))
       case _ => ("", "")
     }
     val line = n match { case node: CfgNode => node.lineNumber.map(_.intValue).getOrElse(-1); case _ => -1 }
@@ -1520,7 +1523,7 @@ def algorithmDetail(e: Expression, depth: Int = 0): String = if (depth > 4) "{}"
     for ((label, sources) <- Seq("request" -> requestSeeds, "external" -> externalSeeds, "stored" -> storedSeeds);
          group <- sinkGroups if sources.nonEmpty && group.nonEmpty) {
       val flows = group.reachableByFlows(sources).l
-      flows.foreach { flow =>
+      flows.foreach { flow => scala.util.Try {
         val elements = flow.elements
         if (written < maxFlows && elements.nonEmpty) {
           val last = elements.last
@@ -1577,9 +1580,9 @@ def algorithmDetail(e: Expression, depth: Int = 0): String = if (depth > 4) "{}"
             }
           }
         }
-      }
+      } }
     }
-    if (!isJava && lang != "c") {
+    if (!isJava && lang != "c") scala.util.Try {
       // Dinamik dillerde Joern'ün kaçırabildiği iki kısa yol (sözdizimsel, yöntem içi):
       //  1) kaynak doğrudan hedef ifadesinin içinde: fmt.Fprintf(w, "%s", r.URL.Path);
       //  2) hedefteki yerel değişken yöntemde TEK kez ve kaynağı içeren bir ifadeyle atanmış:

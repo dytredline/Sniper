@@ -131,10 +131,15 @@ def _checked_executable() -> Path:
     if not exe.is_absolute() or exe.is_symlink():
         raise SchemathesisUnavailable("Schemathesis çalışma zamanı kullanılamıyor.")
     try:
-        mode = exe.stat().st_mode
-        if not stat.S_ISREG(mode) or not os.access(exe, os.X_OK):
-            raise OSError("çalıştırılabilir değil")
-        digest = hashlib.sha256(exe.read_bytes()).hexdigest()
+        fd = os.open(exe, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC)
+        with os.fdopen(fd, "rb") as stream:
+            metadata = os.fstat(stream.fileno())
+            if (not stat.S_ISREG(metadata.st_mode)
+                    or metadata.st_uid != os.geteuid()
+                    or metadata.st_mode & 0o022
+                    or not os.access(exe, os.X_OK)):
+                raise OSError("güvensiz çalıştırılabilir")
+            digest = hashlib.file_digest(stream, "sha256").hexdigest()
     except OSError as exc:
         raise SchemathesisUnavailable("Schemathesis çalışma zamanı kullanılamıyor.") from exc
     if digest != ST_EXECUTABLE_SHA256:

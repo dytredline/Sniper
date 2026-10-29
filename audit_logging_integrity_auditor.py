@@ -167,6 +167,12 @@ TAMPER_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"""writeFileSync\s*\(\s*[^,]*""" + _LOG_TARGET, re.IGNORECASE),
 )
 
+LOG_DISABLE_RE = re.compile(
+    r"\blogging\.disable\s*\(\s*(?:logging\.(?:CRITICAL|ERROR|WARNING|INFO|FATAL)|sys\.maxsize|\d{2,})\s*\)"
+    r"|\b(?:audit_?logger|security_?logger|logger|log)\.disabled\s*=\s*(?:True|true|1)\b"
+    r"|\b(?:AUDIT_LOG_ENABLED|ENABLE_AUDIT_LOG|SECURITY_LOGGING_ENABLED)\s*=\s*(?:False|false|0)\b"
+)
+
 
 # --- Helpers -----------------------------------------------------------------
 
@@ -928,6 +934,27 @@ def audit_logging_inline(
         stripped = line.strip()
         if not stripped or _is_comment(stripped):
             continue
+        if LOG_DISABLE_RE.search(line):
+            _add(
+                _make_logg_finding(
+                    severity="high",
+                    title="Denetim veya uygulama günlüklemesi çalışma zamanında devre dışı bırakılıyor",
+                    description=(
+                        "Kod içinde logging.disable(logging.CRITICAL), logger.disabled = True veya "
+                        "AUDIT_LOG_ENABLED = False ile günlükleme kapatılıyor. Güvenlik olayları ve "
+                        "saldırı izleri tamamen gizlenebilir (CWE-778)."
+                    ),
+                    evidence=stripped,
+                    recommendation=(
+                        "Üretim kodunda günlüklemeyi devre dışı bırakan çağrıları kaldırın; denetim günlüğü "
+                        "kanalını uygulama ayarlarından bağımsız ve kapatılamaz biçimde yapılandırın."
+                    ),
+                    cwe="CWE-778",
+                    control_id="SNIPER-LOGG-06",
+                    filename=clean_filename,
+                    line=idx + 1,
+                )
+            )
         if not any(pattern.search(line) for pattern in TAMPER_PATTERNS):
             continue
         _add(
@@ -1077,3 +1104,75 @@ def audit_logging_project(
         "unlogged_mutation_count": unlogged_mutation_count,
         "controls_evaluated": list(AUDIT_LOGGING_CONTROLS_EVALUATED),
     }
+
+
+_FORENSIC_LOG_CRLF_RE = re.compile(
+    r"(?:logger|logging|log)\.(?:info|warning|warn|error|critical)\s*\([^\n]*(?:\b(?:request|req)\.[A-Za-z0-9_]+|\b(?:user_input|untrusted_input|raw_header)\b)"
+)
+_FORENSIC_LOG_SANITIZE_RE = re.compile(
+    r"""(?:replace\s*\(\s*["'](?:\\n|\\r|\n|\r)["']|json\.dumps|repr\s*\()"""
+)
+_FORENSIC_CRITICAL_DEF_RE = re.compile(
+    r"def\s+(?:delete_user|reset_password|grant_admin|change_role|revoke_token|transfer_funds)\s*\("
+)
+_FORENSIC_AUDIT_CALL_RE = re.compile(r"(?:log|audit)", re.IGNORECASE)
+
+
+def audit_forensic_log_integrity(
+    raw_content: str,
+    *,
+    filename: str = "audit_log.py",
+) -> dict[str, Any]:
+    text = str(raw_content or "")
+    findings: list[dict[str, Any]] = []
+    lines = text.splitlines()
+
+    for line_idx, line_text in enumerate(lines, start=1):
+        if _FORENSIC_LOG_CRLF_RE.search(line_text) and not _FORENSIC_LOG_SANITIZE_RE.search(line_text):
+            findings.append(
+                {
+                    "id": "SNIPER-LOG-CRLF-01",
+                    "rule_id": "SNIPER-LOG-CRLF-01",
+                    "control_id": "SNIPER-LOG-CRLF-01",
+                    "severity": "high",
+                    "cwe": "CWE-117",
+                    "reference": "CWE-117",
+                    "category": "logging",
+                    "title": "Denetim kaydında (Log) satır sonu (CRLF) enjeksiyonu ve sahte log üretimi riski",
+                    "description": "Kullanıcı girdisi satır sonu (CR/LF) karakterlerinden arındırılmadan doğrudan denetim kaydına yazılıyor.",
+                    "file": filename,
+                    "line": line_idx,
+                    "evidence": line_text.strip()[:240],
+                    "recommendation": "Log girdilerini json.dumps(), repr() veya .replace('\\n', '') ile sterilize edin.",
+                }
+            )
+
+    for match in _FORENSIC_CRITICAL_DEF_RE.finditer(text):
+        body_window = text[match.end() : match.end() + 350]
+        if not _FORENSIC_AUDIT_CALL_RE.search(body_window):
+            line_no = _line_number_for_offset(text, match.start())
+            findings.append(
+                {
+                    "id": "SNIPER-LOG-MISSING-02",
+                    "rule_id": "SNIPER-LOG-MISSING-02",
+                    "control_id": "SNIPER-LOG-MISSING-02",
+                    "severity": "medium",
+                    "cwe": "CWE-778",
+                    "reference": "CWE-778",
+                    "category": "logging",
+                    "title": "Kritik yetki/şifre/silme işleminde adli denetim kaydı (Audit Trail) eksikliği",
+                    "description": "Kritik yetki, şifre veya silme işlemi gerçekleştiren fonksiyonda adli denetim (audit/log) kaydı bulunamadı.",
+                    "file": filename,
+                    "line": line_no,
+                    "evidence": match.group(0).strip()[:240],
+                    "recommendation": "Kritik durum değişikliği işlemlerinde kimlik, zaman damgası ve işlem sonucunu içeren adli denetim kaydı üretin.",
+                }
+            )
+
+    return {
+        "format": "sniper-forensic-log-integrity/1",
+        "filename": filename,
+        "count": len(findings),
+        "findings": findings,
+    }
+

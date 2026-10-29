@@ -91,7 +91,7 @@ bir güvenlik kararıdır.
 | Kayıtlı kapsam (`default`) | Test/vendor/paket/derleme dizinleri atlanır; dosya 1 MB, toplam 150 MB, 10.000 dosya sınırı. |
 | Tümünü dahil ederek (`preset: all`) | Atlanan dizin grupları (`tests`, `vendor`, `packages`, `build`), üretilmiş ve UTF-8 olmayan dosyalar dahil. |
 | Yalnız atlananlar (`preset: skipped`) | Normal taramanın dışında kalan dosyalar; önceki analiz `base_audit_id` ile bağlanır. |
-| Yalnız değişenler (git) | `changed_only` + `base_ref` (ör. `HEAD`, `origin/main`, ya da `prj_…` analiz kimliği). |
+| Yalnız değişenler (git) | `changed_only` + `base_ref` (ör. `HEAD`, `origin/main`, ya da `prj_…` analiz kimliği); değişen dosyalarla birlikte geçişli çağıran konisini tarar. |
 
 **Monorepo:** Alt projeler ayrı özetlenir: dosya, dil, önem ve bağımlılık envanteri. Tanınan biçimler:
 - npm/yarn workspaces, pnpm, lerna;
@@ -114,11 +114,56 @@ bir güvenlik kararıdır.
 | Rust | actix-web, axum, rocket, warp; `unsafe`/FFI bilgi notu |
 | C / C++ | argv, getenv, stdin, ağ ve CGI kaynakları → komut, biçim dizgesi, bellek taşması, SQL, yol |
 
+**Fuzz harness çıktısı:** `asan_project_proof.synthesize_sanitizer_fuzz_harness`, C/C++ LibFuzzer, Rust
+cargo-fuzz, Go `testing.F`, Python Atheris, Java Jazzer ve JavaScript/TypeScript fast-check biçimlerini destekler.
+Go kaynaklarında tek parametreli top-level `[]byte`/`string`; Python'da tipli üst düzey `bytes`/`str`;
+Java'da tekil `public static byte[]`/`String`; JS/TS'de doğrudan export edilen `Buffer`/`Uint8Array`/`string`
+parser, decoder veya normalizer hedefleri çözümlenir. Yorum ve literal sahte hedefleri yok sayılır; çoklu aday,
+overload belirsizliği, dinamik export, kaçış yolu ve desteklenmeyen imzalar fail-closed reddedilir. Üretilen
+komutlar ve harness metni önce inceleme içindir; ürün bunları otomatik çalıştırmaz. Python ile JS/TS `--check-target` kipi yerel hedefi gerçek runtime
+ile yükler; `runtime_available` Atheris/fast-check hazır oluşunu, Java'daki `execution: not_run` ise Jazzer ve
+proje classpath hazırlığını açıkça gösterir. İsteğe bağlı gerçek koşu için
+`asan_project_proof.execute_sanitizer_fuzz_runtime` çağrısına `confirm_local=True`, mutlak runtime yolu ve SHA-256,
+motor desteği olarak Atheris modülü / fast-check `node_modules` dizini / Jazzer JAR yolu ve SHA-256 verilir; Jazzer
+için javac yolu ve SHA-256 da zorunludur. `/usr` dışı dağıtımlarda runtime'ı içeren güvenli `runtime_root` ayrıca
+verilir. Kabul edilen sınırlar: 1..10.000 iterasyon, 0..2.147.483.647 seed, 1..1.048.576 girdi baytı, 1..30 saniye
+ve 1.024..262.144 çıktı baytı. Motorlar Sniper ile gelmez ve indirilmez; eksik yapılandırma açıkça
+`runtime_missing/not_run` döner.
+
 **Doğrulanmış ve olası akış:**
 - **Doğrulanmış veri akışı:** kaynaktan hedefe kesin yol.
 - **Olası veri akışı:** iki ya da daha çok çağrılık zincir; ayrı katmandır.
 - **Yönetici yetkisi:** Yetki/nonce denetimli yöntemlerdeki akışlar "YÖNETİCİ YETKİSİ" rozetiyle düşük önemli not
   olarak gösterilir.
+
+**Toplu GraphQL sözleşme korelasyonu:** bulk çalışma tamamlandığında `graphql_service_graph`, bir depodaki yerel
+SDL root `Query`/`Mutation`/`Subscription` alanlarını başka bir depodaki adlandırılmış literal operasyonlarla
+karşılaştırır. Federation/stitching `extend schema`/`extend type` root tanımları, aynı belge içindeki döngüsüz named
+root fragment spread'leri ve gövde SHA-256 değeri doğrulanan Apollo v1 `persisted-query-manifest.json` girdileri
+aynı exact sözleşmeye indirgenir.
+Kenar anahtarı `exact operation type + root field` biçimindedir; yalnız iki parça da birebir eşleşir ve producer ile
+consumer farklı depolardaysa kenar oluşur. Dynamic/interpolated sorgular, inline/çözülemeyen/döngülü veya yanlış
+root type fragment'leri, introspection belgeleri, doğrulanmayan persisted hash/type/name alanları, aynı-depo
+eşleşmeleri, birden çok producer ile belirsizleşen sözleşmeler ve boyut/adet sınırını aşan girdiler fail-closed
+sonuç üretmez. Özet yalnız depo etiketi, operation türü ve root field taşır; manifest kimliği, sorgu gövdesi, ham
+endpoint veya token taşımaz.
+
+**Yerel runtime service trace korelasyonu:** seçili bir deponun kökünde isteğe bağlı
+`sniper-runtime-service-trace.json` bulunabilir. Exact format `sniper-runtime-service-trace/1` olur. Belge yalnız
+`format`, `repository`, `generated_at`, `nonce`, `observations` ve `integrity_sha256` alanlarını; her observation
+ise yalnız `source_repository`, `target_repository`, `protocol`, `operation` ve `event_count` alanlarını taşır.
+`source_repository` manifestin bulunduğu seçili depo kimliği olmalıdır. Desteklenen protocol anahtarları `http`,
+`webhook-http`, `kafka` ve `graphql` ile sınırlıdır; operation mevcut statik kenarın redacted operation anahtarıyla
+birebir aynı olmalıdır. Bütünlük değeri, `integrity_sha256` çıkarıldıktan sonra `sort_keys=true`, boşluksuz ayraçlar
+ve ASCII JSON ile kanonikleştirilen UTF-8 içeriğin SHA-256 değeridir.
+
+Her manifest en çok **256 KB** ve **128 observation**; toplu çalıştırma en çok 4.096 kabul edilmiş observation ve
+300 seçili depo ile sınırlıdır. `event_count` 1..1.000.000 aralığındadır. Dynamic/belirsiz operation, ek/eksik alan,
+geçersiz zaman/nonce/hash, duplicate observation/nonce, repo kimliği uyuşmazlığı, oversize/adet aşımı, symlink ve
+seçili olmayan hedef fail-closed reddedilir. Trace bulunmaması veya reddedilmesi statik kenarı düşürmez. Çıktı
+trace URL'si, request/response body, token, secret, timestamp, nonce veya hash taşımaz. SHA-256 yalnız deterministik
+bütünlük denetimidir; imza, kaynak kimlik doğrulaması ya da olayın gerçekten gerçekleştiğine dair tek başına kanıt
+değildir.
 
 **IaC** (Trivy gerektirmez; ayrıntı [IAC-MOTORU.md](IAC-MOTORU.md)):
 - **Desteklenenler:** Terraform (AWS/GCP/Azure; değişken varsayılanları, tfvars, locals, yerel modül
@@ -134,7 +179,8 @@ bir güvenlik kararıdır.
   orta önemdedir.
 
 **Ek denetimler:**
-- Rota yetki envanteri: korumasız rota (CWE-862) ve IDOR adayı (CWE-639).
+- Rota yetki envanteri: Python, JavaScript/TypeScript, Ruby/Rails, Spring ve ASP.NET için korumasız rota
+  (CWE-862) ve görünür principal/owner/rol bağlamı olmayan IDOR adayı (CWE-639).
 - STRIDE tehdit modeli.
 - OpenAPI sözleşmesi ↔ kod rotaları karşılaştırması: gölge uç ve kimlik doğrulama uyuşmazlığı.
 - Lisans uyumu.
@@ -186,7 +232,11 @@ Ayrıntı: [OSV-CEVRIMDISI.md](OSV-CEVRIMDISI.md).
   PEP 735 `include-group` kayıtları paket adı sayılmaz ve yanlış TOML değer türleri kapalı kalır.
 - Go: go.mod/go.sum (replace dahil).
 - Maven ve Gradle: proje içi üst POM; isteğe bağlı `SNIPER_MAVEN_REPOSITORY` altındaki çevrimdışı üst POM/import BOM; Gradle ve version catalog.
-- Diğerleri: Gemfile.lock, Cargo.lock, composer.lock, NuGet ve Hex `mix.lock`.
+- Diğerleri: Gemfile.lock, Cargo.lock, composer.lock, NuGet/Paket `paket.lock`, Hex `mix.lock` ve Terraform
+  `.terraform.lock.hcl` içindeki provider adresi/sabit sürüm seçimleri. Paket yalnız çözülmüş NUGET paketlerini
+  NuGet bileşeni olarak alır; uzak GITHUB kayıtlarını ve sürüm kısıtlarını paket sürümü saymaz. Terraform provider
+  kayıtları SBOM envanterine girer; OSV ekosistemi gibi gösterilmez ve çevrimdışı açık taramasında desteklenmeyen
+  ekosistem olarak sayılır.
 - Alt dizinlerdeki manifestler de okunur.
 - Doğrudan manifest başına en çok 2 MB okunur; bu sınırı aşan dosya paket kökeni üretmez.
 
@@ -541,12 +591,20 @@ geniş bağımsız korpusun yerini almaz.
 ## 13. Bilinen sınırlar
 
 - **Canlı kanıt kapsamı dar:** Statik açık yönlendirme, CWE-79/HTML yansıma, CWE-942 kimlik bilgili CORS
-  yansıması ve CWE-1021 clickjacking başlık bulguları yalnız `runtime_proof`
-  izni verilmiş kritik olmayan `127.0.0.1` hedefinde tek GET ile doğrulanabilir. Yönlendirme izlenmez; HTML
+  yansıması, CWE-1021 clickjacking başlıkları ve CWE-918 SSRF callback bulguları yalnız `runtime_proof`
+  izni verilmiş kritik olmayan `127.0.0.1` hedefinde doğrulanabilir. SSRF kataloğu sabit GET, form-encoded POST,
+  gecikmeli callback, tek kontrollü aynı-origin yönlendirme ve yerel UDP DNS/OOB-benzeri korelasyon profilleri sunar.
+  Her çalışma yalnız bir ilk tetikleme ve en çok bir callback kabul eder; yönlendirme profili en çok bir ek hedef
+  isteği yapar. Hedef ve yönlendirme protokolü/hostu/portu allowlist ile doğrulanır; yönlendirme sorgusu üretilen
+  callback ile tam eşleşmezse izlenmez. Toplam süre 4–5 saniye, POST gövdesi 1 KiB, Location 1 KiB, hedef yanıt
+  gövdesi 0 bayt ve redirect sayısı 1 ile sınırlıdır. Canary çalışanı her sonuçta durdurulup birleştirilir; kullanıcı
+  dış canary veya hedef veremez. HTML
   profilinde betik çalıştırılmaz; CORS ve clickjacking profillerinde gövde okunmaz ve otomatik triyaj kararı
   verilmez. Clickjacking eksikliği yalnız gövde taşıyabilen 2xx HTML/XHTML yanıtta doğrulanır; ayrı CSP başlıkları
   ayrı politika kalır, bozuk `frame-ancestors` kaynakları koruma sayılmaz, 204/205 ve açıkça sıfır uzunluklu
-  yanıtlar doğrulanmaz. Diğer web bulgu sınıfları için genel
+  yanıtlar doğrulanmaz. SSRF hedef yanıt gövdesi, POST gövdesi, DNS paketi ve callback URL/token değeri raporlanmaz
+  veya saklanmaz. Belirsiz/dinamik profil `not_run` olarak çalıştırılmadan reddedilir; dış ya da portu değişen yönlendirme kanıt olarak
+  izlenmez. Diğer web bulgu sınıfları için genel
   DAST bağlantısı yoktur.
 - **MCP ajan triyajı var; yerleşik model çıkarımı yok:** MCP bulguları okuyup öneri kaydedebilir. Tarama kataloğu ve
   bekleyen tarama isteği araçları kullanıcı belirteci ister; istek ayrı yönetici API onayı olmadan çalışmaz.

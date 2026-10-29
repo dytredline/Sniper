@@ -2,6 +2,7 @@ const state = {
   targets: [], scans: [], engagements: [], labRuns: [], projectAudits: [], projectAuditTotal: 0, dependencySecurity: null, tooling: null, toolingReadiness: null, dashboard: null, selectedTarget: null,
   selectedEngagement: null, selectedTest: null, selectedFinding: null, selectedLabRun: null, workspaceTab: "overview",
   methodologyCategory: "all", methodologyQuery: "", findingFilter: "all", scanTimer: null, scanDiffResult: null, selectedScan: null,
+  dependencyPageOffset: 0, dependencyPageLimit: 100, dependencyRequestSeq: 0,
   reportHistory: { scans: [], offset: 0, anchor: null, hasMore: false, nextOffset: null, previousOffsets: [], initialized: false, loading: false, pendingDirection: null, error: "", generation: 0 },
 };
 
@@ -449,23 +450,203 @@ function isMaliciousDependency(item) {
   return String(item.vulnerability_id || "").startsWith("MAL-") || String(item.title || "").startsWith("Kötü amaçlı paket:");
 }
 
+function filterDependencyFindings(findings) {
+  const query = String($("#dependency-filter-query")?.value ?? state.dependencyQuery ?? "").trim().toLowerCase();
+  const source = String($("#dependency-filter-source")?.value ?? state.dependencySourceFilter ?? "all").toLowerCase();
+  const severity = String($("#dependency-filter-severity")?.value ?? state.dependencySeverityFilter ?? "all").toLowerCase();
+  const status = String($("#dependency-filter-status")?.value ?? state.dependencyStatusFilter ?? "all").toLowerCase();
+  return findings.filter(item => {
+    if (source !== "all" && String(item.source || "").toLowerCase() !== source) return false;
+    if (severity !== "all" && String(item.severity || "").toLowerCase() !== severity) return false;
+    if (status !== "all" && String(item.status || "").toLowerCase() !== status) return false;
+    if (query) {
+      const haystack = `${item.vulnerability_id || ""} ${item.package_name || ""} ${item.installed_version || ""} ${item.title || ""} ${item.project_path || ""}`.toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
+    return true;
+  });
+}
+
+async function refreshDependencyFindings({ resetOffset = false } = {}) {
+  if (resetOffset) state.dependencyPageOffset = 0;
+  const requestSeq = ++state.dependencyRequestSeq;
+  const params = new URLSearchParams({
+    limit: String(state.dependencyPageLimit),
+    offset: String(state.dependencyPageOffset),
+    query: String($("#dependency-filter-query")?.value || "").trim(),
+    source: String($("#dependency-filter-source")?.value || "all"),
+    severity: String($("#dependency-filter-severity")?.value || "all"),
+    status: String($("#dependency-filter-status")?.value || "all"),
+  });
+  const data = await api(`/api/dependency-security?${params}`);
+  if (requestSeq !== state.dependencyRequestSeq) return null;
+  state.dependencySecurity = data;
+  renderDependencySecurity();
+  return data;
+}
+
+function renderDependencyFindingDetail(finding, feedbackMessage = "") {
+  const panel = $("#dependency-finding-detail");
+  if (!panel) return;
+  if (!finding) {
+    panel.classList.add("hidden");
+    panel.innerHTML = "";
+    return;
+  }
+  const refs = (Array.isArray(finding.references) ? finding.references : [])
+    .filter(ref => typeof ref === "string" && /^https?:\/\//i.test(ref))
+    .slice(0, 5);
+  panel.classList.remove("hidden");
+  panel.innerHTML = `
+    <div class="panel-head">
+      <div>
+        <p class="eyebrow">${esc(String(finding.source || "").toUpperCase())} · ${esc(finding.id)}</p>
+        <h3>${esc(finding.vulnerability_id)} · ${esc(finding.package_name)} ${esc(finding.installed_version || "")}</h3>
+        <small>${esc(finding.project_path || "")}${finding.target ? ` · ${esc(finding.target)}` : ""}</small>
+      </div>
+      <span class="status-pill ${esc(finding.status)}">${esc(statusLabel(finding.status))}</span>
+    </div>
+    <p><b>${esc(finding.title || "Başlık yok")}</b></p>
+    <p>${esc(finding.summary || "Ayrıntılı açıklama bulunmuyor.")}</p>
+    <small>Düzeltme sürümü: <b>${esc(finding.fixed_version || "Bilinmiyor")}</b> · İlk görülme: ${formatDate(finding.first_seen_at)} · Son görülme: ${formatDate(finding.last_seen_at)}</small>
+    ${refs.length ? `<div class="dependency-refs">${refs.map(url => `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(url)}</a>`).join(" · ")}</div>` : ""}
+    <form id="dependency-finding-detail-form" class="form-grid" data-id="${esc(finding.id)}">
+      <label>Durum
+        <select name="status">
+          <option value="open" ${finding.status === "open" ? "selected" : ""}>Açık</option>
+          <option value="in_progress" ${finding.status === "in_progress" ? "selected" : ""}>Üzerinde çalışılıyor</option>
+          <option value="retest_required" ${finding.status === "retest_required" ? "selected" : ""}>Yeniden test</option>
+          <option value="resolved" ${finding.status === "resolved" ? "selected" : ""}>Çözüldü</option>
+          <option value="reopened" ${finding.status === "reopened" ? "selected" : ""}>Yeniden açıldı</option>
+          <option value="risk_accepted" ${finding.status === "risk_accepted" ? "selected" : ""}>Risk kabulü</option>
+        </select>
+      </label>
+      <label class="full">Çözüm / değerlendirme notu
+        <textarea name="resolution_notes" rows="3" maxlength="4000" placeholder="Yama sürümü, telafi edici kontrol veya doğrulama notu…">${esc(finding.resolution_notes || "")}</textarea>
+      </label>
+      <button class="button primary" type="submit">Durumu ve notu kaydet</button>
+      <p id="dependency-finding-feedback" class="muted ${feedbackMessage ? "" : "hidden"}" role="status">${esc(feedbackMessage)}</p>
+    </form>`;
+}
+
+function openDependencyFindingDetail(findingId, feedbackMessage = "") {
+  const findings = state.dependencySecurity?.findings || [];
+  const finding = findings.find(item => item.id === findingId) || null;
+  state.selectedDependencyFindingId = finding ? finding.id : null;
+  renderDependencyFindingDetail(finding, feedbackMessage);
+}
+
 function renderDependencySecurity() {
   const data = state.dependencySecurity || { summary: {}, findings: [], imports: [], sboms: [] };
   const summary = data.summary || {};
   const findings = data.findings || [];
-  const active = findings.filter(item => activeFindingStatuses.has(item.status));
+  const filtered = filterDependencyFindings(findings);
+  const reportSample = Array.isArray(data.report_findings) ? data.report_findings : findings;
+  const active = reportSample.filter(item => item && activeFindingStatuses.has(item.status));
   const summaryHtml = [
     ["ETKİN BULGU", summary.active || 0], ["KRİTİK", summary.critical || 0],
     ["YÜKSEK", summary.high || 0], ["ESKİ VERİ KAYNAĞI", summary.stale_sources || 0],
   ].map(([label, value]) => `<article><small>${label}</small><b>${Number(value)}</b></article>`).join("");
   $("#dependency-summary").innerHTML = summaryHtml; // sniper-reviewed: html-safe
   $("#dependency-report-summary").innerHTML = summaryHtml; // sniper-reviewed: html-safe
-  $("#dependency-empty").classList.toggle("hidden", findings.length > 0);
+  const countEl = $("#dependency-filter-count");
+  const total = Number(summary.total ?? findings.length);
+  const page = data.page || { offset: 0, limit: findings.length, filtered_total: findings.length, has_more: false };
+  const matchingTotal = Number(page.filtered_total ?? findings.length);
+  if (countEl) countEl.textContent = matchingTotal < total
+    ? `${matchingTotal} eşleşme / ${total} bulgu`
+    : `${filtered.length} / ${total} bulgu`;
+  $("#dependency-empty").classList.toggle("hidden", total > 0);
+  const noResults = $("#dependency-no-results");
+  if (noResults) noResults.classList.toggle("hidden", total === 0 || filtered.length > 0);
+  const prev = $("#dependency-page-prev");
+  const next = $("#dependency-page-next");
+  const pageLabel = $("#dependency-page-label");
+  if (prev) prev.disabled = Number(page.offset || 0) === 0;
+  if (next) next.disabled = !page.has_more;
+  if (pageLabel) pageLabel.textContent = matchingTotal
+    ? `${Math.min(Number(page.offset || 0) + 1, matchingTotal)}–${Math.min(Number(page.offset || 0) + findings.length, matchingTotal)} / ${matchingTotal} eşleşme`
+    : "0 eşleşme";
   $("#dependency-sources").innerHTML = (data.imports || []).slice(0, 4).map(item => `<span class="${item.stale ? "stale" : "fresh"}"><b>${esc(item.source.toUpperCase())}</b> ${item.stale ? `Veri ${item.age_days ?? "?"} günlük` : "Güncel"} · ${formatDate(item.source_timestamp)} · ${Number(item.finding_count)} bulgu</span>`).join("") + (data.sboms || []).slice(0, 3).map(item => `<a href="/api/dependency-sboms/${encodeURIComponent(item.id)}" download><b>SBOM</b> ${esc(item.project_name)} · ${Number(item.component_count)} bileşen</a>`).join("");
   renderDependencySbomDeltaChoices(data.sboms || []);
-  $("#dependency-findings").innerHTML = findings.map(item => `<tr><td><b>${esc(item.vulnerability_id)}</b>${isMaliciousDependency(item) ? ` <span class="severity-label critical">KÖTÜ AMAÇLI</span>` : ""}<small>${esc(item.title || "")}</small></td><td><b>${esc(item.package_name)}</b><small>${esc(item.installed_version || "sürüm yok")}</small></td><td><span class="severity-label ${esc(item.severity)}">${esc(severityLabel(item.severity).toUpperCase())}</span></td><td>${esc(item.fixed_version || "Bilinmiyor")}</td><td>${esc(item.source.toUpperCase())}<small>${formatDate(item.source_timestamp)}</small></td><td><select data-dependency-status data-id="${esc(item.id)}"><option value="open" ${item.status === "open" ? "selected" : ""}>Açık</option><option value="in_progress" ${item.status === "in_progress" ? "selected" : ""}>Üzerinde çalışılıyor</option><option value="retest_required" ${item.status === "retest_required" ? "selected" : ""}>Yeniden test</option><option value="resolved" ${item.status === "resolved" ? "selected" : ""}>Çözüldü</option><option value="reopened" ${item.status === "reopened" ? "selected" : ""}>Yeniden açıldı</option><option value="risk_accepted" ${item.status === "risk_accepted" ? "selected" : ""}>Risk kabulü</option></select></td></tr>`).join("");
-  $("#dependency-report-findings").innerHTML = active.slice(0, 10).map(item => `<article><span class="severity-label ${esc(item.severity)}">${esc(severityLabel(item.severity).toUpperCase())}</span><p><b>${esc(item.vulnerability_id)} · ${esc(item.package_name)} ${esc(item.installed_version)}</b><small>${esc(item.title)} · Düzeltme: ${esc(item.fixed_version || "bilinmiyor")}</small></p><span class="status-pill ${esc(item.status)}">${esc(statusLabel(item.status))}</span></article>`).join("") || `<div class="empty-state"><div class="empty-icon">${uiSymbol("check")}</div><h3>Etkin bağımlılık bulgusu yok</h3></div>`;
+  $("#dependency-findings").innerHTML = filtered.map(item => `<tr><td><b>${esc(item.vulnerability_id)}</b>${isMaliciousDependency(item) ? ` <span class="severity-label critical">KÖTÜ AMAÇLI</span>` : ""}<small>${esc(item.title || "")}</small></td><td><b>${esc(item.package_name)}</b><small>${esc(item.installed_version || "sürüm yok")}</small></td><td><span class="severity-label ${esc(item.severity)}">${esc(severityLabel(item.severity).toUpperCase())}</span></td><td>${esc(item.fixed_version || "Bilinmiyor")}</td><td>${esc(item.source.toUpperCase())}<small>${formatDate(item.source_timestamp)}</small></td><td><div class="row-actions"><select data-dependency-status data-id="${esc(item.id)}"><option value="open" ${item.status === "open" ? "selected" : ""}>Açık</option><option value="in_progress" ${item.status === "in_progress" ? "selected" : ""}>Üzerinde çalışılıyor</option><option value="retest_required" ${item.status === "retest_required" ? "selected" : ""}>Yeniden test</option><option value="resolved" ${item.status === "resolved" ? "selected" : ""}>Çözüldü</option><option value="reopened" ${item.status === "reopened" ? "selected" : ""}>Yeniden açıldı</option><option value="risk_accepted" ${item.status === "risk_accepted" ? "selected" : ""}>Risk kabulü</option></select><button class="mini-button" type="button" data-action="inspect-dependency-finding" data-id="${esc(item.id)}">Ayrıntı</button></div></td></tr>`).join("");
+  const activeCount = Math.max(0, Number(summary.active) || 0);
+  $("#dependency-report-findings").innerHTML = active.slice(0, 10).map(item => `<article><span class="severity-label ${esc(item.severity)}">${esc(severityLabel(item.severity).toUpperCase())}</span><p><b>${esc(item.vulnerability_id)} · ${esc(item.package_name)} ${esc(item.installed_version)}</b><small>${esc(item.title)} · Düzeltme: ${esc(item.fixed_version || "bilinmiyor")}</small></p><span class="status-pill ${esc(item.status)}">${esc(statusLabel(item.status))}</span></article>`).join("") || (activeCount > 0
+    ? `<div class="empty-state"><h3>Etkin bulgu önizlemesi gösterilemiyor</h3><p>Toplam ${activeCount} etkin bağımlılık bulgusu var. Listeyi filtreleyerek inceleyin.</p></div>`
+    : `<div class="empty-state"><div class="empty-icon">${uiSymbol("check")}</div><h3>Etkin bağımlılık bulgusu yok</h3></div>`);
+  if (state.selectedDependencyFindingId) {
+    openDependencyFindingDetail(state.selectedDependencyFindingId);
+  }
 }
+
+document.addEventListener("input", event => {
+  if (event.target?.id === "dependency-filter-query") {
+    state.dependencyQuery = event.target.value;
+    refreshDependencyFindings({ resetOffset: true }).catch(error => toast(error.message, "error"));
+  }
+});
+
+document.addEventListener("change", event => {
+  if (["dependency-filter-source", "dependency-filter-severity", "dependency-filter-status"].includes(event.target?.id)) {
+    state.dependencySourceFilter = $("#dependency-filter-source")?.value || "all";
+    state.dependencySeverityFilter = $("#dependency-filter-severity")?.value || "all";
+    state.dependencyStatusFilter = $("#dependency-filter-status")?.value || "all";
+    refreshDependencyFindings({ resetOffset: true }).catch(error => toast(error.message, "error"));
+  }
+});
+
+document.addEventListener("click", event => {
+  const direction = event.target?.id === "dependency-page-next" ? 1
+    : event.target?.id === "dependency-page-prev" ? -1 : 0;
+  if (!direction) return;
+  const page = state.dependencySecurity?.page || {};
+  if ((direction > 0 && !page.has_more) || (direction < 0 && !page.offset)) return;
+  state.dependencyPageOffset = Math.max(0, Number(page.offset || 0) + direction * Number(page.limit || state.dependencyPageLimit));
+  refreshDependencyFindings().catch(error => toast(error.message, "error"));
+});
+
+document.addEventListener("click", event => {
+  const btn = event.target.closest?.('[data-action="inspect-dependency-finding"]');
+  if (btn) {
+    event.preventDefault();
+    openDependencyFindingDetail(btn.dataset.id || "");
+  }
+});
+
+document.addEventListener("submit", async event => {
+  if (event.target?.id !== "dependency-finding-detail-form") return;
+  event.preventDefault();
+  const form = event.target;
+  const findingId = form.dataset.id || "";
+  const status = form.querySelector('[name="status"]')?.value || "";
+  const resolutionNotes = String(form.querySelector('[name="resolution_notes"]')?.value || "");
+  const submitBtn = form.querySelector('button[type="submit"]');
+  if (submitBtn) submitBtn.disabled = true;
+  try {
+    const updated = await api(`/api/dependency-findings/${encodeURIComponent(findingId)}/update`, {
+      method: "POST",
+      body: JSON.stringify({ status, resolution_notes: resolutionNotes }),
+    });
+    state.selectedDependencyFindingId = findingId;
+    if (state.dependencySecurity) {
+      state.dependencySecurity.findings = (state.dependencySecurity.findings || []).map(item => item.id === findingId ? updated : item);
+      renderDependencySecurity();
+    }
+    renderDependencyFindingDetail(updated, "Durum ve çözüm notu güncellendi.");
+    try {
+      await refreshDependencyFindings();
+      renderDependencyFindingDetail(updated, "Durum ve çözüm notu güncellendi.");
+      toast("Bağımlılık bulgusu güncellendi.");
+    } catch (refreshError) {
+      renderDependencyFindingDetail(updated, "Değişiklik kaydedildi; liste yenilenemedi.");
+      toast("Bulgu kaydedildi; liste yenilenemedi.", "error");
+    }
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
+});
 
 function renderDependencySbomDeltaChoices(sboms) {
   const projectCounts = new Map();
@@ -3373,6 +3554,7 @@ const TOOL_CARD_DESTINATIONS = Object.freeze({
   "/api/tool-runs/trivy-terraform-config-batch": { panel: "completed-backlog-panel", route: "/api/tool-runs/trivy-terraform-config-batch" },
   "/api/tool-runs/trivy-kubernetes-config": { panel: "trivy-kubernetes-single-panel" },
   "/api/tool-runs/trivy-kubernetes-config-batch": { panel: "trivy-kubernetes-batch-panel" },
+  "/api/tool-runs/syft-grype": { panel: "completed-backlog-panel", route: "/api/tool-runs/syft-grype" },
   "/api/tool-reports/trivy-native-json/summary": { action: "open-trivy-preview" },
   "/api/tool-reports/trivy/db-freshness": { panel: "advanced-tool-panel", flow: "trivy-db-freshness" },
   "/api/tool-runs/testssl-protocols": { action: "open-testssl-loopback-full" },
@@ -3434,6 +3616,7 @@ const TOOL_CARD_DESTINATIONS = Object.freeze({
 });
 
 const TOOL_CARD_ROUTE_LABELS = Object.freeze({
+  "/api/tool-runs/syft-grype": "SBOM ve zafiyet analizi",
   "/api/web-infra/dns-email-audit": "DNS ve e-posta yapılandırma denetimi",
   "/api/tool-reports/npm-audit/summary": "Rapor özeti",
   "/api/tool-reports/dependency-remediation-plan": "Düzeltme planı",
@@ -4232,11 +4415,20 @@ document.addEventListener("change", async event => {
   if (event.target.matches("[data-dependency-status]")) {
     event.target.disabled = true;
     try {
-      await api(`/api/dependency-findings/${encodeURIComponent(event.target.dataset.id)}/update`, {
-        method: "POST", body: JSON.stringify({ status: event.target.value, resolution_notes: "Arayüzden durum güncellendi." }),
+      const updated = await api(`/api/dependency-findings/${encodeURIComponent(event.target.dataset.id)}/update`, {
+        method: "POST", body: JSON.stringify({ status: event.target.value }),
       });
-      await loadAll();
-      toast("Bağımlılık bulgusu durumu güncellendi.");
+      if (state.dependencySecurity) {
+        state.dependencySecurity.findings = (state.dependencySecurity.findings || []).map(item => item.id === updated.id ? updated : item);
+        renderDependencySecurity();
+      }
+      if (state.selectedDependencyFindingId === updated.id) renderDependencyFindingDetail(updated);
+      try {
+        await refreshDependencyFindings();
+        toast("Bağımlılık bulgusu durumu güncellendi.");
+      } catch (refreshError) {
+        toast("Durum kaydedildi; liste yenilenemedi.", "error");
+      }
     } catch (error) { toast(error.message, "error"); }
     finally { event.target.disabled = false; }
   }
@@ -6257,4 +6449,83 @@ document.addEventListener("submit", async (event) => {
     }
   });
 })();
+
+(function initBurpAndWave6WorkbenchModal() {
+  const modal = () => document.getElementById("burp-workbench-modal");
+  const form = () => document.getElementById("burp-workbench-form");
+  const toolSelect = () => document.getElementById("burp-workbench-tool");
+  const payloadInput = () => document.getElementById("burp-workbench-payload");
+  const submitBtn = () => document.getElementById("burp-workbench-submit");
+  const errorEl = () => document.getElementById("burp-workbench-error");
+  const resultEl = () => document.getElementById("burp-workbench-result");
+  const formatEl = () => document.getElementById("burp-workbench-format");
+  const verdictEl = () => document.getElementById("burp-workbench-verdict");
+  const outputEl = () => document.getElementById("burp-workbench-output");
+
+  document.addEventListener("click", (ev) => {
+    const trigger = ev.target && ev.target.closest ? ev.target.closest('[data-action="open-burp-workbench"]') : null;
+    if (trigger && modal()) {
+      modal().classList.remove("hidden");
+    }
+    const closer = ev.target && ev.target.closest ? ev.target.closest('[data-close="burp-workbench-modal"]') : null;
+    if (closer && modal()) {
+      modal().classList.add("hidden");
+    }
+  });
+
+  const workbenchForm = form();
+  if (!workbenchForm || typeof workbenchForm.addEventListener !== "function") return;
+  workbenchForm.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    if (errorEl()) {
+      errorEl().textContent = "";
+      errorEl().classList.add("hidden");
+    }
+    if (resultEl()) {
+      resultEl().classList.add("hidden");
+    }
+    const endpoint = toolSelect() ? String(toolSelect().value || "").trim() : "";
+    const rawJson = payloadInput() ? String(payloadInput().value || "").trim() : "";
+    if (!endpoint.startsWith("/api/")) {
+      if (errorEl()) {
+        errorEl().textContent = "Geçersiz analiz uç noktası.";
+        errorEl().classList.remove("hidden");
+      }
+      return;
+    }
+    let parsedPayload = {};
+    try {
+      parsedPayload = rawJson ? JSON.parse(rawJson) : {};
+    } catch (_err) {
+      if (errorEl()) {
+        errorEl().textContent = "Geçerli bir JSON nesnesi girin.";
+        errorEl().classList.remove("hidden");
+      }
+      return;
+    }
+    if (submitBtn()) submitBtn().disabled = true;
+    try {
+      const data = await api(endpoint, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(parsedPayload),
+      });
+      if (formatEl()) formatEl().textContent = String((data && data.format) || "sniper-workbench/1");
+      if (verdictEl()) {
+        const verdict = (data && (data.submission_verdict || data.satisfiability || data.entropy_verdict || data.finding_count)) ?? "OK";
+        verdictEl().textContent = String(verdict);
+      }
+      if (outputEl()) outputEl().textContent = JSON.stringify(data, null, 2);
+      if (resultEl()) resultEl().classList.remove("hidden");
+    } catch (err) {
+      if (errorEl()) {
+        errorEl().textContent = err?.message || "Analiz isteği tamamlanamadı.";
+        errorEl().classList.remove("hidden");
+      }
+    } finally {
+      if (submitBtn()) submitBtn().disabled = false;
+    }
+  });
+})();
+
 

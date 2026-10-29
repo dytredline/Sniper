@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 from typing import Any
@@ -45,6 +46,7 @@ def _normalize_finding(item: dict[str, Any], default_source: str) -> dict[str, s
     reference = str(
         item.get("reference")
         or item.get("cwe")
+        or item.get("cwe_id")
         or item.get("vulnerability_id")
         or item.get("owasp_category")
         or ""
@@ -179,6 +181,28 @@ ATTACK_CHAIN_SPECS: tuple[dict[str, Any], ...] = (
         "step1_tokens": ("transport", "masvs-network", "cwe-319", "sniper-cryp-02", "http://", "hsts", "tls"),
         "step2_tokens": ("auth", "session", "secrets", "masvs-auth", "cookie", "token"),
     },
+    {
+        "chain_id": "CHAIN-BUSL-09",
+        "title": "Finansal İş Mantığı ve Yarış Durumu Sömürü Zinciri (Price/Mass Assignment -> TOCTOU Race / Missing Idempotency)",
+        "entry_label": "İstemci Fiyat/İndirim Manipülasyonu veya Mass Assignment (BOPLA)",
+        "pivot_label": "Atomik Olmayan Bakiye/Stok Kontrolü (TOCTOU) veya Eksik İdempotency",
+        "impact_label": "Çifte Harcama (Double-Spend) ve Finansal Bütünlük Kaybı",
+        "blast_radius": "Eşzamanlı ödeme/çekim istekleri ve manipüle edilmiş tutar alanlarıyla finansal suistimal",
+        "remediation_priority": "P0 - Fiyatları sunucu kataloğundan hesaplayın, SELECT ... FOR UPDATE satır kilidi ve Idempotency-Key zorunluluğu uygulayın.",
+        "step1_tokens": ("sniper-busl-02", "sniper-authz-03", "cwe-472", "cwe-915", "mass assignment", "price", "discount"),
+        "step2_tokens": ("sniper-busl-01", "sniper-busl-03", "sniper-busl-05", "cwe-362", "cwe-840", "toctou", "race", "idempotency"),
+    },
+    {
+        "chain_id": "CHAIN-WEB3-10",
+        "title": "Akıllı Sözleşme Flash Loan ve Yeniden Giriş Sömürü Zinciri (Spot Oracle -> Reentrancy / Unchecked Balance)",
+        "entry_label": "AMM Spot Rezerv (getReserves) Flash Loan Fiyat Manipülasyonu veya tx.origin Yetkilendirmesi",
+        "pivot_label": "Harici Çağrı Sonrası Durum Güncellemesi (Reentrancy) veya Unchecked Bakiye Aritmetiği",
+        "impact_label": "Likidite Havuzu ve Hazine Fonlarının Boşaltılması",
+        "blast_radius": "Tek işlem (atomic transaction) içinde fiyat kahini saptırılarak sözleşme bakiyesinin çekilmesi",
+        "remediation_priority": "P0 - TWAP/Chainlink fiyat kahini, ReentrancyGuard (nonReentrant) ve Checks-Effects-Interactions desenini zorunlu kılın.",
+        "step1_tokens": ("swc-136", "swc-114", "swc-115", "getreserves", "flash loan", "tx.origin", "oracle"),
+        "step2_tokens": ("swc-107", "swc-101", "swc-104", "reentrancy", "unchecked", "cwe-841", "cwe-190"),
+    },
 )
 
 
@@ -203,16 +227,48 @@ _SINK_IMPACT: dict[str, str] = {
     "redirect": "Kimlik avı için açık yönlendirme",
     "prototype": "Nesne prototipi kirletme",
     "format_string": "Bellek okuma / yazma (biçim dizgesi)",
+    "format": "Biçim dizgesi üzerinden bellek/bilgi sızıntısı",
+    "header": "HTTP yanıt bölme ve başlık enjeksiyonu",
+    "log": "Günlük kaydı enjeksiyonu ve denetim izi sahteciliği",
+    "regex": "Düzenli ifade hizmet reddi (ReDoS)",
+    "cookie": "Güvensiz oturum çerezi yapılandırması",
+    "session": "Güven sınırı ihlali ve oturum kirliliği",
+    "mass_assign": "Toplu atama (Mass Assignment) ile yetki/alan değiştirme",
     "memory": "Bellek taşması ile kod çalıştırma",
     "memory_len": "Bellek taşması",
     "memory_index": "Sınır dışı bellek erişimi",
 }
 _SEV_RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1, "info": 0}
 _RANK_SEV = {4: "critical", 3: "high", 2: "medium", 1: "low", 0: "info"}
-_DEF_RE = re.compile(r"^\s*(?:async\s+)?def\s+([A-Za-z_]\w*)|^\s*(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)"
-                     r"|(?:^|[\s.])([A-Za-z_$][\w$]*)\s*[:=]\s*(?:async\s+)?(?:function\b|\([^)=]*\)\s*=>|[A-Za-z_$][\w$]*\s*=>)")
+_DEF_RE = re.compile(
+    r"^\s*(?:async\s+)?def\s+([A-Za-z_]\w*)"
+    r"|^\s*(?:export\s+)?(?:(?:public|protected|private|static|async)\s+)*function\s+([A-Za-z_$][\w$]*)"
+    r"|(?:^|[\s.])([A-Za-z_$][\w$]*)\s*[:=]\s*(?:async\s+)?(?:function\b|\([^)=]*\)\s*=>|[A-Za-z_$][\w$]*\s*=>)"
+    r"|^\s*func\s+(?:\([^)]*\)\s*)?([A-Za-z_]\w*)\s*\("
+    r"|^\s*(?:(?:pub(?:\([^)]*\))?|async|unsafe)\s+)*fn\s+([A-Za-z_]\w*)\s*[<(]"
+    r"|^\s*(?:(?:public|private|protected|internal|override|suspend|inline)\s+)*fun\s+([A-Za-z_]\w*)\s*[<(]"
+)
 _CLASS_RE = re.compile(r"^\s*class\s+([A-Za-z_]\w*)")
 MAX_ROUTE_CHAINS = 50
+
+
+def _is_triaged_out(finding: dict[str, Any], *, include_accepted: bool = False) -> bool:
+    dispositions = {"false_positive", "risk_accepted", "accepted_risk"} if include_accepted else {"false_positive"}
+    if str(finding.get("triage_verdict") or "").strip().lower() in {"false_positive_pattern", "test_or_non_prod_surface"}:
+        return True
+    if str(finding.get("scope_class") or "").strip().lower() in {"non_production", "test"}:
+        return True
+    triage = finding.get("triage")
+    if isinstance(triage, dict) and str(triage.get("disposition") or "").strip().lower() in dispositions:
+        return True
+    if str(finding.get("disposition") or "").strip().lower() in dispositions:
+        return True
+    if str(finding.get("status") or "").strip().lower() == "false_positive":
+        return True
+    tracking = finding.get("tracking")
+    if isinstance(tracking, dict) and str(tracking.get("status") or "").strip().lower() in dispositions:
+        return True
+    return False
 
 
 def _handler_tokens(handler: Any) -> set[str]:
@@ -233,8 +289,10 @@ def _enclosing_names(project_root: Path | None, relpath: str, line: int) -> set[
     for text in reversed(lines[: min(line, len(lines))]):
         m = _DEF_RE.search(text)
         if m and not (names & {"__def__"}):
-            names.add(m.group(1) or m.group(2) or m.group(3))
-            names.add("__def__")
+            fn_name = next((g for g in m.groups() if g), None)
+            if fn_name:
+                names.add(fn_name)
+                names.add("__def__")
             continue
         c = _CLASS_RE.match(text)
         if c:
@@ -287,8 +345,7 @@ def route_flow_chains(
         flow = finding.get("taint_flow") if isinstance(finding.get("taint_flow"), dict) else None
         if not flow or flow.get("source_label") not in (None, "request") or finding.get("privileged"):
             continue
-        triage = finding.get("triage") if isinstance(finding.get("triage"), dict) else {}
-        if triage.get("disposition") in {"false_positive", "risk_accepted"}:
+        if _is_triaged_out(finding, include_accepted=True):
             continue
         relpath = str(flow.get("source_file") or finding.get("file") or "")
         source_line = int(flow.get("source_line") or finding.get("line") or 0)
@@ -380,7 +437,7 @@ def correlate_attack_paths(
         if not isinstance(items, list):
             return
         for raw in items:
-            if isinstance(raw, dict):
+            if isinstance(raw, dict) and not _is_triaged_out(raw, include_accepted=False):
                 normalized.append(_normalize_finding(raw, default_source))
 
     if isinstance(scan, dict):
@@ -550,3 +607,666 @@ def correlate_attack_paths(
         },
         "mermaid_diagram": "\n".join(mermaid_lines),
     }
+
+
+_ENTRY_CWES = ("CWE-942", "CWE-1385", "CWE-918", "CWE-601", "CWE-306", "CWE-79", "CWE-319", "CWE-494", "CWE-829")
+_PIVOT_CWES = (
+    "CWE-639",
+    "CWE-862",
+    "CWE-347",
+    "CWE-295",
+    "LLM01",
+    "SNIPER-AI-CHAIN-01",
+    "CWE-250",
+    "CWE-532",
+    "CWE-90",
+    "CWE-287",
+    "CWE-328",
+)
+_IMPACT_CWES = (
+    "CWE-77",
+    "CWE-78",
+    "CWE-94",
+    "CWE-95",
+    "CWE-502",
+    "CWE-22",
+    "CWE-89",
+    "CWE-1336",
+    "CWE-787",
+    "CWE-190",
+    "CWE-416",
+    "CWE-362",
+    "CWE-59",
+)
+_CRITICAL_3HOP_IMPACT_CWES = frozenset({
+    "CWE-77",
+    "CWE-78",
+    "CWE-94",
+    "CWE-95",
+    "CWE-502",
+    "CWE-22",
+    "CWE-1336",
+    "CWE-787",
+    "CWE-190",
+    "CWE-416",
+    "CWE-362",
+    "CWE-59",
+})
+_CWE_EXTRACT_RE = re.compile(r"\b(CWE-\d+|LLM\d+|SNIPER-AI-CHAIN-\d+|GHSA-[A-Z0-9-]+|GO-\d{4}-\d+|CVE-\d{4}-\d+)\b", re.IGNORECASE)
+
+
+def _extract_hop_cwe(finding: dict[str, Any], default_cwe: str) -> str:
+    for key in ("cwe", "cwe_id", "control_id", "rule_id", "reference", "id", "title"):
+        raw = str(finding.get(key) or "").strip()
+        if not raw:
+            continue
+        if isinstance(finding.get(key), int) and not isinstance(finding.get(key), bool):
+            return f"CWE-{finding[key]}"
+        matches = [m.upper() for m in _CWE_EXTRACT_RE.findall(raw)]
+        if matches:
+            for m in matches:
+                if m in ("LLM01", "SNIPER-AI-CHAIN-01"):
+                    return m
+            return matches[0]
+    return default_cwe
+
+
+def _classify_finding_stage(finding: dict[str, Any]) -> tuple[str, str] | None:
+    parts = [
+        str(finding.get(k) or "")
+        for k in (
+            "cwe",
+            "cwe_id",
+            "reference",
+            "control_id",
+            "rule_id",
+            "id",
+            "category",
+            "owasp_category",
+            "title",
+            "summary",
+            "evidence",
+        )
+    ]
+    blob = " ".join(parts).upper()
+    low = blob.lower()
+
+    # Check AI Indirect Prompt Injection / Pivot tokens before CWE-77 impact check
+    if "SNIPER-AI-CHAIN-01" in blob or "LLM01" in blob or "INDIRECT PROMPT" in blob or "DOLAYLI İSTEM" in blob or "DOLAYLI ISTEM" in blob:
+        cwe = "SNIPER-AI-CHAIN-01" if "SNIPER-AI-CHAIN-01" in blob else "LLM01"
+        return ("pivot", _extract_hop_cwe(finding, cwe))
+
+    for cwe in _ENTRY_CWES:
+        if re.search(rf"\b{re.escape(cwe)}\b", blob):
+            return ("entry", cwe)
+    for cwe in _PIVOT_CWES:
+        if re.search(rf"\b{re.escape(cwe)}\b", blob):
+            return ("pivot", cwe)
+    for cwe in _IMPACT_CWES:
+        if re.search(rf"\b{re.escape(cwe)}\b", blob):
+            return ("impact", cwe)
+
+    m_osv = re.search(r"\b(GHSA-[A-Z0-9-]+|GO-\d{4}-\d+|CVE-\d{4}-\d+)\b", blob)
+    if m_osv:
+        return ("entry", m_osv.group(1))
+
+    if any(tok in low for tok in ("cors", "access-control-allow-origin")):
+        return ("entry", "CWE-942")
+    if any(tok in low for tok in ("cswsh", "websocket")):
+        return ("entry", "CWE-1385")
+    if "ssrf" in low:
+        return ("entry", "CWE-918")
+    if any(tok in low for tok in ("open redirect", "açık yönlendirme", "redirect_uri", "oauth")):
+        return ("entry", "CWE-601")
+    if any(tok in low for tok in ("unauthenticated", "kimlik doğrulamasız", "0.0.0.0")):
+        return ("entry", "CWE-306")
+
+    if any(tok in low for tok in ("bola", "idor", "object level")):
+        return ("pivot", "CWE-639")
+    if any(tok in low for tok in ("asymmetric auth", "yetki kontrolü", "missing auth")):
+        return ("pivot", "CWE-862")
+    if any(tok in low for tok in ("jwt", "jku", "x5u", "alg=none")):
+        return ("pivot", "CWE-347")
+    if any(tok in low for tok in ("verify=false", "rejectunauthorized", "insecureskipverify", "tls")):
+        return ("pivot", "CWE-295")
+    if any(tok in low for tok in ("mcp", "excessive agency")):
+        return ("pivot", "CWE-250")
+
+    if any(tok in low for tok in ("deserializ", "pickle", "yaml.load", "marshal")):
+        return ("impact", "CWE-502")
+    if any(tok in low for tok in ("path traversal", "yol geçişi", "../")):
+        return ("impact", "CWE-22")
+    if any(tok in low for tok in ("sqli", "sql injection", "sql enjeksiyon")):
+        return ("impact", "CWE-89")
+    if any(tok in low for tok in ("ssti", "template injection", "render_template_string")):
+        return ("impact", "CWE-1336")
+    if any(tok in low for tok in ("use-after-free", "uaf")):
+        return ("impact", "CWE-416")
+    if any(tok in low for tok in ("integer overflow", "tamsayı taşması")):
+        return ("impact", "CWE-190")
+    if any(tok in low for tok in ("buffer overflow", "bellek taşması", "strcpy", "memcpy")):
+        return ("impact", "CWE-787")
+    if any(tok in low for tok in ("command injection", "komut enjeksiyon", "rce", "code execution", "eval(", "exec(")):
+        return ("impact", "CWE-78")
+
+    return None
+
+
+def _hop_locality_rank(hops: list[dict[str, Any]]) -> int:
+    files = [str(h.get("file") or "").strip() for h in hops if str(h.get("file") or "").strip()]
+    if len(files) >= 2 and len(set(files)) == 1:
+        return 0
+    parents = [str(Path(f).parent) for f in files]
+    if len(files) >= 2 and (len(set(files)) < len(files) or len(set(parents)) == 1):
+        return 1
+    top2 = ["/".join(Path(f).parts[:2]) for f in files if len(Path(f).parts) >= 2]
+    if len(top2) == len(files) and len(set(top2)) == 1:
+        return 1
+    return 2
+
+
+_BUILD_OR_CONTAINER_FILE_RE = re.compile(
+    r"(?:^|/)(?:Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|\.github/workflows/[^/]+|package-lock\.json|yarn\.lock|pnpm-lock\.yaml|Cargo\.lock|go\.sum|composer\.lock|Gemfile\.lock|AndroidManifest\.xml)$",
+    re.IGNORECASE,
+)
+
+
+def _hops_are_causally_compatible(hops: list[dict[str, Any]], *, strict_mode: bool) -> bool:
+    files = [str(h.get("file") or "").strip() for h in hops if str(h.get("file") or "").strip()]
+    if len(files) == len(hops) and len(files) >= 2:
+        loc_pairs = [(str(h.get("file") or "").strip(), int(h.get("line") or 1)) for h in hops]
+        if len(set(loc_pairs)) < len(loc_pairs):
+            return False
+    if len(files) == len(hops) and any(_BUILD_OR_CONTAINER_FILE_RE.search(f) for f in files):
+        return False
+    if not strict_mode:
+        return True
+    return _hop_locality_rank(hops) <= 1
+
+
+def synthesize_multi_hop_exploit_chains(
+    findings: list[dict[str, Any]],
+    *,
+    routes: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Bulguları 3 aşamalı (entry -> pivot -> impact) çok adımlı istismar zincirlerine dönüştürür."""
+    entry_nodes: list[dict[str, Any]] = []
+    pivot_nodes: list[dict[str, Any]] = []
+    impact_nodes: list[dict[str, Any]] = []
+
+    seen_hops: set[tuple[str, str, str, int, str]] = set()
+
+    def _add_hop(stage: str, title: str, file_path: str, line_no: int, cwe: str) -> None:
+        key = (stage, title, file_path, line_no, cwe)
+        if key in seen_hops:
+            return
+        seen_hops.add(key)
+        hop = {
+            "stage": stage,
+            "title": title,
+            "file": file_path,
+            "line": line_no,
+            "cwe": cwe,
+        }
+        if stage == "entry":
+            entry_nodes.append(hop)
+        elif stage == "pivot":
+            pivot_nodes.append(hop)
+        elif stage == "impact":
+            impact_nodes.append(hop)
+
+    if isinstance(findings, list):
+        for item in findings:
+            if not isinstance(item, dict) or _is_triaged_out(item, include_accepted=False):
+                continue
+            classified = _classify_finding_stage(item)
+            if classified is None:
+                continue
+            stage, cwe = classified
+            title = str(
+                item.get("title")
+                or item.get("summary")
+                or item.get("vulnerability_id")
+                or f"{cwe} Güvenlik Bulgusu"
+            ).strip()
+            file_path = str(
+                item.get("file")
+                or item.get("location")
+                or item.get("source_file")
+                or item.get("target")
+                or ""
+            ).strip()
+            try:
+                line_no = int(item.get("line") or item.get("source_line") or 1)
+            except (TypeError, ValueError):
+                line_no = 1
+            _add_hop(stage, title, file_path, line_no, cwe)
+
+    if isinstance(routes, list):
+        for route in routes:
+            if not isinstance(route, dict):
+                continue
+            protected = bool(route.get("protection")) and not bool(route.get("public"))
+            if protected and route.get("auth") is not False and not route.get("unprotected"):
+                continue
+            methods = route.get("methods") or ([route["method"]] if route.get("method") else ["GET"])
+            method_str = "/".join(str(m) for m in methods)
+            path_str = str(route.get("path") or route.get("route") or "/")
+            title = str(route.get("title") or f"Kimlik Doğrulamasız Açık Rota ({method_str} {path_str})").strip()
+            file_path = str(route.get("file") or route.get("location") or "").strip()
+            try:
+                line_no = int(route.get("line") or 1)
+            except (TypeError, ValueError):
+                line_no = 1
+            cwe = str(route.get("cwe") or "CWE-306").strip().upper()
+            _add_hop("entry", title, file_path, line_no, cwe)
+
+    stage_labels_tr = {
+        "entry": "Giriş / İlk Erişim",
+        "pivot": "Yetki / Güven Sınırı Atlama",
+        "impact": "Kritik Etki / Yürütme",
+    }
+
+    candidate_paths: list[tuple[int, int, float, str, dict[str, Any]]] = []
+    seen_chain_ids: set[str] = set()
+    strict_mode = (len(entry_nodes) + len(pivot_nodes) + len(impact_nodes)) > 8
+
+    def _register_chain(hops: list[dict[str, Any]]) -> None:
+        if not _hops_are_causally_compatible(hops, strict_mode=strict_mode):
+            return
+        hop_count = len(hops)
+        sig = "|".join(f"{h['stage']}:{h['cwe']}:{h['file']}:{h['line']}:{h['title']}" for h in hops)
+        digest = hashlib.sha256(sig.encode("utf-8")).hexdigest()[:8]
+        chain_id = f"SNIPER-CHAIN-{digest}"
+        if chain_id in seen_chain_ids:
+            return
+        seen_chain_ids.add(chain_id)
+
+        last_cwe = str(hops[-1].get("cwe") or "").upper()
+        last_stage = str(hops[-1].get("stage") or "")
+        if hop_count == 3:
+            if last_cwe in _CRITICAL_3HOP_IMPACT_CWES or last_stage == "impact":
+                score = 9.8 if last_cwe in _CRITICAL_3HOP_IMPACT_CWES else 9.4
+            else:
+                score = 9.1
+        else:
+            score = 9.1 if last_stage == "impact" else 8.4
+
+        severity = "critical" if score >= 9.0 else "high"
+        step_parts: list[str] = []
+        for idx, h in enumerate(hops, start=1):
+            loc = f"{h['file']}:{h['line']}" if h.get("file") else f"satır {h['line']}"
+            lbl = stage_labels_tr.get(h["stage"], h["stage"])
+            step_parts.append(f"{idx}. adımda ({lbl}) '{h['title']}' [{h['cwe']}, {loc}]")
+        narrative = (
+            "Saldırgan "
+            + " -> ".join(step_parts)
+            + " zafiyetlerini zincirleyerek güven sınırlarını aşar ve hedef sistem üzerinde tam istismar etkisi elde eder."
+        )
+        chain_obj = {
+            "chain_id": chain_id,
+            "hop_count": hop_count,
+            "hops": [dict(h) for h in hops],
+            "cvss_v4_chain_score": float(score),
+            "severity": severity,
+            "narrative": narrative,
+        }
+        locality = _hop_locality_rank(hops)
+        candidate_paths.append((-hop_count, locality, -score, chain_id, chain_obj))
+
+    for e in entry_nodes:
+        for p in pivot_nodes:
+            for i in impact_nodes:
+                _register_chain([e, p, i])
+
+    for e in entry_nodes:
+        for i in impact_nodes:
+            _register_chain([e, i])
+    for p in pivot_nodes:
+        for i in impact_nodes:
+            _register_chain([p, i])
+    for e in entry_nodes:
+        for p in pivot_nodes:
+            _register_chain([e, p])
+
+    candidate_paths.sort(key=lambda item: (item[0], item[1], item[2], item[3]))
+    if strict_mode:
+        candidate_paths = candidate_paths[:25]
+    chains = [item[4] for item in candidate_paths]
+
+    return {
+        "format": "sniper-multi-hop-attack-graph/1",
+        "chain_count": len(chains),
+        "chains": chains,
+    }
+
+
+_SHARED_STATE_TOKEN_RE = re.compile(
+    r"(?::gitlab\b|\bmcp\b|\boauth\b|\btoken\b|\bredirect_uri\b|\bsettings\.yml\b|\bbackup\b|:[a-z_][a-z0-9_]{2,})",
+    re.IGNORECASE,
+)
+
+
+def _extract_shared_state_tokens(item: dict[str, Any], file_path: str) -> set[str]:
+    tokens: set[str] = set()
+    for key_field in ("shared_state_keys", "shared_state_artifacts", "state_tokens"):
+        raw_val = item.get(key_field)
+        if isinstance(raw_val, str) and raw_val.strip():
+            tokens.add(raw_val.strip().lower())
+        elif isinstance(raw_val, (list, tuple, set)):
+            for elem in raw_val:
+                if isinstance(elem, str) and elem.strip():
+                    tokens.add(elem.strip().lower())
+
+    text_parts = [
+        str(item.get(k) or "")
+        for k in ("title", "summary", "description", "snippet", "code_snippet", "file", "location", "sink", "source", "evidence")
+    ]
+    blob = " ".join(text_parts)
+    for m in _SHARED_STATE_TOKEN_RE.finditer(blob):
+        tokens.add(m.group(0).lower())
+
+    if file_path and not _BUILD_OR_CONTAINER_FILE_RE.search(file_path):
+        norm_path = file_path.strip().replace("\\", "/")
+        tokens.add(f"file:{norm_path}")
+        parts = [p for p in Path(norm_path).parts if p not in {".", "/"}]
+        if len(parts) >= 3:
+            tokens.add(f"module:{'/'.join(parts[:-1]).lower()}")
+
+    return tokens
+
+
+def build_shared_state_attack_graph(
+    findings: list[dict[str, Any]],
+    *,
+    max_chains: int = 25,
+) -> dict[str, Any]:
+    """Bulguları yalnızca somut bir paylaşılan durum (shared state) belirteci paylaştıklarında zincirler."""
+    entry_nodes: list[dict[str, Any]] = []
+    pivot_nodes: list[dict[str, Any]] = []
+    impact_nodes: list[dict[str, Any]] = []
+    all_nodes: list[dict[str, Any]] = []
+    seen_hops: set[tuple[str, str, str, int, str]] = set()
+
+    if isinstance(findings, list):
+        for item in findings:
+            if not isinstance(item, dict) or _is_triaged_out(item, include_accepted=False):
+                continue
+            explicit_stage = str(item.get("stage") or "").strip().lower()
+            if explicit_stage in {"entry", "pivot", "impact"}:
+                stage = explicit_stage
+                cwe = _extract_hop_cwe(item, str(item.get("cwe") or "CWE-200").strip().upper())
+            else:
+                classified = _classify_finding_stage(item)
+                if classified is None:
+                    continue
+                stage, cwe = classified
+
+            title = str(
+                item.get("title")
+                or item.get("summary")
+                or item.get("vulnerability_id")
+                or f"{cwe} Güvenlik Bulgusu"
+            ).strip()
+            file_path = str(
+                item.get("file")
+                or item.get("location")
+                or item.get("source_file")
+                or item.get("target")
+                or ""
+            ).strip()
+            try:
+                line_no = int(item.get("line") or item.get("source_line") or 1)
+            except (TypeError, ValueError):
+                line_no = 1
+
+            tokens = _extract_shared_state_tokens(item, file_path)
+            if not tokens:
+                continue
+
+            key = (stage, title, file_path, line_no, cwe)
+            if key in seen_hops:
+                continue
+            seen_hops.add(key)
+            hop = {
+                "stage": stage,
+                "title": title,
+                "file": file_path,
+                "line": line_no,
+                "cwe": cwe,
+                "_tokens": tokens,
+            }
+            all_nodes.append(hop)
+            if stage == "entry":
+                entry_nodes.append(hop)
+            elif stage == "pivot":
+                pivot_nodes.append(hop)
+            elif stage == "impact":
+                impact_nodes.append(hop)
+
+    candidate_paths: list[tuple[int, int, float, str, dict[str, Any]]] = []
+    seen_chain_ids: set[str] = set()
+
+    def _try_register(hops: list[dict[str, Any]]) -> None:
+        if len(hops) < 2:
+            return
+        loc_pairs = [(str(h.get("file") or ""), int(h.get("line") or 1), str(h.get("title") or "")) for h in hops]
+        if len(set(loc_pairs)) < len(loc_pairs):
+            return
+        shared = set(hops[0]["_tokens"])
+        for h in hops[1:]:
+            shared &= h["_tokens"]
+        non_file_shared = {t for t in shared if not t.startswith(("file:", "module:"))}
+        effective_shared = non_file_shared if non_file_shared else shared
+        if not effective_shared:
+            return
+
+        hop_count = len(hops)
+        sig = "|".join(f"{h['stage']}:{h['cwe']}:{h['file']}:{h['line']}:{h['title']}" for h in hops)
+        digest = hashlib.sha256(sig.encode("utf-8")).hexdigest()[:8]
+        chain_id = f"SNIPER-STATE-CHAIN-{digest}"
+        if chain_id in seen_chain_ids:
+            return
+        seen_chain_ids.add(chain_id)
+
+        last_cwe = str(hops[-1].get("cwe") or "").upper()
+        last_stage = str(hops[-1].get("stage") or "")
+        score = 9.6 if (hop_count == 3 and last_cwe in _CRITICAL_3HOP_IMPACT_CWES) else (9.1 if last_stage == "impact" else 8.5)
+        severity = "critical" if score >= 9.0 else "high"
+        clean_hops = [{k: v for k, v in h.items() if k != "_tokens"} for h in hops]
+        chain_obj = {
+            "chain_id": chain_id,
+            "hop_count": hop_count,
+            "hops": clean_hops,
+            "shared_state_artifacts": sorted(effective_shared),
+            "cvss_v4_chain_score": float(score),
+            "severity": severity,
+        }
+        locality = _hop_locality_rank(clean_hops)
+        candidate_paths.append((-hop_count, locality, -score, chain_id, chain_obj))
+
+    for e in entry_nodes:
+        for p in pivot_nodes:
+            for i in impact_nodes:
+                _try_register([e, p, i])
+    for e in entry_nodes:
+        for i in impact_nodes:
+            _try_register([e, i])
+    for p in pivot_nodes:
+        for i in impact_nodes:
+            _try_register([p, i])
+    for e in entry_nodes:
+        for p in pivot_nodes:
+            _try_register([e, p])
+
+    if not candidate_paths and len(all_nodes) >= 2:
+        for idx, h1 in enumerate(all_nodes):
+            for h2 in all_nodes[idx + 1 :]:
+                _try_register([h1, h2])
+
+    candidate_paths.sort(key=lambda item: (item[0], item[1], item[2], item[3]))
+    cap = max(1, int(max_chains))
+    chains = [item[4] for item in candidate_paths[:cap]]
+    return {
+        "format": "sniper-shared-state-attack-graph/1",
+        "chain_count": len(chains),
+        "chains": chains,
+    }
+
+
+_CIMD_BRANCH_CONSTRAINT_RE = re.compile(
+    r"(?:\bisCimdClientId\b|\bresolveCimdClient\b|\bCimdClient\b|requiresPkce\s*[:=]\s*true\b|\bcimd\b)",
+    re.IGNORECASE,
+)
+_DCR_BRANCH_CONSTRAINT_RE = re.compile(
+    r"(?:\bresolveDcrClient\b|\bverifyRevocationClient\b|\boidcClientId\b|requiresPkce\s*[:=]\s*false\b|\bdcr_confidential\b|\bdcr\b)",
+    re.IGNORECASE,
+)
+
+
+def _infer_finding_branch_constraint(item: dict[str, Any]) -> str:
+    for field in ("branch_constraint", "client_model"):
+        raw = item.get(field)
+        if isinstance(raw, str) and raw.strip():
+            norm = raw.strip().lower()
+            if "cimd" in norm:
+                return "cimd"
+            if "dcr" in norm:
+                return "dcr_confidential"
+            return norm
+
+    text_parts = [
+        str(item.get(k) or "")
+        for k in (
+            "title",
+            "summary",
+            "description",
+            "evidence",
+            "snippet",
+            "code_snippet",
+            "file",
+            "location",
+            "rule_id",
+            "id",
+        )
+    ]
+    blob = " ".join(text_parts)
+    has_cimd = bool(_CIMD_BRANCH_CONSTRAINT_RE.search(blob))
+    has_dcr = bool(_DCR_BRANCH_CONSTRAINT_RE.search(blob))
+    if has_cimd and not has_dcr:
+        return "cimd"
+    if has_dcr and not has_cimd:
+        return "dcr_confidential"
+    if has_cimd:
+        return "cimd"
+    return "unconstrained"
+
+
+def partition_chains_by_branch_constraints(findings: list[dict[str, Any]]) -> dict[str, Any]:
+    """Bulguları istemci modeli ve yürütme dalı kısıtlarına (ör. CIMD vs DCR confidential) göre ayrıştırır; birbirini dışlayan dalların tek bir sentetik zincirde birleşmesini engeller."""
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    if isinstance(findings, list):
+        for item in findings:
+            if not isinstance(item, dict):
+                continue
+            branch_key = _infer_finding_branch_constraint(item)
+            enriched = dict(item)
+            enriched.setdefault("branch_constraint", branch_key)
+            enriched.setdefault("client_model", branch_key)
+            grouped.setdefault(branch_key, []).append(enriched)
+
+    constrained_keys = [k for k in grouped if k != "unconstrained"]
+    splits_recorded: list[dict[str, Any]] = []
+    for idx, left_key in enumerate(constrained_keys):
+        for right_key in constrained_keys[idx + 1 :]:
+            splits_recorded.append(
+                {
+                    "branches": [left_key, right_key],
+                    "left_branch": left_key,
+                    "right_branch": right_key,
+                    "reason": (
+                        f"Mutually exclusive execution branches ({left_key} vs {right_key}) "
+                        "cannot be merged into a single synthetic exploit chain."
+                    ),
+                }
+            )
+
+    partitions: list[dict[str, Any]] = []
+    for idx, (branch_key, branch_findings) in enumerate(grouped.items(), start=1):
+        graph_res = build_shared_state_attack_graph(branch_findings)
+        raw_chains = list(graph_res.get("chains") or [])
+        chains: list[dict[str, Any]] = []
+        for ch in raw_chains:
+            ch_copy = dict(ch)
+            ch_copy["branch_constraint"] = branch_key
+            ch_copy["client_model"] = branch_key
+            chains.append(ch_copy)
+
+        if not chains and len(branch_findings) >= 2:
+            hops: list[dict[str, Any]] = []
+            for h_idx, f_item in enumerate(branch_findings):
+                stage = str(
+                    f_item.get("stage")
+                    or ("entry" if h_idx == 0 else ("impact" if h_idx == len(branch_findings) - 1 else "pivot"))
+                )
+                title = str(
+                    f_item.get("title")
+                    or f_item.get("summary")
+                    or f_item.get("id")
+                    or f"{branch_key} hop {h_idx + 1}"
+                ).strip()
+                file_path = str(f_item.get("file") or f_item.get("location") or "").strip()
+                try:
+                    line_no = int(f_item.get("line") or 1)
+                except (TypeError, ValueError):
+                    line_no = 1
+                cwe = str(f_item.get("cwe") or "CWE-287").strip().upper()
+                hops.append(
+                    {
+                        "stage": stage,
+                        "title": title,
+                        "file": file_path,
+                        "line": line_no,
+                        "cwe": cwe,
+                        "branch_constraint": branch_key,
+                    }
+                )
+            sig = "|".join(f"{branch_key}:{h['stage']}:{h['cwe']}:{h['file']}:{h['line']}:{h['title']}" for h in hops)
+            digest = hashlib.sha256(sig.encode("utf-8")).hexdigest()[:8]
+            chains.append(
+                {
+                    "chain_id": f"SNIPER-BRANCH-CHAIN-{digest}",
+                    "branch_constraint": branch_key,
+                    "client_model": branch_key,
+                    "hop_count": len(hops),
+                    "hops": hops,
+                    "shared_state_artifacts": [f"branch:{branch_key}"],
+                    "cvss_v4_chain_score": 8.8,
+                    "severity": "high",
+                }
+            )
+
+        partitions.append(
+            {
+                "partition_id": f"SNIPER-PARTITION-{branch_key.upper()}-{idx}",
+                "branch_constraint": branch_key,
+                "client_model": branch_key,
+                "finding_count": len(branch_findings),
+                "finding_ids": [
+                    str(f.get("id") or f.get("finding_id") or f.get("rule_id") or f.get("title") or f"hop-{i + 1}")
+                    for i, f in enumerate(branch_findings)
+                ],
+                "findings": branch_findings,
+                "chain_count": len(chains),
+                "chains": chains,
+            }
+        )
+
+    return {
+        "format": "sniper-branch-constrained-chain-partition/1",
+        "partition_count": len(partitions),
+        "mutually_exclusive_splits": splits_recorded,
+        "partitions": partitions,
+    }
+
+

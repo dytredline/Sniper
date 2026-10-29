@@ -398,6 +398,73 @@ def audit_database_schema_inline(
             )
         )
 
+    # 5. PostgreSQL SECURITY DEFINER Without SET search_path (high, CWE-426, SNIPER-CONF-08)
+    sec_definer_re = re.compile(r"\bSECURITY\s+DEFINER\b", re.IGNORECASE)
+    search_path_re = re.compile(r"\bSET\s+search_path\b", re.IGNORECASE)
+    for match in sec_definer_re.finditer(raw_content):
+        window_start = max(0, match.start() - 500)
+        window_end = min(len(raw_content), match.end() + 500)
+        window = raw_content[window_start:window_end]
+        if not search_path_re.search(window):
+            line_no = _line_number_for_offset(raw_content, match.start())
+            snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else match.group(0)
+            _add(
+                _make_db_finding(
+                    severity="high",
+                    category="configuration",
+                    title="PostgreSQL SECURITY DEFINER fonksiyonunda SET search_path eksikliği",
+                    description=(
+                        "SECURITY DEFINER ile tanımlanan veritabanı fonksiyonunda açık bir "
+                        "'SET search_path = pg_catalog, public' tanımı bulunmuyor; kötü niyetli şema "
+                        "nesneleriyle yetki yükseltme (search_path hijacking) yapılabilir."
+                    ),
+                    evidence=snippet,
+                    recommendation=(
+                        "Tüm SECURITY DEFINER fonksiyonlarına 'SET search_path = pg_catalog, public' "
+                        "(veya yalnızca güvenilen şema) direktifini ekleyin."
+                    ),
+                    cwe="CWE-426",
+                    control_id="SNIPER-CONF-08",
+                    filename=clean_filename,
+                    line=line_no,
+                )
+            )
+
+    # 6. Overly Permissive RLS Policy USING (true) / WITH CHECK (true) (high, CWE-284, SNIPER-AUTHZ-04)
+    permissive_policy_re = re.compile(
+        r"\bCREATE\s+POLICY\b[^;]*?\b(?:USING|WITH\s+CHECK)\s*\(\s*true\s*\)",
+        re.IGNORECASE | re.DOTALL,
+    )
+    for match in permissive_policy_re.finditer(raw_content):
+        stmt_text = match.group(0)
+        is_select_only_public = bool(re.search(r"\bFOR\s+SELECT\b", stmt_text, re.IGNORECASE)) and not bool(
+            re.search(r"\bWITH\s+CHECK\s*\(\s*true\s*\)", stmt_text, re.IGNORECASE)
+        )
+        if not is_select_only_public:
+            line_no = _line_number_for_offset(raw_content, match.start())
+            snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else stmt_text.splitlines()[0]
+            _add(
+                _make_db_finding(
+                    severity="high",
+                    category="authorization",
+                    title="Aşırı izin verici RLS politikası: USING (true) / WITH CHECK (true) kiracı izolasyonunu devre dışı bırakıyor",
+                    description=(
+                        "CREATE POLICY tanımında USING (true) veya WITH CHECK (true) kullanılarak "
+                        "satır düzeyi güvenlik (RLS) fiilen bypass edilmiş; tüm kiracılar birbirinin "
+                        "verisini okuyabilir veya değiştirebilir."
+                    ),
+                    evidence=snippet,
+                    recommendation=(
+                        "RLS politikalarında USING (true) yerine auth.uid() = user_id veya "
+                        "tenant_id = current_setting('app.current_tenant_id')::uuid koşulunu zorunlu kılın."
+                    ),
+                    cwe="CWE-284",
+                    control_id="SNIPER-AUTHZ-04",
+                    filename=clean_filename,
+                    line=line_no,
+                )
+            )
+
     score, grade = calculate_score(findings)
     return {
         "format": "sniper-database-schema-inline-audit-v1",
@@ -467,3 +534,181 @@ def audit_database_schema_project(
         "findings": cap_findings(findings, PROJECT_FINDING_LIMIT)[0],
         "controls_evaluated": list(DATABASE_SCHEMA_CONTROLS_EVALUATED),
     }
+
+
+def _iter_balanced_sql_tables(content: str):
+    """Parantez dengesini koruyarak SQL CREATE TABLE bloklarını (; olsun/olmasın) ayrıştırır."""
+    cursor = 0
+    while (header := _SQL_TABLE_HEADER_RE.search(content, cursor)) is not None:
+        pos = header.end()
+        depth = 1
+        while pos < len(content) and depth > 0:
+            ch = content[pos]
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+            pos += 1
+        if depth == 0:
+            yield header.start(), header.group(1), content[header.end() : pos - 1]
+            cursor = pos
+        else:
+            yield header.start(), header.group(1), content[header.end() :]
+            return
+
+
+def audit_multitenant_rls_isolation(
+    raw_content: str,
+    *,
+    filename: str = "schema.sql",
+) -> dict[str, Any]:
+    """Çoklu-kiracı (Multi-Tenant) SQL ve Prisma şemalarında RLS izolasyonunu denetler."""
+    clean_filename = filename.strip() if isinstance(filename, str) and filename.strip() else "schema.sql"
+    if not isinstance(raw_content, str) or not raw_content.strip():
+        return {"findings": [], "count": 0, "filename": clean_filename}
+
+    lines = raw_content.splitlines()
+    findings: list[dict[str, Any]] = []
+    seen_keys: set[tuple[str, str, int]] = set()
+
+    def _add(finding: dict[str, Any], description: str) -> None:
+        finding["id"] = finding["control_id"]
+        finding["rule_id"] = finding["control_id"]
+        finding["description"] = description
+        key = (finding["control_id"], finding["cwe"], int(finding["line"]))
+        if key not in seen_keys:
+            seen_keys.add(key)
+            findings.append(finding)
+
+    def _short_name(identifier: str) -> str:
+        return identifier.strip().strip("\"'`").split(".")[-1].strip("\"'`").casefold()
+
+    tenant_col_re = re.compile(
+        r"\b(?:tenant_id|org_id|organization_id|workspace_id|account_id|customer_id)\b",
+        re.IGNORECASE,
+    )
+    prisma_tenant_re = re.compile(
+        r"\b(?:tenant_id|tenantId|org_id|orgId|organization_id|organizationId|"
+        r"workspace_id|workspaceId|account_id|accountId|customer_id|customerId)\b"
+    )
+
+    rls_enabled_tables: set[str] = set()
+    for alter_match in _ALTER_RLS_RE.finditer(raw_content):
+        rls_enabled_tables.add(_short_name(alter_match.group(1)))
+
+    tenant_tables: set[str] = set()
+    reported_missing_rls: set[str] = set()
+
+    # (a) SNIPER-DB-RLS-05: Multi-tenant CREATE TABLE / Prisma model without ENABLE/FORCE ROW LEVEL SECURITY
+    for table_start, raw_table_name, table_body in _iter_balanced_sql_tables(raw_content):
+        table_name = raw_table_name.strip("\"'`")
+        short_key = _short_name(table_name)
+        if tenant_col_re.search(table_body):
+            tenant_tables.add(short_key)
+            if short_key not in rls_enabled_tables and short_key not in reported_missing_rls:
+                reported_missing_rls.add(short_key)
+                line_no = _line_number_for_offset(raw_content, table_start)
+                snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else f"CREATE TABLE {table_name}"
+                desc = (
+                    f"Çoklu-kiracı '{table_name}' tablosunda kiracı sütunu (tenant_id/org_id/organization_id/"
+                    "workspace_id/account_id/customer_id) bulunuyor ancak 'ALTER TABLE ... ENABLE ROW LEVEL SECURITY' "
+                    "veya 'FORCE ROW LEVEL SECURITY' etkinleştirilmemiş."
+                )
+                _add(
+                    _make_db_finding(
+                        severity="high",
+                        category="authorization",
+                        title="Çoklu-kiracı (Multi-Tenant) tabloda Row-Level Security (RLS) etkinleştirilmemiş",
+                        description=desc,
+                        evidence=snippet,
+                        recommendation=(
+                            f"ALTER TABLE {table_name} ENABLE ROW LEVEL SECURITY; ve FORCE ROW LEVEL SECURITY; "
+                            "komutlarını ekleyerek kiracı bazlı RLS politikası tanımlayın."
+                        ),
+                        cwe="CWE-284",
+                        control_id="SNIPER-DB-RLS-05",
+                        filename=clean_filename,
+                        line=line_no,
+                    ),
+                    desc,
+                )
+
+    for model_start, model_name, model_body in _iter_prisma_models(raw_content):
+        short_key = _short_name(model_name)
+        if prisma_tenant_re.search(model_body):
+            tenant_tables.add(short_key)
+            if short_key not in rls_enabled_tables and "rls" not in model_body.lower() and short_key not in reported_missing_rls:
+                reported_missing_rls.add(short_key)
+                line_no = _line_number_for_offset(raw_content, model_start)
+                snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else f"model {model_name}"
+                desc = (
+                    f"Çoklu-kiracı Prisma '{model_name}' modelinde kiracı alanı bulunuyor ancak "
+                    "Row-Level Security (RLS) etkinleştirilmemiş."
+                )
+                _add(
+                    _make_db_finding(
+                        severity="high",
+                        category="authorization",
+                        title="Çoklu-kiracı (Multi-Tenant) tabloda Row-Level Security (RLS) etkinleştirilmemiş",
+                        description=desc,
+                        evidence=snippet,
+                        recommendation=(
+                            f"'{model_name}' tablosu için SQL migrasyonunda ENABLE ROW LEVEL SECURITY ve "
+                            "FORCE ROW LEVEL SECURITY komutlarını etkinleştirin."
+                        ),
+                        cwe="CWE-284",
+                        control_id="SNIPER-DB-RLS-05",
+                        filename=clean_filename,
+                        line=line_no,
+                    ),
+                    desc,
+                )
+
+    # (b) SNIPER-DB-RLS-06: Overly broad USING (true) or WITH CHECK (true) in CREATE POLICY
+    policy_re = re.compile(
+        r"\bCREATE\s+POLICY\b[^;]*?\b(?:USING|WITH\s+CHECK)\s*\(\s*true\s*\)[^;]*",
+        re.IGNORECASE | re.DOTALL,
+    )
+    on_table_re = re.compile(r"\bON\s+([A-Za-z0-9_.\"']+)", re.IGNORECASE)
+    restricted_role_re = re.compile(
+        r"\bTO\s+(?!PUBLIC\b|authenticated\b|anon\b|app_user\b)([A-Za-z0-9_.\"']+)",
+        re.IGNORECASE,
+    )
+    for match in policy_re.finditer(raw_content):
+        stmt_text = match.group(0)
+        on_match = on_table_re.search(stmt_text)
+        target_table = _short_name(on_match.group(1)) if on_match else ""
+        has_restricted_role = bool(restricted_role_re.search(stmt_text))
+        is_tenant_table = bool(target_table and target_table in tenant_tables)
+        if not has_restricted_role or is_tenant_table:
+            line_no = _line_number_for_offset(raw_content, match.start())
+            snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else stmt_text.splitlines()[0]
+            desc = (
+                "PostgreSQL CREATE POLICY tanımında USING (true) veya WITH CHECK (true) ifadesi "
+                "kullanılarak kiracı izolasyonu devre dışı bırakılmış."
+            )
+            _add(
+                _make_db_finding(
+                    severity="critical",
+                    category="authorization",
+                    title="PostgreSQL RLS politikasında aşırı geniş USING (true) ifadesi (Kiracı İzolasyonu Atlama)",
+                    description=desc,
+                    evidence=snippet,
+                    recommendation=(
+                        "USING (true) / WITH CHECK (true) ifadelerini kaldırarak "
+                        "tenant_id = current_setting('app.current_tenant_id')::uuid kısıtını uygulayın."
+                    ),
+                    cwe="CWE-732",
+                    control_id="SNIPER-DB-RLS-06",
+                    filename=clean_filename,
+                    line=line_no,
+                ),
+                desc,
+            )
+
+    return {
+        "findings": findings,
+        "count": len(findings),
+        "filename": clean_filename,
+    }
+

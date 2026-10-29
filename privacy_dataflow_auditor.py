@@ -67,11 +67,16 @@ PII_TAXONOMY: dict[str, str] = {
     "tc_no": CAT_IDENTITY, "kimlik_no": CAT_IDENTITY, "national_id": CAT_IDENTITY,
     "ssn": CAT_IDENTITY, "social_security_number": CAT_IDENTITY,
     "passport_number": CAT_IDENTITY, "passport_no": CAT_IDENTITY,
+    "vergi_no": CAT_IDENTITY, "vergi_kimlik_no": CAT_IDENTITY, "vkn": CAT_IDENTITY,
+    "mersis_no": CAT_IDENTITY, "sgk_no": CAT_IDENTITY, "ehliyet_no": CAT_IDENTITY,
+    "driver_license": CAT_IDENTITY, "drivers_license": CAT_IDENTITY,
+    "mothers_maiden_name": CAT_IDENTITY, "anne_kizlik_soyadi": CAT_IDENTITY,
     # Finansal
     "iban": CAT_FINANCIAL, "card_number": CAT_FINANCIAL, "card_no": CAT_FINANCIAL,
     "credit_card": CAT_FINANCIAL, "credit_card_number": CAT_FINANCIAL, "cvv": CAT_FINANCIAL,
     "cvc": CAT_FINANCIAL, "pan": CAT_FINANCIAL, "kart_no": CAT_FINANCIAL,
-    "account_number": CAT_FINANCIAL,
+    "account_number": CAT_FINANCIAL, "routing_number": CAT_FINANCIAL,
+    "swift_code": CAT_FINANCIAL, "salary": CAT_FINANCIAL, "maas": CAT_FINANCIAL,
     # Sağlık (özel nitelikli)
     "health": CAT_HEALTH, "health_data": CAT_HEALTH, "health_record": CAT_HEALTH,
     "diagnosis": CAT_HEALTH, "blood_type": CAT_HEALTH, "medical": CAT_HEALTH,
@@ -193,6 +198,21 @@ _ERASURE_RE = re.compile(
     r"(?i)(delete_user|deleteuser|delete_account|deleteaccount|\berase|anonymi[sz]e|right_to_erasure|"
     r"gdpr_delete|on\s+delete\s+cascade|forget_me|forgetme|purge_user)"
 )
+
+_BROWSER_STORAGE_SINK_RE = re.compile(
+    r"\b(?:window\.)?(?:localStorage|sessionStorage)\.setItem\s*\("
+)
+_URL_QUERY_SINK_RE = re.compile(
+    r"(?:\b(?:fetch|axios\.(?:get|delete)|requests\.(?:get|delete)|http\.Get|redirect)\s*\([^\n]*[?&][A-Za-z0-9_]+="
+    r"|[?&](?:tc_kimlik|tckn|ssn|iban|card_number|credit_card|cvv|cvc|passport_number|vergi_no|vkn)=)"
+)
+_HIGH_RISK_PII_CATEGORIES: frozenset[str] = frozenset({
+    CAT_IDENTITY,
+    CAT_FINANCIAL,
+    CAT_HEALTH,
+    CAT_BIOMETRIC,
+    CAT_SPECIAL,
+})
 
 _COMMENT_PREFIXES = ("#", "//", "/*", "*", "--", "<!--")
 
@@ -584,6 +604,62 @@ def _analyze_privacy(
                 categories=special_categories,
             ))
 
+    # 7. Tarayıcı localStorage/sessionStorage veya URL sorgu parametresinde yüksek riskli PII
+    for index, line in enumerate(lines):
+        if comment_flags[index]:
+            continue
+        hits = line_hits[index]
+        if not hits or _MASK_RE.search(line) or _ENCRYPT_RE.search(line):
+            continue
+        high_risk_cats = {
+            category for category, _ident in hits if category in _HIGH_RISK_PII_CATEGORIES
+        }
+        if not high_risk_cats:
+            continue
+        if _BROWSER_STORAGE_SINK_RE.search(line):
+            _inventory_add(inventory, hits, filename, "browser_storage")
+            _add(_make_privacy_finding(
+                severity="high",
+                title="Kişisel veri tarayıcı localStorage/sessionStorage alanında şifrelenmeden saklanıyor",
+                description=(
+                    f"Tarayıcı depolama çağrısı yüksek riskli kişisel veri ({', '.join(sorted(high_risk_cats))}) "
+                    "yazıyor. localStorage ve sessionStorage şifrelenmemiştir ve XSS durumunda tüm betiklere açıktır."
+                ),
+                evidence=line,
+                recommendation=(
+                    "Kimlik, finansal ve özel nitelikli verileri tarayıcı localStorage/sessionStorage alanında "
+                    "saklamayın; sunucu tarafı oturumları veya kısa ömürlü bellek içi durum kullanın."
+                ),
+                reference="KVKK m.12 · GDPR Art.32 · OWASP HTML5 Security Cheat Sheet",
+                cwe="CWE-312",
+                control_id="SNIPER-DATA-02",
+                filename=filename,
+                line=index + 1,
+                categories=high_risk_cats,
+            ))
+        elif _URL_QUERY_SINK_RE.search(line):
+            _inventory_add(inventory, hits, filename, "url_query")
+            _add(_make_privacy_finding(
+                severity="high",
+                title="Kişisel veri URL sorgu parametresi (GET Query String) içinde taşınıyor",
+                description=(
+                    f"URL sorgu dizesi yüksek riskli kişisel veri ({', '.join(sorted(high_risk_cats))}) içeriyor. "
+                    "URL parametreleri tarayıcı geçmişinde, vekil sunucu/CDN erişim günlüklerinde ve Referer "
+                    "başlığında düz metin olarak sızar."
+                ),
+                evidence=line,
+                recommendation=(
+                    "Kişisel verileri URL sorgu parametrelerinde taşımayın; HTTPS POST gövdesi veya "
+                    "üstbilgi (header) tabanlı zarflama kullanın."
+                ),
+                reference="KVKK m.12 · GDPR Art.32 · OWASP REST Security Cheat Sheet",
+                cwe="CWE-598",
+                control_id="SNIPER-DATA-05",
+                filename=filename,
+                line=index + 1,
+                categories=high_risk_cats,
+            ))
+
     return findings, inventory, has_pii_model
 
 
@@ -715,3 +791,156 @@ def audit_privacy_project(
     }
     result.update(_inventory_summary(inventory))
     return result
+
+
+_AI_RAG_PII_IDENT_RE = re.compile(
+    r"\b(?:ssn|tckn|tc_kimlik|credit_card|iban|patient|diagnosis|medical_record|email|phone_number|birth_date|salary)\b",
+    re.IGNORECASE,
+)
+_AI_RAG_SINK_RE = re.compile(
+    r"\b(?:embeddings\.create|ChatCompletion\.create|chat\.completions\.create|messages\.create|pinecone|chromadb|qdrant|weaviate|faiss|add_texts|add_documents|upsert)\b",
+    re.IGNORECASE,
+)
+_AI_RAG_REDACTOR_RE = re.compile(
+    r"\b(?:presidio|anonymize|redact_pii|mask_pii|scrub_pii|hash_pii|tokenize_pii)\b",
+    re.IGNORECASE,
+)
+
+
+def audit_ai_rag_pii_leakage(
+    raw_content: str,
+    *,
+    filename: str = "rag_ingest.py",
+) -> dict[str, Any]:
+    """Audit source content for unredacted PII/PHI flowing into LLM prompts, embeddings, or vector databases."""
+    clean_filename = filename.strip() if isinstance(filename, str) and filename.strip() else "rag_ingest.py"
+    if not isinstance(raw_content, str) or not raw_content.strip():
+        return {
+            "format": "sniper-ai-rag-pii-audit/1",
+            "filename": clean_filename,
+            "count": 0,
+            "findings": [],
+        }
+
+    findings: list[dict[str, Any]] = []
+    sink_match = _AI_RAG_SINK_RE.search(raw_content)
+    redactor_match = _AI_RAG_REDACTOR_RE.search(raw_content)
+    pii_matches = []
+    if sink_match is not None:
+        win_start = max(0, sink_match.start() - 1200)
+        win_end = min(len(raw_content), sink_match.end() + 1200)
+        pii_matches = list(_AI_RAG_PII_IDENT_RE.finditer(raw_content[win_start:win_end]))
+
+    if pii_matches and sink_match is not None and redactor_match is None and "Config.upsert" not in raw_content[max(0, sink_match.start() - 40) : sink_match.end() + 40]:
+        line_no = raw_content[: sink_match.start()].count("\n") + 1
+        lines = raw_content.splitlines()
+        evidence_line = lines[line_no - 1].strip() if lines and line_no - 1 < len(lines) else sink_match.group(0)
+        detected_Idents = sorted({m.group(0).lower() for m in pii_matches})
+        categories: set[str] = set()
+        for ident in detected_Idents:
+            cat = PII_TAXONOMY.get(ident)
+            if cat:
+                categories.add(cat)
+            elif ident == "patient":
+                categories.add(CAT_HEALTH)
+        if not categories:
+            categories.add(CAT_IDENTITY)
+
+        finding = _make_privacy_finding(
+            severity="critical",
+            title="Yapay zeka (LLM / RAG vektör veritabanı) veri hattına maskelenmemiş PII/PHI kişisel veri aktarımı",
+            description=(
+                f"Kaynak kodda kişisel/özel nitelikli veri tanımlayıcıları ({', '.join(detected_Idents)}) "
+                f"herhangi bir anonimleştirme veya PII maskeleme (Presidio / redact_pii) uygulanmadan "
+                f"doğrudan LLM veya RAG vektör veritabanı hedef çağrısına ({sink_match.group(0)}) aktarılıyor."
+            ),
+            evidence=evidence_line,
+            recommendation=(
+                "LLM istemlerine, gömme (embedding) modellerine ve vektör veritabanlarına (Pinecone, Qdrant, "
+                "ChromaDB, Weaviate, FAISS) veri göndermeden önce Presidio veya deterministik tokenizasyon ile "
+                "PII/PHI alanlarını maskeleyin."
+            ),
+            reference="CWE-359",
+            cwe="CWE-359",
+            control_id="SNIPER-PRIV-LLM-01",
+            filename=clean_filename,
+            line=line_no,
+            categories=categories,
+        )
+        finding["rule_id"] = "SNIPER-PRIV-LLM-01"
+        finding["control_id"] = "SNIPER-PRIV-LLM-01"
+        finding["cwe"] = "CWE-359"
+        finding["reference"] = "CWE-359"
+        finding["category"] = "privacy"
+        finding["pii_identifiers"] = detected_Idents
+        finding["sink"] = sink_match.group(0)
+        findings.append(finding)
+
+    return {
+        "format": "sniper-ai-rag-pii-audit/1",
+        "filename": clean_filename,
+        "count": len(findings),
+        "findings": findings,
+    }
+
+
+def generate_automated_ropa_dpia_report(
+    raw_content_or_audit: str | dict[str, Any],
+    *,
+    filename: str = "models.py",
+) -> dict[str, Any]:
+    """Generate a structured KVKK & GDPR Article 30 RoPA + Article 35 DPIA report from code or audit output."""
+    clean_filename = filename.strip() if isinstance(filename, str) and filename.strip() else "models.py"
+    all_findings: list[dict[str, Any]] = []
+    ai_pii_findings: list[dict[str, Any]] = []
+
+    if isinstance(raw_content_or_audit, str):
+        if raw_content_or_audit.strip():
+            inline_res = audit_privacy_inline(raw_content_or_audit, filename=clean_filename)
+            all_findings.extend(inline_res.get("findings") or [])
+            ai_res = audit_ai_rag_pii_leakage(raw_content_or_audit, filename=clean_filename)
+            ai_pii_findings.extend(ai_res.get("findings") or [])
+            all_findings.extend(ai_pii_findings)
+    elif isinstance(raw_content_or_audit, dict):
+        if isinstance(raw_content_or_audit.get("filename"), str) and raw_content_or_audit["filename"].strip():
+            clean_filename = raw_content_or_audit["filename"].strip()
+        raw_findings = raw_content_or_audit.get("findings") or []
+        if isinstance(raw_findings, list):
+            all_findings.extend(raw_findings)
+        ai_pii_findings = [
+            f
+            for f in all_findings
+            if isinstance(f, dict) and f.get("control_id") in {"SNIPER-PRIV-LLM-01", "SNIPER-AI-06"}
+        ]
+
+    any_critical_or_high_or_ai_pii = bool(ai_pii_findings) or any(
+        isinstance(f, dict)
+        and (
+            str(f.get("severity", "")).lower() in {"critical", "high"}
+            or bool(f.get("special_category"))
+        )
+        for f in all_findings
+    )
+
+    return {
+        "format": "sniper-kvkk-gdpr-ropa-dpia/1",
+        "filename": clean_filename,
+        "dpia_required": True if any_critical_or_high_or_ai_pii else False,
+        "risk_level": "critical" if ai_pii_findings else ("high" if all_findings else "low"),
+        "finding_count": len(all_findings),
+        "ai_rag_pii_findings": ai_pii_findings,
+        "gdpr_articles_triggered": ["Art. 5", "Art. 25", "Art. 30", "Art. 32", "Art. 35"],
+        "kvkk_articles_triggered": ["KVKK m.4", "KVKK m.6", "KVKK m.12", "KVKK m.16 (VERBİS)"],
+        "processing_activities": [
+            {
+                "activity_id": "ROPA-01",
+                "purpose": "Uygulama ve Yapay Zeka / Veri İşleme Hattı",
+                "legal_basis": "KVKK m.5/2-c (Sözleşmenin İfası) & GDPR Art. 6(1)(b)",
+                "technical_measures_recommended": [
+                    "LLM ve Vektör DB öncesi PII/PHI maskeleme (Presidio / Tokenization)",
+                    "Veritabanı sütun şifrelemesi (AES-256-GCM) ve Unutulma Hakkı (Right to Erasure) silme akışı",
+                ],
+            }
+        ],
+    }
+

@@ -298,6 +298,54 @@ def audit_desktop_app_project(
                             rel_file,
                             line_no,
                         )
+                    if re.search(
+                        r"\bexposeInMainWorld\s*\([^,\n]+,\s*(?:ipcRenderer\b|\{[^}\n]*\bipcRenderer\b)",
+                        raw_line,
+                    ):
+                        frameworks.add("electron")
+                        add(
+                            "critical",
+                            "desktop_security",
+                            "Electron preload betiğinde ham ipcRenderer nesnesinin exposeInMainWorld ile açılması",
+                            "contextBridge.exposeInMainWorld üzerinden ham ipcRenderer nesnesi doğrudan web içeriğine açılıyor; renderer süreci tüm dahili IPC kanallarını çağırabilir.",
+                            f"{rel_file}:{line_no}",
+                            "Ham ipcRenderer nesnesini asla exposeInMainWorld içine vermeyin; yalnızca sabit kanal adlarına bağlı dar kapsamlı sarmalayıcı (wrapper) fonksiyonlar açın.",
+                            "CWE-250",
+                            "SNIPER-CLNT-01",
+                            rel_file,
+                            line_no,
+                        )
+                    if re.search(
+                        r"(?:appendSwitch\s*\(\s*['\"]ignore-certificate-errors['\"]|setCertificateVerifyProc\s*\([^)]*=>\s*0\b)",
+                        raw_line,
+                    ):
+                        frameworks.add("electron")
+                        add(
+                            "critical",
+                            "desktop_security",
+                            "Electron uygulamasında TLS sertifika doğrulamasının devre dışı bırakılması",
+                            "ignore-certificate-errors anahtarı veya setCertificateVerifyProc ile TLS sertifika doğrulaması koşulsuz atlanıyor; ortadaki adam (MITM) saldırısına açıktır.",
+                            f"{rel_file}:{line_no}",
+                            "TLS sertifika doğrulamasını devre dışı bırakan anahtarları ve özel doğrulama atlamalarını kaldırın.",
+                            "CWE-295",
+                            "SNIPER-CONF-07",
+                            rel_file,
+                            line_no,
+                        )
+                    if re.search(r"\bwebviewTag\s*:\s*true\b", raw_line):
+                        frameworks.add("electron")
+                        add(
+                            "medium",
+                            "desktop_security",
+                            "Electron penceresinde webviewTag: true etkin",
+                            "Eski <webview> etiketi (webviewTag: true) ayrı bir süreç oluşturur ve misafir içerikte ayrıcalık sızıntısı yüzeyini genişletir.",
+                            f"{rel_file}:{line_no}",
+                            "webviewTag: false ayarlayın ve harici içerik için BrowserView / WebContentsView veya sandboxed iframe kullanın.",
+                            "CWE-250",
+                            "SNIPER-CLNT-01",
+                            rel_file,
+                            line_no,
+                        )
 
     findings.sort(
         key=lambda item: (
@@ -544,3 +592,111 @@ def audit_realtime_and_binary_protocols(
             "SNIPER-AUTH-11",
         ],
     }
+
+
+def audit_desktop_ipc_rce_chains(
+    raw_content: str,
+    *,
+    filename: str = "main.js",
+) -> dict[str, Any]:
+    """Electron / Tauri / WebView masaüstü IPC köprülerinde RCE zincirlerini denetler."""
+    if not isinstance(raw_content, str):
+        raw_content = ""
+    clean_filename = filename.strip() if isinstance(filename, str) and filename.strip() else "main.js"
+    findings: list[dict[str, Any]] = []
+
+    def _append_chain(
+        control_id: str,
+        severity: str,
+        cwe: str,
+        category: str,
+        title: str,
+        description: str,
+        evidence: str,
+        recommendation: str,
+        line_no: int = 1,
+    ) -> None:
+        item = _make_finding(
+            severity,
+            category,
+            title,
+            description,
+            evidence,
+            recommendation,
+            cwe,
+            control_id,
+            file=clean_filename,
+            line=line_no,
+        )
+        item["id"] = control_id
+        findings.append(item)
+
+    for ipc_m in re.finditer(r"ipcMain\.(?:handle|on)\s*\(|#\[tauri::command\]", raw_content):
+        window = raw_content[ipc_m.start() : ipc_m.start() + 1800]
+        sink_m = re.search(
+            r"shell\.openExternal\s*\(|(?:child_process\s*\.\s*)?(?:exec|execSync|spawn)\s*\(|Command::new\s*\(\s*(?![\"'])",
+            window,
+        )
+        has_ipc_guard = bool(
+            re.search(
+                r"senderFrame|event\.sender|startsWith\s*\(\s*[\"']https://|allowlist",
+                window,
+            )
+        )
+        if sink_m is not None and not has_ipc_guard:
+            sink_line = raw_content[: ipc_m.start() + sink_m.start()].count("\n") + 1
+            _append_chain(
+                "SNIPER-DESK-IPC-01",
+                "critical",
+                "CWE-94",
+                "command_data",
+                "Electron ipcMain / Tauri command köprüsünde doğrulanmamış işletim sistemi komutu veya shell.openExternal zinciri",
+                "IPC köprüsü (ipcMain.handle/on veya #[tauri::command]) üzerinden gelen yük senderFrame/allowlist doğrulaması olmadan doğrudan shell.openExternal veya işletim sistemi komutuna (exec/spawn/Command::new) aktarılıyor.",
+                f"{clean_filename}:{sink_line}: ipcMain/tauri::command -> {sink_m.group(0).strip()}",
+                "IPC işleyicisinde event.senderFrame.url kökenini doğrulayın, shell.openExternal için yalnızca https:// allowlist şemalarına izin verin ve kabuk komutu çalıştırmaktan kaçının.",
+                line_no=sink_line,
+            )
+            break
+
+    if re.search(
+        r"nodeIntegration\s*:\s*true|contextIsolation\s*:\s*false|webSecurity\s*:\s*false",
+        raw_content,
+    ):
+        _append_chain(
+            "SNIPER-DESK-ISOL-02",
+            "critical",
+            "CWE-250",
+            "web_hardening",
+            "Electron BrowserWindow yapılandırmasında contextIsolation=false veya nodeIntegration=true (XSS -> RCE)",
+            "Electron BrowserWindow webPreferences içinde nodeIntegration: true, contextIsolation: false veya webSecurity: false kullanılarak herhangi bir XSS açığının doğrudan yerel RCE'ye dönüşmesine yol açılıyor.",
+            f"{clean_filename}: nodeIntegration=true / contextIsolation=false / webSecurity=false",
+            "BrowserWindow yapılandırmasında contextIsolation: true, sandbox: true ve nodeIntegration: false değerlerini zorunlu kılın.",
+        )
+
+    has_custom_proto = bool(
+        re.search(
+            r"\b(?:registerFileProtocol|setAsDefaultProtocolClient|onOpenUrl)\b",
+            raw_content,
+        )
+    )
+    has_proto_norm = bool(
+        re.search(r"\b(?:normalize|resolve|startsWith)\b|URL\s*\(", raw_content)
+    )
+    if has_custom_proto and not has_proto_norm:
+        _append_chain(
+            "SNIPER-DESK-PROTO-03",
+            "high",
+            "CWE-78",
+            "command_data",
+            "Özel masaüstü protokol işleyicisinde (registerFileProtocol / Deep-Link) argüman/yol enjeksiyonu",
+            "Özel protokol veya deep-link işleyicisinde (registerFileProtocol / setAsDefaultProtocolClient / onOpenUrl) gelen URL/yol normalize edilmeden veya kök dizin kontrolü (resolve/startsWith/URL) yapılmadan işleniyor.",
+            f"{clean_filename}: registerFileProtocol / setAsDefaultProtocolClient / onOpenUrl doğrulamasız kullanım",
+            "Deep-link ve özel protokol URL'lerini standart URL ayrıştırıcısıyla doğrulayın, path.resolve ve startsWith ile izin verilen dizin dışına çıkışı engelleyin.",
+        )
+
+    return {
+        "findings": findings,
+        "count": len(findings),
+        "filename": clean_filename,
+    }
+

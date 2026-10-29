@@ -76,6 +76,14 @@ TOOLS = [
         "formats": ["JSON", "SARIF", "SBOM"],
     },
     {
+        "id": "syft-grype", "name": "Syft + Grype", "kind": "SBOM ve bağımlılık zafiyet analizi",
+        "license": "Açık kaynak", "execution": "Açık onaylı, çevrimdışı yerel manifest kopyası",
+        "summary": "Yerel bağımlılık manifestlerinden SHA-256 ile sabitlenmiş Syft ile SBOM üretir ve "
+                   "sabitlenmiş çevrimdışı Grype veritabanıyla zafiyetleri eşleştirir; kaynak dosyaları tarama alanına kopyalanmaz.",
+        "url": "https://github.com/anchore/grype",
+        "formats": ["Syft JSON", "Grype JSON özeti"],
+    },
+    {
         "id": "osv-scanner", "name": "OSV-Scanner", "kind": "Bağımlılık analizi",
         "license": "Açık kaynak", "execution": "Açık onaylı çevrimdışı yerel npm kilit dosyası veya harici",
         "summary": "Kilit dosyaları ve proje bağımlılıklarını OSV açık veritabanıyla eşleştirir.",
@@ -253,6 +261,9 @@ CAPABILITY_WORKFLOWS = {
             "/api/tool-reports/trivy/db-freshness",
         )),
     ],
+    "syft-grype": [
+        ("local", "Sabitli Syft SBOM + çevrimdışı Grype zafiyet analizi", ("/api/tool-runs/syft-grype",)),
+    ],
     "osv-scanner": [
         ("report_import", "Kaydedilmiş OSV SARIF özeti", ("/api/tool-reports/sarif/summary",)),
         ("external", "Harici OSV-Scanner analizi", ()),
@@ -389,7 +400,7 @@ CATEGORY_TOOLING = {
     "client": ("Hibrit", ["sniper-baseline", "owasp-zap", "burp-suite", "browser-tests", "semgrep", "sniper-code-analysis"], "Tarayıcı akışları ve istemci kaynak kodu"),
     "api": ("Yüksek otomasyon", ["burp-suite", "owasp-zap", "schemathesis", "semgrep", "expert-review", "sniper-code-analysis", "sniper-auditors"], "OpenAPI/GraphQL şeması ve sentetik yetkilendirme"),
     "infrastructure": ("Yüksek otomasyon", ["nmap", "testssl", "trivy", "sniper-baseline", "expert-review", "sniper-auditors"], "Kapsam içi ana makineler, DNS ve IaC"),
-    "supplychain": ("Yüksek otomasyon", ["osv-scanner", "trivy", "semgrep", "npm-audit", "dependabot", "gitleaks", "trufflehog", "codeql", "expert-review", "sniper-auditors"], "Depo, kilit dosyaları, SBOM ve CI"),
+    "supplychain": ("Yüksek otomasyon", ["osv-scanner", "syft-grype", "trivy", "semgrep", "npm-audit", "dependabot", "gitleaks", "trufflehog", "codeql", "expert-review", "sniper-auditors"], "Depo, kilit dosyaları, SBOM ve CI"),
     "availability": ("Staging gerekli", ["k6", "expert-review", "sniper-auditors"], "Staging/lab, SLO ve gözlemlenebilirlik"),
     "logging": ("Savunma sistemi gerekli", ["siem-review", "semgrep", "expert-review", "sniper-auditors", "sniper-code-analysis"], "Uygulama/WAF/kimlik günlükleri ve alarm erişimi"),
     "controlled": ("Harici kanıt", ["k6", "burp-suite", "siem-review", "expert-review"], "Sentetik hesap veya staging; Sniper yalnız maskeli sonucu kaydeder"),

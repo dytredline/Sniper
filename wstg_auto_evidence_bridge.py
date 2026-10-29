@@ -5,6 +5,29 @@ from __future__ import annotations
 from typing import Any
 
 
+def _is_false_positive(finding: dict[str, Any]) -> bool:
+    triage = finding.get("triage")
+    if isinstance(triage, dict) and str(triage.get("disposition") or "").strip().lower() == "false_positive":
+        return True
+    tracking = finding.get("tracking")
+    if isinstance(tracking, dict) and str(tracking.get("status") or "").strip().lower() == "false_positive":
+        return True
+    if str(finding.get("disposition") or "").strip().lower() == "false_positive":
+        return True
+    if str(finding.get("status") or "").strip().lower() == "false_positive":
+        return True
+    return False
+
+
+def _finding_cwe_ref(finding: dict[str, Any]) -> str:
+    parts = [str(finding.get("reference", "")), str(finding.get("cwe", "")), str(finding.get("cwe_id", ""))]
+    for raw_cwe in (finding.get("cwe"), finding.get("cwe_id")):
+        text = str(raw_cwe or "").strip()
+        if text.isdigit():
+            parts.append(f"CWE-{int(text)}")
+    return " ".join(parts)
+
+
 def _scan_matches(
     scan_findings: list[dict[str, Any]],
     *,
@@ -20,7 +43,7 @@ def _scan_matches(
     for finding in scan_findings:
         cat = str(finding.get("category", "")).strip()
         title = str(finding.get("title", "")).strip()
-        ref = f"{finding.get('reference', '')} {finding.get('cwe', '')}"
+        ref = _finding_cwe_ref(finding)
         if (
             (cat_set and cat in cat_set)
             or (title_set and title in title_set)
@@ -46,7 +69,7 @@ def _audit_matches(
     for finding in audit_findings:
         cat = str(finding.get("category", "")).strip()
         title = str(finding.get("title", "")).strip()
-        ref = f"{finding.get('reference', '')} {finding.get('cwe', '')} {finding.get('cwe_id', '')}"
+        ref = _finding_cwe_ref(finding)
         if (
             (cat_set and cat in cat_set)
             or (title_set and title in title_set)
@@ -110,7 +133,7 @@ def synchronize_engagement_auto_evidence(
     scan_findings: list[dict[str, Any]] = [
         f
         for f in (latest_scan.get("findings", []) if has_scan else [])
-        if isinstance(f, dict) and (f.get("triage") or {}).get("disposition") != "false_positive"
+        if isinstance(f, dict) and not _is_false_positive(f)
     ]
     scan_id = str(latest_scan.get("id") or "latest_scan") if has_scan else ""
 
@@ -133,7 +156,7 @@ def synchronize_engagement_auto_evidence(
     audit_findings: list[dict[str, Any]] = [
         f
         for f in (project_audit.get("findings", []) if has_audit else [])
-        if isinstance(f, dict) and (f.get("triage") or {}).get("disposition") != "false_positive"
+        if isinstance(f, dict) and not _is_false_positive(f)
     ]
     audit_id = str(project_audit.get("id") or "project_audit") if has_audit else ""
 
@@ -153,7 +176,9 @@ def synchronize_engagement_auto_evidence(
         item for item in (engagement.get("tool_evidence") or []) if isinstance(item, dict)
     ]
     gitleaks_evidence = [
-        item for item in tool_evidence if "gitleaks" in str(item.get("tool_identity", "")).lower()
+        item
+        for item in tool_evidence
+        if any(k in str(item.get("tool_identity", "")).lower() for k in ("gitleaks", "trufflehog"))
     ]
     gitleaks_finding_count = sum(
         int(item.get("total_findings", item.get("finding_count", 0)) or 0)
@@ -163,7 +188,9 @@ def synchronize_engagement_auto_evidence(
         item for item in tool_evidence if "nmap" in str(item.get("tool_identity", "")).lower()
     ]
     testssl_evidence = [
-        item for item in tool_evidence if "testssl" in str(item.get("tool_identity", "")).lower()
+        item
+        for item in tool_evidence
+        if any(k in str(item.get("tool_identity", "")).lower() for k in ("testssl", "ssllabs", "openssl"))
     ]
     trivy_evidence = [
         item for item in tool_evidence if "trivy" in str(item.get("tool_identity", "")).lower()
@@ -442,7 +469,7 @@ def synchronize_engagement_auto_evidence(
         note, ev = _format_audit_evidence(audit_id, m, "kalıcı betik enjeksiyonu ve içerik temizleme")
         record("SNIPER-INPV-02", "failed" if m else "passed", note, ev)
 
-        m = _audit_matches(audit_findings, categories=("data_query",), cwes=("CWE-89",))
+        m = _audit_matches(audit_findings, categories=("data_query",), cwes=("CWE-89", "CWE-943"))
         note, ev = _format_audit_evidence(audit_id, m, "veri tabanı sorgu parametreleştirme")
         record("SNIPER-INPV-05", "failed" if m else "passed", note, ev)
 
@@ -720,6 +747,29 @@ def synchronize_engagement_auto_evidence(
                 "failed",
                 f"OpenAPI sözleşmesinde güvensiz taşıma şeması: {matched_cryp02[0].get('title', 'HTTP')}",
                 str(matched_cryp02[0].get("evidence", "http://"))[:500],
+            )
+        oa_control_ids = {c[0] for c in oa_controls}
+        extra_oa_controls: dict[str, list[dict[str, Any]]] = {}
+        for f in oa_findings:
+            extra_cid = str(f.get("control_id") or f.get("rule_id") or "").strip()
+            if (
+                extra_cid
+                and extra_cid.startswith("SNIPER-")
+                and extra_cid not in oa_control_ids
+                and extra_cid != "SNIPER-CRYP-02"
+            ):
+                extra_oa_controls.setdefault(extra_cid, []).append(f)
+        for extra_cid, extra_matches in sorted(extra_oa_controls.items()):
+            titles = ", ".join(sorted({str(f.get("title", "")) for f in extra_matches if f.get("title")}))
+            ev_str = " | ".join(
+                f"{f.get('location', 'spec')}: {str(f.get('evidence', ''))[:140]}"
+                for f in extra_matches[:4]
+            )
+            record(
+                extra_cid,
+                "failed",
+                f"OpenAPI/GraphQL sözleşme denetimi bulgu tespit etti: {titles[:260]}",
+                ev_str[:1000] or f"OpenAPI denetimi ({extra_cid})",
             )
 
     # 15. Infrastructure (SNIPER-INFR-*)
@@ -1137,6 +1187,49 @@ def synchronize_engagement_auto_evidence(
     }
 
 
+def derive_auto_evidence_updates(
+    *,
+    openapi_audit: dict[str, Any] | None = None,
+    dns_email_audit: dict[str, Any] | None = None,
+    discovery_audit: dict[str, Any] | None = None,
+    mobile_audit: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Stateless helper to derive control updates from specialized audit payloads."""
+    from methodology import TEST_CATALOG
+
+    class _MemStore:
+        def __init__(self) -> None:
+            self._eng = {
+                "id": "eng_mem",
+                "tests": [
+                    {"control_id": c["control_id"], "category": c.get("category", ""), "title": c.get("title", ""), "status": "not_tested"}
+                    for c in TEST_CATALOG
+                ],
+                "coverage": {"total": len(TEST_CATALOG), "completed": 0, "percent": 0},
+            }
+
+        def get_engagement(self, _eid: str) -> dict[str, Any]:
+            return self._eng
+
+        def update_manual_test(self, _eid: str, cid: str, *, status: str, notes: str, evidence: str) -> None:
+            for t in self._eng["tests"]:
+                if t["control_id"] == cid:
+                    t.update(status=status, notes=notes, evidence=evidence)
+
+    store = _MemStore()
+    res = synchronize_engagement_auto_evidence(
+        store,
+        "eng_mem",
+        project_audit_id="none",
+        openapi_audit=openapi_audit,
+        dns_email_audit=dns_email_audit,
+        discovery_audit=discovery_audit,
+        mobile_audit=mobile_audit,
+    )
+    res["updates"] = {u["control_id"]: u for u in res.get("updated_controls", [])}
+    return res
+
+
 def verify_engagement_retests(
     store: Any,
     engagement_id: str,
@@ -1162,7 +1255,7 @@ def verify_engagement_retests(
     scan_findings: list[dict[str, Any]] = [
         f
         for f in (latest_scan.get("findings", []) if has_scan else [])
-        if isinstance(f, dict) and (f.get("triage") or {}).get("disposition") != "false_positive"
+        if isinstance(f, dict) and not _is_false_positive(f)
     ]
 
     project_audit: dict[str, Any] | None = None
@@ -1177,7 +1270,7 @@ def verify_engagement_retests(
     audit_findings: list[dict[str, Any]] = [
         f
         for f in (project_audit.get("findings", []) if has_audit else [])
-        if isinstance(f, dict) and (f.get("triage") or {}).get("disposition") != "false_positive"
+        if isinstance(f, dict) and not _is_false_positive(f)
     ]
 
     tests_by_id = {

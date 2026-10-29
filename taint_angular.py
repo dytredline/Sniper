@@ -38,6 +38,8 @@ _INTERP_ATTR_RE = re.compile(
 _NGFOR_RE = re.compile(r"""\*ngFor\s*=\s*(["'])\s*let\s+([A-Za-z_$][\w$]*)\s+of\s+([^;"']+)""")
 _FOR_BLOCK_RE = re.compile(r"""@for\s*\(\s*([A-Za-z_$][\w$]*)\s+of\s+([^;)]+)""")
 _LET_AS_RE = re.compile(r"""\*ngIf\s*=\s*(["'])([^;"']+?)\s+as\s+([A-Za-z_$][\w$]*)""")
+_IF_BLOCK_AS_RE = re.compile(r"""@if\s*\(\s*([^;)]+?)\s*;\s*as\s+([A-Za-z_$][\w$]*)\s*\)""")
+_LET_DECL_RE = re.compile(r"""@let\s+([A-Za-z_$][\w$]*)\s*=\s*([^;]+);""")
 _IDENT_RE = re.compile(r"[A-Za-z_$][\w$]*")
 _TEMPLATE_URL_RE = re.compile(r"^(?:\./)?[\w./-]+\.html?$")
 
@@ -107,6 +109,14 @@ def template_aliases(text: str) -> dict[str, str]:
         root, _ = _root(_split_pipes(match.group(2))[0])
         if root:
             aliases[match.group(3)] = root
+    for match in _IF_BLOCK_AS_RE.finditer(text):
+        root, _ = _root(_split_pipes(match.group(1))[0])
+        if root:
+            aliases[match.group(2)] = root
+    for match in _LET_DECL_RE.finditer(text):
+        root, _ = _root(_split_pipes(match.group(2))[0])
+        if root:
+            aliases[match.group(1)] = root
     return aliases
 
 

@@ -13,9 +13,17 @@ from typing import Any
 
 from taint_native_core import FileUnit, Func, Tok, match_close, split_args
 
-_FREE_FUNCS = frozenset({"free", "g_free", "kfree", "xfree", "cfree", "sqlite3_free", "OPENSSL_free"})
-_INPUT_NUM = frozenset({"atoi", "atol", "atoll", "strtol", "strtoul", "strtoll", "strtoull", "scanf", "sscanf",
-                        "fscanf", "read", "recv", "getchar", "fgetc", "getc"})
+_FREE_FUNCS = frozenset({
+    "free", "g_free", "kfree", "xfree", "cfree", "sqlite3_free", "OPENSSL_free",
+    "efree", "vfree", "av_free", "CRYPTO_free", "zfree", "vPortFree",
+    "HeapFree", "LocalFree", "GlobalFree", "xmlFree", "curl_free",
+    "CoTaskMemFree", "free_sized", "free_aligned_sized",
+})
+_INPUT_NUM = frozenset({
+    "atoi", "atol", "atoll", "strtol", "strtoul", "strtoll", "strtoull",
+    "strtoimax", "strtoumax", "stoi", "stol", "stoll", "stoul",
+    "scanf", "sscanf", "fscanf", "read", "recv", "getchar", "fgetc", "getc",
+})
 _CHECK_PREV = frozenset({"!", "(", "&&", "||", "?"})
 MAX_FINDINGS = 40
 

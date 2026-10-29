@@ -5,13 +5,18 @@
   const state = { pending: false, generation: 0 };
   let modal, path, consent, submit, error, result, opener;
 
+  function configuredHome() {
+    const value = document.querySelector?.('meta[name="sniper-local-home"]')?.content;
+    if (typeof value !== 'string' || value.length < 2 || value.length > 1024 ||
+        !value.startsWith('/') || value.endsWith('/') || value.includes('//') || /[\\\x00-\x1f\x7f]/.test(value)) return '';
+    return value.split('/').slice(1).every(segment => segment && segment !== '.' && segment !== '..') ? value : '';
+  }
+
   function validPath() {
     const value = path.value;
-    if (!value.startsWith('/home/') || value.length > 1024 || /[\x00-\x1f\x7f]/.test(value)) return false;
-    const segments = value.split('/');
-    return segments.length >= 4 && /^[A-Za-z0-9._-]+$/.test(segments[2]) &&
-      segments[2] !== '.' && segments[2] !== '..' &&
-      segments.slice(3).every(segment => segment && segment !== '.' && segment !== '..');
+    const home = configuredHome();
+    if (!home || value.length > 1024 || !value.startsWith(home + '/') || /[\\\x00-\x1f\x7f]/.test(value)) return false;
+    return value.slice(home.length + 1).split('/').every(segment => segment && segment !== '.' && segment !== '..');
   }
 
   function updateSubmit() {

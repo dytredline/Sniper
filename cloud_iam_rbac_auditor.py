@@ -601,6 +601,65 @@ def audit_cloud_iam_and_k8s_rbac(
             )
         )
 
+    # 8. AWS EC2 IMDSv1 Enabled (http_tokens = optional) & Kubernetes Container Escape Primitives
+    imdsv1_re = re.compile(
+        r"(?im)\b(?:http_tokens|HttpTokens)\s*[:=]\s*[\"']?optional[\"']?\b"
+    )
+    for match in imdsv1_re.finditer(raw_content):
+        line_no = _line_number_for_offset(raw_content, match.start())
+        snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else match.group(0)
+        _add(
+            _make_cloud_finding(
+                severity="high",
+                category="infrastructure",
+                title="Bulut örnek meta veri servisinde IMDSv1 etkin (http_tokens = optional): SSRF ile IAM rolü çalınma riski",
+                description=(
+                    "EC2 / bulut sanal makine yapılandırmasında IMDSv2 oturum jetonu zorunluluğu "
+                    "(http_tokens = 'required') devre dışı bırakılmış ('optional'); olası bir SSRF açığı "
+                    "169.254.169.254 üzerinden geçici IAM kimlik bilgilerini doğrudan sızdırabilir."
+                ),
+                evidence=snippet,
+                recommendation=(
+                    "metadata_options bloğunda http_tokens = 'required' ve "
+                    "http_put_response_hop_limit = 1 ayarlarını zorunlu kılın."
+                ),
+                cwe="CWE-918",
+                control_id="SNIPER-INFR-03",
+                filename=clean_filename,
+                line=line_no,
+            )
+        )
+
+    k8s_escape_re = re.compile(
+        r"(?im)^[ \t]*(?:privileged[ \t]*:[ \t]*true\b"
+        r"|(?:hostPID|hostIPC|hostNetwork)[ \t]*:[ \t]*true\b"
+        r"|path[ \t]*:[ \t]*[\"']?(?:/var/run/docker\.sock|/run/containerd/containerd\.sock|/var/run/crio/crio\.sock)[\"']?)"
+    )
+    for match in k8s_escape_re.finditer(raw_content):
+        line_no = _line_number_for_offset(raw_content, match.start())
+        snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else match.group(0)
+        _add(
+            _make_cloud_finding(
+                severity="critical",
+                category="configuration",
+                title="Kubernetes konteyner kaçış (Container Escape) yapılandırması: privileged / hostNamespace / runtime soketi",
+                description=(
+                    "İş yükü manifestinde privileged: true, hostPID/hostIPC/hostNetwork: true veya "
+                    "konteyner çalışma zamanı soketi (docker.sock / containerd.sock) bağlaması tespit edildi; "
+                    "konteynerden ana düğüme (host node) tam yetki kaçışı yapılabilir."
+                ),
+                evidence=snippet,
+                recommendation=(
+                    "privileged, hostPID, hostIPC ve hostNetwork bayraklarını false yapın; "
+                    "docker.sock/containerd.sock hostPath bağlamalarını kaldırın ve Pod Security Standards 'restricted' profilini uygulayın."
+                ),
+                cwe="CWE-250",
+                control_id="SNIPER-CONF-08",
+                filename=clean_filename,
+                line=line_no,
+            )
+        )
+
     score, grade = calculate_score(findings)
     return {
         "format": "sniper-cloud-iam-rbac-audit-v1",
@@ -658,3 +717,153 @@ def audit_cloud_iam_project(
         "findings": cap_findings(findings, PROJECT_FINDING_LIMIT)[0],
         "controls_evaluated": list(CLOUD_IAM_CONTROLS_EVALUATED),
     }
+
+
+def audit_cloud_privesc_chains(
+    raw_content: str,
+    *,
+    filename: str = "main.tf",
+) -> dict[str, Any]:
+    """Bulut IAM ve Kubernetes manifestlerinde kritik yetki yükseltme / kaçış zincirlerini denetler."""
+    clean_filename = filename.strip() if isinstance(filename, str) and filename.strip() else "main.tf"
+    if not isinstance(raw_content, str) or not raw_content.strip():
+        return {"findings": [], "count": 0, "filename": clean_filename}
+
+    lines = raw_content.splitlines()
+    findings: list[dict[str, Any]] = []
+    seen_keys: set[tuple[str, str, int]] = set()
+
+    def _add(finding: dict[str, Any], description: str) -> None:
+        finding["id"] = finding["control_id"]
+        finding["rule_id"] = finding["control_id"]
+        finding["description"] = description
+        key = (finding["control_id"], finding["cwe"], int(finding["line"]))
+        if key not in seen_keys:
+            seen_keys.add(key)
+            findings.append(finding)
+
+    # (a) SNIPER-CLOUD-PRIVESC-01: AWS IAM PassRole + Workload Execution chain
+    passrole_re = re.compile(r"\biam:(?:PassRole|\*)", re.IGNORECASE)
+    workload_exec_re = re.compile(
+        r"\b(?:ec2:(?:RunInstances|\*)|lambda:(?:CreateFunction|\*)|"
+        r"ecs:(?:RunTask|\*)|glue:(?:CreateDevEndpoint|\*))",
+        re.IGNORECASE,
+    )
+    passrole_match = passrole_re.search(raw_content)
+    workload_match = workload_exec_re.search(raw_content)
+    if passrole_match and workload_match:
+        line_no = _line_number_for_offset(raw_content, passrole_match.start())
+        snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else f"{passrole_match.group(0)} + {workload_match.group(0)}"
+        desc = (
+            f"Politikada '{passrole_match.group(0)}' izni ile iş yükü başlatma izni "
+            f"('{workload_match.group(0)}') birlikte tanımlanmış; saldırgan yüksek yetkili bir IAM "
+            "rolünü yeni bir EC2/Lambda/ECS/Glue iş yüküne aktararak tam yetki yükseltme yapabilir."
+        )
+        _add(
+            _make_cloud_finding(
+                severity="critical",
+                category="cloud",
+                title="AWS IAM PassRole + İş Yükü Çalıştırma (EC2/Lambda/ECS) yetki yükseltme zinciri",
+                description=desc,
+                evidence=snippet,
+                recommendation=(
+                    "iam:PassRole iznini yalnızca belirli hedef rol ARN'leriyle sınırlandırın ve "
+                    "iam:PassedToService koşulunu zorunlu kılın."
+                ),
+                cwe="CWE-269",
+                control_id="SNIPER-CLOUD-PRIVESC-01",
+                filename=clean_filename,
+                line=line_no,
+            ),
+            desc,
+        )
+
+    # (b) SNIPER-CLOUD-OIDC-02: GitHub Actions OIDC AssumeRoleWithWebIdentity missing/wildcard sub condition
+    web_id_match = re.search(r"\b(?:sts:)?AssumeRoleWithWebIdentity\b", raw_content, re.IGNORECASE)
+    gh_oidc_match = re.search(r"token\.actions\.githubusercontent\.com", raw_content, re.IGNORECASE)
+    if web_id_match and gh_oidc_match:
+        sub_matches = list(
+            re.finditer(r"token\.actions\.githubusercontent\.com:sub\b", raw_content, re.IGNORECASE)
+        )
+        wildcard_sub_re = re.compile(
+            r'["\']\s*(?:\*|repo:\*(?:[:/][^"\']*)?|repo:[^/"\']+/\*(?:[:/][^"\']*)?)\s*["\']',
+            re.IGNORECASE,
+        )
+        has_missing_or_wildcard_sub = False
+        anchor_offset = gh_oidc_match.start()
+        if not sub_matches:
+            has_missing_or_wildcard_sub = True
+        else:
+            for sub_m in sub_matches:
+                w_start = max(0, sub_m.start() - 80)
+                w_end = min(len(raw_content), sub_m.end() + 300)
+                if wildcard_sub_re.search(raw_content[w_start:w_end]):
+                    has_missing_or_wildcard_sub = True
+                    anchor_offset = sub_m.start()
+                    break
+
+        if has_missing_or_wildcard_sub:
+            line_no = _line_number_for_offset(raw_content, anchor_offset)
+            snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else "token.actions.githubusercontent.com"
+            desc = (
+                "GitHub Actions OIDC güven politikasında (AssumeRoleWithWebIdentity) "
+                "'token.actions.githubusercontent.com:sub' koşulu eksik veya wildcard ('*' / 'repo:*') "
+                "olarak bırakılmış; herhangi bir GitHub deposu bu AWS IAM rolünü devralabilir."
+            )
+            _add(
+                _make_cloud_finding(
+                    severity="critical",
+                    category="cloud",
+                    title="GitHub Actions OIDC AssumeRoleWithWebIdentity güven politikasında depo (sub) kısıtı eksik",
+                    description=desc,
+                    evidence=snippet,
+                    recommendation=(
+                        "Condition bloğunda 'token.actions.githubusercontent.com:sub' değerini "
+                        "'repo:ORG/REPO:ref:refs/heads/main' gibi belirli organizasyon, depo ve dal ile sınırlandırın."
+                    ),
+                    cwe="CWE-287",
+                    control_id="SNIPER-CLOUD-OIDC-02",
+                    filename=clean_filename,
+                    line=line_no,
+                ),
+                desc,
+            )
+
+    # (c) SNIPER-K8S-ESCAPE-03: Kubernetes Pod-Escape chain (hostPID/hostIPC/hostNetwork/privileged/docker.sock)
+    k8s_escape_chain_re = re.compile(
+        r"(?im)(?:\b(?:privileged|hostPID|hostIPC|hostNetwork|host_pid|host_ipc|host_network)\s*[:=]\s*true\b"
+        r"|(?:/var/run/docker\.sock|/run/containerd/containerd\.sock|/var/run/crio/crio\.sock))"
+    )
+    for match in k8s_escape_chain_re.finditer(raw_content):
+        line_no = _line_number_for_offset(raw_content, match.start())
+        snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else match.group(0)
+        desc = (
+            "Kubernetes iş yükü tanımında hostPID/hostIPC/hostNetwork: true, privileged: true veya "
+            "konteyner çalışma zamanı soketi (docker.sock / containerd.sock) bağlaması tespit edildi; "
+            "konteynerden ana düğüme (node) kaçış yapılabilir."
+        )
+        _add(
+            _make_cloud_finding(
+                severity="critical",
+                category="container",
+                title="Kubernetes Pod-Escape zinciri (hostPID/hostNetwork veya docker.sock bağlama)",
+                description=desc,
+                evidence=snippet,
+                recommendation=(
+                    "hostPID, hostIPC, hostNetwork ve privileged bayraklarını devre dışı bırakın; "
+                    "docker.sock ve containerd.sock hostPath bağlamalarını kaldırın."
+                ),
+                cwe="CWE-250",
+                control_id="SNIPER-K8S-ESCAPE-03",
+                filename=clean_filename,
+                line=line_no,
+            ),
+            desc,
+        )
+
+    return {
+        "findings": findings,
+        "count": len(findings),
+        "filename": clean_filename,
+    }
+

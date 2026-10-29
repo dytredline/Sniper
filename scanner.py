@@ -570,9 +570,13 @@ def _parse_page(result: FetchResult) -> PageSignals:
 def _sensitive_pattern_types(body: bytes) -> list[str]:
     """Detect likely secret material without returning or persisting the matched value."""
     text = body.decode("utf-8", errors="ignore")
+    private_key_begin = r"-----" + r"BEGIN "
     patterns = (
-        ("Özel anahtar bloğu", r"-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----|-----BEGIN ENCRYPTED PRIVATE KEY-----"),
+        ("Özel anahtar bloğu", private_key_begin + r"(?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----|" +
+         private_key_begin + r"ENCRYPTED PRIVATE KEY-----"),
         ("Bulut erişim anahtarı", r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
+        ("Yapay zeka / SaaS API anahtarı", r"\b(?:sk-proj-[A-Za-z0-9_-]{20,}|sk-ant-api03-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{36,}|xox[baprs]-[0-9A-Za-z-]{10,}|sk_live_[0-9a-zA-Z]{24,}|AIzaSy[0-9A-Za-z_-]{33}|hf_[A-Za-z0-9]{34,})\b"),
+        ("Veritabanı bağlantı dizgesi (parolalı URI)", r"(?i)\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|rediss)://[^/\s:@\"']+:[^/\s@\"']+@[^\s\"'<>]+"),
         ("Gömülü sır değişkeni", r"(?i)(?:api[_-]?key|client[_-]?secret|access[_-]?token)\s*[:=]\s*[\"'][^\"']{12,}[\"']"),
     )
     return [label for label, pattern in patterns if re.search(pattern, text)]
@@ -1014,6 +1018,9 @@ def analyze_response(result: FetchResult, security_txt: FetchResult | None = Non
             ("PHP fatal error", r"PHP (?:Fatal|Parse) error"),
             ("Java yığın izi", r"\bat [\w.$]+\([^\n]+\.java:\d+\)"),
             (".NET istisnası", r"System\.[A-Za-z.]+Exception"),
+            ("SQL sözdizimi / veritabanı hatası", r"(?:SQL syntax.*MySQL|ORA-\d{5}:|PostgreSQL.*ERROR:|SQLite/JDBCDriver|Unclosed quotation mark after the character string)"),
+            ("Node.js / V8 yığın izi", r"(?:ReferenceError|TypeError|SyntaxError): [^\n]+\n\s+at [^\n]+\("),
+            ("Etkileşimli hata ayıklama konsolu (Werkzeug / Django Debug)", r"(?:You're seeing this error because you have <code>DEBUG = True</code>|Werkzeug Debugger)"),
         ) if re.search(pattern, result.body.decode("utf-8", errors="ignore"), flags=re.IGNORECASE)
     ]
     if error_markers:

@@ -211,4 +211,3 @@ def test_setup_cli_advertises_explicit_core_only_mode() -> None:
         text=True,
     )
     assert "--core-only" in completed.stdout
-

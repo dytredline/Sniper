@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 from typing import Any
 
 
@@ -15,37 +17,51 @@ CATEGORY_ALIASES: dict[str, set[str]] = {
         "ci_cd",
         "container",
         "web_hardening",
+        "cloud_iam",
+        "host_cis",
+        "zero_trust",
+        "desktop_security",
     },
     "headers": {"headers", "configuration", "client", "web_hardening"},
     "cors": {"cors", "configuration", "client", "api"},
     "container": {"container", "docker", "kubernetes", "infrastructure", "configuration"},
     "web_hardening": {"web_hardening", "configuration", "headers", "client", "server"},
-    "identity": {"identity", "auth", "authentication"},
-    "auth": {"auth", "identity", "authentication", "mobile_auth"},
-    "authentication": {"authentication", "auth", "identity", "mobile_auth"},
-    "authz": {"authz", "authorization"},
-    "authorization": {"authorization", "authz"},
+    "identity": {"identity", "auth", "authentication", "cloud_iam", "zero_trust"},
+    "auth": {"auth", "identity", "authentication", "mobile_auth", "cloud_iam", "zero_trust"},
+    "authentication": {"authentication", "auth", "identity", "mobile_auth", "cloud_iam", "zero_trust"},
+    "authz": {"authz", "authorization", "database_rls", "cloud_iam", "zero_trust"},
+    "authorization": {"authorization", "authz", "database_rls", "cloud_iam", "zero_trust"},
     "session": {"session", "auth"},
-    "input": {"input", "code", "command_data", "data_query"},
-    "command_data": {"command_data", "input", "server", "code"},
-    "data_query": {"data_query", "input", "server", "code"},
+    "input": {"input", "code", "command_data", "data_query", "ai_llm", "iot_firmware"},
+    "command_data": {"command_data", "input", "server", "code", "ai_llm", "iot_firmware"},
+    "data_query": {"data_query", "input", "server", "code", "database_rls"},
     "ssrf": {"ssrf", "server", "api", "input"},
-    "server": {"server", "code", "command_data", "data_query", "ssrf"},
+    "server": {"server", "code", "command_data", "data_query", "ssrf", "ai_llm"},
     "errors": {"errors", "logging"},
-    "crypto": {"crypto", "cryptography", "transport", "secrets", "mobile_crypto"},
-    "transport": {"transport", "crypto", "cryptography", "mobile_network"},
-    "secrets": {"secrets", "data", "crypto", "data_protection", "mobile_crypto"},
-    "privacy": {"privacy", "data", "data_protection", "mobile_privacy"},
-    "data": {"data", "data_protection", "privacy", "secrets", "mobile_storage", "mobile_privacy"},
-    "business": {"business"},
-    "client": {"client", "headers", "cors"},
+    "crypto": {"crypto", "cryptography", "transport", "secrets", "mobile_crypto", "zero_trust"},
+    "transport": {"transport", "crypto", "cryptography", "mobile_network", "zero_trust"},
+    "secrets": {"secrets", "data", "crypto", "data_protection", "mobile_crypto", "ai_llm"},
+    "privacy": {"privacy", "data", "data_protection", "mobile_privacy", "ai_llm"},
+    "data": {"data", "data_protection", "privacy", "secrets", "mobile_storage", "mobile_privacy", "database_rls", "ai_llm"},
+    "business": {"business", "web3"},
+    "client": {"client", "headers", "cors", "browser_extension", "desktop_security"},
     "api": {"api", "ssrf", "cors"},
-    "infrastructure": {"infrastructure", "docker", "kubernetes", "iac", "container"},
-    "components": {"components", "supplychain", "supply_chain", "dependencies", "license"},
-    "supplychain": {"supplychain", "supply_chain", "dependencies", "ci_cd", "components"},
-    "availability": {"availability"},
+    "infrastructure": {"infrastructure", "docker", "kubernetes", "iac", "container", "cloud_iam", "host_cis", "zero_trust"},
+    "components": {"components", "supplychain", "supply_chain", "dependencies", "license", "ai_llm"},
+    "supplychain": {"supplychain", "supply_chain", "dependencies", "ci_cd", "components", "ai_llm"},
+    "availability": {"availability", "dos_resilience"},
     "logging": {"logging", "errors"},
     "controlled": {"controlled"},
+    "ai_llm": {"ai_llm", "input", "command_data", "data", "privacy", "secrets", "supplychain", "components"},
+    "database_rls": {"database_rls", "authorization", "authz", "data", "data_query"},
+    "cloud_iam": {"cloud_iam", "authorization", "authz", "identity", "auth", "authentication", "infrastructure", "configuration"},
+    "zero_trust": {"zero_trust", "transport", "crypto", "authentication", "authorization", "infrastructure", "configuration"},
+    "browser_extension": {"browser_extension", "client", "configuration", "privacy", "data"},
+    "desktop_security": {"desktop_security", "client", "configuration", "command_data"},
+    "web3": {"web3", "business", "crypto", "authorization"},
+    "iot_firmware": {"iot_firmware", "command_data", "input", "crypto", "configuration"},
+    "host_cis": {"host_cis", "configuration", "infrastructure", "authorization"},
+    "dos_resilience": {"dos_resilience", "availability", "configuration"},
     "mobile_auth": {"mobile_auth", "auth", "authentication", "mobile_security"},
     "mobile_crypto": {"mobile_crypto", "crypto", "cryptography", "secrets", "mobile_security"},
     "mobile_storage": {"mobile_storage", "data", "data_protection", "mobile_security"},
@@ -87,19 +103,19 @@ FRAMEWORK_DEFINITIONS: tuple[dict[str, Any], ...] = (
                 "id": "A01:2021",
                 "title": "Bozuk Erişim Kontrolü (Broken Access Control)",
                 "categories": ("authorization", "authz", "cors", "client"),
-                "cwes": ("CWE-862", "CWE-639", "CWE-942", "CWE-285"),
+                "cwes": ("CWE-862", "CWE-639", "CWE-942", "CWE-285", "CWE-22", "CWE-284", "CWE-863", "CWE-915"),
             },
             {
                 "id": "A02:2021",
                 "title": "Kriptografik Hatalar (Cryptographic Failures)",
                 "categories": ("crypto", "transport", "data", "secrets", "mobile_crypto"),
-                "cwes": ("CWE-319", "CWE-320", "CWE-326", "CWE-327", "CWE-798"),
+                "cwes": ("CWE-319", "CWE-320", "CWE-326", "CWE-327", "CWE-798", "CWE-295", "CWE-328", "CWE-330", "CWE-338"),
             },
             {
                 "id": "A03:2021",
                 "title": "Enjeksiyon (Injection)",
                 "categories": ("input", "server", "command_data", "data_query"),
-                "cwes": ("CWE-79", "CWE-89", "CWE-78", "CWE-94"),
+                "cwes": ("CWE-79", "CWE-89", "CWE-78", "CWE-94", "CWE-77", "CWE-90", "CWE-95", "CWE-113", "CWE-134", "CWE-643", "CWE-917", "CWE-943", "CWE-1336"),
             },
             {
                 "id": "A04:2021",
@@ -111,31 +127,31 @@ FRAMEWORK_DEFINITIONS: tuple[dict[str, Any], ...] = (
                 "id": "A05:2021",
                 "title": "Güvenlik Yanlış Yapılandırması (Security Misconfiguration)",
                 "categories": ("configuration", "headers", "infrastructure", "container", "web_hardening"),
-                "cwes": ("CWE-16", "CWE-693", "CWE-250", "CWE-489"),
+                "cwes": ("CWE-16", "CWE-693", "CWE-250", "CWE-489", "CWE-611", "CWE-732", "CWE-1021"),
             },
             {
                 "id": "A06:2021",
                 "title": "Savunmasız ve Güncel Olmayan Bileşenler (Vulnerable and Outdated Components)",
                 "categories": ("supplychain", "components"),
-                "cwes": ("CWE-1104", "CWE-1395"),
+                "cwes": ("CWE-1104", "CWE-1395", "CWE-506"),
             },
             {
                 "id": "A07:2021",
                 "title": "Kimlik Doğrulama Hataları (Identification and Authentication Failures)",
                 "categories": ("identity", "authentication", "auth", "session", "mobile_auth"),
-                "cwes": ("CWE-287", "CWE-523", "CWE-614", "CWE-384"),
+                "cwes": ("CWE-287", "CWE-523", "CWE-614", "CWE-384", "CWE-306", "CWE-307", "CWE-347", "CWE-798"),
             },
             {
                 "id": "A08:2021",
                 "title": "Yazılım ve Veri Bütünlüğü Hataları (Software and Data Integrity Failures)",
                 "categories": ("supplychain", "components"),
-                "cwes": ("CWE-829", "CWE-502", "CWE-347"),
+                "cwes": ("CWE-829", "CWE-502", "CWE-347", "CWE-353", "CWE-494", "CWE-506"),
             },
             {
                 "id": "A09:2021",
                 "title": "Güvenlik Günlükleme ve İzleme Hataları (Security Logging and Monitoring Failures)",
                 "categories": ("logging", "errors"),
-                "cwes": ("CWE-209", "CWE-532", "CWE-778"),
+                "cwes": ("CWE-209", "CWE-532", "CWE-778", "CWE-117"),
             },
             {
                 "id": "A10:2021",
@@ -546,6 +562,9 @@ def _is_false_positive(finding: dict[str, Any]) -> bool:
         return True
     if str(finding.get("status") or "").strip().lower() in {"resolved", "closed", "false_positive"}:
         return True
+    tracking = finding.get("tracking")
+    if isinstance(tracking, dict) and str(tracking.get("status") or "").strip().lower() in {"resolved", "closed", "false_positive"}:
+        return True
     return False
 
 
@@ -562,7 +581,14 @@ def _expanded_categories(categories: tuple[str, ...]) -> set[str]:
 def _finding_cwes(finding: dict[str, Any]) -> set[str]:
     cwes: set[str] = set()
     for key in ("cwe", "cwe_id", "reference"):
-        raw = str(finding.get(key) or "").upper()
+        val = finding.get(key)
+        if isinstance(val, int) and not isinstance(val, bool) and val > 0:
+            cwes.add(f"CWE-{val}")
+            continue
+        raw = str(val or "").upper()
+        if raw.strip().isdigit() and int(raw.strip()) > 0:
+            cwes.add(f"CWE-{int(raw.strip())}")
+            continue
         for token in (
             raw.replace(",", " ")
             .replace(";", " ")
@@ -781,4 +807,65 @@ def build_compliance_crosswalk(
         "compliant_count": total_compliant,
         "needs_review_count": total_needs_review,
         "not_assessed_count": total_not_assessed,
+    }
+
+
+def generate_regulatory_attestation_bundle(audit: dict[str, Any]) -> dict[str, Any]:
+    findings = (audit.get("findings") if isinstance(audit, dict) else []) or []
+    regime_defs: list[tuple[str, str, set[str]]] = [
+        (
+            "EU_AI_ACT_2024",
+            "EU AI Act — Madde 15 (Siber Güvenlik, Sağlamlık ve Veri Yönetişimi)",
+            {"CWE-77", "CWE-502", "CWE-359", "CWE-1336"},
+        ),
+        (
+            "EU_DORA_2025",
+            "AB DORA — Madde 6 & 9 (Finansal BİT Dayanıklılığı, Atomik İşlem ve Kriptografi)",
+            {"CWE-362", "CWE-327", "CWE-295", "CWE-319"},
+        ),
+        (
+            "PCI_DSS_V4_0",
+            "PCI-DSS v4.0 — Gereksinim 6.2.4 & 6.3.2 (Güvenli Yazılım ve Tedarik Zinciri)",
+            {"CWE-89", "CWE-78", "CWE-427", "CWE-506", "CWE-829", "CWE-639"},
+        ),
+        (
+            "ISO_27001_2022",
+            "ISO/IEC 27001:2022 — Ek A.8.25 & A.8.28 (Güvenli Kodlama ve Erişim Kontrolü)",
+            {"CWE-284", "CWE-287", "CWE-732", "CWE-862", "CWE-915"},
+        ),
+        (
+            "NIST_SSDF_SP800_218",
+            "NIST SP 800-218 (SSDF) — PW.4 / PW.7 / RV.1 (Statik Analiz ve Zafiyet Giderimi)",
+            {"CWE-787", "CWE-190", "CWE-416", "CWE-22", "CWE-918"},
+        ),
+    ]
+    regimes: dict[str, dict[str, Any]] = {}
+    for regime_id, title, cwe_set in regime_defs:
+        matched = [
+            {
+                "title": str(f.get("title") or ""),
+                "cwe": str(f.get("cwe") or ""),
+                "severity": str(f.get("severity") or "high"),
+                "file": str(f.get("file") or f.get("path") or ""),
+                "line": int(f.get("line", 1) or 1),
+            }
+            for f in findings
+            if isinstance(f, dict) and not _is_false_positive(f) and bool(_finding_cwes(f) & cwe_set)
+        ]
+        status = "FAIL_WITH_GAPS" if matched else "PASS"
+        regimes[regime_id] = {
+            "id": regime_id,
+            "title": title,
+            "status": status,
+            "gap_count": len(matched),
+            "mapped_cwes": sorted(cwe_set),
+            "findings": matched,
+        }
+    serialized = json.dumps(regimes, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    attestation_sha256 = hashlib.sha256(serialized).hexdigest()
+    return {
+        "format": "sniper-regulatory-attestation-bundle/1",
+        "attestation_sha256": attestation_sha256,
+        "regime_count": len(regimes),
+        "regimes": regimes,
     }

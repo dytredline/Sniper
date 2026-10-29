@@ -445,9 +445,13 @@ def analyze_dockerfile(text: str) -> IacResult:
 # --------------------------------------------------------------------------------------------- Kubernetes
 WORKLOAD_KINDS = {"Pod", "Deployment", "StatefulSet", "DaemonSet", "ReplicaSet", "ReplicationController", "Job",
                   "CronJob", "DeploymentConfig"}
-_DANGEROUS_CAPS = {"SYS_ADMIN", "ALL", "NET_ADMIN", "SYS_PTRACE", "SYS_MODULE", "DAC_READ_SEARCH", "SYS_RAWIO", "BPF"}
-_SOCKETS = ("docker.sock", "containerd.sock", "crio.sock", "dockershim.sock")
+_DANGEROUS_CAPS = {
+    "SYS_ADMIN", "ALL", "NET_ADMIN", "SYS_PTRACE", "SYS_MODULE", "DAC_READ_SEARCH", "SYS_RAWIO", "BPF",
+    "DAC_OVERRIDE", "PERFMON", "SYS_BOOT", "SYS_CHROOT", "NET_RAW",
+}
+_SOCKETS = ("docker.sock", "containerd.sock", "crio.sock", "dockershim.sock", "podman.sock", "kubelet.sock")
 _SENSITIVE_HOST_PATHS = ("/", "/etc", "/proc", "/root", "/var/run", "/run", "/var/lib/kubelet", "/var/lib/docker",
+                         "/var/lib/containerd", "/var/lib/containers", "/etc/kubernetes", "/etc/shadow",
                          "/boot", "/dev", "/sys", "/home")
 
 
@@ -1291,7 +1295,9 @@ _GH_WORKFLOW = re.compile(r"(?i)^\.github/workflows/.+\.ya?ml$")
 _GITLAB_WORKFLOW = re.compile(r"(?i)(?:^|/)\.gitlab-ci\.ya?ml$")
 _GH_UNTRUSTED = re.compile(
     r"github\.(?:head_ref|event\.(?:issue\.(?:title|body)|pull_request\.(?:title|body|head\.(?:ref|label))|"
-    r"discussion\.(?:title|body)|workflow_run\.(?:head_branch|display_title|head_commit\.message)))"
+    r"discussion\.(?:title|body)|comment\.body|review\.body|review_comment\.body|"
+    r"head_commit\.(?:message|author\.(?:name|email))|commits\[[^\]]+\]\.(?:message|author\.(?:name|email))|"
+    r"pages\[[^\]]+\]\.page_name|workflow_run\.(?:head_branch|display_title|head_commit\.message)))"
 )
 _GH_STEP_ID = re.compile(r"^\s*(?:-\s*)?id\s*:\s*['\"]?([A-Za-z_][\w-]*)")
 _GH_OUTPUT_BLOCK = re.compile(r"\b([A-Za-z_][\w-]*)\s*<<\s*([A-Za-z_][\w-]*)\b")

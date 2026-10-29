@@ -54,7 +54,7 @@ def test_dry_run_reports_exact_locked_profile_without_starting_docker() -> None:
         "image": "sniper-community-tools:local",
         "platform_source": "linux-container-runtime",
         "tools": lock["profiles"]["local"],
-        "tool_count": 5,
+        "tool_count": 7,
         "downloads_locked_artifacts": True,
         "executes_scanners": False,
         "publishes": ["127.0.0.1:8787:8787"],
