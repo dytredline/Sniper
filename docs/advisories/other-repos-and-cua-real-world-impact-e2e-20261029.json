@@ -1,0 +1,209 @@
+{
+  "executed_at_utc": "2026-10-29T15:25:00Z",
+  "findings": {
+    "CUA-CAND-01": {
+      "BENIGN": {
+        "http_status": 200,
+        "stdout": "authorized_cli_ok"
+      },
+      "GREEN": {
+        "driveby_bash_executed": false,
+        "error": "Cross-origin browser requests forbidden",
+        "http_status": 403,
+        "mounted_host_claude_credentials_exfiltrated": false
+      },
+      "RED": {
+        "access_control_allow_origin": "*",
+        "driveby_bash_executed": true,
+        "http_status": 200,
+        "mounted_host_claude_credentials_exfiltrated": true
+      },
+      "elapsed_ms": 0.828,
+      "ghsa_id": "GHSA-cp36-x5hg-3gg8",
+      "source_file": "/home/community-user/.local/state/sniper-research/cua/libs/cuabot/src/cuabotd.ts"
+    },
+    "CUA-CAND-02": {
+      "BENIGN": {
+        "loopback_valid_task_reset_status": 200
+      },
+      "GREEN": {
+        "arbitrary_env_path_exec_module_rce": false,
+        "cross_origin_reset_status": 403,
+        "empty_allowed_ips_remote_lan_status": 403,
+        "outside_env_path_status": 400
+      },
+      "RED": {
+        "arbitrary_env_path_exec_module_rce": true,
+        "cross_origin_reset_status": 200,
+        "empty_allowed_ips_remote_lan_status": 200
+      },
+      "core_file": "/home/community-user/.local/state/sniper-research/cua/libs/cua-bench/cua_bench/core.py",
+      "elapsed_ms": 16.323,
+      "source_file": "/home/community-user/.local/state/sniper-research/cua/libs/cua-bench-rl/cua_bench_rl/workers/worker_server.py"
+    },
+    "CUA-CAND-03": {
+      "BENIGN": {
+        "staging_dir_removed": true,
+        "valid_upload_abort_status": 204
+      },
+      "GREEN": {
+        "delete_traversal_status": 400,
+        "delete_uninitiated_id_status": 404,
+        "objects_store_preserved": true
+      },
+      "RED": {
+        "delete_traversal_status": 204,
+        "objects_store_wiped_without_prior_upload": true
+      },
+      "elapsed_ms": 0.583,
+      "ghsa_id": "GHSA-3x8g-6h2v-8qx9",
+      "source_file": "/home/community-user/.local/state/sniper-research/cua/libs/cua/crates/cua-compat/src/daytona/objectstore.rs"
+    },
+    "CUA-CAND-06": {
+      "GREEN": {
+        "guest_execute_windows_requires_auth": true,
+        "host_setup_dir_mounted_writable": false,
+        "lan_exposed_ports": []
+      },
+      "RED": {
+        "guest_execute_windows_requires_auth": false,
+        "host_setup_dir_mounted_writable": true,
+        "lan_exposed_ports": [
+          "8006:8006",
+          "3390:3389"
+        ]
+      },
+      "cli_source_file": "/home/community-user/.local/state/sniper-research/cua/libs/cua-bench/tasks/winarena_adapter/cli.py",
+      "elapsed_ms": 0.05,
+      "ghsa_id": "GHSA-hvhg-6x47-cq96",
+      "server_source_file": "/home/community-user/.local/state/sniper-research/cua/libs/cua-bench/tasks/winarena_adapter/infra/vm/setup/server/main.py"
+    },
+    "CUA-VT-01": {
+      "GREEN": {
+        "adjacent_heap_secret_copied_to_video_frame": false,
+        "error_returned": "CodecError::InvalidArgument(NV12 plane buffer smaller than its geometry)",
+        "oob_bytes_read": 0
+      },
+      "RED": {
+        "adjacent_heap_secret_copied_to_video_frame": true,
+        "oob_bytes_read": 960
+      },
+      "elapsed_ms": 0.164,
+      "geometry": {
+        "height": 4,
+        "provided_y_len": 320,
+        "required_y_len": 1280,
+        "width": 320,
+        "y_stride": 320
+      },
+      "source_file": "/home/community-user/.local/state/sniper-research/cua/libs/cua/crates/cua-media-codec/src/backends/videotoolbox/mod.rs"
+    },
+    "GOTIFY-CAND-01": {
+      "GREEN": {
+        "bound_to_configured_ssl_host": true,
+        "location": "https://push.corp.example.org/",
+        "redirected_to_untrusted_host": false,
+        "status_code": 308
+      },
+      "RED": {
+        "location": "https://attacker-gotify.example.com/",
+        "redirected_to_untrusted_host": true,
+        "status_code": 308
+      },
+      "elapsed_ms": 3.98,
+      "patch_file": "/home/community-user/.local/state/sniper-research/portfolio-20261025/pre-submission-verification-20261026/patches/GOTIFY-CAND-01.patch",
+      "patch_sha256": "6b977bb0b1eeb275d42940cc3883477cd70b370b442e68bf1782266c24eb5fe0",
+      "source_file": "/home/community-user/.local/state/sniper-research/portfolio-20261025/gotify-server/router/router.go"
+    },
+    "N8N-CAND-01": {
+      "GREEN": {
+        "concurrent_legitimate_webhook_wait_ms": 0.0,
+        "concurrent_webhook_starved": false,
+        "regex_stall_ms": 0.017
+      },
+      "RED": {
+        "concurrent_legitimate_webhook_wait_ms": 164.08,
+        "concurrent_webhook_starved": true,
+        "regex_stall_ms": 165.035
+      },
+      "patch_file": "/home/community-user/.local/state/sniper-research/portfolio-20261025/pre-submission-verification-20261026/patches/N8N-CAND-01.patch",
+      "patch_sha256": "7e38173c95ccccb119cc57ac0226b9ac4af1bf21c590e74123ec5e9b385121e0",
+      "source_file": "/home/community-user/.local/state/sniper-research/portfolio-20261025/n8n/packages/workflow/src/extensions/string-extensions.ts"
+    },
+    "STIRLING-CAND-01": {
+      "GREEN": {
+        "internal_data_embedded_in_pdf": false,
+        "internal_loopback_hit_count": 0,
+        "internal_subresource_fetched": false,
+        "weasyprint_allowed_protocols": "data"
+      },
+      "RED": {
+        "internal_data_embedded_in_pdf": true,
+        "internal_loopback_hit_count": 1,
+        "internal_subresource_fetched": true,
+        "weasyprint_allowed_protocols": "data,http,https"
+      },
+      "elapsed_ms": 16.108,
+      "patch_file": "/home/community-user/.local/state/sniper-research/portfolio-20261025/pre-submission-verification-20261026/patches/STIRLING-CAND-01.patch",
+      "patch_sha256": "92f223eb7f8c5a0fc88f705778ce5c45e9f9d77b756128fd6f889e365a673e23",
+      "sibling_reference_file": "/home/community-user/.local/state/sniper-research/portfolio-20261025/stirling-pdf/app/common/src/main/java/stirling/software/common/util/FileToPdf.java",
+      "source_file": "/home/community-user/.local/state/sniper-research/portfolio-20261025/stirling-pdf/app/core/src/main/java/stirling/software/SPDF/controller/api/converters/ConvertWebsiteToPDF.java",
+      "upstream_cve_duplicate_status": "Duplicate of CVE-2026-71270 / GHSA-j5rg-wh78-9f2q (Incomplete Fix in v3.2.2)"
+    },
+    "STIRLING-CAND-02": {
+      "GREEN": {
+        "processed_files_count": 1,
+        "protected_settings_exfiltrated": false,
+        "recursive": false,
+        "regular_file_processed": true,
+        "symlink_accepted": false
+      },
+      "RED": {
+        "exfiltrated_artifact": "processed_output/report_processed.txt",
+        "processed_files_count": 2,
+        "protected_settings_exfiltrated": true,
+        "recursive": false,
+        "symlink_accepted": true
+      },
+      "elapsed_ms": 0.884,
+      "patch_file": "/home/community-user/.local/state/sniper-research/portfolio-20261025/pre-submission-verification-20261026/patches/STIRLING-CAND-02-SYMLINK.patch",
+      "patch_sha256": "927749524cd31816a71f8dffab08146d420132e726e22bd681c6dce642882480",
+      "source_file": "/home/community-user/.local/state/sniper-research/portfolio-20261025/stirling-pdf/app/proprietary/src/main/java/stirling/software/proprietary/policy/input/FolderInputSource.java"
+    },
+    "XROAD-CAND-01": {
+      "GREEN": {
+        "arbitrary_command_executed_on_self_hosted_runner": false,
+        "env_var_parameterized": true
+      },
+      "RED": {
+        "arbitrary_command_executed_on_self_hosted_runner": true,
+        "direct_yaml_interpolation": true
+      },
+      "build_workflow": "/home/community-user/.local/state/sniper-research/x-road/.github/workflows/build.yaml",
+      "elapsed_ms": 5.513,
+      "package_workflow": "/home/community-user/.local/state/sniper-research/x-road/.github/workflows/_build-and-package.yml"
+    },
+    "ZITI-CAND-01": {
+      "BENIGN": {
+        "valid_ca_signed_controller_trusted": true
+      },
+      "GREEN": {
+        "insecure_skip_verify": false,
+        "rogue_mitm_cert_accepted_as_trusted": false,
+        "tls_error": "x509.UnknownAuthorityError: certificate signed by unknown authority"
+      },
+      "RED": {
+        "admin_credentials_sent_to_mitm": true,
+        "insecure_skip_verify": true,
+        "rogue_mitm_cert_accepted_as_trusted": true
+      },
+      "elapsed_ms": 0.719,
+      "ghsa_id": "GHSA-qwv8-hh9r-cqrf",
+      "login_caller_file": "/home/community-user/.local/state/sniper-research/ziti/ziti/cmd/edge/login.go",
+      "source_file": "/home/community-user/.local/state/sniper-research/ziti/ziti/util/certs.go"
+    }
+  },
+  "loopback_only": true,
+  "standard": "Chia Network 3-Layer Real-World Impact (RED -> GREEN) Standard",
+  "suite": "other-repos-and-cua-real-world-impact-e2e-20261029"
+}
