@@ -24,7 +24,7 @@ import json
 import re
 import urllib.parse
 import uuid
-from typing import Any, Iterable
+from typing import Any, Iterable, Mapping
 
 FORMATS = ("cyclonedx", "openvex")
 STATUSES = ("not_affected", "affected", "fixed", "under_investigation")
@@ -88,26 +88,29 @@ _VEX_NAMESPACE = uuid.UUID("6f0c1c1e-7e2b-5d55-9a1b-5e3f0d1a1e17")
 # requirements.txt / pyproject.toml / pom.xml / go.mod yalnız doğrudan (ya da eksik) liste verebilir.
 COMPLETE_LOCKFILES = {
     "package-lock.json": "npm", "npm-shrinkwrap.json": "npm", "pnpm-lock.yaml": "npm", "yarn.lock": "npm",
-    "poetry.lock": "pypi", "pipfile.lock": "pypi", "cargo.lock": "cargo", "gemfile.lock": "rubygems",
-    "composer.lock": "packagist", "pubspec.lock": "pub",
+    "bun.lockb": "npm", "bun.lock": "npm", "poetry.lock": "pypi", "pipfile.lock": "pypi", "uv.lock": "pypi",
+    "cargo.lock": "cargo", "gemfile.lock": "rubygems", "composer.lock": "packagist", "pubspec.lock": "pub",
 }
 _LOCKFILE_ECOSYSTEM = {
     **COMPLETE_LOCKFILES, "requirements.txt": "pypi", "pyproject.toml": "pypi", "go.mod": "golang",
     "go.sum": "golang", "pom.xml": "maven", "gradle.lockfile": "maven", "podfile.lock": "cocoapods",
-    "package.json": "npm", "package.resolved": "swift",
+    "package.json": "npm", "package.resolved": "swift", "packages.lock.json": "nuget", "mix.lock": "hex",
 }
 _ECOSYSTEM_ALIASES = {
     "pypi": "pypi", "pip": "pypi", "python": "pypi", "python-pkg": "pypi", "poetry": "pypi", "pipenv": "pypi",
-    "npm": "npm", "node-pkg": "npm", "yarn": "npm", "pnpm": "npm", "golang": "golang", "go": "golang",
-    "gomod": "golang", "gobinary": "golang", "cargo": "cargo", "crates.io": "cargo", "rust-binary": "cargo",
-    "maven": "maven", "gradle": "maven", "jar": "maven", "pom": "maven", "rubygems": "rubygems", "gem": "rubygems",
-    "bundler": "rubygems", "gemspec": "rubygems", "packagist": "packagist", "composer": "packagist", "pub": "pub",
-    "cocoapods": "cocoapods", "swift": "swift", "swifturl": "swift",
+    "uv": "pypi", "npm": "npm", "node-pkg": "npm", "yarn": "npm", "pnpm": "npm", "bun": "npm",
+    "golang": "golang", "go": "golang", "gomod": "golang", "gobinary": "golang", "cargo": "cargo",
+    "crates.io": "cargo", "rust-binary": "cargo", "maven": "maven", "gradle": "maven", "jar": "maven",
+    "pom": "maven", "rubygems": "rubygems", "gem": "rubygems", "bundler": "rubygems", "gemspec": "rubygems",
+    "packagist": "packagist", "composer": "packagist", "pub": "pub", "cocoapods": "cocoapods", "swift": "swift",
+    "swifturl": "swift", "nuget": "nuget", "dotnet": "nuget", "hex": "hex", "elixir": "hex",
 }
 _PURL_TYPES = {"pypi": "pypi", "npm": "npm", "golang": "golang", "cargo": "cargo", "maven": "maven",
-               "rubygems": "gem", "packagist": "composer", "pub": "pub", "cocoapods": "cocoapods", "swift": "swift"}
+               "rubygems": "gem", "packagist": "composer", "pub": "pub", "cocoapods": "cocoapods", "swift": "swift",
+               "nuget": "nuget", "hex": "hex"}
 _PURL_TYPE_BACK = {"pypi": "pypi", "npm": "npm", "golang": "golang", "cargo": "cargo", "maven": "maven",
-                   "gem": "rubygems", "composer": "packagist", "pub": "pub", "cocoapods": "cocoapods", "swift": "swift"}
+                   "gem": "rubygems", "composer": "packagist", "pub": "pub", "cocoapods": "cocoapods", "swift": "swift",
+                   "nuget": "nuget", "hex": "hex"}
 
 
 class VexError(ValueError):
@@ -702,3 +705,105 @@ def import_for_project(store: Any, project_path: str, document: Any, *, overwrit
                                                        "unmatched": unmatched})
     return {"format": fmt, "source": source, "project_path": root, "statements": len(statements), "applied": applied,
             "skipped_analyst": skipped, "unmatched": unmatched, "document_sha256": digest}
+
+
+def build_automated_reachability_openvex(
+    reachability_report: Mapping[str, Any],
+    *,
+    product_id: str = "pkg:generic/sniper-audited-app@local",
+    author: str = "Sniper Enterprise Automated VEX Engine",
+) -> dict[str, Any]:
+    """Erişilebilirlik raporundan sembol düzeyi kanıtlara dayalı otomatik OpenVEX v0.2.0 belgesi üretir."""
+    from dependency_reachability import evaluate_symbol_level_vex
+
+    report_map = reachability_report if isinstance(reachability_report, Mapping) else {}
+    raw_items = report_map.get("items") or []
+    statements: list[dict[str, Any]] = []
+
+    for item in raw_items:
+        if not isinstance(item, Mapping):
+            continue
+        reach_sub = item.get("reachability")
+        reach_map = reach_sub if isinstance(reach_sub, Mapping) else item
+        vex_eval = evaluate_symbol_level_vex(item, reach_map)
+
+        status = str(vex_eval.get("vex_status") or "under_investigation")
+        justification = vex_eval.get("vex_justification")
+        vuln_symbols = list(vex_eval.get("vulnerable_symbols") or [])
+        sym_called = bool(vex_eval.get("vulnerable_symbol_called"))
+
+        vuln_id = str(item.get("vulnerability_id") or item.get("cve_id") or item.get("id") or "UNKNOWN-VULN").strip()
+        pkg_name = str(item.get("package_name") or item.get("package") or item.get("name") or "").strip()
+        pkg_ver = str(item.get("installed_version") or item.get("version") or "").strip()
+        eco = normalize_ecosystem(item.get("ecosystem") or item.get("target") or "")
+        sub_purl = str(item.get("purl") or (package_url(eco, pkg_name, pkg_ver) if pkg_name else "")).strip()
+
+        if sub_purl:
+            product_entry: dict[str, Any] = {
+                "@id": product_id,
+                "identifiers": {"purl": sub_purl},
+                "subcomponents": [{"@id": sub_purl}],
+            }
+        else:
+            product_entry = {"@id": product_id}
+
+        statement: dict[str, Any] = {
+            "vulnerability": {"name": vuln_id},
+            "products": [product_entry],
+            "status": status,
+            "vulnerable_symbols": vuln_symbols,
+            "vulnerable_symbol_called": sym_called,
+        }
+        aliases = _aliases(dict(item))
+        if aliases:
+            statement["vulnerability"]["aliases"] = aliases
+
+        if status == "not_affected":
+            just_code = str(justification or "vulnerable_code_not_in_execute_path")
+            statement["justification"] = just_code
+            if just_code == "vulnerable_code_not_present":
+                statement["impact_statement"] = (
+                    "Lockfile resolved version is already patched or advisory targets a non-matching OS platform."
+                )
+            elif vuln_symbols:
+                statement["impact_statement"] = (
+                    f"CVE vulnerable symbol(s) ({', '.join(vuln_symbols[:8])}) are not imported or called in project execution paths."
+                )
+            else:
+                statement["impact_statement"] = (
+                    f"Package {pkg_name or 'component'} is not imported or reachable in the application execution path."
+                )
+        elif status == "affected":
+            fixed_ver = str(item.get("fixed_version") or "").strip()
+            statement["action_statement"] = (
+                f"Upgrade {pkg_name or 'package'} to {fixed_ver} or later."
+                if fixed_ver
+                else f"Upgrade or mitigate reachable symbol usage in {pkg_name or 'package'}."
+            )
+        else:
+            statement["status_notes"] = "Reachability under investigation; manual triage recommended."
+
+        statements.append(statement)
+
+    summary_counts = {
+        "total": len(statements),
+        "not_affected": sum(1 for s in statements if s["status"] == "not_affected"),
+        "affected": sum(1 for s in statements if s["status"] == "affected"),
+        "under_investigation": sum(1 for s in statements if s["status"] == "under_investigation"),
+    }
+    timestamp = str(report_map.get("timestamp") or report_map.get("generated_at") or "2026-01-01T00:00:00Z")
+    canonical_seed = json.dumps([product_id, author, statements], ensure_ascii=False, sort_keys=True)
+    doc_id = f"urn:uuid:{uuid.uuid5(_VEX_NAMESPACE, canonical_seed)}"
+
+    document: dict[str, Any] = {
+        "@context": OPENVEX_CONTEXT,
+        "@id": doc_id,
+        "author": author,
+        "role": "Document Creator",
+        "timestamp": timestamp,
+        "version": 1,
+        "statements": statements,
+        "summary": summary_counts,
+    }
+    document["integrity_sha256"] = document_hash(document)
+    return document

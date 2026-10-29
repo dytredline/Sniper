@@ -22,26 +22,27 @@ passed.
 
 ## Reproducible validation snapshot
 
-Snapshot date: **2026-10-24**. Scope: the Community v1.0.0 publication candidate and its assembled public source
+Snapshot date: **2026-10-29**. Scope: the Community v1.1.0 release and its assembled public source
 tree.
 
 | Gate | Observed result |
 | --- | --- |
 | Community metadata/release-surface validation | PASS — 43 required release files checked |
 | Assembled source validation | PASS — deterministic source builder completed; assembled tree passed the release-tree scan |
-| Python unittest launcher | 2,819 tests, 0 failures, 0 errors |
-| Python pytest modules | 204 passed |
-| JavaScript/Node tests | 432 passed, 0 failed |
+| Python unittest launcher | 3,077 tests, 0 failures, 0 errors |
+| Python pytest modules | 337 passed |
+| JavaScript/Node tests | 517 passed, 0 failed |
 | CJK real-browser layout | PASS — Turkish, English, Japanese, Simplified Chinese, and Korean at desktop and mobile viewports (10/10) |
-| Platform setup policy | PASS — Linux full/core paths, supported macOS and Windows core-only source paths, and fail-closed unknown-native routes covered by runtime tests and real-host verification |
-| Optional-tools container profile | PASS — exact five-tool target, explicit license gate, Linux architecture selection, loopback port, and three volumes contract-tested; optional image download/build not performed locally |
+| Platform setup policy | PASS — Linux full/core paths, real-host macOS Apple Silicon core-only, portable Windows core-only contract, and fail-closed unknown-native routes covered |
+| Optional-tools container profile | PASS — exact seven-tool target, explicit license gate, Linux architecture selection, loopback port, and three volumes contract-tested; the five-engine macOS Docker path has real-host evidence |
 | Publication secret-name boundary | PASS — deployment `.env`, field-key records, key files, and image archives are excluded before read and rejected by release-tree validation |
-| Locked tool installer smoke | PASS — five Linux ARM64 Community tools installed and reverified from an offline cache; no scanner executed |
-| One-command offline setup smoke | PASS — parseable JSON result, five provenance-bound tools, and both real help entrypoints |
+| Locked tool installer smoke | PASS — seven Linux ARM64 lock entries and their fail-closed installer contracts validated; pinned Syft and Grype runtimes were installed and reverified locally |
+| One-command offline setup smoke | PASS — parseable JSON result, seven provenance-bound tools, and both real help entrypoints |
+| Synthetic runtime proofs | PASS — Schemathesis completed a one-operation loopback OpenAPI check; Syft/Grype completed an offline local-fixture run against the pinned Grype database; no external target was scanned |
 | Changed-file Python compilation and JavaScript syntax | PASS |
 | Docker Compose configuration | PASS locally for default and explicit tools override; missing license acknowledgement rejected |
-| Community container image build | PASS — PR #7 built the current `community-core` image and its isolated container reached healthy state |
-| CodeQL languages | PASS — PR #7 Actions, JavaScript/TypeScript, and Python jobs passed; branch and PR refs reported 0 open alerts |
+| Community container image build | PASS — the final assembled source replaced `/app` in the already verified locked R66 runtime without network access; the isolated image reached `healthy` and `/api/health` returned `status: ok` |
+| CodeQL languages | PASS on the published main baseline — Actions, JavaScript/TypeScript, and Python jobs passed; the v1.1.0 release pull request must pass fresh CI and CodeQL checks before tagging |
 
 Public workflow history is available in [Community CI](https://github.com/dytredline/Sniper/actions/workflows/ci.yml)
 and the [CodeQL runs](https://github.com/dytredline/Sniper/actions?query=workflow%3ACodeQL+branch%3Amain).
@@ -62,8 +63,8 @@ positive static-analysis fixtures and five were bounded loopback or temporary-pr
 closed as **used in tests** with their test boundary recorded. Thirty-nine were closed as false positives only after
 the relevant allowlist, containment, no-follow, XML-entity, header, redirect, and redaction controls passed focused
 runtime checks. The remaining four caused code changes: one real SBOM saved-path identity race was fixed in the
-product, and three unnecessary test-harness patterns were replaced with safer equivalents. The candidate still
-requires a post-merge main CI and CodeQL run before a release tag is created; PR #7 passed the fresh pre-merge gates.
+product, and three unnecessary test-harness patterns were replaced with safer equivalents. Release policy requires
+the current release pull request and its merged main commit to pass fresh CI and CodeQL checks before a tag is created.
 
 These numbers describe this exact snapshot. Future commits can legitimately change test totals, and optional-engine
 availability varies by host.

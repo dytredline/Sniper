@@ -133,7 +133,10 @@
         "urllib.request.Request",
         "urllib.urlopen",
         "urllib2.urlopen",
-        "aiohttp.request"
+        "aiohttp.request",
+        "urllib.request.urlretrieve",
+        "urlretrieve",
+        "httpx.options"
       ],
       "args": [
         0
@@ -172,7 +175,11 @@
         "pandas.read_pickle",
         "pd.read_pickle",
         "yaml.unsafe_load",
-        "yaml.unsafe_load_all"
+        "yaml.unsafe_load_all",
+        "cloudpickle.loads",
+        "cloudpickle.load",
+        "joblib.load",
+        "ruamel.yaml.unsafe_load"
       ],
       "args": [
         0

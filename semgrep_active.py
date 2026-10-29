@@ -117,6 +117,37 @@ def _project_findings(report: dict[str, Any], input_dir: Path, rule_index: dict[
             rel = Path(raw_path).name
         start = result.get("start") if isinstance(result.get("start"), dict) else {}
         line = start.get("line")
+        rel_parts = {p.casefold() for p in Path(rel).parts}
+        if (
+            rel_parts & {"locales", "locale", "i18n", "translations", "vendor", "pdfjs", "pdfjs-legacy"}
+            or rel.casefold().endswith((".umd.js", ".min.js", ".bundle.js", "livewire.js", "livewire.esm.js"))
+        ):
+            continue
+        if rule_id in {"sniper.js.command-injection", "sniper.any.hardcoded-secret"} and candidate.is_file():
+            try:
+                src_text = candidate.read_text(encoding="utf-8", errors="ignore")
+                src_lines = src_text.splitlines()
+                line_text = src_lines[line - 1] if isinstance(line, int) and 1 <= line <= len(src_lines) else ""
+                if (
+                    rule_id == "sniper.js.command-injection"
+                    and ".exec(" in line_text
+                    and not re.search(r"\b(?:child_process|shelljs|execa|execSync|execFile)\b", src_text)
+                ):
+                    continue
+                if rule_id == "sniper.any.hardcoded-secret":
+                    m_lit = re.search(r"""[:=]\s*["']([^"']+)["']""", line_text)
+                    if m_lit:
+                        lit_val = m_lit.group(1).strip()
+                        if re.match(
+                            r"(?i)^(?:placeholder.*|changeme.*|your[_\s-].*|example.*|dummy.*|no[_-]?api[_-]?key.*|"
+                            r"not[_-]?used[_-]?at[_-]?runtime|build[_-]?only|oauth\s+client\s+secret.*|"
+                            r".*[-_]not[-_]configured|\[redacted\]|\*+|/[A-Za-z0-9_./-]+|"
+                            r"<[^>]+>|\$\{[^}]+\}|\{\{[^}]+\}\}|\S+\s+\S+\s+.*)$",
+                            lit_val,
+                        ):
+                            continue
+            except OSError:
+                pass
         findings.append({
             "rule_id": rule_id,
             "severity": str(extra.get("severity", ""))[:16],
@@ -762,6 +793,7 @@ def run_local_semgrep(project_path: str) -> dict[str, Any]:
                 # duplicate while calculating coverage so the project pathname
                 # is never reopened after staging.
                 try:
+                    prod_only_stage = os.environ.get("SNIPER_SEMGREP_PRODUCTION_ONLY", "0") == "1"
                     for path, text, kind, project_tree in _iter_files(src_root):
                         if project_snapshot is None:
                             project_snapshot = project_tree.duplicate()
@@ -769,6 +801,22 @@ def run_local_semgrep(project_path: str) -> dict[str, Any]:
                             secret_env_files += 1
                             continue
                         rel = path.relative_to(src_root)
+                        if prod_only_stage:
+                            rel_low = rel.as_posix().lower()
+                            rel_parts = set(rel_low.split("/"))
+                            if (
+                                rel_parts & {"test", "tests", "__tests__", "fixtures", "__snapshots__", "compiled", "examples", "bench", "e2e"}
+                                or ".test." in rel_low
+                                or ".spec." in rel_low
+                            ):
+                                continue
+                        if text is not None and path.suffix.casefold() in {".js", ".mjs", ".cjs"} and len(text) > 100_000:
+                            low_name = path.name.casefold()
+                            if (
+                                low_name.endswith((".min.js", "-bundle.js", ".bundle.js"))
+                                or text.count("\n") < max(25, len(text) // 2500)
+                            ):
+                                continue
                         dest = input_dir / rel
                         dest.parent.mkdir(parents=True, exist_ok=True)
                         if text is not None:
@@ -806,9 +854,11 @@ def run_local_semgrep(project_path: str) -> dict[str, Any]:
                     "--no-git-ignore",
                     "--taint-intrafile",
                     "--jobs",
-                    "2",
+                    os.environ.get("SNIPER_OPENGREP_JOBS", "2"),
                     "--timeout",
-                    "10",
+                    os.environ.get("SNIPER_OPENGREP_RULE_TIMEOUT", "10"),
+                    "--timeout-threshold",
+                    os.environ.get("SNIPER_OPENGREP_TIMEOUT_THRESHOLD", "3"),
                     "--output",
                     str(report_file),
                 ]
@@ -820,6 +870,8 @@ def run_local_semgrep(project_path: str) -> dict[str, Any]:
                     (rule_dir / "sniper-custom.yaml").write_text(custom_text, encoding="utf-8")
                     cmd[cmd.index("--json"):cmd.index("--json")] = ["--config", "sniper-custom.yaml"]
                     run_cwd = str(rule_dir)
+                if os.environ.get("SNIPER_SEMGREP_MAX_TARGET_BYTES"):
+                    cmd.extend(["--max-target-bytes", os.environ["SNIPER_SEMGREP_MAX_TARGET_BYTES"]])
             else:
                 cmd = [
                     verified.argv0,
@@ -835,6 +887,8 @@ def run_local_semgrep(project_path: str) -> dict[str, Any]:
                     "--output",
                     str(report_file),
                 ]
+                if os.environ.get("SNIPER_SEMGREP_MAX_TARGET_BYTES"):
+                    cmd.extend(["--max-target-bytes", os.environ["SNIPER_SEMGREP_MAX_TARGET_BYTES"]])
                 run_cwd = None
 
             env = os.environ.copy()
@@ -851,12 +905,14 @@ def run_local_semgrep(project_path: str) -> dict[str, Any]:
                 env["PYTHONUTF8"] = "1"
 
             # Run bounded runner
+            semgrep_timeout = int(os.environ.get("SNIPER_SEMGREP_TIMEOUT", "90") or "90")
+            max_report_bytes = int(os.environ.get("SNIPER_SEMGREP_MAX_REPORT_BYTES", "2000000") or "2000000")
             try:
                 popen_kwargs = verified.popen_kwargs(
                     env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 if run_cwd is not None:
                     popen_kwargs["cwd"] = run_cwd
-                proc = run_in_process_group(cmd, timeout=90, check=False, **popen_kwargs)
+                proc = run_in_process_group(cmd, timeout=semgrep_timeout, check=False, **popen_kwargs)
             except subprocess.TimeoutExpired:
                 raise RuntimeError("Semgrep çalıştırması zaman aşımına uğradı.")
             except OSError:
@@ -868,7 +924,7 @@ def run_local_semgrep(project_path: str) -> dict[str, Any]:
             # Enforce 2 MB report cap and existence
             if not report_file.is_file() or report_file.is_symlink():
                 raise RuntimeError("Semgrep rapor dosyası üretmedi.")
-            if report_file.stat().st_size > 2_000_000:
+            if report_file.stat().st_size > max_report_bytes:
                 raise RuntimeError("Semgrep raporu 2 MB sınırını aşıyor.")
 
             # Load and parse report
@@ -885,7 +941,14 @@ def run_local_semgrep(project_path: str) -> dict[str, Any]:
                 raise RuntimeError("Semgrep raporu geçerli JSON değil.")
             if not isinstance(report.get("errors"), list):
                 raise RuntimeError("Semgrep raporu geçerli JSON değil.")
-            if report["errors"]:
+            fatal_errors = [
+                err for err in report["errors"]
+                if not (
+                    isinstance(err, dict)
+                    and (err.get("level") == "warn" or "PartialParsing" in str(err.get("type", "")))
+                )
+            ]
+            if fatal_errors:
                 raise RuntimeError("Semgrep raporu hata içeriyor.")
 
             # Reuse existing parser

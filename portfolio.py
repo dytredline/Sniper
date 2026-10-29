@@ -474,16 +474,29 @@ def export_rows(db: sqlite3.Connection, policy: dict[str, Any], *, project_path:
 
 def _cwe(item: dict[str, Any]) -> int | None:
     finding = item.get("finding") or {}
-    for value in (finding.get("cwe"), item.get("reference"), finding.get("reference"), item.get("title")):
+    for value in (
+        finding.get("cwe"),
+        finding.get("cwe_id"),
+        item.get("cwe"),
+        item.get("cwe_id"),
+        item.get("reference"),
+        finding.get("reference"),
+        item.get("title"),
+    ):
         if isinstance(value, int) and 0 < value < 100000:
             return value
-        match = _CWE_RE.search(str(value or ""))
+        text = str(value or "").strip()
+        if text.isdigit() and 0 < int(text) < 100000:
+            return int(text)
+        match = _CWE_RE.search(text)
         if match:
             return int(match.group(1))
     return None
 
 
 def _description(item: dict[str, Any]) -> str:
+    import report_provenance
+
     finding = item.get("finding") or {}
     where = item.get("file") or "Proje geneli"
     if item.get("line"):
@@ -493,7 +506,7 @@ def _description(item: dict[str, Any]) -> str:
              f"Durum: {item.get('status_label')} · İlk görülme: {item.get('first_seen_at')}"]
     evidence = finding.get("evidence")
     if evidence:
-        parts.append(f"Kanıt: {evidence}")
+        parts.append(f"Kanıt: {report_provenance.redact_evidence_text(evidence, max_len=4000)}")
     if item.get("status_note"):
         parts.append(f"Not: {item['status_note']}")
     parts.append(f"Sniper takip kimliği: {item.get('id')}")
@@ -550,7 +563,7 @@ def csv_safe(value: Any) -> str | int | float:
     rendered = str(value).replace("\x00", "")
     if rendered and rendered[0] in ("\t", "\r", "\n"):
         return "'" + rendered
-    if rendered.lstrip().startswith(("=", "+", "-", "@", "＝", "＋", "－", "＠")):
+    if rendered.lstrip().startswith(("=", "+", "-", "@", "|", "＝", "＋", "－", "＠", "｜")):
         return "'" + rendered
     return rendered
 

@@ -13,6 +13,12 @@ Docker daemon olmadan, ağsız işletim sistemi paket açığı taraması.
   üzerinden hesaplanır ve katman belleğe alınmaz. Katmanlar tar, gzip veya zstd
   olabilir. Zstd, yalnız güvenilir sabit `/usr/bin/zstd` decoder'i hazırsa akış halinde çözülür; yoksa tarama
   açık nedenle reddedilir. Decoder besleme ya da tar açma hatasında alt süreç ve besleme akışı kapatılır.
+  Yerel OCI artifact manifestindeki tek ve sınırlandırılmış in-toto/SLSA DSSE payload'u ayrıca seçilen imajın
+  descriptor SHA-256 özeti, artifact `subject`/Docker reference lineage ve isteğe bağlı beklenen builder kimliğiyle
+  eşlenir. Builder kimliği ham olarak rapora yazılmaz, yalnız SHA-256 parmak izi tutulur. Yerel Ed25519 PEM güven
+  kökü hem no-follow okunur hem operator tarafından verilen tam SHA-256 ile sabitlenirse DSSE PAE imzası gerçek
+  `cryptography` doğrulamasından geçebilir. Güven kökü yoksa sonuç dürüstçe `structural_only` ve kriptografi
+  `not_run` olur; `cosign`, `gh` veya başka bir komut adının metinde bulunması doğrulama sayılmaz.
 - Açılmış rootfs dizini ya da tek katmanlı rootfs tar'ı (`docker export`)
 
 Yol, proje analizindeki kuralla yalnız kullanıcı dizini ya da bağlı yerel disk içinde olabilir.
@@ -67,7 +73,9 @@ doğrulanır; ilk taramada kurulan paket dizini `index-cache/` altında arşiv �
 - Arayüz: Uygulama analizi → "Konteyner imajını yerelde incele". Sonuç proje analizi olarak kaydedilir
   (`audit_kind: container`): bulgu takibi, portföy, yönetici özeti, HTML/PDF rapor aynı yoldan çalışır. Paket
   yükseltilince kaybolan açık "düzeldi" sayılır (paket veritabanı okunduysa).
-- API: `POST /api/container-images {"image_path": "...", "dockerfile_path": "...", "ignore_unfixed": false}`
+- API: `POST /api/container-images {"image_path": "...", "dockerfile_path": "...", "ignore_unfixed": false,
+  "expected_provenance_identity": "...", "provenance_public_key_path": "...",
+  "provenance_public_key_sha256": "<64-hex>"}`
   (analist; iş kuyruğunda da çalışır). `dockerfile_path` isteğe bağlıdır; en çok 1 MB, UTF-8 ve sembolik
   bağ olmayan yerel dosya olmalıdır. Çok aşamalı Dockerfile'ın yalnız son aşamasından miras alınan/kurulan
   apt/apt-get/aptitude/apk/dnf/dnf5/tdnf/yum/microdnf/pacman/pkg/rpm-ostree/zypper/eopkg paketleri imaj envanteriyle eşlenir. `RUN` için kabuk ve JSON exec biçimleri
@@ -102,7 +110,10 @@ doğrulanır; ilk taramada kurulan paket dizini `index-cache/` altında arşiv �
   varsayılanı olmayan ve daha önce görünür değeri bulunmayan ya da çözülemeyen build argümanlarından paket bağı çıkarılmaz.
   SBOM: `GET /api/container-images/<analiz>/sbom`.
 - CLI: `python3 cli_reports.py image <yol> [--dockerfile Dockerfile] [--view json] [--sbom çıktı.json]
-  [--save] [--ignore-unfixed] [--fail-on high]`. `--dockerfile`, API ile aynı yerel dosya ve sembolik bağ
+  [--provenance-identity ID] [--provenance-public-key key.pem]
+  [--provenance-public-key-sha256 <64-hex>] [--save] [--ignore-unfixed] [--fail-on high]`.
+  `--provenance-public-key` ve özeti birlikte verilmelidir; anahtar yolu izin verilen yerel kökte normal dosya
+  olmalı ve hiçbir sembolik bağ bileşeni içermemelidir. `--dockerfile`, API ile aynı yerel dosya ve sembolik bağ
   kontrollerini kullanır; JSON görünümünde paket bağı `container.build_context` alanında döner.
 
 ## Dil paketleri

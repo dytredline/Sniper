@@ -163,10 +163,26 @@ def _norm(value: Any) -> str:
     return _SPACE_RE.sub(" ", _DIGITS_RE.sub("#", str(value or ""))).strip().casefold()
 
 
+def _finding_reference(finding: dict[str, Any]) -> str:
+    for key in ("reference", "cwe", "cwe_id", "control_id"):
+        raw = finding.get(key)
+        if raw is None or isinstance(raw, bool):
+            continue
+        text = str(raw).strip()
+        if not text:
+            continue
+        if text.isdigit():
+            return f"CWE-{text}"
+        if text.upper().startswith("CWE-"):
+            return "CWE-" + text[4:].strip()
+        return text
+    return ""
+
+
 def fingerprint(finding: dict[str, Any]) -> str:
     """Satır numarasından bağımsız parmak izi (sha256, 32 hex)."""
     parts = [
-        str(finding.get("category") or ""), str(finding.get("reference") or ""), _norm(finding.get("title")),
+        str(finding.get("category") or ""), _finding_reference(finding), _norm(finding.get("title")),
         str(finding.get("file") or "").replace("\\", "/"),
     ]
     flow = finding.get("taint_flow")
@@ -190,7 +206,7 @@ def flow_site_key(finding: dict[str, Any]) -> str | None:
     if not isinstance(flow, dict):
         return None
     parts = [
-        str(finding.get("category") or ""), str(finding.get("reference") or ""), _norm(finding.get("title")),
+        str(finding.get("category") or ""), _finding_reference(finding), _norm(finding.get("title")),
         str(finding.get("file") or "").replace("\\", "/"), "flow-site", str(flow.get("sink_kind") or ""),
         str(flow.get("sink") or ""),
     ]
@@ -380,7 +396,7 @@ def record_audit(db: sqlite3.Connection, audit_id: str, result: dict[str, Any], 
             "file, line, first_seen_at, first_audit_id, last_seen_at, last_audit_id, finding_json) "
             "VALUES (?, ?, ?, 'open', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (tracked_id, project_path, fp, str(finding.get("severity") or "info"), str(finding.get("category") or ""),
-             str(finding.get("reference") or ""), str(finding.get("title") or ""), str(finding.get("file") or ""),
+             _finding_reference(finding), str(finding.get("title") or ""), str(finding.get("file") or ""),
              _line(finding), when, audit_id, when, audit_id, json.dumps(finding, ensure_ascii=False)),
         )
         _event(db, tracked_id, audit_id, when, "new", None, "open")

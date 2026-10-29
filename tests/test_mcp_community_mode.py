@@ -208,9 +208,9 @@ class MCPCommunityModeTests(unittest.TestCase):
             self.assertEqual(mcp_triage_server.main(["--mode", "community"]), 0)
 
         expected_data = xdg_data / "sniper-community"
-        bind.assert_called_once_with(apply_env=True, persist=True)
+        bind.assert_called_once_with(apply_env=True, persist=True, include_readiness=False)
         self.assertEqual(observed, [(
-            {"apply_env": True, "persist": True},
+            {"apply_env": True, "persist": True, "include_readiness": False},
             str(expected_data),
         )])
         serve.assert_called_once()

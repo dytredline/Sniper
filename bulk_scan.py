@@ -17,7 +17,13 @@ Tarama (iş kuyruğunda tek iş): her depo için proje analizi (``/api/project-a
 IaC denetimleri (Dockerfile, Terraform, Kubernetes, Helm) proje analizinin parçasıdır. Bir deponun hatası
 diğerlerini durdurmaz; iptal, sıradaki depoları başlatmaz ve çalışan alt süreçleri durdurur. "Yalnız değişenler":
 HEAD commit'i son başarılı taramayla aynıysa depo atlanır; isteğe bağlı git tabanlı değişen dosya modu son taranan
-commit'i taban alır.
+commit'i taban alır. Başarılı/atlanan depolar için altı bağımsız ve sınırlı yerel korelasyon üretilir: OpenAPI ile
+sabit HTTP istemci çağrısı, webhook producer/receiver, Kafka publisher/consumer, açık auth-contract manifestleri,
+exact-pinned PyPI sürüm drift'i ve GraphQL SDL root alanı/literal operation eşleşmesi. Bir grafiğin çözümlenememesi
+diğer grafiklerin sonuçlarını silmez; ham origin, broker endpoint'i, özel paket indeksi, GraphQL endpoint'i ve kimlik
+bilgisi graph çıktılarına taşınmaz. Seçili depo kökündeki exact-name, bütünlüğü doğrulanmış yerel runtime trace
+manifestleri yalnız birebir statik edge anahtarlarını gözlemli olarak işaretleyebilir; trace olmaması veya geçersizliği
+statik edge'i düşürmez.
 
 Durum ``$SNIPER_DATA_DIR/bulk-scans.json`` (0600, kilitli) dosyasında: çalıştırmalar, depo başına son commit ve
 portföy grupları (grup adı → kök dizin + proje yolları).
@@ -27,6 +33,8 @@ from __future__ import annotations
 from collections import Counter, deque
 import dataclasses
 import datetime as dt
+import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -35,9 +43,15 @@ import tarfile
 import threading
 import time
 from typing import Any, Callable
+import urllib.parse
 
+import dependency_lineage_graph
+import message_trust_graph
 import ops_files
+import runtime_service_trace
 import scan_scope
+import service_trust_graph
+import webhook_trust_graph
 
 STATE_FILE = "bulk-scans.json"
 MAX_RUNS = 30
@@ -55,6 +69,21 @@ DEFAULT_MAX_REPO_MB = 500
 MAX_CONFIG_BYTES = 256_000
 MAX_IMAGES_PER_REPO = 3
 MAX_IMAGE_TAR_MEMBERS = 5_000
+AUTH_CONTRACT_MANIFEST = "sniper-auth-contracts.json"
+AUTH_CONTRACT_FORMAT = "sniper-auth-contracts/1"
+AUTH_GRAPH_FORMAT = "sniper-bulk-auth-contract-graph/1"
+MAX_AUTH_CONTRACTS_PER_REPO = 16
+MAX_AUTH_GRAPH_FINDINGS = 500
+GRAPHQL_SERVICE_GRAPH_FORMAT = "sniper-bulk-graphql-service-graph/1"
+GRAPHQL_SUFFIXES = frozenset({".graphql", ".gql", ".graphqls"})
+GRAPHQL_PERSISTED_MANIFEST = "persisted-query-manifest.json"
+MAX_GRAPHQL_FILE_BYTES = 128_000
+MAX_GRAPHQL_MANIFEST_BYTES = 256_000
+MAX_GRAPHQL_PERSISTED_OPERATIONS = 128
+MAX_GRAPHQL_FILES_PER_REPO = 128
+MAX_GRAPHQL_SCAN_ENTRIES = 20_000
+MAX_GRAPHQL_SCAN_DEPTH = 8
+MAX_GRAPHQL_GRAPH_EDGES = 1_000
 
 # Monorepo bildirimleri (package.json "workspaces" ayrıca monorepo.detect ile görülür).
 MONOREPO_FILES = frozenset({"pnpm-workspace.yaml", "lerna.json", "go.work", "nx.json", "turbo.json", "rush.json"})
@@ -63,6 +92,16 @@ _GROUP_RE = re.compile(r"[\w .:/+\-]{1,60}\Z", re.UNICODE)
 _RUN_ID_RE = re.compile(r"blk_[0-9a-f]{12}\Z")
 _NAME_PART_RE = re.compile(r"[^A-Za-z0-9._\-]+")
 _HOST_RE = re.compile(r"[a-z0-9](?:[a-z0-9.\-]{0,98}[a-z0-9])?\Z")
+_AUTH_VALUE_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/\-]{0,119}\Z")
+_AUTH_TENANT_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._\-]{0,79}\Z")
+_AUTH_SECRET_PREFIX_RE = re.compile(r"(?:gh[pousr]_|github_pat_|glpat-|sk_(?:live|test)_|sk-|AKIA)", re.IGNORECASE)
+_GRAPHQL_NAME = r"[_A-Za-z][_0-9A-Za-z]*"
+_GRAPHQL_TOKEN_RE = re.compile(rf"\.\.\.|{_GRAPHQL_NAME}|[!$():=@\[\]{{|}}]")
+_GRAPHQL_SCHEMA_RE = re.compile(r"\bschema\b[^{}]*\{")
+_GRAPHQL_TYPE_RE = re.compile(rf"\b(?:extend\s+)?type\s+({_GRAPHQL_NAME})\b[^{{}}]*\{{")
+_GRAPHQL_FIELD_DEF_RE = re.compile(
+    rf"(?m)^[ \t]*({_GRAPHQL_NAME})[ \t]*(?:\([^{{}}\n]*\))?[ \t]*:"
+)
 FINAL_ITEM_STATES = frozenset({"succeeded", "skipped", "failed", "cancelled"})
 
 
@@ -111,6 +150,836 @@ def _read_small(path: Path, limit: int = MAX_CONFIG_BYTES) -> str | None:
         return path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return None
+
+
+def _mask_graphql_noncode(source: str) -> str | None:
+    """Mask comments and string values so schema/query decoys cannot create graph contracts."""
+    if not isinstance(source, str) or "\x00" in source or "${" in source or "`" in source:
+        return None
+    output = list(source)
+    index = 0
+    state = "code"
+    while index < len(source):
+        char = source[index]
+        if state == "code":
+            if char == "#":
+                output[index] = " "
+                state = "comment"
+                index += 1
+                continue
+            if source.startswith('"""', index):
+                output[index:index + 3] = "   "
+                state = "block_string"
+                index += 3
+                continue
+            if char == '"':
+                output[index] = " "
+                state = "string"
+                index += 1
+                continue
+            index += 1
+            continue
+        if state == "comment":
+            if char == "\n":
+                state = "code"
+            else:
+                output[index] = " "
+            index += 1
+            continue
+        if state == "block_string":
+            if source.startswith('"""', index):
+                output[index:index + 3] = "   "
+                index += 3
+                state = "code"
+            else:
+                if char != "\n":
+                    output[index] = " "
+                index += 1
+            continue
+        if char == "\\" and index + 1 < len(source):
+            output[index] = " "
+            if source[index + 1] != "\n":
+                output[index + 1] = " "
+            index += 2
+        elif char == '"':
+            output[index] = " "
+            index += 1
+            state = "code"
+        elif char == "\n":
+            return None
+        else:
+            output[index] = " "
+            index += 1
+    if state not in {"code", "comment"}:
+        return None
+    return "".join(output)
+
+
+def _matching_graphql_brace(source: str, opening: int) -> int | None:
+    depth = 0
+    for index in range(opening, len(source)):
+        if source[index] == "{":
+            depth += 1
+        elif source[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
+
+
+def _graphql_sdl_contracts(masked: str) -> set[tuple[str, str]] | None:
+    root_types = {"query": "Query", "mutation": "Mutation", "subscription": "Subscription"}
+    schema_blocks = list(_GRAPHQL_SCHEMA_RE.finditer(masked))
+    declared_operations: set[str] = set()
+    for schema_block in schema_blocks:
+        opening = schema_block.end() - 1
+        closing = _matching_graphql_brace(masked, opening)
+        if closing is None:
+            return None
+        declarations = re.findall(
+            rf"\b(query|mutation|subscription)\s*:\s*({_GRAPHQL_NAME})\b",
+            masked[opening + 1:closing],
+        )
+        for operation, type_name in declarations:
+            if operation in declared_operations:
+                return None
+            declared_operations.add(operation)
+            root_types[operation] = type_name
+
+    contracts: set[tuple[str, str]] = set()
+    for match in _GRAPHQL_TYPE_RE.finditer(masked):
+        root_operation = next(
+            (operation for operation, type_name in root_types.items() if type_name == match.group(1)),
+            None,
+        )
+        if root_operation is None:
+            continue
+        opening = match.end() - 1
+        closing = _matching_graphql_brace(masked, opening)
+        if closing is None:
+            return None
+        body = masked[opening + 1:closing]
+        for field in _GRAPHQL_FIELD_DEF_RE.findall(body):
+            if not field.startswith("__"):
+                contracts.add((root_operation, field))
+    return contracts
+
+
+def _matching_graphql_token_brace(tokens: list[str], opening: int) -> int | None:
+    depth = 0
+    for index in range(opening, len(tokens)):
+        if tokens[index] == "{":
+            depth += 1
+        elif tokens[index] == "}":
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
+
+
+def _graphql_root_selections(tokens: list[str]) -> tuple[set[str], set[str]] | None:
+    fields: set[str] = set()
+    spreads: set[str] = set()
+    brace_depth = 0
+    paren_depth = 0
+    bracket_depth = 0
+    skip_directive_name = False
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "{":
+            brace_depth += 1
+            index += 1
+            continue
+        if token == "}":
+            if brace_depth == 0:
+                return None
+            brace_depth -= 1
+            index += 1
+            continue
+        if brace_depth:
+            index += 1
+            continue
+        if token == "(":
+            paren_depth += 1
+            index += 1
+            continue
+        if token == ")":
+            if paren_depth == 0:
+                return None
+            paren_depth -= 1
+            index += 1
+            continue
+        if token == "[":
+            bracket_depth += 1
+            index += 1
+            continue
+        if token == "]":
+            if bracket_depth == 0:
+                return None
+            bracket_depth -= 1
+            index += 1
+            continue
+        if paren_depth or bracket_depth:
+            index += 1
+            continue
+        if token == "...":
+            if index + 1 >= len(tokens) \
+                    or re.fullmatch(_GRAPHQL_NAME, tokens[index + 1]) is None \
+                    or tokens[index + 1] == "on":
+                return None
+            spreads.add(tokens[index + 1])
+            index += 2
+            continue
+        if token == "$":
+            return None
+        if token == "@":
+            skip_directive_name = True
+            index += 1
+            continue
+        if re.fullmatch(_GRAPHQL_NAME, token):
+            if skip_directive_name:
+                skip_directive_name = False
+                index += 1
+                continue
+            field = token
+            if index + 2 < len(tokens) and tokens[index + 1] == ":" \
+                    and re.fullmatch(_GRAPHQL_NAME, tokens[index + 2]):
+                field = tokens[index + 2]
+                index += 3
+            else:
+                index += 1
+            if not field.startswith("__"):
+                fields.add(field)
+            continue
+        index += 1
+    if brace_depth or paren_depth or bracket_depth or skip_directive_name:
+        return None
+    return fields, spreads
+
+
+def _graphql_fragment_root_matches(operation_type: str, type_name: str) -> bool:
+    canonical = operation_type.casefold()
+    candidate = type_name.casefold()
+    return candidate == canonical or candidate.endswith(canonical)
+
+
+def _graphql_top_level_headers(tokens: list[str]) -> list[tuple[str, str]]:
+    headers: list[tuple[str, str]] = []
+    depth = 0
+    for index, token in enumerate(tokens):
+        if token == "{":
+            depth += 1
+            continue
+        if token == "}":
+            depth = max(0, depth - 1)
+            continue
+        if depth == 0 and token in {"query", "mutation", "subscription"} \
+                and index + 1 < len(tokens) \
+                and re.fullmatch(_GRAPHQL_NAME, tokens[index + 1]):
+            headers.append((token, tokens[index + 1]))
+    return headers
+
+
+def _graphql_document_contracts(masked: str) -> set[tuple[str, str]]:
+    tokens = _GRAPHQL_TOKEN_RE.findall(masked)
+    contracts: set[tuple[str, str]] = set()
+    fragments: dict[str, tuple[str, set[str], set[str]]] = {}
+    depth = 0
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "{":
+            depth += 1
+            index += 1
+            continue
+        if token == "}":
+            depth = max(0, depth - 1)
+            index += 1
+            continue
+        if depth != 0 or token != "fragment":
+            index += 1
+            continue
+        if index + 3 >= len(tokens) \
+                or re.fullmatch(_GRAPHQL_NAME, tokens[index + 1]) is None \
+                or tokens[index + 2] != "on" \
+                or re.fullmatch(_GRAPHQL_NAME, tokens[index + 3]) is None:
+            return set()
+        fragment_name = tokens[index + 1]
+        if fragment_name in fragments:
+            return set()
+        opening = index + 4
+        while opening < len(tokens) and tokens[opening] != "{":
+            if tokens[opening] in {"fragment", "query", "mutation", "subscription", "type", "schema"}:
+                return set()
+            opening += 1
+        if opening >= len(tokens):
+            return set()
+        closing = _matching_graphql_token_brace(tokens, opening)
+        if closing is None:
+            return set()
+        selections = _graphql_root_selections(tokens[opening + 1:closing])
+        if selections is None:
+            return set()
+        fields, spreads = selections
+        fragments[fragment_name] = (tokens[index + 3], fields, spreads)
+        index = closing + 1
+
+    def resolve_fragment(name: str, operation_type: str, resolving: frozenset[str]) -> set[str] | None:
+        if name in resolving:
+            return None
+        fragment = fragments.get(name)
+        if fragment is None:
+            return None
+        type_name, direct_fields, child_spreads = fragment
+        if not _graphql_fragment_root_matches(operation_type, type_name):
+            return None
+        fields = set(direct_fields)
+        next_resolving = resolving | {name}
+        for child in child_spreads:
+            resolved = resolve_fragment(child, operation_type, next_resolving)
+            if resolved is None:
+                return None
+            fields.update(resolved)
+        return fields
+
+    depth = 0
+    index = 0
+    while index < len(tokens):
+        token = tokens[index]
+        if token == "{":
+            depth += 1
+            index += 1
+            continue
+        if token == "}":
+            depth = max(0, depth - 1)
+            index += 1
+            continue
+        if depth != 0 or token not in {"query", "mutation", "subscription"}:
+            index += 1
+            continue
+        operation_type = token
+        if index + 1 >= len(tokens) or re.fullmatch(_GRAPHQL_NAME, tokens[index + 1]) is None:
+            index += 1
+            continue
+        opening = index + 2
+        paren_depth = 0
+        bracket_depth = 0
+        while opening < len(tokens):
+            current = tokens[opening]
+            if current == "(":
+                paren_depth += 1
+            elif current == ")":
+                paren_depth -= 1
+                if paren_depth < 0:
+                    break
+            elif current == "[":
+                bracket_depth += 1
+            elif current == "]":
+                bracket_depth -= 1
+                if bracket_depth < 0:
+                    break
+            elif current == "{" and paren_depth == 0 and bracket_depth == 0:
+                break
+            elif current in {"query", "mutation", "subscription", "fragment", "type", "schema"} \
+                    and paren_depth == 0 and bracket_depth == 0:
+                break
+            opening += 1
+        if opening >= len(tokens) or tokens[opening] != "{" or paren_depth or bracket_depth:
+            index += 1
+            continue
+        closing = _matching_graphql_token_brace(tokens, opening)
+        if closing is None:
+            index += 1
+            continue
+        selections = _graphql_root_selections(tokens[opening + 1:closing])
+        if selections is not None:
+            fields, spreads = selections
+            valid = True
+            for spread in spreads:
+                resolved = resolve_fragment(spread, operation_type, frozenset())
+                if resolved is None:
+                    valid = False
+                    break
+                fields.update(resolved)
+            if valid:
+                contracts.update((operation_type, field) for field in fields)
+        index = closing + 1
+    return contracts
+
+
+def _graphql_persisted_manifest_contracts(source: str) -> set[tuple[str, str]] | None:
+    try:
+        payload = json.loads(source)
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(payload, dict) \
+            or set(payload) != {"format", "version", "operations"} \
+            or payload.get("format") != "apollo-persisted-query-manifest" \
+            or payload.get("version") != 1:
+        return None
+    operations = payload.get("operations")
+    if not isinstance(operations, list) or not 1 <= len(operations) <= MAX_GRAPHQL_PERSISTED_OPERATIONS:
+        return None
+    contracts: set[tuple[str, str]] = set()
+    operation_ids: set[str] = set()
+    for operation in operations:
+        if not isinstance(operation, dict) \
+                or not {"id", "body", "name", "type"}.issubset(operation) \
+                or not set(operation).issubset({"id", "body", "name", "type"}):
+            return None
+        operation_id = operation.get("id")
+        body = operation.get("body")
+        name = operation.get("name")
+        operation_type = operation.get("type")
+        if not isinstance(operation_id, str) \
+                or re.fullmatch(r"[0-9a-f]{64}", operation_id) is None \
+                or operation_id in operation_ids \
+                or not isinstance(body, str) \
+                or not 1 <= len(body.encode("utf-8")) <= MAX_GRAPHQL_FILE_BYTES \
+                or not isinstance(name, str) \
+                or re.fullmatch(_GRAPHQL_NAME, name) is None \
+                or not isinstance(operation_type, str) \
+                or operation_type not in {"query", "mutation", "subscription"}:
+            return None
+        if hashlib.sha256(body.encode("utf-8")).hexdigest() != operation_id:
+            return None
+        masked = _mask_graphql_noncode(body)
+        if masked is None:
+            return None
+        headers = _graphql_top_level_headers(_GRAPHQL_TOKEN_RE.findall(masked))
+        if headers != [(operation_type, name)]:
+            return None
+        operation_contracts = _graphql_document_contracts(masked)
+        if not operation_contracts \
+                or any(contract_type != operation_type for contract_type, _field in operation_contracts):
+            return None
+        operation_ids.add(operation_id)
+        contracts.update(operation_contracts)
+    return contracts
+
+
+def _graphql_files(repo: Path) -> tuple[list[Path], int, bool]:
+    files: list[Path] = []
+    skipped = 0
+    truncated = False
+    visited = 0
+    stack: list[tuple[Path, int]] = [(repo, 0)]
+    while stack and not truncated:
+        directory, depth = stack.pop()
+        try:
+            with os.scandir(directory) as iterator:
+                entries = sorted(iterator, key=lambda entry: entry.name)
+        except OSError:
+            continue
+        for entry in entries:
+            visited += 1
+            if visited > MAX_GRAPHQL_SCAN_ENTRIES:
+                truncated = True
+                break
+            try:
+                if entry.is_symlink():
+                    continue
+                if entry.is_dir(follow_symlinks=False):
+                    if depth < MAX_GRAPHQL_SCAN_DEPTH and not _skip_dir(entry.name):
+                        stack.append((Path(entry.path), depth + 1))
+                    continue
+                if not entry.is_file(follow_symlinks=False):
+                    continue
+                name = entry.name.casefold()
+                is_manifest = name == GRAPHQL_PERSISTED_MANIFEST
+                if Path(name).suffix.casefold() not in GRAPHQL_SUFFIXES and not is_manifest:
+                    continue
+                size_limit = MAX_GRAPHQL_MANIFEST_BYTES if is_manifest else MAX_GRAPHQL_FILE_BYTES
+                if entry.stat(follow_symlinks=False).st_size > size_limit:
+                    skipped += 1
+                    continue
+            except OSError:
+                continue
+            if len(files) >= MAX_GRAPHQL_FILES_PER_REPO:
+                truncated = True
+                break
+            files.append(Path(entry.path))
+    return sorted(files), skipped, truncated
+
+
+def _graphql_contracts_for_repo(repo: Path) -> tuple[set[tuple[str, str]], set[tuple[str, str]], int, bool]:
+    producers: set[tuple[str, str]] = set()
+    consumers: set[tuple[str, str]] = set()
+    files, skipped, truncated = _graphql_files(repo)
+    for path in files:
+        is_manifest = path.name.casefold() == GRAPHQL_PERSISTED_MANIFEST
+        size_limit = MAX_GRAPHQL_MANIFEST_BYTES if is_manifest else MAX_GRAPHQL_FILE_BYTES
+        source = _read_small(path, size_limit)
+        if source is None:
+            skipped += 1
+            continue
+        if is_manifest:
+            persisted = _graphql_persisted_manifest_contracts(source)
+            if persisted is None:
+                skipped += 1
+            else:
+                consumers.update(persisted)
+            continue
+        masked = _mask_graphql_noncode(source)
+        if masked is None:
+            skipped += 1
+            continue
+        declared = _graphql_sdl_contracts(masked)
+        if declared is None:
+            skipped += 1
+            continue
+        producers.update(declared)
+        consumers.update(_graphql_document_contracts(masked))
+    return producers, consumers, skipped, truncated
+
+
+def audit_graphql_service_graph(items: list[dict[str, Any]]) -> dict[str, Any]:
+    """Correlate bounded local SDL roots with literal operations across distinct repositories."""
+    producer_rows: dict[tuple[str, str], list[tuple[str, str]]] = {}
+    consumer_rows: list[tuple[tuple[str, str], str, str]] = []
+    producer_count = 0
+    consumer_count = 0
+    skipped_files = 0
+    files_truncated = False
+    for item in items[:HARD_MAX_REPOS]:
+        path = item.get("path")
+        if not isinstance(path, str):
+            continue
+        repo = Path(path)
+        try:
+            if repo.is_symlink() or not repo.is_dir():
+                continue
+        except OSError:
+            continue
+        label = str(item.get("rel") or item.get("name") or repo.name)[:160]
+        repo_key = str(repo)
+        producers, consumers, skipped, truncated = _graphql_contracts_for_repo(repo)
+        producer_count += len(producers)
+        consumer_count += len(consumers)
+        skipped_files += skipped
+        files_truncated = files_truncated or truncated
+        for contract in producers:
+            producer_rows.setdefault(contract, []).append((repo_key, label))
+        consumer_rows.extend((contract, repo_key, label) for contract in consumers)
+
+    edges: list[dict[str, str]] = []
+    edge_keys: set[tuple[str, str, str, str]] = set()
+    ambiguous_producers = 0
+    for contract, rows in producer_rows.items():
+        if len({repo_key for repo_key, _label in rows}) > 1:
+            ambiguous_producers += 1
+    for contract, consumer_key, consumer_label in consumer_rows:
+        producers = list(dict.fromkeys(producer_rows.get(contract, [])))
+        if len(producers) != 1:
+            continue
+        producer_key, producer_label = producers[0]
+        if producer_key == consumer_key:
+            continue
+        operation_type, root_field = contract
+        edge_key = (producer_label, consumer_label, operation_type, root_field)
+        if edge_key in edge_keys:
+            continue
+        edge_keys.add(edge_key)
+        if len(edges) < MAX_GRAPHQL_GRAPH_EDGES:
+            edges.append({
+                "producer_repo": producer_label,
+                "consumer_repo": consumer_label,
+                "operation_type": operation_type,
+                "root_field": root_field,
+            })
+    edges.sort(key=lambda edge: (
+        edge["producer_repo"], edge["consumer_repo"], edge["operation_type"], edge["root_field"],
+    ))
+    return {
+        "format": GRAPHQL_SERVICE_GRAPH_FORMAT,
+        "status": "evaluated",
+        "producer_operation_count": producer_count,
+        "consumer_operation_count": consumer_count,
+        "edge_count": len(edge_keys),
+        "edges_truncated": len(edge_keys) > len(edges),
+        "skipped_file_count": skipped_files,
+        "files_truncated": files_truncated,
+        "ambiguous_producer_count": ambiguous_producers,
+        "edges": edges,
+    }
+
+
+def _literal_auth_issuer(value: Any) -> str | None:
+    if not isinstance(value, str) or value != value.strip() or not 1 <= len(value) <= 240:
+        return None
+    if (
+        any(char in value for char in ("$", "{", "}"))
+        or any(char.isspace() for char in value)
+        or _looks_like_auth_secret(value)
+    ):
+        return None
+    try:
+        parsed = urllib.parse.urlsplit(value)
+        _ = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme.casefold() != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        return None
+    return value
+
+
+def _looks_like_auth_secret(value: str) -> bool:
+    if _AUTH_SECRET_PREFIX_RE.search(value):
+        return True
+    parts = value.split(".")
+    return len(parts) == 3 and all(len(part) >= 8 for part in parts) and value.startswith("eyJ")
+
+
+def _unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate key")
+        result[key] = value
+    return result
+
+
+def _auth_contracts_for_repo(repo: Path, label: str) -> tuple[list[dict[str, Any]], bool]:
+    """Read one bounded literal-only manifest; invalid/partial manifests contribute nothing."""
+    manifest = repo / AUTH_CONTRACT_MANIFEST
+    try:
+        present = manifest.exists() or manifest.is_symlink()
+    except OSError:
+        present = False
+    if not present:
+        return [], False
+    raw = _read_small(manifest, 64_000)
+    if raw is None:
+        return [], True
+    try:
+        document = json.loads(raw, object_pairs_hook=_unique_json_object)
+    except (TypeError, ValueError):
+        return [], True
+    if (
+        not isinstance(document, dict)
+        or set(document) != {"format", "contracts"}
+        or document.get("format") != AUTH_CONTRACT_FORMAT
+        or not isinstance(document.get("contracts"), list)
+        or not 1 <= len(document["contracts"]) <= MAX_AUTH_CONTRACTS_PER_REPO
+    ):
+        return [], True
+
+    parsed_contracts: list[dict[str, Any]] = []
+    for contract in document["contracts"]:
+        if not isinstance(contract, dict) or set(contract) != {"role", "issuer", "audience", "scopes", "tenant"}:
+            return [], True
+        role = contract.get("role")
+        issuer = _literal_auth_issuer(contract.get("issuer"))
+        audience = contract.get("audience")
+        tenant = contract.get("tenant")
+        scopes = contract.get("scopes")
+        if (
+            role not in {"producer", "consumer"}
+            or issuer is None
+            or not isinstance(audience, str)
+            or _AUTH_VALUE_RE.fullmatch(audience) is None
+            or _looks_like_auth_secret(audience)
+            or not isinstance(tenant, str)
+            or _AUTH_TENANT_RE.fullmatch(tenant) is None
+            or _looks_like_auth_secret(tenant)
+            or not isinstance(scopes, list)
+            or not 1 <= len(scopes) <= 64
+            or not all(
+                isinstance(scope, str)
+                and _AUTH_VALUE_RE.fullmatch(scope)
+                and not _looks_like_auth_secret(scope)
+                for scope in scopes
+            )
+            or len(set(scopes)) != len(scopes)
+        ):
+            return [], True
+        parsed_contracts.append({
+            "role": role,
+            "issuer": issuer,
+            "audience": audience,
+            "scopes": tuple(sorted(scopes)),
+            "tenant": tenant,
+            "repo_key": str(repo),
+            "repo_label": label[:160],
+        })
+    return parsed_contracts, False
+
+
+def audit_auth_contract_graph(items: list[dict[str, Any]]) -> dict[str, Any]:
+    """Correlate literal producer/consumer auth expectations across distinct repositories."""
+    contracts: list[dict[str, Any]] = []
+    skipped_manifests = 0
+    for item in items[:HARD_MAX_REPOS]:
+        if item.get("status") not in {"succeeded", "skipped"}:
+            continue
+        path = item.get("path")
+        if not isinstance(path, str):
+            continue
+        repo = Path(path)
+        label = str(item.get("rel") or item.get("name") or repo.name)
+        parsed, skipped = _auth_contracts_for_repo(repo, label)
+        contracts.extend(parsed)
+        skipped_manifests += int(skipped)
+
+    producers: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    consumers: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for contract in contracts:
+        key = (contract["issuer"], contract["audience"])
+        target = producers if contract["role"] == "producer" else consumers
+        target.setdefault(key, []).append(contract)
+
+    findings: list[dict[str, Any]] = []
+    total_findings = 0
+    links = 0
+    ambiguous = 0
+    for key in sorted(set(producers) & set(consumers)):
+        producer_set = producers[key]
+        consumer_set = consumers[key]
+        if len(producer_set) != 1:
+            ambiguous += 1
+            continue
+        producer = producer_set[0]
+        producer_scopes = set(producer["scopes"])
+        for consumer in sorted(consumer_set, key=lambda row: (row["repo_label"], row["tenant"])):
+            if consumer["repo_key"] == producer["repo_key"]:
+                continue
+            links += 1
+            missing_scopes = sorted(set(consumer["scopes"]) - producer_scopes)
+            tenant_mismatch = consumer["tenant"] != producer["tenant"]
+            if not missing_scopes and not tenant_mismatch:
+                continue
+            total_findings += 1
+            if len(findings) >= MAX_AUTH_GRAPH_FINDINGS:
+                continue
+            findings.append({
+                "rule_id": "SNIPER-BULK-AUTH-01",
+                "severity": "high",
+                "category": "authorization",
+                "title": "Depolar arası kimlik doğrulama sözleşmesi uyumsuz",
+                "producer_repo": producer["repo_label"],
+                "consumer_repo": consumer["repo_label"],
+                "issuer": key[0],
+                "audience": key[1],
+                "missing_scopes": missing_scopes,
+                "producer_tenant": producer["tenant"],
+                "consumer_tenant": consumer["tenant"],
+            })
+
+    return {
+        "format": AUTH_GRAPH_FORMAT,
+        "status": "evaluated",
+        "manifest": AUTH_CONTRACT_MANIFEST,
+        "contract_count": len(contracts),
+        "link_count": links,
+        "finding_count": total_findings,
+        "findings_truncated": total_findings > len(findings),
+        "skipped_manifest_count": skipped_manifests,
+        "ambiguous_pair_count": ambiguous,
+        "findings": findings,
+    }
+
+
+def _empty_edge_graph(graph_format: str, repositories: int, *, review: bool = False,
+                      dependency: bool = False) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "repositories": repositories, "nodes": 0, "edges": 0, "truncated": True,
+    }
+    if review:
+        summary["review_edges"] = 0
+    if dependency:
+        summary["packages_with_drift"] = 0
+    return {"format": graph_format, "summary": summary, "nodes": [], "edges": []}
+
+
+def _edge_graph(builder: Callable[[Any], Any], repositories: list[tuple[str, Path]], graph_format: str,
+                *, review: bool = False, dependency: bool = False) -> dict[str, Any]:
+    """Bir graph arızasını diğerlerinden yalıtır; hata ayrıntısını/olası sırrı çıktılamaz."""
+    try:
+        graph = builder(repositories)
+        if (
+            not isinstance(graph, dict)
+            or graph.get("format") != graph_format
+            or not isinstance(graph.get("summary"), dict)
+            or not isinstance(graph.get("nodes"), list)
+            or not isinstance(graph.get("edges"), list)
+        ):
+            raise ValueError("invalid graph result")
+        return graph
+    except Exception:  # noqa: BLE001 - bağımsız graph sonucunu fail-closed yalıtır
+        return _empty_edge_graph(
+            graph_format, len(repositories), review=review, dependency=dependency,
+        )
+
+
+def _empty_auth_contract_graph(reason: str) -> dict[str, Any]:
+    return {
+        "format": AUTH_GRAPH_FORMAT,
+        "status": "not_evaluated",
+        "reason": reason,
+        "manifest": AUTH_CONTRACT_MANIFEST,
+        "contract_count": 0,
+        "link_count": 0,
+        "finding_count": 0,
+        "findings_truncated": False,
+        "skipped_manifest_count": 0,
+        "ambiguous_pair_count": 0,
+        "findings": [],
+    }
+
+
+def _auth_graph(items: list[dict[str, Any]], *, cancelled: bool) -> dict[str, Any]:
+    if cancelled:
+        return _empty_auth_contract_graph("cancelled")
+    try:
+        graph = audit_auth_contract_graph(items)
+        if not isinstance(graph, dict) or graph.get("format") != AUTH_GRAPH_FORMAT \
+                or not isinstance(graph.get("findings"), list):
+            raise ValueError("invalid auth graph result")
+        return graph
+    except Exception:  # noqa: BLE001 - hata/olası sır API sonucuna taşınmaz
+        return _empty_auth_contract_graph("analysis_error")
+
+
+def _empty_graphql_service_graph(reason: str) -> dict[str, Any]:
+    return {
+        "format": GRAPHQL_SERVICE_GRAPH_FORMAT,
+        "status": "not_evaluated",
+        "reason": reason,
+        "producer_operation_count": 0,
+        "consumer_operation_count": 0,
+        "edge_count": 0,
+        "edges_truncated": False,
+        "skipped_file_count": 0,
+        "files_truncated": False,
+        "ambiguous_producer_count": 0,
+        "edges": [],
+    }
+
+
+def _graphql_graph(items: list[dict[str, Any]], *, cancelled: bool) -> dict[str, Any]:
+    if cancelled:
+        return _empty_graphql_service_graph("cancelled")
+    eligible = [item for item in items if item.get("status") in {"succeeded", "skipped"}]
+    try:
+        graph = audit_graphql_service_graph(eligible)
+        if (
+            not isinstance(graph, dict)
+            or graph.get("format") != GRAPHQL_SERVICE_GRAPH_FORMAT
+            or graph.get("status") != "evaluated"
+            or not isinstance(graph.get("edges"), list)
+        ):
+            raise ValueError("invalid GraphQL graph result")
+        return graph
+    except Exception:  # noqa: BLE001 - hata/olası sır API sonucuna taşınmaz
+        return _empty_graphql_service_graph("analysis_error")
 
 
 def _common_dir(git_dir: Path) -> Path:
@@ -259,7 +1128,7 @@ def _manifest_names() -> frozenset[str]:
     import monorepo
     import project_analyzer
 
-    return frozenset(project_analyzer.MANIFEST_NAMES) | monorepo.DEPENDENCY_MANIFESTS
+    return frozenset(project_analyzer.MANIFEST_NAMES) | monorepo.DEPENDENCY_MANIFESTS | {AUTH_CONTRACT_MANIFEST}
 
 
 def _project_kind(directory: Path, names: set[str]) -> str | None:
@@ -632,6 +1501,33 @@ def list_runs(environ: dict[str, str] | None = None) -> list[dict[str, Any]]:
             summary = {key: run.get(key) for key in ("id", "root", "group", "created_at", "finished_at", "status",
                                                       "trigger", "job_id", "options")}
             summary["totals"] = _totals(run.get("items") or [])
+            auth_graph = run.get("auth_contract_graph")
+            if isinstance(auth_graph, dict):
+                summary["auth_contract_graph"] = {
+                    key: auth_graph.get(key) for key in
+                    ("format", "status", "contract_count", "link_count", "finding_count",
+                     "skipped_manifest_count", "ambiguous_pair_count")
+                }
+            graphql_graph = run.get("graphql_service_graph")
+            if isinstance(graphql_graph, dict):
+                summary["graphql_service_graph"] = {
+                    key: graphql_graph.get(key) for key in (
+                        "format", "status", "producer_operation_count", "consumer_operation_count", "edge_count",
+                        "skipped_file_count", "ambiguous_producer_count",
+                    )
+                }
+            runtime_trace = run.get("runtime_service_trace")
+            if isinstance(runtime_trace, dict):
+                summary["runtime_service_trace"] = {
+                    key: runtime_trace.get(key) for key in (
+                        "format", "status", "accepted_manifest_count", "rejected_manifest_count",
+                        "observation_count", "matched_edge_count", "unmatched_observation_count", "truncated",
+                    )
+                }
+            for graph_key in ("service_graph", "webhook_graph", "message_graph", "dependency_lineage"):
+                graph = run.get(graph_key)
+                if isinstance(graph, dict) and isinstance(graph.get("summary"), dict):
+                    summary[graph_key] = dict(graph["summary"])
             out.append(summary)
     return out
 
@@ -855,8 +1751,64 @@ def execute(run_id: str, run_route: RunRoute, *, job: Any = None, environ: dict[
     totals = _totals(items)
     if final == "succeeded" and totals["failed"] and not (totals["succeeded"] or totals["skipped"]):
         final = "failed"
+    graph_repositories = [
+        (str(item.get("rel") or item.get("name") or "repository"), Path(item["path"]))
+        for item in items
+        if item.get("status") in {"succeeded", "skipped"} and isinstance(item.get("path"), str)
+    ]
+    service_graph = _edge_graph(
+        service_trust_graph.build, graph_repositories, service_trust_graph.FORMAT,
+    )
+    webhook_graph = _edge_graph(
+        webhook_trust_graph.build, graph_repositories, webhook_trust_graph.FORMAT, review=True,
+    )
+    message_graph = _edge_graph(
+        message_trust_graph.build, graph_repositories, message_trust_graph.FORMAT,
+    )
+    dependency_lineage = _edge_graph(
+        dependency_lineage_graph.build, graph_repositories, dependency_lineage_graph.FORMAT, dependency=True,
+    )
+    auth_contract_graph = _auth_graph(items, cancelled=final == "cancelled")
+    graphql_service_graph = _graphql_graph(items, cancelled=final == "cancelled")
+    try:
+        correlated_graphs, runtime_trace_summary = runtime_service_trace.correlate(
+            graph_repositories,
+            {
+                "service_graph": service_graph,
+                "webhook_graph": webhook_graph,
+                "message_graph": message_graph,
+                "graphql_service_graph": graphql_service_graph,
+            },
+        )
+        service_graph = correlated_graphs["service_graph"]
+        webhook_graph = correlated_graphs["webhook_graph"]
+        message_graph = correlated_graphs["message_graph"]
+        graphql_service_graph = correlated_graphs["graphql_service_graph"]
+    except Exception:  # noqa: BLE001 - trace veya olası sır API sonucuna taşınmaz
+        runtime_trace_summary = runtime_service_trace.empty_summary("not_evaluated")
     finished = _now()
-    _patch_run(run_id, lambda r: r.update(status=final, finished_at=finished), environ)
+    _patch_run(
+        run_id,
+        lambda r: r.update(
+            status=final,
+            finished_at=finished,
+            service_graph=service_graph,
+            webhook_graph=webhook_graph,
+            message_graph=message_graph,
+            auth_contract_graph=auth_contract_graph,
+            dependency_lineage=dependency_lineage,
+            graphql_service_graph=graphql_service_graph,
+            runtime_service_trace=runtime_trace_summary,
+        ),
+        environ,
+    )
     return {"bulk_id": run_id, "status": final, "root": run.get("root"), "group": run.get("group"), "totals": totals,
+            "service_graph": service_graph,
+            "webhook_graph": webhook_graph,
+            "message_graph": message_graph,
+            "auth_contract_graph": auth_contract_graph,
+            "dependency_lineage": dependency_lineage,
+            "graphql_service_graph": graphql_service_graph,
+            "runtime_service_trace": runtime_trace_summary,
             "items": [{key: item.get(key) for key in ("name", "status", "audit_id", "finding_count", "error", "reason")}
                       for item in items][:HARD_MAX_REPOS]}

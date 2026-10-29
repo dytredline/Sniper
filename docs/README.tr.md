@@ -100,7 +100,7 @@ olarak dahil edilmemiştir. Ticari hizmetler, barındırılan operasyon, destek 
 
 ## Sürüm durumu
 
-Bu depo Sniper Community v1.0.0 kaynak sürümüdür. `COMMUNITY_VERSION` kaynak sürüm işaretçisidir; yayınlanan etiketler
+Bu depo Sniper Community v1.1.0 kaynak sürümüdür. `COMMUNITY_VERSION` kaynak sürüm işaretçisidir; yayınlanan etiketler
 bununla `v<sürüm>` biçiminde eşleşmelidir. Kaynak kodu Apache License 2.0 altında lisanslanmıştır. Bkz.
 [LICENSE](../LICENSE).
 

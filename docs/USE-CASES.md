@@ -46,12 +46,26 @@ application. Start by inspecting the checked-in command contract:
 python3 scripts/sniper-project-audit --help
 ```
 
+## Review service trust across a local repository portfolio
+
+| Stage | What to expect |
+| --- | --- |
+| Input | A bounded local bulk-scan selection containing supported OpenAPI JSON, Python Kafka source, GraphQL SDL/documents or SHA-256 verified Apollo persisted-operation manifests, exact Python requirements pins, explicit `sniper-auth-contracts.json` manifests, and optional exact-name local `sniper-runtime-service-trace.json` evidence. |
+| Checks | Six independent correlations: OpenAPI operation to literal HTTP client; webhook receiver to literal producer; exact Kafka topic publisher to consumer; literal issuer/audience auth producer to consumer; exact GraphQL query/mutation/subscription type and root field (including safe same-document named fragments); and normalized exact PyPI pins across repositories. |
+| Output | Persisted `service_graph`, `webhook_graph`, `message_graph`, `auth_contract_graph`, `graphql_service_graph`, and `dependency_lineage` results plus compact list summaries. An exact trace match annotates, but never replaces, a static HTTP/webhook/Kafka/GraphQL edge with observed evidence/event counts. Evidence uses repository identities and bounded static identities; raw service/GraphQL origins, trace contents, broker endpoints, private indexes, and credentials are excluded. |
+| Safety and limits | Analysis is offline and static. Dynamic or ambiguous identities fail closed. One graph error produces an explicitly empty/not-evaluated result without removing the other five. Edge graphs are bounded to 1,000 edges each; auth output is bounded to 500 findings. |
+
+These graphs identify review boundaries, not runtime reachability or control effectiveness. A local trace integrity
+hash detects content mismatch but does not authenticate the trace producer. Reviewers still validate
+authentication, authorization, tenant isolation, webhook signatures/replay handling, broker ACLs and schemas, and
+dependency compatibility in an authorized environment.
+
 ## Prioritize IDOR checks in an authorized manual penetration test
 
 | Stage | What to expect |
 | --- | --- |
-| Input | Supported Python or JavaScript/TypeScript application source from a project you are authorized to assess. |
-| Checks | Route and authorization inventory for unprotected-route candidates (CWE-862) and object lookups that may expose an Insecure Direct Object Reference (IDOR) path (CWE-639). |
+| Input | Supported Python, JavaScript/TypeScript, or Ruby/Rails application source, plus local GraphQL SDL and supported GraphQL-Ruby resolver source, from a project you are authorized to assess. |
+| Checks | Route and authorization inventory for unprotected-route candidates (CWE-862), object lookups that may expose an Insecure Direct Object Reference (IDOR) path (CWE-639), and SDL-linked GraphQL-Ruby resolver lookups without a visible owner, tenant, or policy guard. |
 | Output | A focused review list with file, route, line, framework, method, and available protection context. |
 | Manual verification | In a controlled test environment, an authorized tester can compare separate test users, roles, and synthetic object identifiers while respecting written scope and stop conditions. |
 
@@ -64,13 +78,27 @@ inside the written authorization scope and uses synthetic or explicitly approved
 | Stage | What to expect |
 | --- | --- |
 | Input | Supported package manifests and lockfiles, a local project, or a supported CycloneDX/SPDX document. |
-| Checks | Dependency inventory, direct/transitive and reachability context where available, SBOM generation/import, license context, VEX workflows, and matching against configured local vulnerability evidence. |
-| Output | CycloneDX or SPDX inventory, bounded dependency findings, VEX-related output where requested, and CI/report artifacts supported by the chosen command. |
+| Checks | Dependency inventory, direct/transitive and reachability context where available, SBOM generation/import, license context, VEX workflows, configured local vulnerability evidence, and exact-pin drift correlation across repositories in a bulk local run. |
+| Output | CycloneDX or SPDX inventory, bounded dependency findings, VEX-related output, supported CI/report artifacts, and a bounded PyPI `version-drift` graph where exact `==` pins are unambiguous. |
 | Safety and approval boundary | Vulnerability conclusions depend on database freshness, package identity, and analyzer limits. Offline vulnerability profiles stay unavailable until the required pinned database is present. Importing an SBOM does not establish that its contents are complete or authentic. |
 
 This is appropriate for release inventory, dependency review, and software-supply-chain evidence. See
 [SBOM.md](SBOM.md) and [OSV-CEVRIMDISI.md](OSV-CEVRIMDISI.md) for exact formats, commands, and offline database
-requirements.
+requirements. Dependency-lineage output is static consistency evidence, not a compatibility or vulnerability claim;
+dynamic pins, markers, direct URLs, and conflicting pins within one repository are deliberately omitted.
+
+## Review GitHub Actions trust across workflow files
+
+| Stage | What to expect |
+| --- | --- |
+| Input | Local `.github/workflows/*.yml` or `.yaml` files from a repository you are authorized to review. |
+| Checks | Same-commit local reusable-workflow calls and commit-SHA-pinned remote calls present in the exact-schema offline mirror lock are correlated for effective write permissions and inherited or mapped secrets. Separately, a literal artifact uploaded by a `pull_request` workflow is linked to an exact-name `workflow_run` consumer that downloads the triggering run and later executes content in the same job. |
+| Output | Caller/callee workflow edges; artifact producer/consumer nodes and edges; source lines; permission, secret, pre-execution verification, unresolved, and truncation state. |
+| Safety and limits | Workflow files are parsed but never run. Remote calls without the canonical repository/commit identity and digest-locked no-follow local mirror, dynamic artifact/workflow names, ambiguous producers, missing cross-run inputs, malformed YAML, and runtime artifact contents are not inferred as trusted edges. |
+
+The graphs identify review points; they do not prove that a called workflow, artifact content, or runtime policy is
+safe. A checksum/attestation command name is recorded as `declared_unverified`, not successful verification.
+Explicit read-only token permissions without a visible secret reference remain a static mitigation signal.
 
 ## Container and infrastructure-as-code review
 
@@ -114,7 +142,7 @@ profile must be reviewed before execution; Sniper is not permission to scan an a
 ## Optional local engines
 
 Sniper's built-in analyzers and report parsers are included in the source tree. The rootless local profile can also
-install exactly five pinned third-party engines:
+install exactly seven pinned third-party engines:
 
 | Optional engine | Community role | Readiness boundary |
 | --- | --- | --- |
@@ -123,6 +151,8 @@ install exactly five pinned third-party engines:
 | Gitleaks 8.30.1 | Local secret-scanning profiles | The binary, hash, input scope, and license must pass readiness checks. |
 | TruffleHog 3.99.0 | Local secret-scanning profiles | The binary, hash, input scope, and license must pass readiness checks. |
 | Opengrep 1.30.1 | Local source-pattern and taint-rule execution | The pinned binary and selected rules must pass readiness checks. |
+| Syft 1.55.0 | Manifest-only local SBOM production | The pinned binary and explicitly approved local project must pass readiness checks. |
+| Grype 0.121.0 | Offline matching of the Syft SBOM against vulnerability data | The pinned binary and exact separately pinned offline database must pass readiness checks. |
 
 Installation is explicit and license-aware. A missing, unverified, or unready engine is not shown as usable merely
 because Sniper can import one of its saved reports. See [COMMUNITY-TOOLS.md](COMMUNITY-TOOLS.md) for the exact lock,

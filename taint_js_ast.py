@@ -41,7 +41,7 @@ PARSER_SHA256 = "f6e920862db6ceb7f5521d12300dd6e5ceb8ef8e52198e7d4dccf431258116e
 BRIDGE_PATH = APP_DIR / "taint_js_bridge.cjs"
 BRIDGE_SHA256 = "fd95e94b1b7e87c01e560c86b41c3e6f03d00b0b1a5b613258fc79eb09304585"
 PARSE_TIMEOUT = 20.0
-PROJECT_PARSE_BUDGET = 240.0
+PROJECT_PARSE_BUDGET = max(60.0, min(3600.0, float(os.environ.get("SNIPER_TAINT_PROJECT_SECONDS", "240.0") or 240.0)))
 NODE_HEAP_MB = 1536
 MAX_BRIDGE_BYTES = 64_000
 
@@ -69,6 +69,7 @@ _ANGULAR_ROUTE_MEMBERS = frozenset({"queryParams", "params", "queryParamMap", "p
 _FIXED_HOST_PREFIX_RE = re.compile(r"(?i)^(?:(?:https?:)?//[^/?#\s]+[/?#]|/(?![/\\]))")
 _PROCESS_SPAWN_CALLS = frozenset({"spawn", "spawnSync", "execFile", "execFileSync"})
 _NEST_PARAM_DECORATORS = frozenset({"Body", "Query", "Param", "Params", "Headers", "Req", "Request", "UploadedFile", "Cookies",
+                                    "UploadedFiles", "HostParam", "Ip", "Payload", "Ctx", "Context",
                                     # GraphQL: type-graphql @Arg/@Args, NestJS GraphQL @Args (istemci argümanları)
                                     "Arg", "Args"})
 # Sunucusuz/GraphQL giriş noktaları (bkz. JsProject.collect_entrypoints).
@@ -77,6 +78,7 @@ _LAMBDA_EVENT_TYPES = frozenset({
     "APIGatewayProxyEvent", "APIGatewayProxyEventV2", "APIGatewayProxyWithCognitoAuthorizerEvent", "APIGatewayEvent",
     "APIGatewayProxyEventV2WithJWTAuthorizer", "APIGatewayProxyWithLambdaAuthorizerEvent", "ALBEvent",
     "LambdaFunctionURLEvent", "HandlerEvent", "SQSEvent", "SNSEvent", "S3Event", "EventBridgeEvent",
+    "CloudFrontRequestEvent", "KinesisStreamEvent", "DynamoDBStreamEvent",
 })
 _LAMBDA_HANDLER_TYPES = frozenset({
     "Handler", "APIGatewayProxyHandler", "APIGatewayProxyHandlerV2", "ALBHandler", "LambdaFunctionURLHandler",
@@ -112,7 +114,7 @@ _LOG_OBJECTS = frozenset({"logger", "log", "winston", "pino", "LOGGER", "Logger"
 _LOG_METHODS = frozenset({"info", "warn", "warning", "error", "debug", "trace", "fatal", "verbose", "silly", "log", "notice", "critical"})
 _SQL_METHODS = frozenset({
     "query", "execute", "raw", "unsafe", "$queryRawUnsafe", "$executeRawUnsafe", "queryRawUnsafe",
-    "executeRawUnsafe", "whereRaw", "orderByRaw", "havingRaw", "joinRaw", "fromRaw", "selectRaw",
+    "executeRawUnsafe", "whereRaw", "orderByRaw", "havingRaw", "joinRaw", "fromRaw", "selectRaw", "groupByRaw",
 })
 # İkinci derece (kayıtlı) veri: ORM/sürücü okumaları "stored" etiketli kaynaktır.
 # 25. tur: ORM/sürücü yazımları (ilk argüman alan nesnesi)
@@ -2291,7 +2293,13 @@ class JsProject:
         if cached is not None:
             return cached
         if key in self._active or self._depth > self.MAX_DEPTH:
-            return tf._PySummary(())
+            params = node.get("params") or []
+            names = tuple(
+                (_pattern_names(param) or [""])[0]
+                if _t(param) in {"Identifier", "AssignmentPattern"} else ""
+                for param in params
+            )
+            return tf._PySummary.conservative_passthrough(names)
         self._active.add(key)
         self._depth += 1
         try:
@@ -4877,6 +4885,11 @@ class JsScope:
             root = (_chain(callee.get("object")) or [""])[0]
             if root in self.consts and isinstance(self.consts[root], (list, dict)) and last in _JS_MUTATORS | {"pop", "shift", "reverse", "sort", "delete", "clear"}:
                 self.consts.pop(root, None)
+        if target is not None:
+            # A project function must earn sanitizer status from its analyzed
+            # body.  Apply its summary before every built-in/model/name
+            # shortcut, including shadowed globals such as parseInt.
+            return self._apply_summary(target, arg_taints, node)
         if target is None and name:
             element = self._jquery_value(name, args, arg_taints, receiver)
             if element is not None:
@@ -4926,9 +4939,6 @@ class JsScope:
         named = tf._named_sanitizer_kinds(name) if name else None
         if named is not None and named >= tf._ALL_KINDS:
             named = _JS_ALL
-        if target is not None:
-            result = self._apply_summary(target, arg_taints, node)
-            return tf._clean(result, named) if named is not None else result
         if named is not None:
             return tf._clean(tf._union(receiver, all_args), named)
         if last in _PREDICATE_METHODS and callback_returns:

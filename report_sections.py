@@ -35,8 +35,10 @@ _MAL_PKG = re.compile(r"^Kötü amaçlı paket: (?P<name>\S+) (?P<version>\S+)")
 def is_malicious(finding: dict[str, Any]) -> bool:
     title = str(finding.get("title") or "")
     ref = str(finding.get("reference") or finding.get("vulnerability_id") or "")
+    cwe = str(finding.get("cwe") or ref)
+    cat = str(finding.get("category") or "").strip().lower()
     return (finding.get("malicious") is True or title.startswith(_MALICIOUS_TITLE + ":") or ref.startswith("MAL-")
-            or (str(finding.get("cwe") or "") == "CWE-506" and str(finding.get("category") or "") == "supply_chain"))
+            or (cwe == "CWE-506" and cat in ("supply_chain", "dependency", "dependencies", "components")))
 
 
 def section_of(finding: dict[str, Any]) -> str:
@@ -55,15 +57,15 @@ def section_of(finding: dict[str, Any]) -> str:
         return "container" if str(package.get("type") or "") in ("deb", "apk", "rpm") else "dependencies"
     if full.get("iac") or category == "supplychain":
         return "iac"
-    if category in ("container", "iac", "cloud", "kubernetes", "terraform", "dockerfile", "helm"):
+    if category in ("container", "iac", "cloud", "kubernetes", "terraform", "dockerfile", "helm", "cloud_iam", "k8s_rbac", "service_mesh", "zero_trust"):
         return "iac"
     if category == "license":
         return "license"
-    if category in ("api", "authz"):
+    if category in ("api", "authz", "openapi", "api_contract", "graphql", "grpc"):
         return "api"
-    if category == "supply_chain":
+    if category in ("supply_chain", "slsa", "cicd", "ci_cd", "provenance"):
         return "supply_chain"
-    if category == "components":
+    if category in ("components", "dependency", "dependencies"):
         return "dependencies"
     # Tam bulgusu olmayan eski takip satırları: IaC başlıkları
     if not isinstance(finding.get("finding"), dict) and _IAC_TITLE.match(str(finding.get("title") or "")):

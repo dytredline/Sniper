@@ -31,12 +31,14 @@ EXCLUDED_DIRS = frozenset({
 EXCLUDED_SUFFIXES = (
     ".pyc", ".pyo", ".db", ".sqlite", ".sqlite3", "-wal", "-shm", "-journal", ".key", ".tar",
 )
-EXCLUDED_NAMES = frozenset({"RELEASE.json", ".DS_Store", ".coverage"})
+EXCLUDED_NAMES = frozenset({".git", "RELEASE.json", ".DS_Store", ".coverage", ".baseline-sha256"})
 EXCLUDED_NAMES_CASEFOLD = frozenset(name.casefold() for name in EXCLUDED_NAMES)
 
 # These files are maintainer evaluation fixtures, not the runtime measurement
 # modules used by the product. Keep this list narrow and review additions.
 INTERNAL_EVALUATION_PATHS = frozenset({
+    "docs/advisories",
+    "docs/SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md",
     "docs/sniper-2-evaluation.md",
     "docs/olcum",
     "scripts/ai_triage_eval.py",
@@ -130,7 +132,7 @@ Required runtime files are retained when they contain a machine-specific
 literal, but the literal is normalized to a neutral Community placeholder in
 the assembled tree. This prevents publishing a maintainer path. The source
 archive does not contain third-party engine binaries: the rootless Community
-setup installs the five lock-declared local engines from verified downloads or
+setup installs the seven lock-declared local engines from verified downloads or
 an explicit offline cache after license acceptance. Separate databases,
 catalogs, and other optional inputs remain host-specific; their availability is
 not implied by this archive.
@@ -349,6 +351,12 @@ def _write_bytes(destination: Path, payload: bytes, mode: int) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_bytes(payload)
     destination.chmod(stat.S_IMODE(mode))
+
+
+def _public_file_mode(relative: Path, source_mode: int) -> int:
+    """Normalize inherited workstation modes for the assembled source tree."""
+    may_execute = bool(relative.parts and relative.parts[0] == "scripts") or relative.suffix == ".sh"
+    return 0o755 if may_execute and stat.S_IMODE(source_mode) & 0o111 else 0o644
 
 
 def _replace_exact(text: str, old: str, new: str, *, expected: int, relative: str) -> str:
@@ -686,6 +694,70 @@ def _transform_dockerfile(text: str) -> str:
     )
 
 
+def _transform_report_renderers(text: str) -> str:
+    """Remove maintainer research provenance from the public report renderer."""
+    relative = "report_renderers.py"
+    empty_provenance = "_VERIFIED_PORTFOLIO_PROVENANCE: dict[str, dict[str, Any]] = {}"
+    public_duplicates = '''_KNOWN_UPSTREAM_ADVISORY_DUPLICATES: dict[str, dict[str, Any]] = {
+    "app/core/src/main/java/stirling/software/SPDF/controller/api/converters/ConvertWebsiteToPDF.java": {
+        "upstream_cve": "CVE-2026-71270",
+        "upstream_ghsa": "GHSA-j5rg-wh78-9f2q",
+        "reason": "Already published upstream as CVE-2026-71270 / GHSA-j5rg-wh78-9f2q.",
+    }
+}'''
+    private_markers = (
+        ("sniper-" + "research", 5),
+        ("portfolio-" + "20261025", 5),
+        ("pre-submission-" + "verification", 5),
+        ("GITLAB-" + "CAND-", 2),
+        ("N8N-" + "CAND-", 2),
+        ("STIRLING-" + "CAND-", 2),
+    )
+
+    if empty_provenance in text:
+        if text.count(empty_provenance) != 1 \
+                or text.count(public_duplicates) != 1 \
+                or any(marker in text for marker, _expected in private_markers):
+            raise ValueError(f"{relative}: Community report metadata transform anchor marker is incomplete")
+        return text
+
+    drifted = [
+        f"{marker}={text.count(marker)}/{expected}"
+        for marker, expected in private_markers
+        if text.count(marker) != expected
+    ]
+    if drifted:
+        raise ValueError(f"{relative}: private report metadata anchor drift: {', '.join(drifted)}")
+
+    text = _replace_pattern(
+        text,
+        (
+            r"^_VERIFIED_PORTFOLIO_PROVENANCE: dict\[str, dict\[str, Any\]\] = \{\n"
+            r".*?^\}\n+(?=_KNOWN_UPSTREAM_ADVISORY_DUPLICATES:)"
+        ),
+        empty_provenance + "\n\n",
+        expected=1,
+        relative=relative,
+    )
+    text = _replace_pattern(
+        text,
+        (
+            r"^_KNOWN_UPSTREAM_ADVISORY_DUPLICATES: dict\[str, dict\[str, Any\]\] = \{\n"
+            r".*?^\}\n+(?=def _infer_ghsa_ecosystem)"
+        ),
+        public_duplicates + "\n\n\n",
+        expected=1,
+        relative=relative,
+    )
+    forbidden = (
+        "/home/" + "converserai",
+        *(marker for marker, _expected in private_markers),
+    )
+    if any(marker in text for marker in forbidden):
+        raise ValueError(f"{relative}: private report metadata remained after transform")
+    return text
+
+
 def _transform_mcp_community_wording(text: str) -> str:
     relative = "mcp_triage_server.py"
     private_label = "TRUE" + " LIVE"
@@ -748,12 +820,47 @@ def _transform_project_audit_i18n_wording(text: str) -> str:
     return _replace_exact(text, old, new, expected=1, relative=relative)
 
 
+def _transform_public_readme(text: str) -> str:
+    """Remove maintainer disclosure work from the assembled product README."""
+    return _replace_pattern(
+        text,
+        r"^### Gökçe Baran Karakamış — macOS Kurulum Doğrulaması.*?(?=^## Validation and tests)",
+        (
+            "### Independent validation\n\n"
+            "Community release claims are limited to the reproducible checks in "
+            "[VALIDATION.md](VALIDATION.md). Maintainer vulnerability research and "
+            "coordinated-disclosure work are intentionally not distributed with the product source archive.\n\n"
+        ),
+        expected=1,
+        relative="README.md",
+    )
+
+
+def _transform_public_readme_tr(text: str) -> str:
+    """Remove maintainer disclosure work from the assembled Turkish README."""
+    return _replace_pattern(
+        text,
+        r"^### Gökçe Baran Karakamış — macOS Kurulum Doğrulaması.*?(?=^## Doğrulama ve testler)",
+        (
+            "### Bağımsız doğrulama\n\n"
+            "Community sürüm iddiaları [VALIDATION.md](../VALIDATION.md) içindeki yeniden üretilebilir "
+            "kontrollerle sınırlıdır. Bakımcı güvenlik araştırması ve koordineli bildirim çalışmaları ürün "
+            "kaynak arşiviyle bilerek dağıtılmaz.\n\n"
+        ),
+        expected=1,
+        relative="docs/README.tr.md",
+    )
+
+
 def _apply_artifact_transform(relative: Path, text: str) -> str:
     transforms = {
         "Dockerfile": _transform_dockerfile,
+        "README.md": _transform_public_readme,
         "data_retention.py": _transform_data_retention,
         "docs/KULLANIM-KILAVUZU.md": _transform_user_guide,
+        "docs/README.tr.md": _transform_public_readme_tr,
         "mcp_triage_server.py": _transform_mcp_community_wording,
+        "report_renderers.py": _transform_report_renderers,
         "server.py": _transform_server,
         "static/i18n-en.tsv": _transform_project_audit_i18n_wording,
         "static/index.html": _transform_project_audit_ui_wording,
@@ -865,6 +972,7 @@ def build(source: Path, output: Path) -> tuple[int, int, int]:
             relative = source_file.relative
             payload = source_file.payload
             destination = staging / relative
+            public_mode = _public_file_mode(relative, source_file.mode)
             scan_text = payload.decode("utf-8", errors="ignore")
             doc_or_test = bool(relative.parts and relative.parts[0] in {"docs", "tests", "browser-tests"})
             if _has_secret(scan_text):
@@ -881,7 +989,7 @@ def build(source: Path, output: Path) -> tuple[int, int, int]:
             except UnicodeDecodeError:
                 if machine_metadata:
                     raise ValueError(f"machine-specific metadata in binary runtime source: {relative.as_posix()}")
-                _write_bytes(destination, payload, source_file.mode)
+                _write_bytes(destination, payload, public_mode)
                 copied += 1
                 continue
 
@@ -895,7 +1003,7 @@ def build(source: Path, output: Path) -> tuple[int, int, int]:
             if transformed != text:
                 text = transformed
                 sanitized += 1
-            _write_text(destination, text, source_file.mode)
+            _write_text(destination, text, public_mode)
             copied += 1
 
         _secure_runtime_directories(staging)

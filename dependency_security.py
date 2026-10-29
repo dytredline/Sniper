@@ -872,6 +872,51 @@ def _yarn_components(root: Path) -> list[dict[str, str]]:
     return result
 
 
+def _bun_lock_components(root: Path) -> list[dict[str, str]]:
+    """Bun 1.2+ metin tabanlı ``bun.lock`` (JSONC) kilit dosyası ayrıştırıcısı."""
+    text = _read_manifest_text(root, "bun.lock")
+    if text is None:
+        return []
+    cleaned_lines: list[str] = []
+    for raw_line in text.splitlines():
+        stripped = raw_line.lstrip()
+        if stripped.startswith("//"):
+            continue
+        cleaned_lines.append(raw_line)
+    normalized = re.sub(r",(\s*[\]}])", r"\1", "\n".join(cleaned_lines))
+    try:
+        document = json.loads(normalized)
+    except (json.JSONDecodeError, ValueError, RecursionError) as exc:
+        raise DependencySecurityError("bun.lock geçerli JSON/JSONC değil.") from exc
+    if not isinstance(document, dict):
+        raise DependencySecurityError("bun.lock kökü bir JSON nesnesi olmalıdır.")
+    packages = document.get("packages")
+    if packages is None:
+        return []
+    if not isinstance(packages, dict):
+        raise DependencySecurityError("bun.lock packages alanı bir nesne olmalıdır.")
+    result: list[dict[str, str]] = []
+    for entry in packages.values():
+        if not isinstance(entry, list) or not entry or not isinstance(entry[0], str):
+            continue
+        ident = entry[0].strip()
+        at_idx = ident.rfind("@")
+        if at_idx <= 0:
+            continue
+        name = _clean(ident[:at_idx])
+        version = _clean(ident[at_idx + 1:])
+        if not name or not version or ".." in name or name.startswith("/"):
+            continue
+        if version.startswith(("workspace:", "file:", "link:", "git:", "github:", "http:", "https:")):
+            continue
+        if not _NPM_NAME.fullmatch(name):
+            continue
+        result.append({"name": name, "version": version, "ecosystem": "npm", "manifest": "bun.lock"})
+        if len(result) > MAX_COMPONENTS:
+            break
+    return result
+
+
 def _maven_parse(directory: Path, filename: str = "pom.xml"):
     import xml.etree.ElementTree as ET
 
@@ -1458,6 +1503,7 @@ def _uv_lock_components(root: Path) -> list[dict[str, str]]:
 
 _NUGET_NAME = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,199}")
 _NUGET_VERSION = re.compile(r"\[?\s*(\d+(?:\.\d+){0,3}(?:-[0-9A-Za-z.-]+)?)\s*\]?")
+_PAKET_RESOLVED = re.compile(r"^([A-Za-z0-9_][A-Za-z0-9_.-]{0,199})\s+\(([^)]+)\)(?:\s+-.*)?$")
 
 
 def _safe_xml(text: str, filename: str):
@@ -1483,6 +1529,25 @@ def _nuget_components(root: Path) -> list[dict[str, str]]:
         if not match:
             return
         result.append({"name": name.strip(), "version": match.group(1), "ecosystem": "NuGet", "manifest": manifest})
+
+    paket_text = _read_manifest_text(root, "paket.lock")
+    if paket_text is not None:
+        in_nuget = False
+        for raw_line in paket_text.splitlines():
+            stripped = raw_line.strip()
+            if not stripped or stripped.startswith(("#", "//")):
+                continue
+            indent = len(raw_line) - len(raw_line.lstrip(" "))
+            if indent == 0:
+                in_nuget = stripped.casefold() == "nuget"
+                continue
+            if not in_nuget or indent != 4:
+                continue
+            match = _PAKET_RESOLVED.fullmatch(stripped)
+            if match is not None:
+                add(match.group(1), match.group(2), "paket.lock")
+                if len(result) > MAX_COMPONENTS:
+                    return result
 
     lock_text = _read_manifest_text(root, "packages.lock.json")
     if lock_text is not None:
@@ -1756,7 +1821,7 @@ def _setup_components(root: Path) -> list[dict[str, str]]:
     return result[: MAX_COMPONENTS + 1]
 
 
-_NPM_LOCK_FILES = ("package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml")
+_NPM_LOCK_FILES = ("package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock")
 _SEMVER_IDENTIFIER = r"(?:0|[1-9]\d*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)"
 _SEMVER_TEXT = (
     rf"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
@@ -2110,12 +2175,149 @@ def _hex_components(root: Path) -> list[dict[str, str]]:
     return list(entries.values())
 
 
+_TERRAFORM_PROVIDER_ADDRESS_RE = re.compile(
+    r"^[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?"
+    r"/[A-Za-z0-9][A-Za-z0-9_-]{0,63}"
+    r"/[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+)
+_TERRAFORM_PROVIDER_HEADER_RE = re.compile(r'^provider\s+"([^"]+)"\s*\{\s*$')
+_TERRAFORM_PROVIDER_VERSION_RE = re.compile(r'^version\s*=\s*"([^"]+)"\s*$')
+_TERRAFORM_PROVIDER_VERSION_VALUE_RE = re.compile(r"^[0-9A-Za-z][0-9A-Za-z.+_-]{0,127}$")
+
+
+def _hcl_code_without_comment(line: str) -> str:
+    """Return HCL source before an unquoted ``#`` or ``//`` line comment.
+
+    Terraform's generated provider lock uses quoted values and line comments.  This deliberately small lexer keeps
+    comment markers inside strings so a comment cannot forge a provider or exact-version record.
+    """
+    quoted = False
+    escaped = False
+    for index, char in enumerate(line):
+        if quoted:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                quoted = False
+            continue
+        if char == '"':
+            quoted = True
+            continue
+        if char == "#" or (char == "/" and index + 1 < len(line) and line[index + 1] == "/"):
+            return line[:index]
+    if quoted:
+        raise DependencySecurityError(".terraform.lock.hcl kapanmamış bir string içeriyor.")
+    return line
+
+
+def _terraform_lock_components(root: Path) -> list[dict[str, str]]:
+    """Inventory exact provider selections from Terraform's generated dependency lock.
+
+    Provider packages are intentionally labelled ``Terraform`` rather than mapped to an OSV ecosystem.  They enter
+    deterministic inventory/SBOM output, while the offline OSV matcher reports the ecosystem as unsupported instead
+    of claiming vulnerability coverage that OSV does not define.
+    """
+    text = _read_manifest_text(root, ".terraform.lock.hcl")
+    if text is None:
+        return []
+    if text.startswith("\ufeff"):
+        text = text[1:]
+    if "\x00" in text:
+        raise DependencySecurityError(".terraform.lock.hcl geçersiz NUL karakteri içeriyor.")
+
+    components: list[dict[str, str]] = []
+    current_address: str | None = None
+    current_version: str | None = None
+    current_list_depth = 0
+    seen_addresses: set[str] = set()
+    for raw_line in text.splitlines():
+        code = _hcl_code_without_comment(raw_line).strip()
+        if not code:
+            continue
+        if current_address is None:
+            header = _TERRAFORM_PROVIDER_HEADER_RE.fullmatch(code)
+            if header is None:
+                raise DependencySecurityError(".terraform.lock.hcl yalnız provider kilit blokları içermelidir.")
+            address = header.group(1)
+            if (
+                len(address) > 384
+                or ".." in address
+                or _TERRAFORM_PROVIDER_ADDRESS_RE.fullmatch(address) is None
+            ):
+                raise DependencySecurityError(".terraform.lock.hcl provider adresi geçersiz.")
+            if address.casefold() in seen_addresses:
+                raise DependencySecurityError(".terraform.lock.hcl yinelenen provider bloğu içeriyor.")
+            current_address = address
+            current_version = None
+            current_list_depth = 0
+            continue
+        if code == "}":
+            if current_list_depth:
+                raise DependencySecurityError(".terraform.lock.hcl provider listesi kapanmamış.")
+            if current_version is None:
+                raise DependencySecurityError(".terraform.lock.hcl provider bloğunda exact version eksik.")
+            seen_addresses.add(current_address.casefold())
+            components.append({
+                "name": current_address,
+                "version": current_version,
+                "ecosystem": "Terraform",
+                "manifest": ".terraform.lock.hcl",
+            })
+            if len(components) > MAX_COMPONENTS:
+                raise DependencySecurityError(".terraform.lock.hcl bileşen sınırını aşıyor.")
+            current_address = None
+            current_version = None
+            current_list_depth = 0
+            continue
+        version_match = _TERRAFORM_PROVIDER_VERSION_RE.fullmatch(code)
+        if version_match is not None:
+            if current_list_depth:
+                raise DependencySecurityError(".terraform.lock.hcl version alanı provider listesi içinde olamaz.")
+            if current_version is not None:
+                raise DependencySecurityError(".terraform.lock.hcl provider bloğunda yinelenen version alanı var.")
+            version = version_match.group(1)
+            if _TERRAFORM_PROVIDER_VERSION_VALUE_RE.fullmatch(version) is None:
+                raise DependencySecurityError(".terraform.lock.hcl provider version alanı geçersiz.")
+            current_version = version
+            continue
+        # constraints/hashes are integrity metadata, not additional package versions.  Braces would alter block
+        # structure and are rejected; generated scalar/list content remains opaque and is never executed.
+        if "{" in code or "}" in code:
+            raise DependencySecurityError(".terraform.lock.hcl provider bloğu yapısal olarak geçersiz.")
+        bracket_delta = 0
+        quoted = False
+        escaped = False
+        for char in code:
+            if quoted:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    quoted = False
+                continue
+            if char == '"':
+                quoted = True
+            elif char == "[":
+                bracket_delta += 1
+            elif char == "]":
+                bracket_delta -= 1
+        current_list_depth += bracket_delta
+        if current_list_depth < 0:
+            raise DependencySecurityError(".terraform.lock.hcl provider listesi yapısal olarak geçersiz.")
+    if current_address is not None:
+        raise DependencySecurityError(".terraform.lock.hcl provider bloğu kapanmamış.")
+    return components
+
+
 _MANIFEST_NAMES = frozenset({
     "requirements.txt", "pyproject.toml", "poetry.lock", "Pipfile.lock", "uv.lock", "pdm.lock", "setup.py",
-    "setup.cfg", "package.json", "package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock", "go.mod",
-    "go.sum", "Cargo.lock", "pom.xml", "gradle.lockfile", "build.gradle", "build.gradle.kts", "Gemfile.lock",
-    "composer.lock", "pubspec.lock", "Podfile.lock", "Package.resolved", "packages.config", "packages.lock.json",
-    "Directory.Packages.props", "mix.lock",
+    "setup.cfg", "package.json", "package-lock.json", "npm-shrinkwrap.json", "pnpm-lock.yaml", "yarn.lock",
+    "bun.lock", "go.mod", "go.sum", "Cargo.lock", "pom.xml", "gradle.lockfile", "build.gradle", "build.gradle.kts",
+    "Gemfile.lock", "composer.lock", "pubspec.lock", "Podfile.lock", "Package.resolved", "packages.config",
+    "packages.lock.json", "Directory.Packages.props", "paket.lock", "mix.lock", ".terraform.lock.hcl",
 })
 MAX_MANIFEST_DIRS = 300
 MAX_WALK_DIRS = 20_000
@@ -2172,11 +2374,12 @@ def _directory_inventory(directory: Path, project_root: Path, *, strict: bool, w
     parsers: list[Any] = [
         _python_components, _uv_lock_components, _pdm_lock_components, _setup_components,
         lambda d: _requirements_extra_components(d, project_root),
-        _npm_components, _pnpm_components, _yarn_components, lambda d: _package_json_components(d, counters),
+        _npm_components, _pnpm_components, _yarn_components, _bun_lock_components,
+        lambda d: _package_json_components(d, counters),
         _go_components, _cargo_components,
         lambda d: _maven_components(d, project_root, warnings), _gradle_components,
         _ruby_components, _composer_components, _pubspec_components, _cocoapods_components, _swiftpm_components,
-        _hex_components,
+        _hex_components, _terraform_lock_components,
         _nuget_components,
     ]
     components: list[dict[str, str]] = []
@@ -3162,7 +3365,7 @@ def analyze_vulnerability_reachability(
                     sites.append({"file": rel_path, "line": line_no})
 
     target_entries: list[dict[str, Any]]
-    if findings:
+    if findings is not None:
         target_entries = list(findings)
     else:
         _, discovered = discover_components(
@@ -3221,6 +3424,8 @@ def analyze_vulnerability_reachability(
     npm_tools = dr.npm_tool_mentions(root, package_names, project_tree=_project_tree) if package_names else {}
     cli_tools = dr.cli_tool_mentions(root, package_names, _REACHABILITY_SKIP_DIRS,
                                      project_tree=_project_tree) if package_names else {}
+    lockfile_versions = dr.lockfile_resolved_versions(root, project_tree=_project_tree) if package_names else {}
+    target_platforms = dr.detect_project_target_platforms(root, project_tree=_project_tree) if package_names else set()
     jvm_tokens: dict[str, set[str]] = {}
     for name in package_names:
         if ":" in name:  # Maven: JDBC adresi/sürücü sınıfı ya da en az iki parçalı paket öneki yapılandırmada
@@ -3263,14 +3468,8 @@ def analyze_vulnerability_reachability(
             if len(matched_sites) >= 10:
                 break
         is_reachable = len(matched_sites) > 0
-        if is_reachable:
-            reachable_count += 1
         item_out = dict(entry)
         item_out.setdefault("package_name", pkg_name)
-        item_out["reachable"] = is_reachable
-        item_out["reachability_status"] = (
-            "reachable_in_source" if is_reachable else "not_imported_in_source"
-        )
         item_out["call_sites"] = matched_sites
         uses = usage.for_package(candidates)
         imported = is_reachable or bool(uses)
@@ -3288,6 +3487,54 @@ def analyze_vulnerability_reachability(
         direct = (key in direct_names or pkg_name.casefold() in direct_names) if direct_names else None
         item_out["reachability"] = dr.assess_item(item_out, candidates, uses, imported, offline_osv, indirect, direct,
                                                   classpath=ecosystem in dr.CLASSPATH_ECOSYSTEMS)
+        resolved_vers = lockfile_versions.get(pkg_name.casefold()) or lockfile_versions.get(key) or set()
+        fixed_ver = item_out.get("fixed_version")
+        if resolved_vers and fixed_ver and dr.is_lockfile_patched(fixed_ver, resolved_vers):
+            item_out["reachability"]["lockfile_patched"] = True
+            item_out["reachability"]["resolved_lockfile_versions"] = sorted(resolved_vers)
+            item_out["reachability"]["effective_severity"] = "info"
+        else:
+            item_out["reachability"]["lockfile_patched"] = False
+        if dr.is_platform_mismatch(item_out, target_platforms):
+            item_out["reachability"]["platform_mismatch"] = True
+            item_out["reachability"]["target_platforms"] = sorted(target_platforms)
+            item_out["reachability"]["effective_severity"] = "info"
+        else:
+            item_out["reachability"]["platform_mismatch"] = False
+        has_advisory_context = bool(
+            item_out["reachability"].get("symbol_source") in {"osv", "advisory_text"}
+            or any(
+                str(entry.get(k) or "").strip()
+                for k in ("title", "summary", "details", "description", "source")
+            )
+        )
+        reachability_verdict = item_out["reachability"].get("verdict")
+        if item_out["reachability"].get("lockfile_patched") or item_out["reachability"].get("platform_mismatch"):
+            effective_reachable = False
+        else:
+            # Eski üst alan, yalnız import/call-site bulunduğu için ``True`` kalabiliyor ve aynı kaydın
+            # OSV/danışma sembol kararı ``imported_not_called`` iken API içinde çelişki yaratıyordu.
+            # Açık danışma sembolü çağrılmıyorsa üst alan da erişilebilir sayılmaz. Yalnız düşük güvenli
+            # yerleşik sembol tahmini (``curated``) veya sembolsüz ``unknown`` varsa önceki ihtiyatlı
+            # import davranışı korunur.
+            advisory_not_called = (
+                reachability_verdict == "imported_not_called"
+                and item_out["reachability"].get("symbol_source") in {"osv", "advisory_text"}
+            )
+            effective_reachable = is_reachable and not advisory_not_called
+        if effective_reachable:
+            reachable_count += 1
+        item_out["reachable"] = effective_reachable
+        if effective_reachable:
+            item_out["reachability_status"] = "reachable_in_source"
+        elif item_out["reachability"].get("lockfile_patched"):
+            item_out["reachability_status"] = "patched_in_lockfile"
+        elif item_out["reachability"].get("platform_mismatch"):
+            item_out["reachability_status"] = "platform_mismatch"
+        elif is_reachable or imported:
+            item_out["reachability_status"] = "imported_not_called_in_source"
+        else:
+            item_out["reachability_status"] = "not_imported_in_source"
         verdict_counts[item_out["reachability"]["verdict"]] += 1
         suffixes = dr.ECOSYSTEM_SOURCE_SUFFIXES.get(ecosystem)
         analyzable = bool(seen_suffixes & suffixes) if suffixes else scanned_files_count > 0
@@ -3298,6 +3545,20 @@ def analyze_vulnerability_reachability(
                              "evidence": evidence}
         item_out["reachability"]["usage"] = state
         item_out["priority"] = dr.priority(item_out, item_out["reachability"], state)
+        if item_out["reachability"].get("lockfile_patched"):
+            item_out["priority"]["tier"] = "monitor"
+            item_out["priority"]["label"] = dr.PRIORITY_TIERS["monitor"]
+            item_out["priority"]["reason"] = (
+                f"Kilit dosyasında çözümlenmiş sürüm ({', '.join(sorted(resolved_vers))}) "
+                f"yama sürümü ({fixed_ver}) veya üzerindedir."
+            )
+        elif item_out["reachability"].get("platform_mismatch"):
+            item_out["priority"]["tier"] = "monitor"
+            item_out["priority"]["label"] = dr.PRIORITY_TIERS["monitor"]
+            item_out["priority"]["reason"] = (
+                f"Proje hedef platformu ({', '.join(sorted(target_platforms))}) ile danışmanın etkilediği "
+                "işletim sistemi (yalnızca Windows) uyuşmuyor."
+            )
         items.append(item_out)
     offline_osv.close()
     prioritized = sorted(items, key=dr.priority_sort_key)
@@ -3367,3 +3628,226 @@ def offline_vulnerability_findings(project_path: str, *, allowed_roots: tuple[Pa
                 rows.append({"ecosystem": package.get("ecosystem", ""), "name": package.get("name", ""),
                              "version": package.get("version", ""), "ids": sorted(ids)})
     return rows
+
+
+MAX_EXTENDED_LOCKFILE_BYTES = 4 * 1024 * 1024
+
+
+def parse_extended_lockfile_inventory(
+    raw_content: str,
+    *,
+    filename: str = "MODULE.bazel.lock",
+) -> dict[str, Any]:
+    """Faz 2 R6: Bazel, Nix, Conan, vcpkg, Helm ve Go Workspace kilit dosyalarını
+    deterministik olarak ayrıştırıp SBOM bileşenlerine dönüştürür; bozuk veya 4 MB
+    üzeri girdileri fail-closed ValueError ile reddeder."""
+    if not isinstance(raw_content, str) or not raw_content.strip():
+        raise ValueError("Lockfile içeriği boş veya geçersiz.")
+    if len(raw_content.encode("utf-8", errors="replace")) > MAX_EXTENDED_LOCKFILE_BYTES:
+        raise ValueError("Lockfile boyutu 4 MB (4194304 bayt) üst sınırını aşıyor.")
+    if not isinstance(filename, str) or not filename.strip():
+        raise ValueError("Geçersiz lockfile dosya adı.")
+
+    base_name = PurePosixPath(filename.replace("\\", "/")).name.lower()
+    components: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+
+    def _add_comp(name: str, version: str, ecosystem: str, purl: str, extra: dict[str, Any] | None = None) -> None:
+        clean_name = name.strip()
+        clean_ver = version.strip()
+        if not clean_name or not clean_ver:
+            return
+        key = (ecosystem, clean_name, clean_ver)
+        if key in seen:
+            return
+        seen.add(key)
+        entry: dict[str, Any] = {
+            "name": clean_name,
+            "version": clean_ver,
+            "ecosystem": ecosystem,
+            "purl": purl,
+            "source_file": filename,
+        }
+        if extra:
+            entry.update(extra)
+        components.append(entry)
+
+    if base_name.endswith("module.bazel.lock") or "bazel" in base_name:
+        try:
+            data = json.loads(raw_content)
+        except Exception as exc:
+            raise ValueError(f"Geçersiz Bazel lockfile JSON: {exc}") from exc
+        if not isinstance(data, dict) or (
+            "moduleDepGraph" not in data and "registryFileHashes" not in data
+        ):
+            raise ValueError("Bazel MODULE.bazel.lock içinde moduleDepGraph veya registryFileHashes bulunamadı.")
+        dep_graph = data.get("moduleDepGraph")
+        if isinstance(dep_graph, dict):
+            for mod_key, mod_info in dep_graph.items():
+                if mod_key == "<root>":
+                    continue
+                name = ""
+                version = ""
+                if isinstance(mod_info, dict):
+                    name = str(mod_info.get("name") or "").strip()
+                    version = str(mod_info.get("version") or "").strip()
+                if (not name or not version) and "@" in str(mod_key):
+                    k_name, k_ver = str(mod_key).split("@", 1)
+                    name = name or k_name.strip()
+                    version = version or k_ver.strip()
+                if name and version and name != "<root>":
+                    _add_comp(name, version, "bazel", f"pkg:bazel/{name}@{version}")
+        reg_hashes = data.get("registryFileHashes")
+        if isinstance(reg_hashes, dict):
+            for url_key in reg_hashes:
+                m = re.search(r"/modules/([^/\s]+)/([^/\s]+)/MODULE\.bazel", str(url_key))
+                if m:
+                    m_name, m_ver = m.group(1), m.group(2)
+                    _add_comp(m_name, m_ver, "bazel", f"pkg:bazel/{m_name}@{m_ver}")
+    elif base_name == "flake.lock" or base_name.endswith(".flake.lock"):
+        try:
+            data = json.loads(raw_content)
+        except Exception as exc:
+            raise ValueError(f"Geçersiz Nix flake.lock JSON: {exc}") from exc
+        if not isinstance(data, dict) or not isinstance(data.get("nodes"), dict):
+            raise ValueError("Nix flake.lock içinde 'nodes' sözlüğü bulunamadı.")
+        for node_key, node_val in data["nodes"].items():
+            if node_key == "root" or not isinstance(node_val, dict):
+                continue
+            locked = node_val.get("locked")
+            if not isinstance(locked, dict):
+                continue
+            owner = str(locked.get("owner") or "").strip()
+            repo = str(locked.get("repo") or node_key).strip()
+            rev = str(locked.get("rev") or locked.get("narHash") or "").strip()
+            if not repo or not rev:
+                continue
+            name = repo
+            extra = {"owner": owner} if owner else None
+            _add_comp(name, rev, "nix", f"pkg:nix/{name}@{rev}", extra=extra)
+    elif base_name == "conan.lock" or "conan" in base_name:
+        try:
+            data = json.loads(raw_content)
+        except Exception as exc:
+            raise ValueError(f"Geçersiz Conan lockfile JSON: {exc}") from exc
+        if not isinstance(data, dict) or not any(
+            k in data for k in ("requires", "build_requires", "python_requires", "graph_lock")
+        ):
+            raise ValueError("Conan conan.lock içinde requires/build_requires/graph_lock bulunamadı.")
+        raw_refs: list[str] = []
+        for req_key in ("requires", "build_requires", "python_requires"):
+            req_list = data.get(req_key)
+            if isinstance(req_list, list):
+                raw_refs.extend(str(x) for x in req_list if isinstance(x, str))
+        graph_lock = data.get("graph_lock")
+        if isinstance(graph_lock, dict) and isinstance(graph_lock.get("nodes"), dict):
+            for node_obj in graph_lock["nodes"].values():
+                if isinstance(node_obj, dict) and node_obj.get("ref"):
+                    raw_refs.append(str(node_obj["ref"]))
+        for ref in raw_refs:
+            ref_clean = ref.split("#", 1)[0].split("@", 1)[0].strip()
+            if "/" not in ref_clean:
+                continue
+            c_name, c_ver = ref_clean.split("/", 1)
+            _add_comp(c_name, c_ver, "conan", f"pkg:conan/{c_name.strip()}@{c_ver.strip()}")
+    elif base_name in {"vcpkg.json", "vcpkg-lock.json", "vcpkg-configuration.json"} or "vcpkg" in base_name:
+        try:
+            data = json.loads(raw_content)
+        except Exception as exc:
+            raise ValueError(f"Geçersiz vcpkg JSON: {exc}") from exc
+        if not isinstance(data, dict) or not any(
+            k in data for k in ("dependencies", "vcpkg-lock", "overrides", "baseline")
+        ):
+            raise ValueError("vcpkg manifest/lock içinde dependencies veya vcpkg-lock bulunamadı.")
+        deps = data.get("dependencies")
+        if isinstance(deps, list):
+            for dep in deps:
+                if isinstance(dep, str) and dep.strip():
+                    v_ver = str(data.get("builtin-baseline") or data.get("baseline") or "latest")
+                    _add_comp(dep.strip(), v_ver, "vcpkg", f"pkg:vcpkg/{dep.strip()}@{v_ver}")
+                elif isinstance(dep, dict):
+                    d_name = str(dep.get("name") or "").strip()
+                    d_ver = str(
+                        dep.get("version")
+                        or dep.get("version>=")
+                        or dep.get("version-semver")
+                        or dep.get("version-string")
+                        or data.get("builtin-baseline")
+                        or "latest"
+                    ).strip()
+                    if d_name:
+                        _add_comp(d_name, d_ver, "vcpkg", f"pkg:vcpkg/{d_name}@{d_ver}")
+        overrides = data.get("overrides")
+        if isinstance(overrides, list):
+            for ov in overrides:
+                if isinstance(ov, dict) and ov.get("name") and ov.get("version"):
+                    o_name = str(ov["name"]).strip()
+                    o_ver = str(ov["version"]).strip()
+                    _add_comp(o_name, o_ver, "vcpkg", f"pkg:vcpkg/{o_name}@{o_ver}")
+        vlock = data.get("vcpkg-lock")
+        if isinstance(vlock, dict):
+            for k, v in vlock.items():
+                if isinstance(v, dict):
+                    v_name = str(v.get("name") or k).strip().rsplit("/", 1)[-1]
+                    v_ver = str(v.get("version") or v.get("HEAD") or v.get("ref") or "").strip()
+                    if v_name and v_ver:
+                        _add_comp(v_name, v_ver, "vcpkg", f"pkg:vcpkg/{v_name}@{v_ver}")
+                elif isinstance(v, str) and v.strip():
+                    _add_comp(str(k).strip(), v.strip(), "vcpkg", f"pkg:vcpkg/{str(k).strip()}@{v.strip()}")
+    elif base_name in {"chart.lock", "requirements.lock"} or base_name.endswith("chart.lock"):
+        if not re.search(r"(?m)^\s*dependencies\s*:", raw_content):
+            raise ValueError("Helm Chart.lock içinde 'dependencies:' listesi bulunamadı.")
+        current: dict[str, str] = {}
+        in_deps = False
+        for raw_line in raw_content.splitlines():
+            stripped = raw_line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            if re.match(r"^dependencies\s*:", stripped):
+                in_deps = True
+                continue
+            if not in_deps:
+                continue
+            if not raw_line.startswith((" ", "\t", "-")):
+                break
+            if stripped.startswith("-"):
+                if current.get("name") and current.get("version"):
+                    h_name = current["name"]
+                    h_ver = current["version"]
+                    extra = {"repository": current["repository"]} if current.get("repository") else None
+                    _add_comp(h_name, h_ver, "helm", f"pkg:helm/{h_name}@{h_ver}", extra=extra)
+                current = {}
+                stripped = stripped[1:].strip()
+            if ":" in stripped:
+                k, val = stripped.split(":", 1)
+                current[k.strip()] = val.strip().strip("'\"")
+        if current.get("name") and current.get("version"):
+            h_name = current["name"]
+            h_ver = current["version"]
+            extra = {"repository": current["repository"]} if current.get("repository") else None
+            _add_comp(h_name, h_ver, "helm", f"pkg:helm/{h_name}@{h_ver}", extra=extra)
+        if not components:
+            raise ValueError("Helm Chart.lock içinde geçerli bağımlılık bileşeni bulunamadı.")
+    elif base_name == "go.work.sum" or base_name.endswith("go.work.sum"):
+        for raw_line in raw_content.splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("//") or line.startswith("#"):
+                continue
+            m = re.match(r"^([^\s]+)\s+(v[^\s/]+)(?:/go\.mod)?\s+(h1:[^\s]+)$", line)
+            if not m:
+                raise ValueError(f"Geçersiz go.work.sum satırı: {line[:80]}")
+            mod_name, mod_ver, _hash = m.group(1), m.group(2), m.group(3)
+            _add_comp(mod_name, mod_ver, "golang", f"pkg:golang/{mod_name}@{mod_ver}")
+        if not components:
+            raise ValueError("go.work.sum içinde geçerli modül kaydı bulunamadı.")
+    else:
+        raise ValueError(f"Desteklenmeyen lockfile dosya biçimi: {filename}")
+
+    return {
+        "format": "sniper-extended-lockfile-inventory/1",
+        "filename": filename,
+        "component_count": len(components),
+        "components": components,
+    }
+
+

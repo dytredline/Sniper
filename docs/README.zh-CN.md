@@ -51,34 +51,54 @@ iOS、Flutter、React Native 源码与移动端清单。API 路径、密钥线�
 
 每个候选项都为授权范围内的人工验证提供有证据的起点；测试人员可使用不同的测试用户、角色和合成对象进行核验。
 
-## 内置功能与五个可选引擎
+## 安全审查亮点
+
+- 跟踪受支持的数据流，聚焦 SQL/命令注入、XSS、SSRF、开放重定向、路径遍历、不安全反序列化和 XXE。
+- 整理路由、角色与对象标识符，优先检查 IDOR（CWE-639）和授权缺失候选项（CWE-862）。
+- 汇总密钥线索与隐私数据流，并把依赖项、容器、CycloneDX/SPDX SBOM、VEX 和可达性上下文纳入同一审查。
+- 检查 Dockerfile、Terraform、Kubernetes、Helm、Compose、云 IAM、CI、移动端、浏览器扩展和桌面应用配置。
+- 使用 CVSS 3.1/4.0、CISA SSVC、攻击路径、基线和质量门禁确定修复优先级，并输出 JSON、HTML、SARIF、
+  GitLab、SBOM、VEX 和受支持的 PDF 工作流。
+- 通过本地 Web、CLI、CI 或 stdio MCP，让人员和 AI 使用同一套证据开展审查。
+
+## IDOR 与人工渗透测试支持
+
+对于受支持的 Python 和 JavaScript/TypeScript 源码，内置路由与授权清单会标出可能缺少授权检查的路由
+（CWE-862），以及潜在的不安全直接对象引用（IDOR）路径（CWE-639），并给出文件、路由和行号证据。
+这些线索可帮助已获授权的测试人员使用不同的测试用户、角色和合成对象，确定人工渗透测试的优先顺序。
+
+每个候选项都为授权范围内的人工验证提供有证据的起点；测试人员可使用不同的测试用户、角色和合成对象进行核验。
+
+## 内置功能与七个可选引擎
 
 内置分析器、报告解析器、MCP 服务器、CLI 和仅回环访问的 Web UI 都包含在源代码树中。除此之外，
-无 root 的本地配置还可以选择安装五个锁定版本的第三方引擎：
+无 root 的本地配置还可以选择安装七个锁定版本的第三方引擎：
 
 - Nuclei 3.11.1
 - Trivy 0.75.0
 - Gitleaks 8.30.1
 - TruffleHog 3.99.0
+- Syft 1.55.0
+- Grype 0.121.0
 - Opengrep 1.30.1
 
 只有在相应的可执行文件、SHA-256、所需数据、输入范围和许可证就绪检查通过后，可选引擎才会显示为可用。
 Nuclei 的广泛授权 HTTP 流程还需要单独固定的模板目录；Trivy 的漏洞配置还需要单独固定的离线数据库。
-Sniper 的内置分析独立于这五个可选引擎。多语言界面与语言包说明见 [LOCALIZATION.md](LOCALIZATION.md)。
+Sniper 的内置分析独立于这七个可选引擎。多语言界面与语言包说明见 [LOCALIZATION.md](LOCALIZATION.md)。
 
 ## 版本状态与包含内容
 
-本仓库为 Sniper Community v1.0.0 源码版本，采用 Apache License 2.0（[LICENSE](../LICENSE)）授权。包含本地项目分析、本地报告与质量门禁命令、AI 优先的 stdio MCP 工作流、针对状态变更操作的对话式人工审批边界、手动 CLI、本地回环 Web 界面以及测试与文档。
+本仓库为 Sniper Community v1.1.0 源码版本，采用 Apache License 2.0（[LICENSE](../LICENSE)）授权。包含本地项目分析、本地报告与质量门禁命令、AI 优先的 stdio MCP 工作流、针对状态变更操作的对话式人工审批边界、手动 CLI、本地回环 Web 界面以及测试与文档。
 
 ## 安装
 
-经过测试的解释器为 Python 3.12。Community v1 的完整原生五引擎安装支持 Linux ARM64/x86-64。
+经过测试的解释器为 Python 3.12。Community v1 的完整原生七引擎安装支持 Linux ARM64/x86-64。
 在 **macOS（Apple Silicon）**上，原生 `--core-only` 源码安装（`python3 scripts/setup-community --core-only`）与
 Docker Desktop 五引擎配置（`./scripts/deploy-community-tools --accept-third-party-licenses`）**均已在真实
 macOS 主机上完成验证并受支持（并非实验性功能）**。在 **Windows** 上，Sniper 支持原生 `--core-only` 源码安装
 （`python3 scripts/setup-community --core-only`）、WSL2 以及 Docker Desktop 的 Linux 容器（详见 [VALIDATION.md](../VALIDATION.md) 与 [DEPLOYMENT.md](../DEPLOYMENT.md)）。
 
-在 Linux 上安装并验证锁定的依赖项和五个本地工具：
+在 Linux 上安装并验证锁定的依赖项和七个本地工具：
 
 ```bash
 python3 scripts/setup-community --accept-third-party-licenses

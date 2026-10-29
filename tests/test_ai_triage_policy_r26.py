@@ -19,6 +19,7 @@ from storage import Store
 from tests.test_finding_tracking_collab import ApiTestBase, audit_rows, finding, make_audit
 
 APP = Path(__file__).resolve().parents[1]
+AI_TRIAGE_EVAL = APP / "scripts" / "ai_triage_eval.py"
 
 
 def lf(conf):
@@ -297,11 +298,8 @@ class ApiPolicyTests(ApiTestBase):
             self.assertEqual(c.post("/api/ai-triage/auto-apply", {"confirm": True, "enabled": True, **bad})[0], 400)
 
 
-@unittest.skipUnless(
-    (APP / "scripts" / "ai_triage_eval.py").is_file(),
-    "maintainer evaluation helper is not shipped in Community source",
-)
 class CalibrateTests(unittest.TestCase):
+    @unittest.skipUnless(AI_TRIAGE_EVAL.is_file(), "maintainer evaluation script is not distributed")
     def test_sweep_and_recommendation(self):
         sys.path.insert(0, str(APP / "scripts"))
         import ai_triage_eval as ev
@@ -349,6 +347,7 @@ class CalibrateTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             ev.calibrate(key, [("a", claude)], margin=0.9)
 
+    @unittest.skipUnless(AI_TRIAGE_EVAL.is_file(), "maintainer evaluation script is not distributed")
     def test_cli(self):
         with tempfile.TemporaryDirectory() as tmp:
             key = Path(tmp) / "k.json"

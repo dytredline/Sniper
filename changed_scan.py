@@ -20,6 +20,7 @@ import subprocess
 import tempfile
 from typing import Any, Iterable
 
+import incremental_scan_plan
 import project_analyzer
 from project_analyzer import ProjectRejected
 from project_tree import ProjectFile, ProjectTree, ProjectTreeError
@@ -426,8 +427,9 @@ PY_SUFFIX = ".py"
 JS_SUFFIXES = (".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".mts", ".cts")
 FORWARD_DEPTH = 2
 CONTEXT_MAX_SHARE = 0.6
-_PY_IMPORT_RE = re.compile(r"^[ \t]*(?:from[ \t]+(\.*[\w.]*)[ \t]+import[ \t]+\(?([^#\n]*)|import[ \t]+([^#\n]+))", re.M)
-_JS_SPEC_RE = re.compile(r"""(?:require\(\s*|\bfrom\s+|\bimport\s*\(\s*|^\s*import\s+)['"](\.{1,2}/[^'"\n]+)['"]""", re.M)
+_PY_IMPORT_RE = re.compile(r"^[ \t]*(?:from[ \t]+(\.*[\w.]*)[ \t]+import[ \t]+(?:\(([^)]*)\)|([^#\n]*))|import[ \t]+([^#\n]+))", re.M)
+_JS_SPEC_RE = re.compile(r"""(?:require\(\s*|\bfrom\s+|\bimport\s*\(\s*|^\s*import\s+)['"]((?:\.{1,2}|[@~])/[^'"\n]+)['"]""", re.M)
+_JS_STRIP_EXT_RE = re.compile(r"\.(?:c|m)?jsx?\Z", re.IGNORECASE)
 
 
 def _py_module_names(rel: str) -> list[str]:
@@ -447,10 +449,11 @@ def _py_imports(rel: str, text: str) -> set[str]:
     package = rel[:-3].split("/")[:-1] if not rel.endswith("__init__.py") else rel.split("/")[:-1]
     found: set[str] = set()
     for match in _PY_IMPORT_RE.finditer(text):
-        module, names, plain = match.groups()
+        module, paren_names, line_names, plain = match.groups()
         if plain is not None:
             found.update(item.split(" as ")[0].strip() for item in plain.split(",") if item.strip())
             continue
+        names = paren_names if paren_names is not None else line_names
         dots = len(module) - len(module.lstrip("."))
         base = module.lstrip(".")
         if dots:
@@ -458,7 +461,8 @@ def _py_imports(rel: str, text: str) -> set[str]:
             base = ".".join([*anchor, base] if base else anchor)
         if base:
             found.add(base)
-        for item in (names or "").replace(")", "").split(","):
+        clean_names = re.sub(r"#[^\n]*", "", names or "").replace("\n", ",")
+        for item in clean_names.replace(")", "").split(","):
             name = item.split(" as ")[0].strip()
             if name and name != "*" and name.isidentifier():
                 found.add(f"{base}.{name}" if base else name)
@@ -469,12 +473,30 @@ def _js_imports(rel: str, text: str, files: set[str]) -> set[str]:
     directory = rel.rsplit("/", 1)[0] if "/" in rel else ""
     found: set[str] = set()
     for spec in _JS_SPEC_RE.findall(text):
-        joined = os.path.normpath(os.path.join(directory, spec)).replace(os.sep, "/")
-        if joined.startswith("../") or joined == "..":
-            continue
-        for candidate in (joined, *(joined + ext for ext in JS_SUFFIXES), *(f"{joined}/index{ext}" for ext in JS_SUFFIXES)):
-            if candidate in files:
-                found.add(candidate)
+        if spec.startswith(("@/", "~/")):
+            alias_rel = os.path.normpath(spec[2:]).replace(os.sep, "/")
+            if alias_rel.startswith("../") or alias_rel in ("", ".", ".."):
+                continue
+            base_paths = (alias_rel, f"src/{alias_rel}")
+        else:
+            joined = os.path.normpath(os.path.join(directory, spec)).replace(os.sep, "/")
+            if joined.startswith("../") or joined == "..":
+                continue
+            base_paths = (joined,)
+        roots: list[str] = []
+        for base_path in base_paths:
+            roots.append(base_path)
+            stripped = _JS_STRIP_EXT_RE.sub("", base_path)
+            if stripped != base_path:
+                roots.append(stripped)
+        matched = False
+        for base_path in roots:
+            for candidate in (base_path, *(base_path + ext for ext in JS_SUFFIXES), *(f"{base_path}/index{ext}" for ext in JS_SUFFIXES)):
+                if candidate in files:
+                    found.add(candidate)
+                    matched = True
+                    break
+            if matched:
                 break
     return found
 
@@ -622,6 +644,91 @@ def _empty_result(root: Path, scope: scan_scope.ScanScope, message: str) -> dict
     }
 
 
+def _incremental_inventory(
+    root: Path,
+    scope: scan_scope.ScanScope,
+    *,
+    project_tree: ProjectTree,
+) -> tuple[dict[str, str], bool]:
+    """Read one bounded, descriptor-pinned inventory for incremental planning.
+
+    The inventory follows the ordinary project's structural scope. Files the
+    configured scan would skip do not make it incomplete; a planner cap or a
+    failed pinned read does. Secret-file contents are never planner input.
+    """
+    sources: dict[str, str] = {}
+    total_bytes = 0
+    max_file_bytes, _max_total_bytes = project_analyzer._byte_limits(scope)
+    try:
+        for observed in _walk_worktree(root, scope.skip_dirs, project_tree=project_tree):
+            rel = observed.path.as_posix()
+            normalized = observed.name.casefold()
+            is_secret = normalized == ".env" or normalized.startswith(".env.")
+            is_containerfile = project_analyzer._is_containerfile_name(normalized)
+            is_server_config = normalized == ".htaccess" or normalized in {
+                "nginx.conf", "apache2.conf", "httpd.conf",
+            }
+            is_candidate = (
+                observed.path.suffix.casefold() in project_analyzer.SOURCE_EXTENSIONS
+                or normalized in project_analyzer.MANIFEST_NAMES
+                or is_containerfile
+                or is_server_config
+            )
+            if is_secret or not is_candidate:
+                continue
+            if normalized.endswith(scan_scope.GENERATED_SUFFIXES) and not scope.include_generated:
+                continue
+            if observed.size > max_file_bytes:
+                continue
+            if len(sources) >= incremental_scan_plan.MAX_CANDIDATE_FILES:
+                return sources, False
+            if observed.size > incremental_scan_plan.MAX_FILE_BYTES:
+                return sources, False
+            if total_bytes + observed.size > incremental_scan_plan.MAX_TOTAL_BYTES:
+                return sources, False
+            opened = _read_worktree_bytes(
+                root,
+                rel,
+                incremental_scan_plan.MAX_FILE_BYTES,
+                project_tree=project_tree,
+                observed=observed,
+            )
+            if opened is None:
+                return sources, False
+            raw, _size = opened
+            try:
+                text = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                if not scope.include_non_utf8:
+                    continue
+                text = raw.decode("utf-8", errors="replace")
+            sources[rel] = text
+            total_bytes += len(raw)
+    except ProjectTreeError:
+        return sources, False
+    return sources, True
+
+
+def _incremental_plan(
+    root: Path,
+    changed: set[str],
+    scope: scan_scope.ScanScope,
+    max_files: int | None,
+    *,
+    project_tree: ProjectTree,
+) -> incremental_scan_plan.IncrementalPlan:
+    sources, complete = _incremental_inventory(root, scope, project_tree=project_tree)
+    return incremental_scan_plan.build(
+        sources,
+        changed,
+        config={
+            "scope": scope.public(),
+            "runtime_max_files": max_files,
+        },
+        inventory_complete=complete,
+    )
+
+
 def _extract_base(base: BaseTree, dest: Path, scope: scan_scope.ScanScope, context: frozenset[str] | None = None) -> None:
     """Taban sürümün analiz edilebilir dosyalarını ``dest`` altına ham blob olarak yaz (bütçe sınırlı).
 
@@ -713,11 +820,31 @@ def _analyze_changed_pinned(
         "new_findings": 0,
         "fixed": [],
     }
-    context = import_context(root, changed, scope, project_tree=project_tree)
+    plan = _incremental_plan(root, changed, scope, max_files, project_tree=project_tree)
+    summary["incremental_plan"] = plan.public
+    legacy_context = import_context(root, changed, scope, project_tree=project_tree)
+    selected_paths = plan.selected_files
+    if selected_paths is None:
+        # An incomplete or depth-truncated cone is never trusted as a partial
+        # result. Keep changed-scan comparison semantics, but scan every file.
+        analysis_paths: frozenset[str] | None = None
+        context: frozenset[str] | None = None
+    else:
+        analysis_paths = selected_paths
+        context = None if legacy_context is None else frozenset(set(selected_paths) | set(legacy_context))
     summary["context_files"] = len(context) if context is not None else "tüm proje"
-    narrowed = dataclasses.replace(scope, only_paths=frozenset(changed), context_paths=context)
+    # A non-None all-path set prevents recursive changed-scan dispatch while
+    # retaining the requested public scope in the analyzer result.
+    if analysis_paths is None:
+        analysis_paths = frozenset(
+            observed.path.as_posix()
+            for observed in _walk_worktree(root, scope.skip_dirs, project_tree=project_tree)
+        )
+    narrowed = dataclasses.replace(scope, only_paths=analysis_paths, context_paths=context)
     if not changed:
         result = _empty_result(root, narrowed, f"Yalnız değişenler: {scope.base_ref} ({base.commit[:7]}) sonrasında değişen dosya yok.")
+        plan.public["scanned_file_count"] = 0
+        plan.public["scanned_byte_count"] = 0
         result["changed_scan"] = summary
         return result
     try:
@@ -726,14 +853,19 @@ def _analyze_changed_pinned(
         if "Değişen dosyalar arasında" not in str(exc):
             raise
         result = _empty_result(root, narrowed, f"Yalnız değişenler: {len(changed)} dosya değişti, analiz edilebilir kaynak yok.")
+        plan.public["scanned_file_count"] = 0
+        plan.public["scanned_byte_count"] = 0
         result["changed_scan"] = summary
         return result
+
+    plan.public["scanned_file_count"] = int(result.get("file_count") or 0)
+    plan.public["scanned_byte_count"] = int(result.get("bytes_scanned") or 0)
 
     findings = result.get("findings") or []
     current_fps = context_fingerprints(findings, root, project_tree=project_tree)
 
     # Taban sürüm: değişen dosyaların eski hâllerini (tüm proje bağlamıyla) geçici dizinde analiz et.
-    base_paths = frozenset(changes.modified & set(base.blobs))
+    base_paths = frozenset(set(analysis_paths) & set(base.blobs))
     base_findings: list[dict[str, Any]] = []
     base_fps: list[str] = []
     old_blobs = read_blobs(base, [base.blobs[rel][0] for rel in changes.modified if rel in base.blobs])
@@ -772,7 +904,12 @@ def _analyze_changed_pinned(
                 scan_scope.HARD_MAX_FILE_BYTES,
                 project_tree=project_tree,
             ) or ""
-            line_cache[rel] = changed_lines(old, text) if rel in changes.modified else None
+            if rel in changes.modified:
+                line_cache[rel] = changed_lines(old, text)
+            elif rel in changes.added:
+                line_cache[rel] = None
+            else:
+                line_cache[rel] = set()
         lines = line_cache[rel]
         finding["in_changed_lines"] = lines is None or int(finding.get("line") or 0) in lines
     fixed = []  # tabanda olup artık bulunmayan bulgular
@@ -785,7 +922,8 @@ def _analyze_changed_pinned(
     result.setdefault("warnings", []).insert(
         0,
         f"Yalnız değişenler: {scope.base_ref} ({base.commit[:7]}) ile karşılaştırıldı; {len(changed)} dosya değişti, "
-        f"{new_count} yeni bulgu, {len(fixed)} bulgu düzeldi. Proje geneli eksiklik denetimleri bu modda çalışmaz.",
+        f"{int(result.get('file_count') or 0)} dosyalık etki konisi incelendi, {new_count} yeni bulgu, "
+        f"{len(fixed)} bulgu düzeldi. Proje geneli eksiklik denetimleri bu modda çalışmaz.",
     )
     return result
 

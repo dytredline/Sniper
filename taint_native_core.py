@@ -12,6 +12,7 @@ kirliliği birkaç turda sabit noktaya getirilir. Akışa duyarsızdır (dal bir
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import os
 from typing import Any, Iterable, Iterator
 
 from taint_flow import Analysis, Flow
@@ -19,9 +20,9 @@ from taint_flow import Analysis, Flow
 # Bir dosyada en çok bu kadar belirteç işlenir (çok büyük üretilmiş dosyalar atlanır).
 MAX_TOKENS_PER_FILE = 400_000
 # Sabit nokta turu üst sınırı (özetler + küresel kirlilik).
-MAX_ROUNDS = 5
+MAX_ROUNDS = int(os.environ.get("SNIPER_TAINT_MAX_ROUNDS", "12"))
 # Ad tabanlı çağrı çözümlemesinde en çok aday.
-MAX_CANDIDATES = 3
+MAX_CANDIDATES = int(os.environ.get("SNIPER_TAINT_MAX_CANDIDATES", "64"))
 # Özet zinciri (via) uzunluğu üst sınırı.
 MAX_VIA = 6
 # Kanıt zinciri (hops) adım üst sınırı.
@@ -56,10 +57,16 @@ def _unescape(raw: str) -> str:
         return raw
     out, i, n = [], 0, len(raw)
     simple = {"n": "\n", "t": "\t", "r": "\r", "0": "\0", "\\": "\\", "'": "'", '"': '"'}
+    hex_chars = frozenset("0123456789abcdefABCDEF")
     while i < n:
         ch = raw[i]
         if ch == "\\" and i + 1 < n:
             nxt = raw[i + 1]
+            if nxt == "x" and i + 3 < n and raw[i + 2] in hex_chars and raw[i + 3] in hex_chars:
+                val = int(raw[i + 2:i + 4], 16)
+                out.append(chr(val) if val else "\0")
+                i += 4
+                continue
             out.append(simple.get(nxt, nxt))
             i += 2
             continue
@@ -121,9 +128,9 @@ def tokenize(text: str, *, rust: bool, skip_ranges: list[tuple[int, int]] | None
             while j < n and text[j] in _IDENT_CHARS:
                 j += 1
             word = text[i:j]
-            # Dizge önekleri: Rust r"..", r#".."#, b"..", br"..", b'x'; C/C++ L"..", u8"..", u"..", U"..", R"d(..)d"
-            if j < n and text[j] in "\"'#" and word in ({"r", "b", "br", "rb"} if rust else {"L", "u8", "u", "U", "R", "LR", "u8R", "uR", "UR"}):
-                if rust and word in {"r", "br", "rb"} and text[j] in "#\"":
+            # Dizge önekleri: Rust r"..", r#".."#, b"..", br"..", c"..", cr"..", b'x'; C/C++ L"..", u8"..", u"..", U"..", R"d(..)d"
+            if j < n and text[j] in "\"'#" and word in ({"r", "b", "br", "rb", "c", "cr", "rc"} if rust else {"L", "u8", "u", "U", "R", "LR", "u8R", "uR", "UR"}):
+                if rust and word in {"r", "br", "rb", "cr", "rc"} and text[j] in "#\"":
                     k = j
                     while k < n and text[k] == "#":
                         k += 1
@@ -564,13 +571,23 @@ class Program:
                 pool = fit
             elif pool and not method:
                 return []
+        max_cands = int(os.environ.get("SNIPER_TAINT_MAX_CANDIDATES", str(MAX_CANDIDATES)) or str(MAX_CANDIDATES))
         same = [f for f in pool if f.file == file]
         if same:
-            if len(same) > MAX_CANDIDATES:
+            if len(same) > max_cands:
                 self.limitations.add("call-candidates")
-            return same[:MAX_CANDIDATES]
+            return same[:max_cands]
         others = [f for f in pool if not f.is_static]
-        if len(others) > MAX_CANDIDATES:
+        if len(others) > max_cands:
+            file_parts = file.split("/")
+            crate_prefix = tuple(file_parts[:2]) if len(file_parts) >= 2 else (file_parts[0],)
+            parent_dir = os.path.dirname(file)
+            same_dir = [f for f in others if os.path.dirname(f.file) == parent_dir]
+            if 0 < len(same_dir) <= max_cands:
+                return same_dir
+            same_crate = [f for f in others if tuple(f.file.split("/")[:len(crate_prefix)]) == crate_prefix]
+            if 0 < len(same_crate) <= max_cands:
+                return same_crate
             self.limitations.add("call-candidates")
             return []
         return others
@@ -1364,10 +1381,12 @@ class BodyAnalyzer:
         return None
 
 
-def run_program(units: list[FileUnit], body_cls_for: Any, collector: Collector, *, rounds: int = MAX_ROUNDS,
+def run_program(units: list[FileUnit], body_cls_for: Any, collector: Collector, *, rounds: int | None = None,
                 prog: "Program | None" = None) -> "Program":
     """Özetleri ve küresel kirliliği sabit noktaya getirir (yalnız bağımlılığı değişen fonksiyonlar yeniden
     yürütülür); son turda tüm fonksiyonlar akış toplamak için bir kez daha yürütülür."""
+    if rounds is None:
+        rounds = int(os.environ.get("SNIPER_TAINT_MAX_ROUNDS", str(MAX_ROUNDS)) or str(MAX_ROUNDS))
     prog = prog if prog is not None else Program(units)
     funcs = [(u, f) for u in units for f in u.funcs]
     deps: dict[tuple, tuple[set, set]] = {}

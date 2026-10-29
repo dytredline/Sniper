@@ -21,7 +21,7 @@ class ZapTargetActiveApiTests(unittest.TestCase):
         self.previous_store, self.previous_host, self.previous_port = server.STORE, server.HOST, server.PORT
         server.STORE = Store(self.root / "data" / "sniper.db")
         server.HOST = "127.0.0.1"
-        self.target = server.STORE.create_target(normalize_target("https://example.test/"))
+        self.target = server.STORE.create_target(normalize_target("https://target.example/"))
         from datetime import datetime, timezone, timedelta
         now = datetime.now(timezone.utc)
         start_str = (now - timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -72,7 +72,7 @@ class ZapTargetActiveApiTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(data, expected)
         runner.assert_called_once_with(self.target)
-        self.assertNotIn("example.test", json.dumps(data))
+        self.assertNotIn("target.example", json.dumps(data))
 
     def test_explicit_confirmations_and_no_target_override(self):
         for body in ({**self.body(),"confirm_authorized":False},
@@ -96,7 +96,7 @@ class ZapTargetActiveApiTests(unittest.TestCase):
 
     def test_plan_bounds_and_public_dns_override_not_accepted(self):
         import zap_target_active
-        plan = zap_target_active._plan("https://example.test/path", self.root)
+        plan = zap_target_active._plan("https://target.example/path", self.root)
         self.assertIn("maxScanDurationInMins: 2",plan)
         self.assertIn("maxRuleDurationInMins: 1",plan)
         self.assertIn("delayInMs: 1000",plan)

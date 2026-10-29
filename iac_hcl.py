@@ -77,9 +77,11 @@ def _lex_string(text: str, i: int, line: int) -> tuple[int, str, bool, int]:
             return i + 1, "".join(out), interp, line
         if ch == "\n":
             raise HclError(f"satır {line}: kapanmamış dizge")
+        if ch in "$%" and i + 2 < n and text[i + 1] == ch and text[i + 2] == "{":  # kaçış: $${ / %%{ → düz metin
+            out.append(ch + "{")
+            i += 3
+            continue
         if ch in "$%" and i + 1 < n and text[i + 1] == "{":
-            if i + 2 < n and text[i + 2] == "{":  # kaçış: $${ → düz metin
-                pass
             interp = True
             depth = 0
             j = i + 1
@@ -158,8 +160,18 @@ def tokenize(text: str) -> list[Tok]:
                 body_lines.append(raw)
                 line += 1
                 pos = n if nl < 0 else nl + 1
+            if indent and body_lines:
+                non_empty = [ln for ln in body_lines if ln.strip()]
+                if non_empty:
+                    common = min(len(ln) - len(ln.lstrip(" \t")) for ln in non_empty)
+                    if common > 0:
+                        body_lines = [ln[common:] if len(ln) >= common else "" for ln in body_lines]
             body = "\n".join(body_lines)
-            toks.append(Tok("heredoc", body, start_line, "${" in body or "%{" in body))
+            probe = body.replace("$${", "").replace("%%{", "")
+            has_interp = "${" in probe or "%{" in probe
+            if not has_interp and ("$${" in body or "%%{" in body):
+                body = body.replace("$${", "${").replace("%%{", "%{")
+            toks.append(Tok("heredoc", body, start_line, has_interp))
             i = pos
         elif ch.isdigit():
             j = i

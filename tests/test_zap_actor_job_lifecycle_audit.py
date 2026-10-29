@@ -25,7 +25,7 @@ class ZapActorJobLifecycleAuditTests(unittest.TestCase):
         self.store_path = self.data_dir / "zap_lifecycle_leases.json"
         self.env = patch.dict(os.environ, {"SNIPER_DATA_DIR": str(self.data_dir)})
         self.env.start()
-        normalized = normalize_target("https://example.test/")
+        normalized = normalize_target("https://target.example/")
         self.target = {
             "id": "target-audit-1",
             "url": normalized.url,
@@ -46,7 +46,7 @@ class ZapActorJobLifecycleAuditTests(unittest.TestCase):
         lease_a = store.issue_lease(
             actor_id="actor-a",
             job_id="job-a-1",
-            target_origin="https://example.test/",
+            target_origin="https://target.example/",
             ttl_seconds=120.0,
             now=now,
         )
@@ -71,7 +71,7 @@ class ZapActorJobLifecycleAuditTests(unittest.TestCase):
         lease_b = store.issue_lease(
             actor_id="actor-b",
             job_id="job-b-1",
-            target_origin="https://example.test/",
+            target_origin="https://target.example/",
             ttl_seconds=120.0,
             now=now + 5.0,
         )
@@ -82,7 +82,7 @@ class ZapActorJobLifecycleAuditTests(unittest.TestCase):
                 lease_a,
                 expected_actor="actor-a",
                 expected_job_id="job-a-1",
-                expected_target="https://example.test/",
+                expected_target="https://target.example/",
                 store_path=self.store_path,
                 now=now + 6.0,
             )
@@ -91,7 +91,7 @@ class ZapActorJobLifecycleAuditTests(unittest.TestCase):
             lease_b,
             expected_actor="actor-b",
             expected_job_id="job-b-1",
-            expected_target="https://example.test/",
+            expected_target="https://target.example/",
             store_path=self.store_path,
             now=now + 6.0,
         )
@@ -116,7 +116,7 @@ class ZapActorJobLifecycleAuditTests(unittest.TestCase):
         lease_1 = store_1.issue_lease(
             actor_id="actor-persist-1",
             job_id="job-persist-1",
-            target_origin="https://example.test/",
+            target_origin="https://target.example/",
             ttl_seconds=300.0,
             now=now,
         )
@@ -130,7 +130,7 @@ class ZapActorJobLifecycleAuditTests(unittest.TestCase):
             lease_1,
             expected_actor="actor-persist-1",
             expected_job_id="job-persist-1",
-            expected_target="https://example.test/",
+            expected_target="https://target.example/",
             now=now + 10.0,
         )
         self.assertEqual(verified_1["generation"], 1)
@@ -138,7 +138,7 @@ class ZapActorJobLifecycleAuditTests(unittest.TestCase):
         lease_2 = store_2.issue_lease(
             actor_id="actor-persist-2",
             job_id="job-persist-2",
-            target_origin="https://example.test/",
+            target_origin="https://target.example/",
             ttl_seconds=300.0,
             now=now + 20.0,
         )
@@ -153,14 +153,14 @@ class ZapActorJobLifecycleAuditTests(unittest.TestCase):
                 lease_1,
                 expected_actor="actor-persist-1",
                 expected_job_id="job-persist-1",
-                expected_target="https://example.test/",
+                expected_target="https://target.example/",
                 now=now + 25.0,
             )
         verified_2 = store_3.verify_lease(
             lease_2,
             expected_actor="actor-persist-2",
             expected_job_id="job-persist-2",
-            expected_target="https://example.test/",
+            expected_target="https://target.example/",
             now=now + 25.0,
         )
         self.assertEqual(verified_2["generation"], 2)
@@ -175,7 +175,7 @@ class ZapActorJobLifecycleAuditTests(unittest.TestCase):
         lease = store.issue_lease(
             actor_id="actor-integrity",
             job_id="job-integrity-1",
-            target_origin="https://example.test/",
+            target_origin="https://target.example/",
             ttl_seconds=300.0,
             now=now,
         )
@@ -188,7 +188,7 @@ class ZapActorJobLifecycleAuditTests(unittest.TestCase):
                 tampered_lease,
                 expected_actor="actor-integrity",
                 expected_job_id="job-integrity-1",
-                expected_target="https://example.test/",
+                expected_target="https://target.example/",
                 store_path=self.store_path,
                 now=now + 5.0,
             )
@@ -206,7 +206,7 @@ class ZapActorJobLifecycleAuditTests(unittest.TestCase):
                 lease,
                 expected_actor="actor-integrity",
                 expected_job_id="job-integrity-1",
-                expected_target="https://example.test/",
+                expected_target="https://target.example/",
                 store_path=self.store_path,
                 now=now + 5.0,
             )
@@ -221,7 +221,7 @@ class ZapActorJobLifecycleAuditTests(unittest.TestCase):
                 lease,
                 expected_actor="actor-integrity",
                 expected_job_id="job-integrity-1",
-                expected_target="https://example.test/",
+                expected_target="https://target.example/",
                 store_path=self.store_path,
                 now=now + 5.0,
             )
@@ -234,7 +234,7 @@ class ZapActorJobLifecycleAuditTests(unittest.TestCase):
                 lease,
                 expected_actor="actor-integrity",
                 expected_job_id="job-integrity-1",
-                expected_target="https://example.test/",
+                expected_target="https://target.example/",
                 store_path=self.store_path,
                 now=now + 5.0,
             )

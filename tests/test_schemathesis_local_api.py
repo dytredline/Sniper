@@ -211,6 +211,12 @@ class SchemathesisSyntheticLocalApiTests(unittest.TestCase):
         self.reject({"confirm_local": True, "schema": schema}, expected=502)
         self.assertFalse(list(active.WORK_PARENT.glob("run-*")))
 
+    def test_group_or_other_writable_runtime_is_rejected_before_target(self):
+        self.fake.chmod(0o770)
+        self.reject({"confirm_local": True, "schema": synthetic_schema(self.origin)}, expected=503)
+        self.assertFalse(self.trace.exists())
+        self.assertEqual(PingHandler.calls, [])
+
     def test_saved_junit_control_and_dtd_negative_remain_separate(self):
         good = '<testsuite><testcase name="GET /api/ping"/></testsuite>'
         code, result = self.post(OLD_ROUTE, {"report": good})

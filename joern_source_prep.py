@@ -24,6 +24,21 @@ class _Unparsable(Exception):
     pass
 
 
+def _is_string_start(text: str, i: int) -> bool:
+    """text[i] bir C# dize değişmezi (\"...\", @\"...\", $\"...\", $$+\"\"\"...\"\"\") başlangıcı mı?"""
+    n = len(text)
+    if i >= n:
+        return False
+    if text[i] == '"':
+        return True
+    if text[i] not in "@$":
+        return False
+    j = i
+    while j < n and text[j] in "@$":
+        j += 1
+    return j < n and text[j] == '"'
+
+
 def _skip_string(text: str, i: int) -> int:
     """text[i] bir dize başlangıcı (önekleriyle: @, $, $@, @$, ham \"\"\"). Dizenin bitişinden sonraki konum."""
     n = len(text)
@@ -70,7 +85,7 @@ def _skip_string(text: str, i: int) -> int:
                 continue
             j += 1
         else:   # ara değer ifadesi
-            if c == '"' or (c in "@$" and j + 1 < n and text[j + 1] in '"@$'):
+            if _is_string_start(text, j):
                 j = _skip_string(text, j)
                 continue
             if c == "'":
@@ -127,8 +142,7 @@ def _tokens(text: str) -> list[tuple[str, int, int]]:
                 raise _Unparsable("yorum")
             i = end + 2
             continue
-        if c == '"' or (c in "@$" and i + 1 < n and text[i + 1] in '"@$' and
-                        (text[i + 1] == '"' or (i + 2 < n and text[i + 2] == '"'))):
+        if _is_string_start(text, i):
             end = _skip_string(text, i)
             out.append(('""', i, end))
             i = end
@@ -184,6 +198,8 @@ def brace_csharp_bodies(text: str) -> str:
             return match(i)
         if w == ";":
             return i
+        if w == "await" and i + 2 < n and words[i + 1] in ("foreach", "using") and words[i + 2] == "(":
+            return stmt_end(match(i + 2) + 1)
         if w in _HEADED and i + 1 < n and words[i + 1] == "(":
             end = stmt_end(match(i + 1) + 1)
             if w == "if" and end + 1 < n and words[end + 1] == "else":

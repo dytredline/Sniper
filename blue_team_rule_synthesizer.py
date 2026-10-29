@@ -7,6 +7,8 @@ All generated rules are defensive detection and WAF virtual-patch configurations
 
 from __future__ import annotations
 
+import hashlib
+import re
 from typing import Any
 
 import legacy_basis
@@ -482,7 +484,137 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
             'classtype:web-application-attack; sid:9901008; rev:1;)'
         ),
     },
+    {
+        "family_id": "supply_chain_cicd_poisoning",
+        "title": "CI/CD Workflow Expression Injection & Supply-Chain Pwn Request Guard",
+        "category": "supplychain",
+        "keywords": (
+            "supplychain",
+            "sniper-supp-01",
+            "sniper-supp-05",
+            "cwe-829",
+            "cwe-427",
+            "pull_request_target",
+            "typosquatting",
+            "dependency confusion",
+        ),
+        "modsec_id": "990109",
+        "secrule": (
+            'SecRule REQUEST_URI "@rx (?i:/(?:api/v[0-9]+/webhooks|github-webhook|gitlab-webhook))" '
+            '"id:990109,phase:2,chain,deny,status:403,log,t:none,'
+            'msg:\'Sniper Virtual Patch: CI/CD Webhook Shell Metacharacter Injection Attempt\','
+            'tag:\'application-multi\',tag:\'attack-supplychain\',tag:\'CWE-78\',severity:\'CRITICAL\'"\n'
+            'SecRule REQUEST_BODY "@rx (?i:(?:\\$\\([^)]+\\)|`[^`]+`|;\\s*(?:curl|wget|bash|sh|nc)\\b))" "t:none"'
+        ),
+        "sigma_id": "sniper-sigma-cicd-009",
+        "sigma_level": "critical",
+        "mitre_attack": ["T1195.002", "T1059.004"],
+        "sigma_yaml": (
+            "title: Sniper Detection - CI/CD Runner Expression Injection and Untrusted PR Checkout\n"
+            "id: 8b41c920-9009-4a7a-b109-000000990109\n"
+            "status: stable\n"
+            "description: Detects shell command injection via untrusted PR title/body in CI/CD runners.\n"
+            "author: Sniper Blue-Team Rule Synthesizer\n"
+            "logsource:\n"
+            "  category: process_creation\n"
+            "  product: linux\n"
+            "detection:\n"
+            "  selection:\n"
+            "    ParentImage|endswith:\n"
+            "      - '/Runner.Worker'\n"
+            "    CommandLine|contains:\n"
+            "      - 'curl '\n"
+            "      - 'wget '\n"
+            "      - 'base64 -d'\n"
+            "  condition: selection\n"
+            "level: critical\n"
+            "tags:\n"
+            "  - attack.initial_access\n"
+            "  - attack.t1195.002\n"
+        ),
+        "suricata_sid": 9901009,
+        "suricata_rule": (
+            'alert http $EXTERNAL_NET any -> $HOME_NET any '
+            '(msg:"SNIPER-BLUE CI/CD Webhook Command Injection Payload"; '
+            'flow:established,to_server; http.request_body; '
+            'pcre:"/(?:\\$\\(\\s*(?:curl|wget|sh|bash)|`\\s*(?:curl|wget|sh|bash))/i"; '
+            'classtype:web-application-attack; sid:9901009; rev:1;)'
+        ),
+    },
+    {
+        "family_id": "cloud_imds_k8s_escape",
+        "title": "Kubernetes Container Escape & Cloud IAM/IMDS Privilege Escalation Guard",
+        "category": "infrastructure",
+        "keywords": (
+            "sniper-infr-03",
+            "sniper-conf-08",
+            "docker.sock",
+            "containerd.sock",
+            "hostpid",
+            "imdsv1",
+            "http_tokens",
+            "passrole",
+            "cloud_iam",
+        ),
+        "modsec_id": "990110",
+        "secrule": (
+            'SecRule REQUEST_URI|REQUEST_BODY '
+            '"@rx (?i:(?:/var/run/(?:docker|containerd|crio)\\.sock|hostPID\\s*:\\s*true|'
+            'privileged\\s*:\\s*true|latest/meta-data/iam/security-credentials))" '
+            '"id:990110,phase:2,deny,status:403,log,t:none,t:urlDecodeUni,'
+            'msg:\'Sniper Virtual Patch: Container Runtime Socket or IMDSv1 Credential Probe\','
+            'tag:\'application-multi\',tag:\'attack-cloud\',tag:\'CWE-250\',severity:\'CRITICAL\'"'
+        ),
+        "sigma_id": "sniper-sigma-k8s-010",
+        "sigma_level": "critical",
+        "mitre_attack": ["T1611", "T1552.005"],
+        "sigma_yaml": (
+            "title: Sniper Detection - Kubernetes Privileged Pod Creation or Runtime Socket Mount\n"
+            "id: 8b41c920-9010-4a7a-b110-000000990110\n"
+            "status: stable\n"
+            "description: Detects Kubernetes API requests mounting docker.sock/containerd.sock or enabling hostPID/privileged.\n"
+            "author: Sniper Blue-Team Rule Synthesizer\n"
+            "logsource:\n"
+            "  product: kubernetes\n"
+            "  service: audit\n"
+            "detection:\n"
+            "  selection:\n"
+            "    objectRef.resource: 'pods'\n"
+            "    requestObject|contains:\n"
+            "      - '/var/run/docker.sock'\n"
+            "      - '/run/containerd/containerd.sock'\n"
+            "      - '\"privileged\":true'\n"
+            "      - '\"hostPID\":true'\n"
+            "  condition: selection\n"
+            "level: critical\n"
+            "tags:\n"
+            "  - attack.privilege_escalation\n"
+            "  - attack.t1611\n"
+        ),
+        "suricata_sid": 9901010,
+        "suricata_rule": (
+            'alert http $EXTERNAL_NET any -> $HOME_NET any '
+            '(msg:"SNIPER-BLUE Container Socket or K8s Escape Probe"; '
+            'flow:established,to_server; http.request_body; '
+            'pcre:"/(?:\\/var\\/run\\/(?:docker|containerd)\\.sock|\"privileged\"\\s*:\\s*true)/i"; '
+            'classtype:attempted-admin; sid:9901010; rev:1;)'
+        ),
+    },
 )
+
+
+def _is_false_positive(finding: dict[str, Any]) -> bool:
+    triage = finding.get("triage")
+    if isinstance(triage, dict) and str(triage.get("disposition") or "").strip().lower() == "false_positive":
+        return True
+    if str(finding.get("disposition") or "").strip().lower() == "false_positive":
+        return True
+    if str(finding.get("status") or "").strip().lower() in {"resolved", "closed", "false_positive"}:
+        return True
+    tracking = finding.get("tracking")
+    if isinstance(tracking, dict) and str(tracking.get("status") or "").strip().lower() == "false_positive":
+        return True
+    return False
 
 
 def _collect_findings(
@@ -495,14 +627,14 @@ def _collect_findings(
     collected: list[dict[str, Any]] = []
     if isinstance(findings, list):
         for item in findings:
-            if isinstance(item, dict):
+            if isinstance(item, dict) and not _is_false_positive(item):
                 collected.append(item)
     for container in (scan, project_audit, mobile_audit):
         if isinstance(container, dict):
             nested = container.get("findings")
             if isinstance(nested, list):
                 for item in nested:
-                    if isinstance(item, dict):
+                    if isinstance(item, dict) and not _is_false_positive(item):
                         collected.append(item)
     return collected
 
@@ -512,9 +644,14 @@ def _finding_searchable_text(finding: dict[str, Any]) -> str:
     for key in (
         "id",
         "rule_id",
+        "control_id",
         "category",
         "cwe",
+        "cwe_id",
+        "reference",
         "owasp",
+        "owasp_category",
+        "masvs_id",
         "title",
         "summary",
         "description",
@@ -523,6 +660,8 @@ def _finding_searchable_text(finding: dict[str, Any]) -> str:
         val = finding.get(key)
         if isinstance(val, str):
             parts.append(val.lower())
+        elif isinstance(val, int) and not isinstance(val, bool):
+            parts.append(f"cwe-{val}")
         elif isinstance(val, (list, tuple)):
             parts.extend(str(x).lower() for x in val)
     return " ".join(parts)
@@ -564,7 +703,10 @@ def synthesize_blue_team_rules(
                     fid = str(
                         finding.get("id")
                         or finding.get("rule_id")
+                        or finding.get("control_id")
                         or finding.get("cwe")
+                        or finding.get("cwe_id")
+                        or finding.get("reference")
                         or f"FIN-{idx:03d}"
                     )
                     if fid not in matched_ids:
@@ -662,4 +804,280 @@ def synthesize_blue_team_rules(
         "nginx_waf_snippet": nginx_waf_snippet,
         "combined_modsecurity_conf": combined_modsecurity_conf,
         "combined_sigma_yaml": combined_sigma_yaml,
+    }
+
+
+_ROUTE_PATH_RE = re.compile(r"/(?:api|ws)/[A-Za-z0-9_/{}:.-]+")
+_VPATCH_CWE_RE = re.compile(r"\b(CWE-\d+|LLM\d+|SNIPER-[A-Z0-9-]+)\b", re.IGNORECASE)
+_DANGEROUS_PARAMS: tuple[str, ...] = (
+    "upload_id",
+    "redirect_uri",
+    "env_path",
+    "order_id",
+    "account_id",
+    "tenant_id",
+    "user_id",
+    "file_path",
+    "callback_url",
+    "webhook_url",
+    "target_url",
+    "return_url",
+    "next_url",
+    "template",
+    "command",
+    "jku",
+    "x5u",
+    "kid",
+    "cmd",
+    "url",
+    "path",
+    "file",
+    "id",
+)
+_ROUTE_PARAM_BRACE_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}|:([A-Za-z_][A-Za-z0-9_]*)")
+
+
+def _normalize_vpatch_cwe(finding: dict[str, Any]) -> str:
+    for key in ("cwe", "cwe_id", "reference", "control_id", "rule_id", "id", "title"):
+        val = finding.get(key)
+        if isinstance(val, int) and not isinstance(val, bool):
+            return f"CWE-{val}"
+        text = str(val or "").strip()
+        if not text:
+            continue
+        cwe_match = re.search(r"\bCWE-\d+\b", text, re.IGNORECASE)
+        if cwe_match:
+            return cwe_match.group(0).upper()
+        other_match = _VPATCH_CWE_RE.search(text)
+        if other_match:
+            return other_match.group(1).upper()
+
+    blob = _finding_searchable_text(finding)
+    if any(k in blob for k in ("traversal", "lfi", "../", "env_path", "upload_id")):
+        return "CWE-22"
+    if any(k in blob for k in ("ssrf", "169.254.169.254", "metadata")):
+        return "CWE-918"
+    if any(k in blob for k in ("cors", "access-control-allow-origin")):
+        return "CWE-942"
+    if any(k in blob for k in ("cswsh", "websocket")):
+        return "CWE-1385"
+    if any(k in blob for k in ("bola", "idor", "order_id")):
+        return "CWE-639"
+    if any(k in blob for k in ("jwt", "jku", "x5u")):
+        return "CWE-347"
+    if any(k in blob for k in ("redirect", "oauth", "redirect_uri")):
+        return "CWE-601"
+    if any(k in blob for k in ("sql", "sqli")):
+        return "CWE-89"
+    if any(k in blob for k in ("deserializ", "pickle", "yaml")):
+        return "CWE-502"
+    if any(k in blob for k in ("cmd", "command", "rce")):
+        return "CWE-78"
+    return "CWE-20"
+
+
+def _extract_vpatch_route(finding: dict[str, Any]) -> str:
+    for key in ("route_path", "route", "path", "endpoint", "evidence", "snippet", "title", "description", "location", "file"):
+        raw = str(finding.get(key) or "").strip()
+        if not raw:
+            continue
+        m = _ROUTE_PATH_RE.search(raw)
+        if m:
+            candidate = m.group(0).rstrip(".:")
+            return candidate or "/*"
+    return "/*"
+
+
+def _extract_vpatch_param(finding: dict[str, Any], route_path: str, cwe: str) -> str:
+    for key in ("param_name", "param", "parameter"):
+        explicit = str(finding.get(key) or "").strip()
+        if explicit:
+            return explicit
+
+    brace_match = _ROUTE_PARAM_BRACE_RE.search(route_path)
+    if brace_match:
+        return brace_match.group(1) or brace_match.group(2) or "id"
+
+    text = " ".join(
+        str(finding.get(k) or "")
+        for k in ("evidence", "snippet", "title", "description", "location", "file")
+    )
+    for cand in _DANGEROUS_PARAMS:
+        if re.search(rf"\b{re.escape(cand)}\b", text, re.IGNORECASE):
+            return cand
+
+    if cwe in ("CWE-942", "CWE-1385"):
+        return "Origin"
+    if cwe in ("CWE-347", "CWE-287", "CWE-306"):
+        return "Authorization"
+    return "id"
+
+
+def synthesize_precision_virtual_patches(findings: list[dict[str, Any]]) -> dict[str, Any]:
+    """Synthesize endpoint- and parameter-specific virtual patches (ModSecurity, Cloudflare WAF, Envoy/Istio, Sigma)."""
+    patches: list[dict[str, Any]] = []
+    seen_keys: set[tuple[str, str, str]] = set()
+
+    if not isinstance(findings, list):
+        return {
+            "format": "sniper-precision-virtual-patches/1",
+            "patch_count": 0,
+            "patches": [],
+        }
+
+    for idx, finding in enumerate(findings, start=1):
+        if not isinstance(finding, dict) or _is_false_positive(finding):
+            continue
+        cwe = _normalize_vpatch_cwe(finding)
+        route_path = _extract_vpatch_route(finding)
+        param_name = _extract_vpatch_param(finding, route_path, cwe)
+
+        dedup_key = (cwe, route_path, param_name)
+        if dedup_key in seen_keys:
+            continue
+        seen_keys.add(dedup_key)
+
+        sig = f"{cwe}|{route_path}|{param_name}"
+        digest = hashlib.sha256(sig.encode("utf-8")).hexdigest()[:8]
+        patch_id = f"SNIPER-VPATCH-{digest}"
+        modsec_id = 995000 + (int(digest[:4], 16) % 4900)
+
+        if route_path == "/*":
+            route_prefix = "/"
+        else:
+            route_prefix = route_path.split("{")[0].split(":")[0].rstrip("/") or route_path
+
+        if cwe in ("CWE-22", "CWE-73"):
+            modsecurity_secrule = (
+                f'SecRule REQUEST_URI "@beginsWith {route_prefix}" '
+                f'"id:{modsec_id},phase:2,chain,deny,status:403,log,t:none,t:urlDecodeUni,t:normalizePath,'
+                f"msg:'Sniper Precision Virtual Patch ({cwe}) Path Traversal on {route_path} [{param_name}]',"
+                f"tag:'{cwe}',severity:'CRITICAL'\"\n"
+                f'SecRule ARGS:{param_name}|ARGS|REQUEST_URI "@rx (?:\\.\\./|\\.\\.\\\\|%2e%2e|/etc/passwd|/proc/self)" '
+                f'"t:none,t:urlDecodeUni"'
+            )
+            cf_cond = (
+                f'http.request.uri.query contains "{param_name}=" and '
+                f'(http.request.uri.query contains "../" or http.request.uri.path contains "../" '
+                f'or http.request.uri.query contains "%2e%2e")'
+            )
+            sigma_payloads = ["'../'", "'..%2f'", "'/etc/passwd'", f"'{param_name}='"]
+        elif cwe == "CWE-918":
+            modsecurity_secrule = (
+                f'SecRule REQUEST_URI "@beginsWith {route_prefix}" '
+                f'"id:{modsec_id},phase:2,chain,deny,status:403,log,t:none,t:urlDecodeUni,'
+                f"msg:'Sniper Precision Virtual Patch ({cwe}) SSRF Metadata Guard on {route_path} [{param_name}]',"
+                f"tag:'{cwe}',severity:'CRITICAL'\"\n"
+                f'SecRule ARGS:{param_name}|ARGS|REQUEST_BODY '
+                f'"@rx (?i:169\\.254\\.169\\.254|metadata\\.google\\.internal|100\\.100\\.100\\.200|(?:file|gopher|dict)://|127\\.0\\.0\\.1|localhost)" '
+                f'"t:none,t:urlDecodeUni"'
+            )
+            cf_cond = (
+                f'(http.request.uri.query contains "169.254.169.254" or '
+                f'http.request.body.raw contains "169.254.169.254" or '
+                f'http.request.uri.query contains "metadata.google.internal" or '
+                f'http.request.uri.query contains "{param_name}=")'
+            )
+            sigma_payloads = ["'169.254.169.254'", "'metadata.google.internal'", "'latest/meta-data'", f"'{param_name}'"]
+        elif cwe in ("CWE-942", "CWE-1385"):
+            modsecurity_secrule = (
+                f'SecRule REQUEST_URI "@beginsWith {route_prefix}" '
+                f'"id:{modsec_id},phase:1,chain,deny,status:403,log,t:none,'
+                f"msg:'Sniper Precision Virtual Patch ({cwe}) Strict Origin/CSWSH Guard on {route_path}',"
+                f"tag:'{cwe}',severity:'HIGH'\"\n"
+                f'SecRule REQUEST_HEADERS:Origin "@rx (?i:^null$|^https?://(?:evil\\.|attacker\\.|untrusted\\.|\\*))" "t:none"'
+            )
+            cf_cond = (
+                'not (http.request.headers["origin"][0] in {"https://trusted.internal"}) and '
+                '(http.request.headers["origin"][0] eq "null" or http.request.headers["upgrade"][0] eq "websocket" '
+                'or len(http.request.headers["origin"]) > 0)'
+            )
+            sigma_payloads = ["'Origin: null'", "'Upgrade: websocket'", "'Access-Control-Allow-Origin: *'"]
+        elif cwe in ("CWE-347", "CWE-639", "CWE-862", "CWE-287", "CWE-306"):
+            modsecurity_secrule = (
+                f'SecRule REQUEST_URI "@beginsWith {route_prefix}" '
+                f'"id:{modsec_id},phase:1,chain,deny,status:401,log,t:none,t:urlDecodeUni,'
+                f"msg:'Sniper Precision Virtual Patch ({cwe}) AuthZ/JWT Guard on {route_path} [{param_name}]',"
+                f"tag:'{cwe}',severity:'CRITICAL'\"\n"
+                f'SecRule REQUEST_HEADERS:Authorization|ARGS:{param_name}|ARGS '
+                f'"@rx (?i:eyJhbGciOiJub25l|\\"(?:jku|x5u)\\"\\s*:\\s*\\"https?://|\\.\\./)" "t:none"'
+            )
+            cf_cond = (
+                f'(not any(http.request.headers["authorization"][*] matches "^Bearer\\s+[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+$") '
+                f'or http.request.uri.query contains "{param_name}=")'
+            )
+            sigma_payloads = ["'eyJhbGciOiJub25l'", "'\"jku\":'", "'\"x5u\":'", f"'{param_name}'"]
+        else:
+            modsecurity_secrule = (
+                f'SecRule REQUEST_URI "@beginsWith {route_prefix}" '
+                f'"id:{modsec_id},phase:2,chain,deny,status:403,log,t:none,t:urlDecodeUni,'
+                f"msg:'Sniper Precision Virtual Patch ({cwe}) Injection Guard on {route_path} [{param_name}]',"
+                f"tag:'{cwe}',severity:'CRITICAL'\"\n"
+                f'SecRule ARGS:{param_name}|ARGS|REQUEST_BODY '
+                f'"@rx (?i:\\.\\./|169\\.254\\.169\\.254|https?://|union\\s+select|;\\s*(?:sh|bash|curl|wget)|ignore\\s+previous\\s+instructions)" '
+                f'"t:none,t:urlDecodeUni"'
+            )
+            cf_cond = (
+                f'(http.request.uri.query contains "{param_name}=" or '
+                f'http.request.uri.query contains "../" or '
+                f'http.request.uri.query contains "169.254.169.254")'
+            )
+            sigma_payloads = [f"'{param_name}'", "'../'", "'169.254.169.254'"]
+
+        cloudflare_waf_expr = f'(http.request.uri.path contains "{route_prefix}" and {cf_cond})'
+
+        envoy_path_pattern = f"{route_prefix}*" if route_prefix != "/" else "/*"
+        envoy_authz_yaml = (
+            "apiVersion: security.istio.io/v1beta1\n"
+            "kind: AuthorizationPolicy\n"
+            "metadata:\n"
+            f"  name: sniper-vpatch-{digest}\n"
+            "  namespace: default\n"
+            "spec:\n"
+            "  action: ALLOW\n"
+            "  rules:\n"
+            "    - from:\n"
+            "        - source:\n"
+            "            requestPrincipals: [\"*\"]\n"
+            "            principals: [\"cluster.local/ns/default/sa/sniper-verified-caller\"]\n"
+            "      to:\n"
+            "        - operation:\n"
+            f"            paths: [\"{route_path}\", \"{envoy_path_pattern}\"]\n"
+        )
+
+        sigma_contains_lines = "\n".join(f"      - {p}" for p in sigma_payloads)
+        sigma_rule_yaml = (
+            f"title: Sniper Precision Detection - {cwe} on {route_path} ({param_name})\n"
+            f"id: 8b41c920-9999-4a7a-b999-0000{digest}\n"
+            "status: stable\n"
+            f"description: Endpoint-specific Sigma rule synthesized by Sniper for {cwe} on {route_path} parameter {param_name}.\n"
+            "author: Sniper Blue-Team Rule Synthesizer\n"
+            "logsource:\n"
+            "  category: webserver\n"
+            "detection:\n"
+            "  selection:\n"
+            f"    cs-uri-stem|startswith: '{route_prefix}'\n"
+            "    cs-uri-query|contains:\n"
+            f"{sigma_contains_lines}\n"
+            "  condition: selection\n"
+            "level: critical\n"
+        )
+
+        patches.append(
+            {
+                "patch_id": patch_id,
+                "cwe": cwe,
+                "route_path": route_path,
+                "param_name": param_name,
+                "modsecurity_secrule": modsecurity_secrule,
+                "cloudflare_waf_expr": cloudflare_waf_expr,
+                "envoy_authz_yaml": envoy_authz_yaml,
+                "sigma_rule_yaml": sigma_rule_yaml,
+            }
+        )
+
+    return {
+        "format": "sniper-precision-virtual-patches/1",
+        "patch_count": len(patches),
+        "patches": patches,
     }

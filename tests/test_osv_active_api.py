@@ -161,15 +161,7 @@ class OSVOfflineApiTests(unittest.TestCase):
             child = int(pid_file.read_text())
             for _ in range(20):
                 stat_path = Path(f"/proc/{child}/stat")
-                if not stat_path.exists():
-                    break
-                try:
-                    state = stat_path.read_text().split()[2]
-                except (FileNotFoundError, ProcessLookupError):
-                    # The descendant can exit between the existence check and
-                    # the procfs read; that is the successful outcome here.
-                    break
-                if state == "Z":
+                if not stat_path.exists() or stat_path.read_text().split()[2] == "Z":
                     break
                 time.sleep(0.05)
             else:

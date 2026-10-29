@@ -17,6 +17,10 @@ import taint_clike
 import taint_goruby
 
 
+APP = Path(__file__).resolve().parents[1]
+R58_REFERENCE_MANIFEST = APP / "docs" / "olcum" / "engine-quality-reference-r58.manifest.json"
+
+
 def _c(src: str):
     result = taint_cfamily.analyze_files({"callback.cpp": textwrap.dedent(src).lstrip("\n")})
     return [flow for analysis in result.values() for flow in analysis.flows]
@@ -860,10 +864,7 @@ class RubyLiteralReflection(unittest.TestCase):
 
 
 class SyntheticMeasurement(unittest.TestCase):
-    @unittest.skipUnless(
-        (Path(__file__).resolve().parents[1] / "docs" / "olcum" / "engine-quality-reference-r58.manifest.json").is_file(),
-        "maintainer reference bundle is not shipped in Community source",
-    )
+    @unittest.skipUnless(R58_REFERENCE_MANIFEST.is_file(), "maintainer reference bundle is not distributed")
     def test_installed_multilanguage_reference_bundle_is_source_pinned(self) -> None:
         app = Path(__file__).resolve().parents[1]
         checked = ground_truth_review.validate_bundle(

@@ -6,7 +6,7 @@ import vm from 'node:vm';
 
 const ROOT = new URL('../', import.meta.url);
 
-function fixture(relative, prefix, launcherAction) {
+function fixture(relative, prefix, launcherAction, localHome) {
   const source = fs.readFileSync(new URL(relative, ROOT), 'utf8');
   const nodes = new Map();
   const documentHandlers = new Map();
@@ -50,6 +50,9 @@ function fixture(relative, prefix, launcherAction) {
     readyState: 'loading',
     getElementById: element,
     querySelector(selector) {
+      if (selector === 'meta[name="sniper-local-home"]') {
+        return localHome ? {content: localHome} : null;
+      }
       if (selector === `[data-action="${launcherAction}"]`) return opener;
       if (selector.includes('[data-close=')) return close;
       return null;
@@ -82,14 +85,14 @@ for (const [relative, prefix, action] of [
   ['static/trufflehog_filesystem.js', 'trufflehog-filesystem-', 'open-trufflehog-filesystem'],
   ['static/trufflehog_git_history.js', 'trufflehog-git-history-', 'open-trufflehog-git-history'],
 ]) {
-  test(`${relative} accepts portable home accounts`, () => {
-    assert.equal(fixture(relative, prefix, action).set('/home/community-user/project'), false);
-    assert.equal(fixture(relative, prefix, action).set(['/home', 'another-user', 'project'].join('/')), false);
+  test(`${relative} accepts configured portable home accounts`, () => {
+    assert.equal(fixture(relative, prefix, action, '/home/community-user').set('/home/community-user/project'), false);
+    assert.equal(fixture(relative, prefix, action, '/home/another-user').set('/home/another-user/project'), false);
   });
 
   test(`${relative} rejects traversal and non-home paths`, () => {
-    assert.equal(fixture(relative, prefix, action).set('/home/community-user/../project'), true);
-    assert.equal(fixture(relative, prefix, action).set('/home//project'), true);
-    assert.equal(fixture(relative, prefix, action).set('/opt/project'), true);
+    assert.equal(fixture(relative, prefix, action, '/home/community-user').set('/home/community-user/../project'), true);
+    assert.equal(fixture(relative, prefix, action, '/home/community-user').set('/home//project'), true);
+    assert.equal(fixture(relative, prefix, action, '/home/community-user').set('/opt/project'), true);
   });
 }

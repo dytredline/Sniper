@@ -320,6 +320,17 @@ test("sandbox flows build exact bodies with a single confirmation", async () => 
   assert.deepEqual(body("bounded-dast-runtime-proof", { audit_id: "prj_1", finding_index: "3",
     profile_id: "clickjacking_headers", target: "http://127.0.0.1:3000", path: "/", parameter: "", confirm_local: true }),
   { profile_id: "clickjacking_headers", target: "http://127.0.0.1:3000", path: "/", parameter: "", confirm_local: true });
+  assert.deepEqual(body("bounded-dast-runtime-proof", { audit_id: "prj_1", finding_index: "4",
+    profile_id: "ssrf_callback", target: "http://127.0.0.1:3000", path: "/fetch", parameter: "", confirm_local: true }),
+  { profile_id: "ssrf_callback", target: "http://127.0.0.1:3000", path: "/fetch", parameter: "url", confirm_local: true });
+  const dast = tools.FLOWS.find(f => f.id === "bounded-dast-runtime-proof");
+  const profileOptions = dast.fields.find(f => f.name === "profile_id").options.map(row => row[0]);
+  for (const profile of ["ssrf_callback_post", "ssrf_callback_redirect", "ssrf_callback_delayed", "ssrf_callback_dns"]) {
+    assert.ok(profileOptions.includes(profile));
+    assert.deepEqual(body("bounded-dast-runtime-proof", { audit_id: "prj_1", finding_index: "4",
+      profile_id: profile, target: "http://127.0.0.1:3000", path: "/fetch", parameter: "", confirm_local: true }),
+    { profile_id: profile, target: "http://127.0.0.1:3000", path: "/fetch", parameter: "url", confirm_local: true });
+  }
   assert.deepEqual(body("asan-selftest", { confirm_local: true }), { confirm_local: true });
   assert.deepEqual(body("asan-source-proof", { audit_id: "prj_1", finding_index: "4",
     source_relpath: "src/problem.c", confirm_local: true }),

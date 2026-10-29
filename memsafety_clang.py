@@ -61,6 +61,8 @@ _RULES: tuple[tuple[re.Pattern[str], str, str, bool], ...] = (
     (re.compile(r"overflows the destination buffer|accesses out-of-bound array element.*destination|Out of bound memory access.*destination"),
      "alpha.unix.cstring.OutOfBounds", "overflow", True),
     (re.compile(r"accesses out-of-bound array element|Out of bound"), "alpha.unix.cstring.OutOfBounds", "overread", False),
+    (re.compile(r"Arguments must not be overlapping buffers"), "alpha.unix.cstring.BufferOverlap", "overflow", True),
+    (re.compile(r"Address of stack memory associated with local variable .* (returned|is still referred)"), "core.StackAddressEscape", "uaf", True),
 )
 
 

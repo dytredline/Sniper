@@ -60,7 +60,7 @@ def nuclei_broad_runtime_paths() -> tuple[Path, Path]:
     )).expanduser()
     catalog = Path(os.environ.get(
         "SNIPER_NUCLEI_CATALOG_DIR",
-        str(portable_root / "nuclei-templates-20261011"),
+        str(portable_root / "nuclei-templates-v10.5.0"),
     )).expanduser()
     return binary, catalog
 
@@ -208,6 +208,15 @@ def _runtime_check(tool_id: str, route: str) -> tuple[bool, str]:
         if route in _TRIVY_VULN_ROUTES and not _trivy_vulnerability_database():
             return False, "pinned_database_unavailable"
         return True, "local_prerequisites_found"
+    if tool_id == "syft-grype":
+        try:
+            from syft_grype_active import readiness as syft_grype_readiness
+            status = syft_grype_readiness()
+            if status.get("state") == "ready":
+                return True, "pinned_binaries_and_offline_database_found"
+        except RuntimeError:
+            pass
+        return False, "pinned_binaries_or_offline_database_unavailable"
     if tool_id == "openssl":
         try:
             from openssl_loopback_active import _pinned_runtime
@@ -257,7 +266,7 @@ def _runtime_check(tool_id: str, route: str) -> tuple[bool, str]:
                     "f27098e0be0cc370af52274611608ad61896d7f0a024e35b136327d39e725477")
                     and _directory(str(catalog)) and _digest_matches(
                     str(catalog / "SNIPER-HTTP-CATALOG-PIN-v2.json"),
-                    "6ebcb6355094e859aa474760fa41cffdf395a0d925841090b1a62b1608bc903e"))
+                    "0458128285de1a22a9b5bbdf247323451663644607bdddf3252ff2b6e31f099e"))
                 return ok, "binary_and_catalog_pin_found" if ok else "catalog_pin_unavailable"
             _trusted_template()
             return True, "pinned_binary_and_template_found"
@@ -333,6 +342,8 @@ def runtime_readiness_payload() -> dict:
     checks: dict[tuple[str, str], tuple[bool, str]] = {}
     trivy_db_meta: dict[str, object] | None = None
     trivy_db_meta_checked = False
+    syft_grype_db_meta: dict[str, object] | None = None
+    syft_grype_db_meta_checked = False
     for tool in TOOLS:
         tool_profiles = []
         for mode, label, routes in CAPABILITY_WORKFLOWS[tool["id"]]:
@@ -372,6 +383,15 @@ def runtime_readiness_payload() -> dict:
                         trivy_db_meta_checked = True
                     if trivy_db_meta is not None:
                         entry["db_metadata"] = dict(trivy_db_meta)
+                if tool["id"] == "syft-grype" and runtime == "precheck_passed":
+                    if not syft_grype_db_meta_checked:
+                        from syft_grype_active import readiness as syft_grype_readiness
+                        database = syft_grype_readiness().get("database")
+                        if isinstance(database, dict):
+                            syft_grype_db_meta = database
+                        syft_grype_db_meta_checked = True
+                    if syft_grype_db_meta is not None:
+                        entry["db_metadata"] = dict(syft_grype_db_meta)
                 tool_profiles.append(entry)
         profiles.append({"id": tool["id"], "profiles": tool_profiles})
     from semgrep_active import active_engine

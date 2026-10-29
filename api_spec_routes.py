@@ -32,7 +32,9 @@ _YAML_SPEC_RE = re.compile(r"(?m)^[\"']?(openapi|swagger)[\"']?\s*:\s*[\"']?[23]
 _JSON_SPEC_RE = re.compile(r"\"(openapi|swagger)\"\s*:\s*\"[23]\.")
 # Belge/statik yollar gölge uç nokta sayılmaz (sözleşmenin kendisini sunan rota vb.).
 _DOC_PATH_RE = re.compile(r"(?i)(openapi|swagger|api-?docs|redoc|(^|/)docs?(/|$)|static|assets|favicon|robots\.txt)")
-_ADMIN_PATH_RE = re.compile(r"(?i)(^|/)(admin|manage|management|internal|debug|console|superuser|staff|backoffice|ops)(/|$|[-_])")
+_ADMIN_PATH_RE = re.compile(
+    r"(?i)(^|/)(admin|manage|management|internal|debug|console|superuser|staff|backoffice|ops|actuator|pprof|phpmyadmin|adminer|impersonate|sudo|feature_flag|migration)(/|$|[-_])"
+)
 _PARAM_SEG_RE = re.compile(
     r"^(\{[^}]*\}|:[A-Za-z_][\w]*\??(\(.*\))?|<[^>]+>|\(\?P<[^>]+>.*\)|\(.*\)|\*+|\[[^\]]+\])$"
 )
@@ -308,8 +310,13 @@ def _function_index(sources: Iterable[tuple]) -> tuple[set[str], set[str]]:
                     if function_match is not None:
                         qualified.add(f"{current_class}.{function_match.group(1)}")
         else:
-            for name in re.findall(r"(?:function\s+([A-Za-z_$][\w$]*)|(?:exports|module\.exports)\.([A-Za-z_$][\w$]*)\s*=)", text):
-                bare.add(name[0] or name[1])
+            for name in re.findall(
+                r"(?:(?:export\s+(?:default\s+)?)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)"
+                r"|(?:exports|module\.exports)\.([A-Za-z_$][\w$]*)\s*="
+                r"|export\s+(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=)",
+                text,
+            ):
+                bare.add(name[0] or name[1] or name[2])
     return qualified, bare
 
 
@@ -506,3 +513,134 @@ def analyze(spec_sources: list[tuple[str, str]], routes: list[Any], sources: Ite
     for spec in specs:
         spec.pop("text", None)
     return result
+
+
+# ---------------------------------------------------------------------------
+# GraphQL ve gRPC Güvenlik Denetimi (Wave-6)
+# ---------------------------------------------------------------------------
+_GQL_SERVER_SETUP_RE = re.compile(
+    r"\b(?:ApolloServer|Strawberry|strawberry\.Schema|graphene\.Schema|Ariane|Ariadne|GraphQLRouter|graphqlHTTP)\b"
+)
+_GQL_DEPTH_LIMIT_RE = re.compile(
+    r"\b(?:depthLimit|QueryDepthLimiter|depth_limit|max_depth|validationRules|validation_rules)\b"
+)
+_GQL_INTROSPECTION_RE = re.compile(
+    r"\b(?:introspection|graphiql|playground)\s*[:=]\s*(?:True|true)\b"
+)
+_GQL_ENV_GUARD_RE = re.compile(
+    r"\b(?:DEBUG|NODE_ENV|ENV)\b"
+)
+_GRPC_INSECURE_RE = re.compile(
+    r"(?:grpc\s*\.\s*(?:aio\s*\.\s*)?insecure_channel\s*\("
+    r"|grpc\s*\.\s*WithInsecure\s*\(\s*\)"
+    r"|insecure\s*\.\s*NewCredentials\s*\(\s*\)"
+    r"|grpc\s*\.\s*credentials\s*\.\s*createInsecure\s*\(\s*\))"
+)
+_LOOPBACK_TARGET_RE = re.compile(
+    r"(?i)(?:\blocalhost\b|127\.0\.0\.1|\[::1\]|(?<!\w)::1(?!\w))"
+)
+
+
+def audit_graphql_grpc_security(raw_content: str, *, filename: str = "schema.py") -> dict[str, Any]:
+    """GraphQL şema/sunucu tanımlarında ve gRPC kanal yapılandırmalarında güvenlik denetimi yapar."""
+    if not isinstance(raw_content, str) or not raw_content.strip():
+        return {"findings": [], "count": 0, "filename": filename}
+
+    findings: list[dict[str, Any]] = []
+    lines = raw_content.splitlines()
+
+    # (a) SNIPER-API-GQL-01: GraphQL Query Depth Limit eksikliği
+    server_match = _GQL_SERVER_SETUP_RE.search(raw_content)
+    if server_match is not None and _GQL_DEPTH_LIMIT_RE.search(raw_content) is None:
+        line_no = raw_content.count("\n", 0, server_match.start()) + 1
+        evidence = lines[line_no - 1].strip() if 1 <= line_no <= len(lines) else server_match.group(0)
+        findings.append({
+            "rule_id": "SNIPER-API-GQL-01",
+            "severity": "high",
+            "cwe": "CWE-400",
+            "category": "dos",
+            "title": "GraphQL şemasında sorgu derinlik sınırı (Query Depth Limit) eksikliği (İç İçe Sorgu DoS)",
+            "file": filename,
+            "line": line_no,
+            "evidence": evidence,
+            "description": (
+                "GraphQL sunucu kurulumunda sorgu derinlik sınırı (depthLimit / QueryDepthLimiter / max_depth) "
+                "tanımlanmamış; derinlemesine iç içe sorgularla servis dışı bırakma (DoS) saldırısı yapılabilir."
+            ),
+            "recommendation": (
+                "GraphQL sunucusuna QueryDepthLimiter / depthLimit doğrulama kuralı veya max_depth sınırı ekleyin."
+            ),
+            "remediation": (
+                "GraphQL sunucusuna QueryDepthLimiter / depthLimit doğrulama kuralı veya max_depth sınırı ekleyin."
+            ),
+            "reference": "CWE-400",
+        })
+
+    # (b) SNIPER-API-GQL-02: Üretim ortamında açık Introspection / GraphiQL / Playground arayüzü
+    for intro_match in _GQL_INTROSPECTION_RE.finditer(raw_content):
+        line_no = raw_content.count("\n", 0, intro_match.start()) + 1
+        win_start = max(0, line_no - 3)
+        win_end = min(len(lines), line_no + 2)
+        context_window = "\n".join(lines[win_start:win_end])
+        if _GQL_ENV_GUARD_RE.search(context_window) is None:
+            evidence = lines[line_no - 1].strip() if 1 <= line_no <= len(lines) else intro_match.group(0)
+            findings.append({
+                "rule_id": "SNIPER-API-GQL-02",
+                "severity": "medium",
+                "cwe": "CWE-200",
+                "category": "web_hardening",
+                "title": "GraphQL sunucusunda üretim ortamında açık Introspection / GraphiQL arayüzü",
+                "file": filename,
+                "line": line_no,
+                "evidence": evidence,
+                "description": (
+                    "GraphQL sunucusunda introspection, GraphiQL veya Playground arayüzü ortam denetimi "
+                    "(DEBUG / NODE_ENV / ENV) olmaksızın açık bırakılmış."
+                ),
+                "recommendation": (
+                    "Üretim ortamında introspection ve GraphiQL/Playground arayüzlerini kapatın veya ortam "
+                    "değişkeni denetimine bağlayın."
+                ),
+                "remediation": (
+                    "Üretim ortamında introspection ve GraphiQL/Playground arayüzlerini kapatın veya ortam "
+                    "değişkeni denetimine bağlayın."
+                ),
+                "reference": "CWE-200",
+            })
+            break
+
+    # (c) SNIPER-API-GRPC-03: gRPC kanalında şifresiz (insecure) bağlantı kullanımı
+    for grpc_match in _GRPC_INSECURE_RE.finditer(raw_content):
+        line_no = raw_content.count("\n", 0, grpc_match.start()) + 1
+        win_start = max(0, line_no - 2)
+        win_end = min(len(lines), line_no + 2)
+        call_window = "\n".join(lines[win_start:win_end])
+        if _LOOPBACK_TARGET_RE.search(call_window) is None:
+            evidence = lines[line_no - 1].strip() if 1 <= line_no <= len(lines) else grpc_match.group(0)
+            findings.append({
+                "rule_id": "SNIPER-API-GRPC-03",
+                "severity": "high",
+                "cwe": "CWE-319",
+                "category": "crypto",
+                "title": "gRPC kanalında şifresiz (insecure) bağlantı kullanımı",
+                "file": filename,
+                "line": line_no,
+                "evidence": evidence,
+                "description": (
+                    "gRPC istemci/sunucu kanalında TLS/mTLS yerine şifresiz (insecure) bağlantı kullanılıyor."
+                ),
+                "recommendation": (
+                    "gRPC bağlantılarında TLS/mTLS (grpc.secure_channel / ssl_channel_credentials) kullanın."
+                ),
+                "remediation": (
+                    "gRPC bağlantılarında TLS/mTLS (grpc.secure_channel / ssl_channel_credentials) kullanın."
+                ),
+                "reference": "CWE-319",
+            })
+            break
+
+    return {
+        "findings": findings,
+        "count": len(findings),
+        "filename": filename,
+    }

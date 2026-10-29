@@ -30,7 +30,7 @@ _SUBSCRIPT_KEY_RE = re.compile(r"\[\s*['\"]([A-Za-z_]\w*)['\"]\s*\]")
 _SUBSCRIPT_RE = re.compile(r"\[[^\[\]]*\]")
 _KWARG_RE = re.compile(r"\b[A-Za-z_]\w*\s*=(?!=)")
 _PATH_RE = re.compile(r"(?<![\w.\])'\"])([A-Za-z_]\w*)((?:\.[A-Za-z_]\w*|\.\d+)*)")
-_URL_ATTR_RE = re.compile(r"(?i)\b(?:href|src|action|formaction|data|poster|xlink:href)\s*=\s*[\"']?\s*$")
+_URL_ATTR_RE = re.compile(r"(?i)\b(?:href|src|action|formaction|data|poster|xlink:href|codebase|cite|background)\s*=\s*[\"']?\s*$")
 # Kaçışlayan ya da değeri HTML taşıyamayan (sayı/tarih/boolean) süzgeçler.
 _ESCAPING_FILTERS = frozenset({
     "escape", "e", "force_escape", "escapejs", "urlencode", "iriencode", "json_script", "tojson", "length", "count",
@@ -38,7 +38,7 @@ _ESCAPING_FILTERS = frozenset({
     "yesno", "pluralize", "intcomma", "intword", "naturaltime", "naturalday", "ordinal", "abs", "add_class",
     "slugify", "first_letter", "divisibleby", "get_digit", "length_is", "phone2numeric", "xmlattr", "filesize",
 })
-_RAW_FILTERS = frozenset({"safe", "safeseq"})
+_RAW_FILTERS = frozenset({"safe", "safeseq", "raw", "mark_safe"})
 _WORDS = frozenset({
     "and", "or", "not", "in", "is", "if", "else", "elif", "true", "false", "none", "True", "False", "None",
     "loop", "forloop", "block", "super", "self", "varargs", "kwargs", "caller", "range", "dict", "lipsum",

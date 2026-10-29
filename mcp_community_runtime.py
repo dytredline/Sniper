@@ -213,7 +213,7 @@ class CommunityScanLauncher:
             result = json.loads(output)
             status = int(result["status"])
         except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
-            raise CommunityRuntimeError("Community tarama işçisi geçersiz sonuç döndürdü.") from exc
+            raise CommunityRuntimeError("Community tarama işçisi geçersiz sonuç döndürmedi.") from exc
         return status, result.get("body")
 
 

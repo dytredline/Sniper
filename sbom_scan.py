@@ -99,7 +99,15 @@ def _os_release_from_distro(purl_type: str, namespace_os: str, distro: str) -> d
             os_id, version = name, distro[len(name):].lstrip("-")
             break
     if os_id == "debian" and version and not version[0].isdigit():
-        version = {"bookworm": "12", "bullseye": "11", "buster": "10", "trixie": "13"}.get(version, version)
+        version = {
+            "bookworm": "12", "bullseye": "11", "buster": "10", "stretch": "9",
+            "trixie": "13", "forky": "14",
+        }.get(version, version)
+    elif os_id == "ubuntu" and version and not version[0].isdigit():
+        version = {
+            "noble": "24.04", "jammy": "22.04", "focal": "20.04", "bionic": "18.04",
+            "oracular": "24.10", "plucky": "25.04",
+        }.get(version, version)
     return {"ID": os_id, "VERSION_ID": version}
 
 
@@ -127,18 +135,24 @@ def _language_findings(components: list[dict[str, Any]], label: str, osv_root: P
         row["id"] = "sbomdep_" + hashlib.sha256(f"{label}|{name}|{version}|{vid}".encode()).hexdigest()[:16]
         row["references"] = list(row.get("references") or []) + aliases.get((name, version, vid), [])
         fix = row.get("fixed_version") or None
+        is_mal = str(vid).startswith("MAL-")
         findings.append({
             "category": CATEGORY,
-            "severity": row.get("severity") or "medium",
-            "title": f"Açıklı bileşen (SBOM): {name} {version} ({vid})",
+            "severity": "critical" if is_mal else (row.get("severity") or "medium"),
+            "title": (f"Kötü amaçlı bileşen (SBOM): {name} {version} ({vid})"
+                      if is_mal else f"Açıklı bileşen (SBOM): {name} {version} ({vid})"),
             "file": label,
             "line": 0,
             "reference": vid,
-            "cwe": CWE,
+            "cwe": "CWE-506" if is_mal else CWE,
             "evidence": f"{row.get('target') or 'paket'}: {name} {version} — {purl_of.get((name, version), '')}"[:500],
-            "recommendation": (f"{name} bileşenini {fix} ya da üstüne yükseltin." if fix else
-                               f"{name} için düzeltilmiş sürüm bildirilmemiş; bileşeni değiştirmeyi ya da telafi edici "
-                               "kontrolü değerlendirin."),
+            "recommendation": (
+                f"{name} bileşenini derhal kaldırın ve sızan kimlik bilgilerini döndürün."
+                if is_mal else
+                (f"{name} bileşenini {fix} ya da üstüne yükseltin." if fix else
+                 f"{name} için düzeltilmiş sürüm bildirilmemiş; bileşeni değiştirmeyi ya da telafi edici "
+                 "kontrolü değerlendirin.")
+            ),
             "package": {"type": row.get("target") or "", "source": name, "installed_version": version,
                         "binaries": [name]},
             "vulnerability": {"id": vid, "aliases": aliases.get((name, version, vid), []),

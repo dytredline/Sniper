@@ -106,7 +106,9 @@ _EXEC_V = {"execv": 0, "execvp": 0, "execve": 0, "execvpe": 0, "_execv": 0, "_ex
            "_spawnv": 1, "_spawnvp": 1, "_wspawnv": 1, "_wspawnvp": 1}
 _CMD_DIRECT = {"system": 0, "_wsystem": 0, "popen": 0, "_popen": 0, "_wpopen": 0, "WinExec": 0,
                "CreateProcessA": 1, "CreateProcessW": 1, "CreateProcess": 1, "ShellExecuteA": 2, "ShellExecuteW": 2,
-               "ShellExecute": 2}
+               "ShellExecute": 2, "dlopen": 0, "LoadLibraryA": 0, "LoadLibraryW": 0, "LoadLibrary": 0,
+               "LoadLibraryExA": 0, "LoadLibraryExW": 0, "g_spawn_command_line_async": 0,
+               "g_spawn_command_line_sync": 0}
 # printf ailesi: ad → biçim argümanı dizini
 _FMT = {"printf": 0, "vprintf": 0, "wprintf": 0, "vwprintf": 0, "fprintf": 1, "vfprintf": 1, "fwprintf": 1,
         "vfwprintf": 1, "dprintf": 1, "vdprintf": 1, "sprintf": 1, "vsprintf": 1, "swprintf": 2, "vswprintf": 2,
@@ -131,7 +133,8 @@ _PATH = {"fopen": 0, "_wfopen": 0, "fopen64": 0, "freopen": 0, "open": 0, "open6
          "openat": 1, "creat": 0, "unlink": 0, "_unlink": 0, "_wunlink": 0, "remove": 0, "_wremove": 0, "rmdir": 0,
          "rename": 0, "opendir": 0, "chmod": 0, "chown": 0, "truncate": 0, "CreateFileA": 0, "CreateFileW": 0,
          "CreateFile": 0, "DeleteFileA": 0, "DeleteFileW": 0, "DeleteFile": 0, "ifstream": 0, "ofstream": 0,
-         "fstream": 0, "wifstream": 0, "wofstream": 0}
+         "fstream": 0, "wifstream": 0, "wofstream": 0, "unlinkat": 1, "mkdir": 0, "mkdirat": 1, "symlink": 1,
+         "link": 1}
 _LDAP = {"ldap_search_s": 3, "ldap_search_st": 3, "ldap_search_ext": 3, "ldap_search_ext_s": 3, "ldap_search": 3,
          "ldap_search_sA": 3, "ldap_search_sW": 3, "ldap_search_ext_sA": 3, "ldap_search_ext_sW": 3}
 _CGI_HTML_RE = re.compile(r"(?i)content-type:\s*text/html")

@@ -146,4 +146,3 @@ test('response with unexpected field is rejected without rendering it', async ()
   assert.equal(f.node('zap-authorized-result').classList.contains('hidden'), true);
   assert.equal(f.node('zap-authorized-error').textContent.includes('PRIVATE'), false);
 });
-

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 import fnmatch
+import os
 import re
 import time
 from typing import Any, Iterable
@@ -30,7 +31,7 @@ _NULL = ("<null>",)
 MAX_STEPS_PER_METHOD = 40_000
 MAX_SUMMARY_DEPTH = 14
 MAX_INCLUDE_DEPTH = 3
-MAX_PROJECT_SECONDS = 90.0
+MAX_PROJECT_SECONDS = max(30.0, min(3600.0, float(os.environ.get("SNIPER_TAINT_PROJECT_SECONDS", "90.0") or 90.0)))
 MAX_REPORTED_CALL_DEPTH = 3
 
 
@@ -378,6 +379,9 @@ _JAVA_SINKS: dict[str, list[Sink]] = {
     "load": [_s("deserialize", recv=("yaml",))], "loadAll": [_s("deserialize", recv=("yaml",))],
     "loadAs": [_s("deserialize", recv=("yaml",))],
     "deserialize": [_s("deserialize", recv=("serializationutils",))],
+    "lookup": [_s("deserialize", recv=("context", "initialcontext", "jndi", "jnditemplate"))],
+    "doLookup": [_s("deserialize", recv=("class:initialcontext", "initialcontext", "context", "jndi"))],
+    "readClassAndObject": [_s("deserialize", recv=("kryo",))],
     **{n: [_s("ssrf", recv=("resttemplate", "template", "rest"))]
        for n in ("getForObject", "getForEntity", "postForObject", "postForEntity", "exchange", "patchForObject",
                  "headForHeaders", "optionsForAllow", "postForLocation")},
@@ -452,6 +456,8 @@ _CS_SINKS: dict[str, list[Sink]] = {
     "SetString": [_s("session", None, recv=("session",))],
     # Dinamik C# derleme/çalıştırma (CodeDOM); Roslyn betikleri aşağıda mevcut adlara eklenir
     "CompileAssemblyFromSource": [_s("eval", None)],
+    "LoadFrom": [_s("eval", recv=("class:assembly", "assembly"))],
+    "LoadFile": [_s("eval", recv=("class:assembly", "assembly"))],
 }
 for _name in ("EvaluateAsync", "RunAsync", "Create", "Evaluate"):
     _CS_SINKS[_name] = _CS_SINKS.get(_name, []) + [_s("eval", (0,), recv=("class:csharpscript",))]
@@ -521,6 +527,7 @@ _PHP_FUNC_SINKS: dict[str, list[Sink]] = {
     "curl_init": [_s("ssrf")], "fsockopen": [_s("ssrf")], "get_headers": [_s("ssrf")],
     "wp_redirect": [_s("redirect")], "wp_safe_redirect": [], "redirect": [_s("redirect")],
     "unserialize": [_s("deserialize")], "maybe_unserialize": [_s("deserialize")],
+    "igbinary_unserialize": [_s("deserialize")], "yaml_parse": [_s("deserialize")],
     "ldap_search": [_s("ldap", (2,))], "ldap_list": [_s("ldap", (2,))], "ldap_read": [_s("ldap", (2,))],
 }
 _PHP_DB_RECV = ("db", "mysqli", "pdo", "conn", "link", "dbh", "database", "connection", "sql", "mysql")
@@ -4126,6 +4133,8 @@ class Interp:
             return V(tag="runtime")
         if lang == "java" and tag == "session" and name == "getAttribute":
             return CLEAN
+        if lang == "java" and name in ("getOptionValue", "getOptionValues", "getOptionProperties") and recv is not None:
+            return self._src(f"CommandLine.{name}()", line)
         if lang == "java" and name in _STORED_JAVA and recv is not None and recv.tag == "dbresult":
             return self._stored_read(recv, name, line)
         if lang == "csharp" and recv is not None:

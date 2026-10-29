@@ -30,6 +30,24 @@ ALLOWED_ECOSYSTEMS = frozenset(
     }
 )
 
+ECOSYSTEM_ALIASES: dict[str, str] = {
+    "pypi": "pip",
+    "python": "pip",
+    "crates.io": "cargo",
+    "rust": "cargo",
+    "packagist": "composer",
+    "php": "composer",
+    "golang": "go",
+    "swifturl": "swift",
+    "github-actions": "actions",
+    "github actions": "actions",
+    "bundler": "rubygems",
+    "ruby": "rubygems",
+    "gradle": "maven",
+    "dart": "pub",
+    "elixir": "hex",
+}
+
 SEVERITY_RANK: dict[str, int] = {
     "info": 0,
     "low": 1,
@@ -81,6 +99,7 @@ def _validate_ecosystem(raw_ecosystem: Any) -> str:
     if not isinstance(raw_ecosystem, str):
         raise ValueError("Ecosystem bir metin olmalı.")
     normalized = raw_ecosystem.strip().lower()
+    normalized = ECOSYSTEM_ALIASES.get(normalized, normalized)
     if normalized not in ALLOWED_ECOSYSTEMS:
         raise ValueError(f"Desteklenmeyen bağımlılık ekosistemi: {raw_ecosystem!r}")
     return normalized

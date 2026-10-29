@@ -82,7 +82,8 @@ class GoModuleReachabilityTests(unittest.TestCase):
 
     def test_package_path_qualified_symbols(self):
         items = self.verdicts()
-        self.assertTrue(items["GO-3"]["reachable"])  # alt paket içe aktarması modülün kullanımıdır
+        self.assertFalse(items["GO-3"]["reachable"])  # modül kullanılıyor; açıklı alt paket sembolü çağrılmıyor
+        self.assertEqual(items["GO-3"]["usage"]["state"], "used")
         self.assertEqual(items["GO-3"]["reachability"]["verdict"], "imported_not_called")  # encoding.Parse ≠ language.Parse
         self.assertEqual(items["GO-4"]["reachability"]["verdict"], "reachable")
         self.assertEqual(items["GO-4"]["reachability"]["matched_symbols"], ["language.Parse"])

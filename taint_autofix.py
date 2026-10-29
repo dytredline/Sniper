@@ -28,7 +28,15 @@ CWE_TO_KIND = {
     "CWE-89": "sql", "CWE-78": "command", "CWE-95": "eval", "CWE-94": "eval", "CWE-79": "html", "CWE-22": "path",
     "CWE-918": "ssrf", "CWE-502": "deserialize", "CWE-601": "redirect", "CWE-90": "ldap", "CWE-643": "xpath",
     "CWE-611": "xxe", "CWE-501": "session", "CWE-117": "log", "CWE-1333": "regex", "CWE-614": "cookie",
-    "CWE-330": "weakrand", "CWE-338": "weakrand",
+    "CWE-330": "weakrand", "CWE-338": "weakrand", "CWE-943": "nosql", "CWE-1336": "ssti", "CWE-113": "header",
+    "CWE-134": "format", "CWE-1321": "prototype", "CWE-915": "mass_assign",
+}
+
+_KIND_ALIASES: dict[str, str] = {
+    "format_string": "format",
+    "nosql_expr": "nosql",
+    "code": "eval",
+    "ssrf_partial": "ssrf",
 }
 
 STRATEGIES: dict[str, dict[str, str]] = {
@@ -64,6 +72,18 @@ STRATEGIES: dict[str, dict[str, str]] = {
                "explanation": "Çerezde secure=True, httponly=True ve samesite ayarlayın."},
     "weakrand": {"title": "Kriptografik rastgelelik", "cwe": "CWE-330",
                  "explanation": "Oturum/çerez/belirteç değerleri için secrets modülünü (veya SystemRandom) kullanın."},
+    "nosql": {"title": "Skaler tür zorlaması (NoSQL)", "cwe": "CWE-943",
+              "explanation": "Sorgu alanlarına giren kullanıcı verisini skaler türe (str/int) zorlayın; $where ve işleç sözlüklerini reddedin."},
+    "ssti": {"title": "Sabit şablon ve bağlam parametresi", "cwe": "CWE-1336",
+             "explanation": "Kullanıcı verisini şablon metnine birleştirmeyin; sabit şablon dosyası ve bağlam değişkeni kullanın."},
+    "header": {"title": "CRLF başlık temizliği", "cwe": "CWE-113",
+               "explanation": "HTTP yanıt başlığına yazılan değerlerden '\\r' ve '\\n' karakterlerini temizleyin."},
+    "format": {"title": "Sabit biçim dizgesi", "cwe": "CWE-134",
+               "explanation": "Biçim dizgesini sabit tutun ve kullanıcı verisini yalnız biçim argümanı olarak geçirin."},
+    "prototype": {"title": "Prototip kirliliği koruması", "cwe": "CWE-1321",
+                  "explanation": "__proto__, constructor ve prototype anahtarlarını reddedin veya Object.create(null) / Map kullanın."},
+    "mass_assign": {"title": "İzinli alan seçimi (Toplu atama koruması)", "cwe": "CWE-915",
+                    "explanation": "İstek nesnesini doğrudan model/kayıt güncellemesine vermeyin; yalnız izinli alanları açıkça seçin."},
 }
 
 
@@ -78,13 +98,20 @@ class AutofixError(ValueError):
 
 def finding_kind(finding: dict[str, Any]) -> str | None:
     flow = finding.get("taint_flow")
-    if isinstance(flow, dict) and flow.get("sink_kind") in STRATEGIES:
-        if flow.get("source_label") == "weakrand":
-            return "weakrand"
-        return str(flow["sink_kind"])
-    reference = str(finding.get("reference") or finding.get("cwe") or "")
-    match = re.search(r"CWE-\d+", reference)
-    return CWE_TO_KIND.get(match.group(0)) if match else None
+    if isinstance(flow, dict):
+        raw_kind = str(flow.get("sink_kind") or "")
+        normalized = _KIND_ALIASES.get(raw_kind, raw_kind)
+        if normalized in STRATEGIES:
+            if flow.get("source_label") == "weakrand":
+                return "weakrand"
+            return normalized
+    reference = str(finding.get("reference") or finding.get("cwe") or finding.get("cwe_id") or "").strip()
+    match = re.search(r"CWE-(\d+)", reference, re.IGNORECASE)
+    if match:
+        return CWE_TO_KIND.get(f"CWE-{match.group(1)}")
+    if reference.isdigit():
+        return CWE_TO_KIND.get(f"CWE-{reference}")
+    return None
 
 
 def project_root(audit: dict[str, Any], allowed_roots: tuple[Path, ...] | None = None) -> Path:
@@ -150,9 +177,37 @@ def suggest_for_source(text: str, relpath: str, line: int, kind: str, *, flow: d
     return compute_fix(text, relpath, line, kind, flow=flow)[0]
 
 
-def compute_fix(text: str, relpath: str, line: int, kind: str, *,
-                flow: dict[str, Any] | None = None) -> tuple[dict[str, Any], str | None]:
+def propose_fix(
+    *,
+    project_path: str,
+    file: str,
+    line: int,
+    sink_kind: str,
+    allowed_roots: tuple[Path, ...] | None = None,
+) -> dict[str, Any]:
+    root = project_root({"project_path": project_path}, allowed_roots)
+    text = read_project_file(root, file)
+    res, new_text = compute_fix(text, file, line, sink_kind)
+    res["fixable"] = res.get("mode") == "diff"
+    res["replacement"] = new_text or res.get("diff", "")
+    return res
+
+
+def compute_fix(text: str | dict[str, Any], relpath: str = "", line: int = 0, kind: str = "", *,
+                flow: dict[str, Any] | None = None,
+                source_lines: list[str] | None = None) -> tuple[dict[str, Any], str | None] | dict[str, Any]:
     """(öneri, düzeltilmiş tam metin); otomatik fark üretilemediyse metin ``None``. Hiçbir dosyaya yazmaz."""
+    dict_call = isinstance(text, dict)
+    if dict_call:
+        finding_obj = text
+        relpath = str(finding_obj.get("file") or relpath or "app.py")
+        line = int(finding_obj.get("line") or line or 1)
+        if not kind:
+            kind = str(finding_kind(finding_obj) or (finding_obj.get("taint_flow") or {}).get("sink_kind") or "")
+        if flow is None and isinstance(finding_obj.get("taint_flow"), dict):
+            flow = finding_obj.get("taint_flow")
+        text = "".join(source_lines) if source_lines is not None else str(finding_obj.get("source") or "")
+    kind = _KIND_ALIASES.get(kind, kind)
     strategy = STRATEGIES.get(kind)
     if strategy is None:
         raise AutofixError("Bu hedef türü için öneri yok.")
@@ -164,11 +219,11 @@ def compute_fix(text: str, relpath: str, line: int, kind: str, *,
     }
     if line < 1:
         result["notes"].append("Satır bilgisi yok; yalnız genel öneri verildi.")
-        return result, None
+        return result if dict_call else (result, None)
     lines = text.splitlines(keepends=True)
     if line > len(lines):
         result["notes"].append("Dosya bulgudan sonra değişmiş (satır yok); yalnız genel öneri verildi.")
-        return result, None
+        return result if dict_call else (result, None)
     try:
         if language == "python":
             new_lines, notes, confidence = _python_fix(text, lines, line, kind, flow)
@@ -181,9 +236,10 @@ def compute_fix(text: str, relpath: str, line: int, kind: str, *,
     result["notes"].extend(notes)
     if new_lines is not None and new_lines != lines:
         diff = "".join(difflib.unified_diff(lines, new_lines, fromfile=f"a/{relpath}", tofile=f"b/{relpath}", n=3))
-        result.update(mode="diff", diff=diff, confidence=confidence)
-        return result, "".join(new_lines)
-    return result, None
+        joined = "".join(new_lines)
+        result.update(mode="diff", diff=diff, confidence=confidence, replacement_line=joined)
+        return result if dict_call else (result, joined)
+    return result if dict_call else (result, None)
 
 
 # ---------------------------------------------------------------------------
@@ -522,19 +578,26 @@ _PY_SINK_PREDICATES: dict[str, Callable[[str, ast.Call], bool]] = {
     "command": lambda n, c: n in {"os.system", "os.popen", "subprocess.getoutput", "subprocess.getstatusoutput"}
     or (n.rsplit(".", 1)[-1] in {"run", "call", "Popen", "check_output", "check_call"} and n.startswith(("subprocess", "run", "call", "Popen", "check_"))),
     "eval": lambda n, c: n in {"eval", "exec", "builtins.eval"},
-    "deserialize": lambda n, c: n in {"pickle.loads", "pickle.load", "cPickle.loads", "dill.loads", "jsonpickle.decode",
+    "deserialize": lambda n, c: n in {"pickle.loads", "pickle.load", "cPickle.loads", "cPickle.load", "_pickle.loads", "_pickle.load",
+                                      "dill.loads", "dill.load", "jsonpickle.decode", "cloudpickle.loads", "cloudpickle.load",
+                                      "joblib.load", "ruamel.yaml.unsafe_load",
                                       "yaml.load", "yaml.unsafe_load", "yaml.full_load", "numpy.load", "np.load", "torch.load",
-                                      "marshal.loads"},
+                                      "marshal.loads", "marshal.load"},
     "regex": lambda n, c: n.split(".")[0] in {"re", "regex"},
     "path": lambda n, c: n in {"open", "io.open", "codecs.open", "os.open", "send_file", "flask.send_file", "FileResponse",
                                "os.remove", "os.unlink", "shutil.rmtree", "os.path.exists", "os.listdir"} or n.endswith(".open"),
-    "ssrf": lambda n, c: n.split(".")[0] in {"requests", "httpx", "urllib", "urlopen", "aiohttp"} or n == "urlopen",
+    "ssrf": lambda n, c: n.split(".")[0] in {"requests", "httpx", "urllib", "urlopen", "aiohttp"} or n in {"urlopen", "urlretrieve"},
     "redirect": lambda n, c: n.rsplit(".", 1)[-1] in {"redirect", "HttpResponseRedirect", "RedirectResponse"},
     "ldap": lambda n, c: n.rsplit(".", 1)[-1] in {"search", "search_s", "search_ext_s", "search_st"},
     "xpath": lambda n, c: n.rsplit(".", 1)[-1] in {"xpath", "XPath"},
     "log": lambda n, c: n.rsplit(".", 1)[-1] in {"debug", "info", "warning", "warn", "error", "exception", "critical", "log"} or n == "print",
     "html": lambda n, c: n.rsplit(".", 1)[-1] in {"Markup", "mark_safe", "render_template_string", "make_response", "HTMLResponse"},
+    "ssti": lambda n, c: n.rsplit(".", 1)[-1] in {"render_template_string", "from_string", "Template"},
     "cookie": lambda n, c: n.endswith("set_cookie"),
+    "header": lambda n, c: n.rsplit(".", 1)[-1] in {"send_header", "add_header", "set_header", "setdefault"},
+    "nosql": lambda n, c: n.rsplit(".", 1)[-1] in {"find", "find_one", "find_one_and_update", "find_one_and_delete",
+                                                   "find_one_and_replace", "update_one", "update_many", "delete_one",
+                                                   "delete_many", "count_documents", "aggregate"},
 }
 
 _WEAK_RANDOM_REPLACEMENTS = {
@@ -612,7 +675,7 @@ def _python_fix(text: str, lines: list[str], line: int, kind: str, flow: dict[st
     if kind == "deserialize":
         def to_safe(node: ast.Call) -> list[str] | None:
             dotted = _dotted(node.func)
-            if dotted.startswith("yaml."):
+            if dotted.startswith("yaml.") or dotted == "ruamel.yaml.unsafe_load":
                 node.func = ast.Attribute(ast.Name("yaml", ast.Load()), "safe_load", ast.Load())
                 node.keywords = [k for k in node.keywords if k.arg != "Loader"]
                 node.args = node.args[:1]
@@ -623,13 +686,13 @@ def _python_fix(text: str, lines: list[str], line: int, kind: str, flow: dict[st
             if dotted == "torch.load":
                 node.keywords = [k for k in node.keywords if k.arg != "weights_only"] + [ast.keyword("weights_only", ast.Constant(True))]
                 return ["weights_only=True yalnız tensör/ağırlık yükler."]
-            if dotted.split(".")[0] in {"pickle", "cPickle", "dill", "jsonpickle"}:
+            if dotted.split(".")[0] in {"pickle", "cPickle", "_pickle", "dill", "jsonpickle", "cloudpickle", "marshal"}:
                 node.func = ast.Attribute(ast.Name("json", ast.Load()), "load" if dotted.endswith(".load") else "loads", ast.Load())
                 node.args = node.args[:1]
                 node.keywords = []
                 return ["Veri biçimi JSON'a geçmeli: üreten taraf da json.dumps kullanmalı (biçim değişikliği)."]
             return None
-        out, notes = _fix_simple_call(tree, lines, parents, call, to_safe, [("json", None)] if name.split(".")[0] in {"pickle", "cPickle", "dill", "jsonpickle"} else [])
+        out, notes = _fix_simple_call(tree, lines, parents, call, to_safe, [("json", None)] if name.split(".")[0] in {"pickle", "cPickle", "_pickle", "dill", "jsonpickle", "cloudpickle", "marshal"} else [])
         return out, notes, "orta" if out else "düşük"
     if kind == "regex":
         def escape(node: ast.Call) -> list[str] | None:
@@ -766,6 +829,40 @@ def _python_fix(text: str, lines: list[str], line: int, kind: str, flow: dict[st
         ]
         out = _guard_before(tree, lines, parents, call, guard, 0, "_hedef", [("urllib.parse", None)])
         return out, ["Yalnız aynı sitedeki göreli yollara yönlendirilir."], "yüksek"
+    if kind == "header":
+        def sanitize_header(node: ast.Call) -> list[str] | None:
+            idx = 1 if len(node.args) >= 2 else (0 if node.args else -1)
+            if idx < 0:
+                return None
+            node.args[idx] = _call("re.sub", ast.Constant(r"[\r\n]+"), ast.Constant(""), _call("str", node.args[idx]))
+            return ["Başlık değerindeki CR/LF karakterleri temizlendi."]
+        out, notes = _fix_simple_call(tree, lines, parents, call, sanitize_header, [("re", None)])
+        return out, notes, "yüksek" if out else "düşük"
+    if kind == "nosql":
+        def coerce_nosql(node: ast.Call) -> list[str] | None:
+            if not node.args or not isinstance(node.args[0], ast.Dict):
+                return None
+            changed = False
+            for idx, (k, v) in enumerate(zip(node.args[0].keys, node.args[0].values)):
+                if isinstance(k, ast.Constant) and k.value == "$where":
+                    return None
+                if v is not None and not isinstance(v, (ast.Constant, ast.Dict, ast.List)):
+                    node.args[0].values[idx] = _call("str", v)
+                    changed = True
+            return ["Sorgu filtre değerleri str(...) ile skaler türe zorlandı ($ne/$gt işleç enjeksiyonu engellendi)."] if changed else None
+        out, notes = _fix_simple_call(tree, lines, parents, call, coerce_nosql, [])
+        return out, notes, "orta" if out else "düşük"
+    if kind == "ssti":
+        def escape_ssti(node: ast.Call) -> list[str] | None:
+            if not node.args:
+                return None
+            wrapped = _wrap_values(node.args[0], lambda e: _call("html.escape", e))
+            if wrapped is None:
+                return None
+            node.args[0] = wrapped  # type: ignore[assignment]
+            return ["Şablona birleştirilen değişkenler kaçışlandı; mümkünse sabit şablon dosyası ve bağlam parametresi kullanın."]
+        out, notes = _fix_simple_call(tree, lines, parents, call, escape_ssti, [("html", None)])
+        return out, notes, "orta" if out else "düşük"
     return None, [], "düşük"
 
 
@@ -988,6 +1085,43 @@ def _js_fix(text: str, lines: list[str], line: int, kind: str):
                  f"{indent}if (!IZINLI_ANA_MAKINELER.has(hedefUrl.hostname)) {{ throw new Error('İzin verilmeyen hedef ana makine'); }}\n"]
         out[line - 1:line] = [*guard, body[:start] + "hedefUrl.toString()" + rest + body[end:] + newline]
         return out, ["IZINLI_ANA_MAKINELER = new Set(['api.ornek.com']) tanımını ekleyin."], "orta"
+    if kind == "header":
+        found = _find_call_args(body, ("setHeader", "header", "set", "append"))
+        if found is not None:
+            start, end, args = found
+            first, rest = _first_arg(args)
+            if rest.startswith(","):
+                second, tail = _first_arg(rest[1:])
+                if second:
+                    out[line - 1] = body[:start] + f"{first}, String({second}).replace(/[\\r\\n]+/g, '')" + tail + body[end:] + newline
+                    return out, ["Başlık değerindeki CR/LF karakterleri temizlendi."], "yüksek"
+        return None, ["Başlık çağrısı otomatik dönüştürülemedi; değerden \\r ve \\n karakterlerini temizleyin."], "düşük"
+    if kind == "nosql":
+        found = _find_call_args(body, ("findOne", "find", "findOneAndUpdate", "findOneAndDelete", "updateOne", "updateMany", "deleteOne", "deleteMany", "countDocuments"))
+        if found is not None:
+            start, end, args = found
+            first, rest = _first_arg(args)
+            if first.startswith("{") and first.endswith("}") and "String(" not in first:
+                coerced = re.sub(r":\s*([A-Za-z_$][\w$.]*)", r": String(\1)", first)
+                if coerced != first:
+                    out[line - 1] = body[:start] + coerced + rest + body[end:] + newline
+                    return out, ["NoSQL sorgu alanları String(...) ile skaler türe zorlandı."], "orta"
+        return None, ["NoSQL sorgu nesnesindeki değerleri String(...) ile skaler türe zorlayın."], "düşük"
+    if kind == "prototype":
+        bracket = re.search(r"([A-Za-z_$][\w$.]*)\[\s*([A-Za-z_$][\w$]*)\s*\]\s*=", body)
+        if bracket:
+            key_var = bracket.group(2)
+            guard = f"{indent}if (['__proto__', 'constructor', 'prototype'].includes(String({key_var}))) {{ throw new Error('Geçersiz nesne anahtarı'); }}\n"
+            out[line - 1:line] = [guard, raw]
+            return out, ["__proto__, constructor ve prototype anahtarları atamadan önce engellendi."], "yüksek"
+        return None, ["__proto__, constructor ve prototype anahtarlarını reddedin veya Map kullanın."], "düşük"
+    if kind == "mass_assign":
+        if "req.body" in body:
+            replaced = re.sub(r"\breq\.body\b", "{ /* TODO: izinli alanları seçin */ }", body, count=1)
+            if replaced != body:
+                out[line - 1] = replaced + newline
+                return out, ["req.body doğrudan aktarılmadı; yalnız izinli alanları açıkça seçin."], "orta"
+        return None, ["İstek nesnesini doğrudan aktarmayın; yalnız izinli alanları açıkça seçin."], "düşük"
     return None, ["Bu tür için JS'te otomatik dönüşüm yok; genel öneriyi uygulayın."], "düşük"
 
 
@@ -1012,6 +1146,12 @@ TEXT_SNIPPETS: dict[tuple[str, str], str] = {
     ("python", "regex"): "re.search(re.escape(aranan), metin)",
     ("python", "cookie"): "yanit.set_cookie('oturum', deger, secure=True, httponly=True, samesite='Lax')",
     ("python", "weakrand"): "belirtec = secrets.token_urlsafe(32)",
+    ("python", "nosql"): " koleksiyon.find_one({'kullanici': str(kullanici_adi)})",
+    ("python", "ssti"): "return render_template('sayfa.html', kullanici=ad)",
+    ("python", "header"): "yanit.headers['X-Hedef'] = re.sub(r'[\\r\\n]+', '', str(deger))",
+    ("python", "format"): "mesaj = \"Kullanıcı: %s\" % (kullanici_adi,)",
+    ("python", "prototype"): "if anahtar in {'__proto__', 'constructor', 'prototype'}:\n    raise ValueError('geçersiz anahtar')",
+    ("python", "mass_assign"): "izinli = {k: veri[k] for k in ('ad', 'eposta') if k in veri}\nKullanici.objects.create(**izinli)",
     ("javascript", "sql"): "await pool.query('SELECT * FROM kullanici WHERE ad = $1', [ad]);",
     ("javascript", "command"): "execFile('convert', [dosya, 'cikti.png'], callback);",
     ("javascript", "eval"): "const deger = JSON.parse(metin);",
@@ -1020,4 +1160,10 @@ TEXT_SNIPPETS: dict[tuple[str, str], str] = {
     ("javascript", "redirect"): "if (!/^\\/(?!\\/)/.test(hedef)) return res.status(400).end();\nres.redirect(hedef);",
     ("javascript", "ssrf"): "const u = new URL(adres);\nif (!IZINLI.has(u.hostname)) throw new Error('izin verilmeyen hedef');",
     ("javascript", "deserialize"): "const veri = JSON.parse(govde);",
+    ("javascript", "nosql"): "await col.findOne({ kullanici: String(req.body.kullanici) });",
+    ("javascript", "ssti"): "res.render('sayfa', { kullanici: req.query.ad });",
+    ("javascript", "header"): "res.setHeader('X-Hedef', String(deger).replace(/[\\r\\n]+/g, ''));",
+    ("javascript", "format"): "console.log('%s', kullaniciVerisi);",
+    ("javascript", "prototype"): "if (['__proto__', 'constructor', 'prototype'].includes(key)) throw new Error('geçersiz anahtar');",
+    ("javascript", "mass_assign"): "const { ad, eposta } = req.body;\nawait Kullanici.create({ ad, eposta });",
 }

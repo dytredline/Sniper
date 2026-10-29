@@ -1,7 +1,7 @@
 """Versiyon ve sürüm bilgisi yönetimi."""
 
-__version__ = "1.0.0"
-__build_date__ = "2026-09-20"
+__version__ = "1.1.0"
+__build_date__ = "2026-10-29"
 
 
 def get_version():

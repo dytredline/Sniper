@@ -102,7 +102,7 @@ class ReadTextBoundedTests(unittest.TestCase):
     def test_invalid_utf8_replaced_or_ignored(self) -> None:
         path = self.root / "bad.txt"
         path.write_bytes(b"ok\xffok")
-        self.assertEqual(read_text_bounded(path, 100), "ok�ok")
+        self.assertEqual(read_text_bounded(path, 100), "ok\ufffdok")
         self.assertEqual(read_text_bounded(path, 100, errors="ignore"), "okok")
 
     def test_symlink_directory_missing_rejected(self) -> None:

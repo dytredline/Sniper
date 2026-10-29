@@ -1170,6 +1170,56 @@ def _check_authorization_policy(
             )
 
 
+def _check_request_authentication(
+    spec: Any, *, name: str, namespace: str, filename: str, line: int, add: _AddFn
+) -> None:
+    spec_d = _as_dict(spec)
+    for rule in _as_list(spec_d.get("jwtRules")):
+        rule_d = _as_dict(rule)
+        if not rule_d:
+            continue
+        rule_line = _ln(rule, _kln(spec_d, "jwtRules", line))
+        issuer = str(rule_d.get("issuer") or "").strip()
+        jwks_uri = str(rule_d.get("jwksUri") or "").strip()
+        if jwks_uri.lower().startswith("http://") or issuer.lower().startswith("http://"):
+            target = jwks_uri if jwks_uri.lower().startswith("http://") else issuer
+            add(
+                _make_zt_finding(
+                    severity="high",
+                    title="Istio RequestAuthentication JWKS/Issuer adresi şifresiz HTTP kullanıyor",
+                    description=(
+                        f"'{namespace}/{name}' RequestAuthentication JWT doğrulaması için şifresiz HTTP adresi "
+                        f"({target[:120]}) kullanıyor; ağdaki saldırgan JWKS açık anahtarlarını taklit ederek "
+                        "sahte JWT imzalayabilir."
+                    ),
+                    evidence=f"RequestAuthentication {namespace}/{name} jwtRules: {target[:160]}",
+                    recommendation="jwksUri ve issuer adreslerinde yalnızca HTTPS kullanın veya jwks alanıyla anahtarları yerel olarak sabitleyin.",
+                    cwe="CWE-319",
+                    control_id="SNIPER-ZT-03",
+                    filename=filename,
+                    line=rule_line,
+                )
+            )
+        if not _as_list(rule_d.get("audiences")):
+            add(
+                _make_zt_finding(
+                    severity="medium",
+                    title="Istio RequestAuthentication JWT kuralında hedef kitle (audiences) kısıtı yok",
+                    description=(
+                        f"'{namespace}/{name}' RequestAuthentication jwtRules içinde 'audiences' alanı tanımlanmamış; "
+                        "aynı kimlik sağlayıcı (issuer) tarafından başka bir uygulama için üretilmiş JWT belirteçleri "
+                        "bu servis tarafından da kabul edilir (cross-service token replay)."
+                    ),
+                    evidence=f"RequestAuthentication {namespace}/{name} issuer={issuer or '?'} (audiences yok)",
+                    recommendation="jwtRules altına yalnızca bu servisin beklediği hedef kitleleri içeren açık `audiences` listesi ekleyin.",
+                    cwe="CWE-287",
+                    control_id="SNIPER-ZT-04",
+                    filename=filename,
+                    line=rule_line,
+                )
+            )
+
+
 def _check_gateway(spec: Any, *, name: str, namespace: str, filename: str, line: int, add: _AddFn) -> None:
     spec_d = _as_dict(spec)
     for server in _as_list(spec_d.get("servers")):
@@ -1537,6 +1587,8 @@ def _analyze_document(
         _check_destination_rule(spec, name=name, namespace=namespace, filename=filename, line=kind_line, add=add)
     elif kind == "AuthorizationPolicy":
         _check_authorization_policy(spec, name=name, namespace=namespace, filename=filename, line=kind_line, add=add)
+    elif kind == "RequestAuthentication":
+        _check_request_authentication(spec, name=name, namespace=namespace, filename=filename, line=kind_line, add=add)
     elif kind == "Gateway" and "istio" in str(doc.get("apiVersion") or "").lower():
         _check_gateway(spec, name=name, namespace=namespace, filename=filename, line=kind_line, add=add)
     elif kind == "Gateway" and _is_gateway_api(doc):

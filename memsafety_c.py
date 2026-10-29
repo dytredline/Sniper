@@ -76,15 +76,18 @@ _CONSTS = {"INT_MAX": INT32_MAX, "INT_MIN": -2**31, "UINT_MAX": 2**32 - 1, "SHRT
 # ---------------------------------------------------------------------------
 # Kütüphane modelleri
 # ---------------------------------------------------------------------------
-_ALLOC = {"malloc", "xmalloc", "g_malloc", "emalloc", "kmalloc", "vmalloc", "av_malloc", "OPENSSL_malloc",
-          "CRYPTO_malloc", "zmalloc", "sqlite3_malloc", "sqlite3_malloc64", "pvPortMalloc", "_alloca", "alloca",
-          "ALLOCA", "__builtin_alloca", "HeapAlloc", "LocalAlloc", "GlobalAlloc", "kzalloc", "malloc_usable"}
+_ALLOC = {"malloc", "xmalloc", "g_malloc", "g_malloc0", "g_try_malloc", "g_try_malloc0", "emalloc", "kmalloc",
+          "vmalloc", "av_malloc", "av_mallocz", "OPENSSL_malloc", "CRYPTO_malloc", "zmalloc", "sqlite3_malloc",
+          "sqlite3_malloc64", "pvPortMalloc", "_alloca", "alloca", "ALLOCA", "__builtin_alloca", "HeapAlloc",
+          "LocalAlloc", "GlobalAlloc", "kzalloc", "malloc_usable", "xmlMalloc", "CoTaskMemAlloc", "VirtualAlloc"}
 _STACK_ALLOC = frozenset({"alloca", "_alloca", "ALLOCA", "__builtin_alloca"})
 _CALLOC = {"calloc", "xcalloc", "g_malloc0_n", "kcalloc", "zcalloc", "sqlite3_malloc0"}
-_REALLOC = {"realloc", "xrealloc", "g_realloc", "erealloc", "krealloc", "zrealloc", "sqlite3_realloc",
-            "sqlite3_realloc64", "OPENSSL_realloc", "reallocf"}
+_REALLOC = {"realloc", "xrealloc", "g_realloc", "g_try_realloc", "erealloc", "krealloc", "zrealloc", "sqlite3_realloc",
+            "sqlite3_realloc64", "OPENSSL_realloc", "CRYPTO_realloc", "av_realloc", "xmlRealloc", "CoTaskMemRealloc",
+            "HeapReAlloc", "reallocf"}
 _FREE = {"free", "g_free", "efree", "kfree", "vfree", "av_free", "OPENSSL_free", "CRYPTO_free", "zfree",
-         "sqlite3_free", "vPortFree", "xfree", "cfree", "HeapFree", "LocalFree", "GlobalFree"}
+         "sqlite3_free", "vPortFree", "xfree", "cfree", "HeapFree", "LocalFree", "GlobalFree", "xmlFree", "curl_free",
+         "CoTaskMemFree", "VirtualFree", "free_sized", "free_aligned_sized"}
 _TERMINATE = frozenset({"exit", "_exit", "_Exit", "abort", "quick_exit", "longjmp", "siglongjmp", "ExitProcess",
                         "__builtin_unreachable", "__assert_fail", "err", "errx", "verr", "verrx", "panic",
                         "pthread_exit", "__builtin_trap", "std::exit", "std::abort", "die", "fatal", "BUG"})
@@ -3371,6 +3374,8 @@ class FuncAnalyzer:
             certain = s[0] == 2 and _nobj(v.ptrs) == 1 and certain_ok and how != "return"
             if not certain and s[1] >= line:
                 continue  # önceki döngü turundan kalan olası durum (çoğunlukla ölü eski takma ad)
+            if not certain and self.loop_depth > 0 and s[0] == 1:
+                continue  # döngü içi koşullu dal birleşiminden kalan olası durum (yeniden atanmış yerel işaretçi)
             what = {"return": "döndürülüyor", "deref": "işaretçiden erişiliyor", "index": "indeksleniyor",
                     "call": "çağrıya argüman olarak veriliyor", "copy": "kopyalamada kullanılıyor"}.get(how, how)
             self.report("uaf", line, certain, info,
@@ -3978,7 +3983,17 @@ class FuncAnalyzer:
 
     def _mark_safe(self, dst: AV, need_hi: int | None, line: int) -> None:
         """Tüm hedeflerde yazılabilecek en çok bayt ≤ kullanılabilir alan: satır kanıtlanmış güvenli (desen kuralı için)."""
-        if need_hi is None or not dst.ptrs:
+        if not dst.ptrs:
+            return
+        if need_hi is None:
+            for o, off in dst.ptrs:
+                info = self.objinfo.get(o)
+                if info is None or off is None or off < 0 or info.kind != "heap":
+                    return
+                _, _, a_lin = self.avail(o, off)
+                if a_lin is None or a_lin[2] < 1:
+                    return
+            self.sink.safe.add(line)
             return
         for o, off in dst.ptrs:
             info = self.objinfo.get(o)
@@ -4755,3 +4770,568 @@ def analyze_text_ex(text: str, path: str, *, deadline: float | None = None,
 def is_c_family(path: str) -> bool:
     low = path.lower()
     return any(low.endswith(s) for s in SUFFIXES)
+
+
+_COMMENT_OR_LITERAL_RE = re.compile(
+    r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|//[^\n]*|/\*[\s\S]*?\*/'
+)
+_PAREN_COND_INNER = r"(?:[^()]|\([^()]*\))*"
+_EARLY_EXIT_KW = r"\b(?:return|goto|exit|_exit|_Exit|abort|quick_exit|longjmp|siglongjmp)\b"
+_UNSAFE_REALLOC_SELF_RE = re.compile(
+    r"\b([A-Za-z_]\w*(?:(?:\s*->\s*|\s*\.\s*)[A-Za-z_]\w*)*)\s*"
+    r"(?<![!=<>])=(?!=)\s*(?:\([^()]+\)\s*)*\brealloc\s*\(\s*\1\s*,"
+)
+
+
+def _strip_c_comments_and_strings(text: str) -> str:
+    """Yorum ve dizgi değişmezlerini satır numaralarını koruyarak boşlukla maskeler."""
+    return _COMMENT_OR_LITERAL_RE.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), text)
+
+
+def has_c_early_return_bounds_guard(fn_text: str, buf_var: str, len_var: str = "") -> bool:
+    """``fn_text`` içinde ``buf_var`` tamponuna kopyalama öncesinde ``sizeof(buf_var)`` veya ``len_var``
+    kullanan erken çıkış (``return``/``goto``/``exit``/``abort``) ya da ``assert(...)`` sınır denetimi
+    olup olmadığını denetler."""
+    if not fn_text:
+        return False
+    buf_var = (buf_var or "").strip()
+    len_var = (len_var or "").strip()
+    if not buf_var and not len_var:
+        return False
+    cleaned = _strip_c_comments_and_strings(fn_text)
+    pre_text = cleaned
+    if buf_var:
+        b_esc = re.escape(buf_var)
+        sink_re = re.compile(
+            rf"\b(?:memcpy|memmove|strcpy|strncpy|strcat|strncat|sprintf|snprintf|vsprintf|vsnprintf|bcopy)"
+            rf"\s*\(\s*{b_esc}\b"
+        )
+        m_sink = sink_re.search(cleaned)
+        if m_sink is not None:
+            pre_text = cleaned[:m_sink.start()]
+
+    target_parts: list[str] = []
+    sizeof_pat = ""
+    if buf_var:
+        b_esc = re.escape(buf_var)
+        sizeof_pat = rf"\bsizeof\s*(?:\(\s*{b_esc}\s*\)|\b{b_esc}\b)"
+        target_parts.append(sizeof_pat)
+        if not len_var:
+            target_parts.append(rf"\b{b_esc}\b")
+    if len_var:
+        l_esc = re.escape(len_var)
+        target_parts.append(rf"\b{l_esc}\b")
+    target_re = re.compile("(?:" + "|".join(target_parts) + ")")
+
+    if_guard_re = re.compile(
+        rf"\bif\s*\((?P<cond>{_PAREN_COND_INNER})\)\s*"
+        rf"(?:\{{[^}}]*?{_EARLY_EXIT_KW}|{_EARLY_EXIT_KW})",
+        re.DOTALL,
+    )
+    for m in if_guard_re.finditer(pre_text):
+        cond = m.group("cond")
+        cond_no_arrow = cond.replace("->", ".")
+        if re.search(r"(?:<=|>=|<|>)", cond_no_arrow) and target_re.search(cond):
+            return True
+
+    assert_re = re.compile(rf"\b(?:_?Static_)?assert\s*\((?P<acond>{_PAREN_COND_INNER})\)", re.DOTALL)
+    for m in assert_re.finditer(pre_text):
+        acond = m.group("acond")
+        if sizeof_pat and re.search(sizeof_pat, acond):
+            return True
+        acond_no_arrow = acond.replace("->", ".")
+        if re.search(r"(?:<=|>=|<|>)", acond_no_arrow) and target_re.search(acond):
+            return True
+
+    return False
+
+
+def detect_unsafe_realloc_overwrite(text: str, path: str = "buffer.c", *, filename: str = "") -> list[MemFinding]:
+    """``ptr = realloc(ptr, size)`` biçimindeki doğrudan kendi üzerine atamaları (CWE-401 bellek sızıntısı)
+    yorumları yok sayarak tespit eder."""
+    if filename:
+        path = filename
+    if not text or "realloc" not in text:
+        return []
+    cleaned = _strip_c_comments_and_strings(text)
+    func_ranges: list[tuple[int, int, str]] = []
+    try:
+        unit = cf.build_unit(path, text)
+        toks = unit.toks
+        for fn in unit.funcs:
+            lo, hi = fn.body
+            if 0 <= lo < len(toks) and 0 < hi <= len(toks):
+                func_ranges.append((toks[lo].line, toks[hi - 1].line, fn.name))
+    except Exception:
+        pass
+
+    findings: list[MemFinding] = []
+    seen_lines: set[tuple[int, str]] = set()
+    for m in _UNSAFE_REALLOC_SELF_RE.finditer(cleaned):
+        ptr_name = re.sub(r"\s+", "", m.group(1))
+        line_no = cleaned.count("\n", 0, m.start()) + 1
+        key = (line_no, ptr_name)
+        if key in seen_lines:
+            continue
+        seen_lines.add(key)
+        fn_name = ""
+        for lo_line, hi_line, cand_name in func_ranges:
+            if lo_line <= line_no <= hi_line:
+                fn_name = cand_name
+                break
+        findings.append(
+            MemFinding(
+                kind="realloc_leak",
+                cwe="CWE-401",
+                line=line_no,
+                certain=False,
+                severity="medium",
+                title="Olası bellek hatası: realloc dönüş değeri doğrudan aynı işaretçiye atanıyor (bellek sızıntısı)",
+                evidence=(
+                    f"`{ptr_name} = realloc({ptr_name}, ...)` doğrudan aynı işaretçiye atanıyor; "
+                    f"ayırma başarısız olup NULL döndüğünde özgün bellek bloğunun adresi kaybolur ve sızar (CWE-401)"
+                ),
+                function=fn_name,
+                buffer=ptr_name,
+                source="realloc",
+                source_line=line_no,
+            )
+        )
+    return findings
+
+_COMMENT_ONLY_RE = re.compile(r"//[^\n]*|/\*[\s\S]*?\*/")
+
+
+def _strip_c_comments_only(text: str) -> str:
+    """Yalnızca C/C++ yorumlarını satır numaralarını koruyarak boşlukla maskeler (dizgi değişmezlerini korur)."""
+    return _COMMENT_ONLY_RE.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), text)
+
+
+def is_struct_field_memset_zeroed(fn_text: str, struct_field: str) -> bool:
+    """``fn_text`` içinde ``memset(&s.buf, 0, sizeof(s.buf))`` veya ``memset(s->buf, 0, ...)`` (ya da üst yapının
+    tamamını sıfırlayan ``memset(&s, 0, sizeof(s))``) çağrısı olup olmadığını denetler (CWE-457 yanlış pozitif önleme)."""
+    if not fn_text or not struct_field:
+        return False
+    norm_field = re.sub(r"\s+", "", struct_field).lstrip("&*")
+    if not norm_field:
+        return False
+    cleaned = _strip_c_comments_and_strings(fn_text)
+
+    parts = re.split(r"->|\.", norm_field, maxsplit=1)
+    base_var = parts[0]
+    field_name = parts[1] if len(parts) > 1 else ""
+
+    if field_name:
+        b_esc = re.escape(base_var)
+        f_esc = re.escape(field_name)
+        field_pat = rf"{b_esc}\s*(?:\.|->)\s*{f_esc}"
+    else:
+        field_pat = re.escape(base_var)
+
+    memset_field_re = re.compile(
+        rf"\b(?:memset|wmemset|__builtin_memset)\s*\(\s*&?\s*{field_pat}\s*,\s*0\s*,",
+    )
+    if memset_field_re.search(cleaned):
+        return True
+
+    bzero_field_re = re.compile(
+        rf"\b(?:bzero|explicit_bzero|ZeroMemory|SecureZeroMemory)\s*\(\s*&?\s*{field_pat}\b",
+    )
+    if bzero_field_re.search(cleaned):
+        return True
+
+    if field_name and base_var:
+        b_esc = re.escape(base_var)
+        memset_struct_re = re.compile(
+            rf"\b(?:memset|__builtin_memset)\s*\(\s*&?\s*{b_esc}\s*,\s*0\s*,\s*sizeof\s*\(\s*\*?\s*{b_esc}\s*\)\s*\)",
+        )
+        if memset_struct_re.search(cleaned):
+            return True
+        bzero_struct_re = re.compile(
+            rf"\b(?:bzero|explicit_bzero|ZeroMemory|SecureZeroMemory)\s*\(\s*&?\s*{b_esc}\s*,\s*sizeof\s*\(\s*\*?\s*{b_esc}\s*\)\s*\)",
+        )
+        if bzero_struct_re.search(cleaned):
+            return True
+
+    return False
+
+
+_EXT_MUL_ALLOC_RE = re.compile(
+    r"(?:(?P<lhs_buf>[A-Za-z_]\w*)\s*=\s*(?:\([^()]+\)\s*)*)?"
+    r"\b(?P<alloc_fn>malloc|realloc|xmalloc|g_malloc)\s*\("
+    r"(?:[^,()]+,\s*)?"
+    r"\s*(?P<op1>sizeof\s*\([^()]+\)|[A-Za-z_]\w*)\s*\*\s*(?P<op2>sizeof\s*\([^()]+\)|[A-Za-z_]\w*)\s*\)"
+)
+_EXT_FREE_OFFSET_EXPR_RE = re.compile(
+    r"\bfree\s*\(\s*(?P<ptr>[A-Za-z_]\w*)\s*[+-]\s*(?P<off>\d+|[A-Za-z_]\w*)\s*\)"
+)
+_EXT_WCSLEN_ALLOC_RE = re.compile(
+    r"(?:(?P<lhs_buf>[A-Za-z_]\w*)\s*=\s*(?:\([^()]+\)\s*)*)?"
+    r"\b(?P<alloc_fn>malloc|realloc)\s*\(\s*\(?\s*wcslen\s*\(\s*(?P<src>[A-Za-z_]\w*)\s*\)\s*(?:\+\s*\d+)?\s*\)?(?P<tail>[^;)]*)\)"
+)
+_EXT_WCSCPY_LIT_RE = re.compile(
+    r"\bwcscpy\s*\(\s*(?P<dst>[A-Za-z_]\w*)\s*,\s*L\"(?P<lit>(?:\\.|[^\"\\])*)\"\s*\)"
+)
+_EXT_TRUNC_DECL64_RE = re.compile(
+    r"\b(?P<type64>u?int64_t|s?size_t|off(?:64)?_t|u?intmax_t|(?:unsigned\s+)?long\s+long)\s+(?P<var64>[A-Za-z_]\w*)\b(?!\s*\()"
+)
+_EXT_TRUNC_DECL32_RE = re.compile(
+    r"(?<!\blong\s)(?<!\bshort\s)\b(?P<type32>u?int32_t|unsigned\s+int|signed\s+int|int|u32|s32|DWORD|UINT)\s+(?P<var32>[A-Za-z_]\w*)\b(?!\s*\()"
+)
+
+
+def detect_extended_c_memory_hazards(text: str, path: str = "buffer.c", *, filename: str = "") -> list[MemFinding]:
+    """Faz 3 genişletilmiş C/C++ bellek güvenliği kuralları:
+    - CWE-190: Bellek ayırma (`malloc`/`realloc`) öncesinde denetimsiz tamsayı çarpım taşması
+    - CWE-761: Yığın tamponunun başlangıç adresinde olmayan işaretçi üzerinde `free()` çağrısı
+    - CWE-122: Geniş karakter (`wchar_t`) ayırmasında `sizeof(wchar_t)` çarpanının unutulması
+    """
+    if filename:
+        path = filename
+    if not text:
+        return []
+
+    cleaned = _strip_c_comments_and_strings(text)
+    no_comments = _strip_c_comments_only(text)
+
+    func_ranges: list[tuple[int, int, str, int, int]] = []
+    line_starts = [0]
+    for m_nl in re.finditer("\n", text):
+        line_starts.append(m_nl.end())
+
+    def _offset_of_line(line_1based: int) -> int:
+        idx = max(0, min(line_1based - 1, len(line_starts) - 1))
+        return line_starts[idx]
+
+    try:
+        unit = cf.build_unit(path, text)
+        toks = unit.toks
+        for fn in unit.funcs:
+            lo, hi = fn.body
+            if 0 <= lo < len(toks) and 0 < hi <= len(toks):
+                lo_line = toks[lo].line
+                hi_line = toks[hi - 1].line
+                func_ranges.append(
+                    (
+                        lo_line,
+                        hi_line,
+                        fn.name,
+                        _offset_of_line(lo_line),
+                        _offset_of_line(hi_line + 1) if hi_line < len(line_starts) else len(text),
+                    )
+                )
+    except Exception:
+        pass
+
+    def _enclosing_func(line_no: int, char_pos: int) -> tuple[str, int]:
+        for lo_line, hi_line, cand_name, start_off, _end_off in func_ranges:
+            if lo_line <= line_no <= hi_line:
+                return cand_name, start_off
+        return "", 0
+
+    findings: list[MemFinding] = []
+    seen_keys: set[tuple[str, int]] = set()
+
+    def _emit(f: MemFinding) -> None:
+        key = (f.kind, f.line)
+        if key not in seen_keys:
+            seen_keys.add(key)
+            findings.append(f)
+
+    # (a) CWE-190: Integer Multiplication Overflow feeding malloc/realloc
+    for m in _EXT_MUL_ALLOC_RE.finditer(cleaned):
+        op1 = m.group("op1").strip()
+        op2 = m.group("op2").strip()
+        alloc_fn = m.group("alloc_fn")
+        lhs_buf = (m.group("lhs_buf") or "").strip()
+        cand_vars = [
+            op for op in (op1, op2)
+            if not op.startswith("sizeof") and not op.isdigit() and not op.isupper() and op not in _SIZES
+        ]
+        if not cand_vars:
+            continue
+        var_name = cand_vars[0]
+        line_no = cleaned.count("\n", 0, m.start()) + 1
+        fn_name, fn_start_off = _enclosing_func(line_no, m.start())
+        pre_fn = cleaned[fn_start_off:m.start()]
+
+        v_esc = re.escape(var_name)
+        if (
+            re.search(r"\b(?:SIZE_MAX|UINT_MAX|INT_MAX|ULONG_MAX| INT32_MAX|UINT32_MAX)\s*/", pre_fn)
+            or "__builtin_mul_overflow" in pre_fn
+            or has_c_early_return_bounds_guard(pre_fn, "", var_name)
+        ):
+            continue
+        # Sabit yerel atama (ör. size_t count = 16;) varsa ve dış girdi yoksa atla
+        const_assign = re.search(rf"\b{v_esc}\s*=\s*(\d+)\s*;", pre_fn)
+        if const_assign and int(const_assign.group(1)) <= 65536 and not re.search(rf"\b(?:scanf|fscanf|sscanf|atoi|atol|strtol|strtoul)\b[^;]*\b{v_esc}\b", pre_fn):
+            continue
+
+        _emit(
+            MemFinding(
+                kind="integer_overflow_alloc",
+                cwe="CWE-190",
+                line=line_no,
+                certain=True,
+                severity="high",
+                title="Bellek ayırma öncesinde tamsayı çarpım taşması (Integer Overflow -> Heap Buffer Overflow)",
+                evidence=(
+                    f"`{var_name}` çarpımı taşma denetimi (`SIZE_MAX / ...` veya `__builtin_mul_overflow`) "
+                    f"yapılmadan `{alloc_fn}()` boyut hesabında kullanılıyor (CWE-190)"
+                ),
+                function=fn_name,
+                buffer=lhs_buf or f"{alloc_fn}()",
+                source=var_name,
+                source_line=line_no,
+            )
+        )
+
+    # (b) CWE-761: Free of Pointer Not at Start of Buffer
+    for m in _EXT_FREE_OFFSET_EXPR_RE.finditer(cleaned):
+        ptr_name = m.group("ptr")
+        off_expr = m.group("off")
+        if off_expr == "0":
+            continue
+        line_no = cleaned.count("\n", 0, m.start()) + 1
+        fn_name, _ = _enclosing_func(line_no, m.start())
+        _emit(
+            MemFinding(
+                kind="non_base_free",
+                cwe="CWE-761",
+                line=line_no,
+                certain=True,
+                severity="high",
+                title="Yığın (Heap) tamponunun başlangıç adresinde olmayan işaretçi üzerinde free() çağrısı (CWE-761)",
+                evidence=f"`free({ptr_name} + {off_expr})` çağrısı yığın tamponunun başlangıç adresini göstermiyor (CWE-761)",
+                function=fn_name,
+                buffer=ptr_name,
+                source="free",
+                source_line=line_no,
+            )
+        )
+
+    # İşaretçi aritmetiği (ptr++ / ++ptr / ptr += ...) sonrasında sıfırlanmadan free(ptr)
+    alloc_ptr_re = re.compile(
+        r"\b(?P<ptr>[A-Za-z_]\w*)\s*=\s*(?:\([^()]+\)\s*)*\b(?:malloc|calloc|realloc|strdup|wcsdup)\s*\("
+    )
+    for m_alloc in alloc_ptr_re.finditer(cleaned):
+        ptr_name = m_alloc.group("ptr")
+        alloc_line = cleaned.count("\n", 0, m_alloc.start()) + 1
+        fn_name, fn_start_off = _enclosing_func(alloc_line, m_alloc.start())
+        fn_end_off = len(cleaned)
+        for lo_l, hi_l, _cn, _so, eo in func_ranges:
+            if lo_l <= alloc_line <= hi_l:
+                fn_end_off = eo
+                break
+        rest_fn = cleaned[m_alloc.end():fn_end_off]
+        p_esc = re.escape(ptr_name)
+        m_free = re.search(rf"\bfree\s*\(\s*{p_esc}\s*\)", rest_fn)
+        if not m_free:
+            continue
+        between = rest_fn[:m_free.start()]
+        if re.search(rf"(?:\b{p_esc}\s*\+\+|\+\+\s*{p_esc}\b|\b{p_esc}\s*\+=\s*[^;]+)", between):
+            if not re.search(rf"\b{p_esc}\s*(?<![+=!-])=\s*[^=]", between):
+                free_abs_pos = m_alloc.end() + m_free.start()
+                free_line = cleaned.count("\n", 0, free_abs_pos) + 1
+                _emit(
+                    MemFinding(
+                        kind="non_base_free",
+                        cwe="CWE-761",
+                        line=free_line,
+                        certain=True,
+                        severity="high",
+                        title="Yığın (Heap) tamponunun başlangıç adresinde olmayan işaretçi üzerinde free() çağrısı (CWE-761)",
+                        evidence=f"`{ptr_name}` işaretçisi ilerletildikten (`++` / `+=`) sonra taban adrese döndürülmeden `free({ptr_name})` çağrılıyor (CWE-761)",
+                        function=fn_name,
+                        buffer=ptr_name,
+                        buffer_line=alloc_line,
+                        source="free",
+                        source_line=free_line,
+                    )
+                )
+
+    # (c) Wide-Char wchar_t Buffer Under-Allocation (CWE-122)
+    for m in _EXT_WCSLEN_ALLOC_RE.finditer(cleaned):
+        tail = m.group("tail") or ""
+        if "sizeof" in tail or "*" in tail:
+            continue
+        lhs_buf = (m.group("lhs_buf") or "").strip()
+        src_name = m.group("src")
+        line_no = cleaned.count("\n", 0, m.start()) + 1
+        fn_name, _ = _enclosing_func(line_no, m.start())
+        _emit(
+            MemFinding(
+                kind="wchar_underalloc_overflow",
+                cwe="CWE-122",
+                line=line_no,
+                certain=True,
+                severity="critical",
+                title="Geniş karakter (wchar_t) ayırmasında sizeof(wchar_t) çarpanı unutularak yığın taşması (Heap Overflow)",
+                evidence=(
+                    f"`wcslen({src_name})` sonucu `sizeof(wchar_t)` ile çarpılmadan bayt cinsinden ayırma yapılıyor; "
+                    f"geniş karakter kopyalamasında yığın taşması oluşur (CWE-122)"
+                ),
+                function=fn_name,
+                buffer=lhs_buf or "malloc()",
+                source=src_name,
+                source_line=line_no,
+            )
+        )
+
+    for m in _EXT_WCSCPY_LIT_RE.finditer(no_comments):
+        dst_name = m.group("dst")
+        wlit = m.group("lit")
+        line_no = no_comments.count("\n", 0, m.start()) + 1
+        fn_name, fn_start_off = _enclosing_func(line_no, m.start())
+        pre_fn = no_comments[fn_start_off:m.start()]
+        d_esc = re.escape(dst_name)
+        m_byte_alloc = re.search(
+            rf"\b{d_esc}\s*=\s*(?:\([^()]+\)\s*)*\bmalloc\s*\(\s*(?P<arg>[^;)]+)\)",
+            pre_fn,
+        )
+        if m_byte_alloc:
+            arg_str = m_byte_alloc.group("arg").strip()
+            if "sizeof(wchar_t)" not in arg_str.replace(" ", "") and "sizeof(*" not in arg_str.replace(" ", ""):
+                need_bytes = (len(wlit) + 1) * _SIZES["wchar_t"]
+                if not arg_str.isdigit() or int(arg_str) < need_bytes:
+                    _emit(
+                        MemFinding(
+                            kind="wchar_underalloc_overflow",
+                            cwe="CWE-122",
+                            line=line_no,
+                            certain=True,
+                            severity="critical",
+                            title="Geniş karakter (wchar_t) ayırmasında sizeof(wchar_t) çarpanı unutularak yığın taşması (Heap Overflow)",
+                            evidence=(
+                                f"`wcscpy({dst_name}, L\"{wlit}\")` en az {need_bytes} bayt gerektirirken `{dst_name}` "
+                                f"`sizeof(wchar_t)` çarpanı olmadan ayrılmış (CWE-122)"
+                            ),
+                            function=fn_name,
+                            buffer=dst_name,
+                            source="wcscpy",
+                            source_line=line_no,
+                        )
+                    )
+
+    # (d) SNIPER-MEM-TRUNC-01: 64-bit to 32-bit Integer Truncation before Allocation / Copy (CWE-190)
+    scopes: list[tuple[str, int, int]] = []
+    if func_ranges:
+        for lo_line, _hi_line, cand_name, _start_off, end_off in func_ranges:
+            sig_start_off = _offset_of_line(max(1, lo_line - 5))
+            scopes.append((cand_name, sig_start_off, end_off))
+    else:
+        scopes.append(("", 0, len(cleaned)))
+
+    for fn_name, sig_start_off, end_off in scopes:
+        fn_text = cleaned[sig_start_off:end_off]
+        decl64_vars: dict[str, str] = {}
+        for m64 in _EXT_TRUNC_DECL64_RE.finditer(fn_text):
+            v64 = m64.group("var64")
+            if v64 not in _TYPE_QUALS and v64 not in _SIZES:
+                decl64_vars[v64] = m64.group("type64")
+        if not decl64_vars:
+            continue
+
+        decl32_vars: dict[str, str] = {}
+        for m32 in _EXT_TRUNC_DECL32_RE.finditer(fn_text):
+            v32 = m32.group("var32")
+            if v32 not in _TYPE_QUALS and v32 not in _SIZES and v32 not in decl64_vars:
+                decl32_vars[v32] = m32.group("type32")
+        if not decl32_vars:
+            continue
+
+        for var32, type32 in decl32_vars.items():
+            v32_esc = re.escape(var32)
+            for m_assign in re.finditer(rf"\b{v32_esc}\s*=\s*(?P<rhs>[^;]+);", fn_text):
+                rhs = m_assign.group("rhs").strip()
+                if any(tok in rhs for tok in (">>", "==", "!=", "malloc(", "calloc(", "realloc(", "strlen(", "wcslen(")):
+                    continue
+                matched_var64 = ""
+                for cand64 in decl64_vars:
+                    if re.search(rf"\b{re.escape(cand64)}\b", rhs):
+                        matched_var64 = cand64
+                        break
+                if not matched_var64:
+                    continue
+
+                type64 = decl64_vars[matched_var64]
+                v64_esc = re.escape(matched_var64)
+                post_narrow = fn_text[m_assign.end():]
+                m_alloc32 = re.search(
+                    rf"(?:(?P<buf>[A-Za-z_]\w*)\s*=\s*(?:\([^()]+\)\s*)*)?"
+                    rf"(?:\b(?P<alloc_fn>malloc|calloc|realloc|xmalloc|g_malloc|alloca)\s*\([^;]*?\b{v32_esc}\b[^;]*?\)"
+                    rf"|\bnew\s+(?:[A-Za-z_]\w*(?:::[A-Za-z_]\w*)?\s*)\[\s*[^\]]*?\b{v32_esc}\b[^\]]*?\])",
+                    post_narrow,
+                )
+                m_copy64 = re.search(
+                    rf"\b(?P<copy_fn>memcpy|memmove|fread|read|pread|recv)\s*\([^;]*?\b{v64_esc}\b[^;]*?\)",
+                    post_narrow,
+                )
+                if not m_alloc32 and not m_copy64:
+                    continue
+
+                sink_rel_end = m_assign.end() + (m_alloc32.start() if m_alloc32 else m_copy64.start())
+                pre_sink = fn_text[:sink_rel_end]
+                if (
+                    has_c_early_return_bounds_guard(pre_sink, "", matched_var64)
+                    or re.search(
+                        rf"\b{v64_esc}\s*(?:>|>=|<|<=)\s*(?:UINT32_MAX|INT32_MAX|UINT_MAX|INT_MAX|SIZE_MAX|"
+                        rf"0x[0-9a-fA-F]+[uUlL]*|[A-Z_][A-Z0-9_]*|\d+[uUlL]*|\(\s*1[uUlL]*\s*<<\s*\d+\s*\))",
+                        pre_sink,
+                    )
+                    or re.search(
+                        rf"(?:UINT32_MAX|INT32_MAX|UINT_MAX|INT_MAX|SIZE_MAX|"
+                        rf"0x[0-9a-fA-F]+[uUlL]*|[A-Z_][A-Z0-9_]*|\d+[uUlL]*|\(\s*1[uUlL]*\s*<<\s*\d+\s*\))"
+                        rf"\s*(?:<|<=|>|>=)\s*\b{v64_esc}\b",
+                        pre_sink,
+                    )
+                ):
+                    continue
+
+                const64 = re.search(rf"\b{v64_esc}\s*=\s*(\d+)[uUlL]*\s*;", pre_sink)
+                if const64 and int(const64.group(1)) <= 0x7FFFFFFF:
+                    continue
+
+                narrow_abs_pos = sig_start_off + m_assign.start()
+                line_no = cleaned.count("\n", 0, narrow_abs_pos) + 1
+                buf_name = (m_alloc32.group("buf") if m_alloc32 and m_alloc32.group("buf") else "") or var32
+                _emit(
+                    MemFinding(
+                        kind="integer_truncation_alloc",
+                        cwe="CWE-190",
+                        line=line_no,
+                        certain=True,
+                        severity="critical",
+                        title="64-bit uzunluk değerinin 32-bit tamsayıya daraltılması (Integer Truncation) sonrası yığın taşması",
+                        evidence=(
+                            f"SNIPER-MEM-TRUNC-01: 64-bit `{matched_var64}` ({type64}) üst sınır denetimi "
+                            f"(`UINT32_MAX` / `0xffffffff`) yapılmadan 32-bit `{var32}` ({type32}) değişkenine "
+                            f"daraltılarak ayırma/kopyalama boyutunda kullanılıyor (CWE-190)"
+                        ),
+                        function=fn_name,
+                        buffer=buf_name,
+                        source=matched_var64,
+                        source_line=line_no,
+                    )
+                )
+
+    findings.sort(key=lambda x: (x.line, x.kind))
+    return findings
+
+
+def analyze_c_memory(text: str, path: str = "buffer.c", *, include_extended: bool = True) -> list[MemFinding]:
+    """Birleşik C/C++ bellek güvenliği giriş noktası: soyut yorumlayıcı (`analyze_text`) ve Faz 3 genişletilmiş
+    kuralları (`detect_extended_c_memory_hazards`) birleştirir."""
+    base = list(analyze_text(text, path))
+    if not include_extended:
+        return base
+    ext = detect_extended_c_memory_hazards(text, path)
+    seen_lines_cwes = {(f.line, f.cwe) for f in base}
+    for ef in ext:
+        if (ef.line, ef.cwe) not in seen_lines_cwes:
+            base.append(ef)
+            seen_lines_cwes.add((ef.line, ef.cwe))
+    base.sort(key=lambda x: (x.line, x.kind))
+    return base
+
+

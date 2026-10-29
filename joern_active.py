@@ -90,8 +90,8 @@ SCRIPTING_LANGUAGES = frozenset({"javascript", "python"})
 # Tür bildirimleri, küçültülmüş/paketlenmiş JS ve kaynak haritaları ön uca verilmez.
 _SKIPPED_SCRIPT_SUFFIXES = (".d.ts", ".d.mts", ".d.cts", ".min.js", ".bundle.js", ".min.mjs", ".chunk.js")
 # JS/Python dosyaları ayrı bütçeyle sayılır: aşılırsa proje reddedilmez, fazlası uyarıyla atlanır.
-MAX_SCRIPT_FILES = 3_000
-MAX_SCRIPT_BYTES = 25_000_000
+MAX_SCRIPT_FILES = int(os.environ.get("SNIPER_JOERN_MAX_SCRIPT_FILES", "3000"))
+MAX_SCRIPT_BYTES = int(os.environ.get("SNIPER_JOERN_MAX_SCRIPT_BYTES", "25000000"))
 # Dil → Joern ön ucu (frontends/<ad>/lib/io.joern.<ad>-<sürüm>-launcher.jar ile "java -jar").
 FRONTENDS = {"c": "c2cpg", "java": "javasrc2cpg", "kotlin": "kotlin2cpg", "php": "php2cpg",
              "go": "gosrc2cpg", "ruby": "rubysrc2cpg", "csharp": "csharpsrc2cpg",
@@ -119,10 +119,10 @@ PHP_HOME_DEFAULT = PHP_ACCOUNT_HOME / ".local" / "share" / "sniper" / "tools" / 
 # Henüz onaylanmış 8.3.36 derlemesi yok; boş liste bütün PHP runtime'larını fail-closed reddeder.
 PHP_APPROVED_BINARY_SHA256: dict[str, str] = {}
 MAX_PHP_BYTES = 100_000_000
-MAX_FILES = 5_000
-MAX_FILE_BYTES = 2_000_000
-MAX_TOTAL_BYTES = 40_000_000
-MAX_FINDINGS = 200
+MAX_FILES = int(os.environ.get("SNIPER_JOERN_MAX_FILES", "5000"))
+MAX_FILE_BYTES = int(os.environ.get("SNIPER_JOERN_MAX_FILE_BYTES", "2000000"))
+MAX_TOTAL_BYTES = int(os.environ.get("SNIPER_JOERN_MAX_TOTAL_BYTES", "40000000"))
+MAX_FINDINGS = int(os.environ.get("SNIPER_JOERN_MAX_FINDINGS", "200"))
 MAX_STEPS = 40
 MAX_TAIL_STEPS = 12
 MAX_OUTPUT_BYTES = 8_000_000
@@ -191,6 +191,21 @@ KIND_RULES: dict[str, tuple[str, str, str, str, str]] = {
     "log": ("CWE-117", "low", "Derin analiz: HTTP istek girdisi kaçışsız günlüğe yazılıyor (günlük sahteciliği / Log4Shell bağlamı)",
             "Günlüğe yazmadan önce CR/LF'yi ayıklayın; parametreli günlük kullanın ve Log4j'yi 2.17.1+ sürümünde tutun.",
             "web_hardening"),
+    "nosql": ("CWE-943", "critical", "Derin analiz: dış girdi NoSQL sorgusuna/operatörüne ulaşıyor (NoSQL enjeksiyonu)",
+              "Sorgu nesnelerine ham kullanıcı sözlüğü veya $where/JavaScript ifadesi geçirmeyin; beklenen skaler türü açıkça doğrulayın.",
+              "data_query"),
+    "header": ("CWE-113", "low", "Derin analiz: HTTP istek girdisi yanıt başlığına yazılıyor (CRLF / başlık bölme)",
+               "Başlık değerinden CR/LF karakterlerini ayıklayın; güncel sunucu kütüphaneleri çoğunu reddeder ama açıkça doğrulayın.",
+               "web_hardening"),
+    "code": ("CWE-94", "critical", "Derin analiz: dış girdi kod/ifade değerlendirmesine ulaşıyor",
+             "Girdiyi ScriptEngine/SpEL/OGNL ifadesi olarak değerlendirmeyin; işlemleri açık eşlemeyle seçin.",
+             "command_data"),
+    "prototype": ("CWE-1321", "high", "Derin analiz: dış girdi nesne prototipini kirletebilecek dinamik anahtar/birleştirmeye ulaşıyor (prototype pollution)",
+                  "__proto__, constructor ve prototype anahtarlarını reddedin; Object.create(null) veya Map kullanın.",
+                  "command_data"),
+    "mass_assign": ("CWE-915", "high", "Derin analiz: HTTP istek gövdesi alan süzgeci olmadan model/varlık güncellemesine ulaşıyor (mass assignment)",
+                    "Yalnız izin verilen alanları açık bir şema/DTO veya allowlist ile seçerek modele aktarın.",
+                    "web_hardening"),
     # Kalıp (veri akışı gerektirmeyen) bulgular
     "weakhash": ("CWE-328", "medium", "Derin analiz: zayıf özet algoritması (MD5/SHA-1 vb.)",
                  "Bütünlük için SHA-256/512, parola için Argon2id/scrypt/PBKDF2 kullanın.",
@@ -210,7 +225,7 @@ SOURCE_LABELS = frozenset({"request", "external", "stored", "pattern"})
 WEAK_HASHES = frozenset({"MD2", "MD4", "MD5", "SHA", "SHA1", "SHA-1", "SHA-0"})
 _WEAK_CIPHER_RE = re.compile(r"^(DES|DESEDE|TRIPLEDES|3DES|RC2|RC4|ARCFOUR|BLOWFISH)\b|/ECB(/|$)|^AES$", re.IGNORECASE)
 # Yalnız HTTP isteğinden gelen girdi için anlamlı türler.
-REQUEST_ONLY_KINDS = frozenset({"xss", "trustbound", "redirect", "crlf", "log"})
+REQUEST_ONLY_KINDS = frozenset({"xss", "trustbound", "redirect", "crlf", "header", "log", "mass_assign"})
 MAX_MYBATIS_FILES = 200
 MAX_MYBATIS_BYTES = 1_000_000
 _MYBATIS_NAMESPACE_RE = re.compile(r"<mapper\b[^>]*\bnamespace\s*=\s*[\"']([\w.$]{1,250})[\"']")
@@ -259,6 +274,12 @@ def collect_sources(root: Path, *, scripting: bool = False,
     script_files = 0
     script_bytes = 0
     script_dropped = 0
+    max_files = int(os.environ.get("SNIPER_JOERN_MAX_FILES", str(MAX_FILES)) or str(MAX_FILES))
+    max_file_bytes = int(os.environ.get("SNIPER_JOERN_MAX_FILE_BYTES", str(MAX_FILE_BYTES)) or str(MAX_FILE_BYTES))
+    max_total_bytes = int(os.environ.get("SNIPER_JOERN_MAX_TOTAL_BYTES", str(MAX_TOTAL_BYTES)) or str(MAX_TOTAL_BYTES))
+    max_script_files = int(os.environ.get("SNIPER_JOERN_MAX_SCRIPT_FILES", str(MAX_SCRIPT_FILES)) or str(MAX_SCRIPT_FILES))
+    max_script_bytes = int(os.environ.get("SNIPER_JOERN_MAX_SCRIPT_BYTES", str(MAX_SCRIPT_BYTES)) or str(MAX_SCRIPT_BYTES))
+    prod_only = os.environ.get("SNIPER_JOERN_PRODUCTION_ONLY", "0") == "1"
     tree = project_tree.duplicate() if project_tree is not None else ProjectTree(str(root)).open()
     try:
         observed = tree.iter_files(skip_dirs=SKIP_DIRS, reject_unsafe=False)
@@ -273,10 +294,20 @@ def collect_sources(root: Path, *, scripting: bool = False,
                 continue
             if language in SCRIPTING_LANGUAGES and name.lower().endswith(_SKIPPED_SCRIPT_SUFFIXES):
                 continue
-            if record.size > MAX_FILE_BYTES:
+            if prod_only:
+                rel_low = record.path.as_posix().lower()
+                rel_parts = set(rel_low.split("/"))
+                if (
+                    rel_parts & {"test", "tests", "__tests__", "fixtures", "__snapshots__", "compiled", "examples", "bench", "e2e", "docs"}
+                    or ".test." in rel_low
+                    or ".spec." in rel_low
+                    or rel_low.endswith("_test.go")
+                ):
+                    continue
+            if record.size > max_file_bytes:
                 continue
             if language in SCRIPTING_LANGUAGES:
-                if script_files >= MAX_SCRIPT_FILES or script_bytes + record.size > MAX_SCRIPT_BYTES:
+                if script_files >= max_script_files or script_bytes + record.size > max_script_bytes:
                     script_dropped += 1
                     continue
                 script_files += 1
@@ -285,16 +316,16 @@ def collect_sources(root: Path, *, scripting: bool = False,
                 continue
             total_files += 1
             total_bytes += record.size
-            if total_files > MAX_FILES or total_bytes > MAX_TOTAL_BYTES:
+            if total_files > max_files or total_bytes > max_total_bytes:
                 raise ProjectRejected(
-                    f"Derin analiz sınırı aşıldı (en çok {MAX_FILES} dosya / {MAX_TOTAL_BYTES // 1_000_000} MB kaynak)."
+                    f"Derin analiz sınırı aşıldı (en çok {max_files} dosya / {max_total_bytes // 1_000_000} MB kaynak)."
                 )
             found[language].append(path)
     finally:
         tree.close()
     if script_dropped and warnings is not None:
-        warnings.append(f"JS/TS ve Python dosya bütçesi aşıldı (en çok {MAX_SCRIPT_FILES} dosya / "
-                        f"{MAX_SCRIPT_BYTES // 1_000_000} MB): {script_dropped} dosya derin analize alınmadı.")
+        warnings.append(f"JS/TS ve Python dosya bütçesi aşıldı (en çok {max_script_files} dosya / "
+                        f"{max_script_bytes // 1_000_000} MB): {script_dropped} dosya derin analize alınmadı.")
     return {language: paths for language, paths in found.items() if paths}
 
 
@@ -584,7 +615,7 @@ def flows_to_findings(flows: list[dict[str, Any]], limit: int = MAX_FINDINGS,
     return findings
 
 
-_FAST_KIND = {"xss": "html"}
+_FAST_KIND = {"xss": "html", "crlf": "header", "overflow": "memory"}
 _PATH_ONLY_SOURCE_RE = re.compile(r"(self\.)?(request|req|ctx)\.(path|path_info|full_path|originalUrl|url|baseUrl|FILES|files|file)\Z")
 
 
@@ -776,7 +807,15 @@ def annotate_scripting_fast_engine(root: Path, sources: dict[str, list[Path]],
 
     def near(keys: set[tuple[str, str, int]], kind: str, file: str, line: int) -> bool:
         # Hızlı motor şablon derlemesini (Template(girdi)) kod değerlendirme (eval) türünde raporlayabilir.
-        kinds = {kind, "eval"} if kind == "ssti" else {kind}
+        kinds = (
+            {kind, "eval", "code", "template_object"} if kind == "ssti"
+            else {kind, "code", "eval"} if kind in ("eval", "code")
+            else {kind, "nosql_expr"} if kind == "nosql"
+            else {kind, "ssrf_partial"} if kind == "ssrf"
+            else {kind, "angular_html", "jsonp"} if kind == "html"
+            else {kind, "format_string"} if kind == "format"
+            else {kind}
+        )
         return any((k, file, line + delta) in keys for k in kinds for delta in (-1, 0, 1))
 
     counts = {"matched": 0, "confirmed_uncertain": 0, "conflicting": 0, "joern_only": 0}
@@ -1845,9 +1884,16 @@ def _run_joern_deep(project_path: str, *, timeout: float = DEFAULT_TIMEOUT_SECON
                         languages.pop(language, None)
                         continue
                 except JoernExecutionError as exc:
-                    if language not in SCRIPTING_LANGUAGES:
+                    if out.is_file():
+                        try:
+                            raw, _ = _read_regular(out, MAX_OUTPUT_BYTES)
+                            all_flows.extend(parse_joern_flows(raw.decode("utf-8", "replace"), workspace=workspace_box[0],
+                                                               language=language))
+                        except Exception:
+                            pass
+                    if language not in SCRIPTING_LANGUAGES and os.environ.get("SNIPER_JOERN_CONTINUE_ON_LANG_ERROR") != "1":
                         raise
-                    # JS/Python tamamlayıcıdır: başarısızlığı diğer dillerin sonucunu düşürmez.
+                    # JS/Python veya çok dilli devam kipi: bir dilin başarısızlığı diğer dillerin sonucunu düşürmez.
                     skipped[language] = str(exc)
                     languages.pop(language, None)
                     warnings.append(f"{LANGUAGE_NAMES[language]} derin analizi tamamlanamadı: {exc}")

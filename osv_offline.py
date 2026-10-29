@@ -41,11 +41,20 @@ MAX_COMPONENTS = 20_000
 
 # Envanterdeki ekosistem adları → OSV ekosistem adları.
 OSV_ECOSYSTEM = {
-    "pypi": "PyPI", "npm": "npm", "golang": "Go", "go": "Go", "cargo": "crates.io", "crates.io": "crates.io",
-    "maven": "Maven", "gradle": "Maven", "rubygems": "RubyGems", "gem": "RubyGems", "packagist": "Packagist",
-    "composer": "Packagist", "nuget": "NuGet", "pub": "Pub", "hex": "Hex",
+    "pypi": "PyPI", "python": "PyPI", "pip": "PyPI",
+    "npm": "npm", "node": "npm", "javascript": "npm",
+    "golang": "Go", "go": "Go",
+    "cargo": "crates.io", "crates.io": "crates.io", "rust": "crates.io",
+    "maven": "Maven", "gradle": "Maven", "java": "Maven",
+    "rubygems": "RubyGems", "gem": "RubyGems", "ruby": "RubyGems",
+    "packagist": "Packagist", "composer": "Packagist", "php": "Packagist",
+    "nuget": "NuGet", "dotnet": "NuGet",
+    "pub": "Pub", "dart": "Pub",
+    "hex": "Hex", "elixir": "Hex", "erlang": "Hex",
+    "swift": "SwiftURL", "swiftpm": "SwiftURL", "swifturl": "SwiftURL",
+    "github-actions": "GitHub Actions", "actions": "GitHub Actions", "github actions": "GitHub Actions",
 }
-SEMVER_ECOSYSTEMS = frozenset({"npm", "Go", "crates.io", "Pub", "Hex"})
+SEMVER_ECOSYSTEMS = frozenset({"npm", "Go", "crates.io", "Pub", "Hex", "SwiftURL", "GitHub Actions"})
 
 
 class OfflineDBError(Exception):
@@ -233,7 +242,7 @@ def compare_packagist(a: str, b: str) -> int:
 ECOSYSTEM_COMPARATORS: dict[str, Callable[[str, str], int]] = {
     "PyPI": compare_pypi, "Maven": compare_maven, "RubyGems": compare_rubygems, "NuGet": compare_nuget,
     "Packagist": compare_packagist, "npm": compare_semver, "Go": compare_semver, "crates.io": compare_semver,
-    "Pub": compare_semver, "Hex": compare_semver,
+    "Pub": compare_semver, "Hex": compare_semver, "SwiftURL": compare_semver, "GitHub Actions": compare_semver,
 }
 
 
@@ -351,8 +360,10 @@ MALICIOUS_PREFIX = "MAL-"
 MALICIOUS_CWE = "CWE-506"
 
 
-_MALWARE_SUMMARY = re.compile(r"^\s*(?:embedded\s+)?(?:malware|malicious\s+code)\s+in\b|\bembedded\s+malware\b",
-                              re.I)
+_MALWARE_SUMMARY = re.compile(
+    r"^\s*(?:embedded\s+)?(?:malware|malicious\s+(?:code|package)|typosquat(?:ting)?(?:\s+package)?|credential\s+stealer|crypto(?:currency)?\s+stealer|protestware)\s+in\b|\bembedded\s+malware\b",
+    re.I,
+)
 
 
 def is_malicious_record(record: dict[str, Any]) -> bool:

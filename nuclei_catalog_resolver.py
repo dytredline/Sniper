@@ -14,7 +14,7 @@ MIN_ID_FIRST_CHAR_ALLOWED = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxy
 ID_CHAR_SET = set(MIN_ID_FIRST_CHAR_ALLOWED + "._-")
 
 HTTP_PREFIX = "http"
-YAML_SUFFIX = ".yaml"
+YAML_SUFFIXES = (".yaml", ".yml")
 
 
 def _is_ascii_alpha_num_plus_underscore_dot_hyphen(s: str) -> bool:
@@ -49,7 +49,7 @@ def _verify_no_dotdot(path: pathlib.Path) -> None:
 
 
 def _verify_yaml_under_http(path: pathlib.Path, catalog_root: pathlib.Path) -> None:
-    """Ensure path is under catalog_root/http, is .yaml, and no absolute path components"""
+    """Ensure path is under catalog_root/http, is YAML, and no absolute path components."""
     try:
         rel = path.relative_to(catalog_root)
     except ValueError:
@@ -59,8 +59,8 @@ def _verify_yaml_under_http(path: pathlib.Path, catalog_root: pathlib.Path) -> N
     if len(parts) < 2 or parts[0] != HTTP_PREFIX:
         raise ValueError(f"Yol '{HTTP_PREFIX}/' altında olmalı: {path}")
 
-    if not parts[-1].endswith(YAML_SUFFIX):
-        raise ValueError(f"Yol '{YAML_SUFFIX}' ile bitmeli: {path}")
+    if not parts[-1].endswith(YAML_SUFFIXES):
+        raise ValueError(f"Yol .yaml veya .yml ile bitmeli: {path}")
 
 
 def _verify_path_content_sha256(file_path: pathlib.Path, expected_sha256: str) -> None:

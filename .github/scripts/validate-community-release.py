@@ -20,6 +20,7 @@ from typing import NamedTuple
 
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[2]
+EXPECTED_COMMUNITY_VERSION = "1.1.0"
 MAX_REGULAR_FILE_BYTES = 64 * 1024 * 1024
 MAX_SNAPSHOT_BYTES = 512 * 1024 * 1024
 READ_CHUNK_BYTES = 1024 * 1024
@@ -82,6 +83,8 @@ REQUIRED_TEXT = {
         "Gitleaks 8.30.1",
         "TruffleHog 3.99.0",
         "Opengrep 1.30.1",
+        "Syft 1.55.0",
+        "Grype 0.121.0",
         "stdio MCP",
         "prepare_action",
         "execute_action",
@@ -153,9 +156,11 @@ REQUIRED_TEXT = {
     ),
     "VALIDATION.md": (
         "Sniper Community validation evidence",
-        "2,819 tests, 0 failures, 0 errors",
-        "204 passed",
-        "432 passed, 0 failed",
+        "3,077 tests, 0 failures, 0 errors",
+        "337 passed",
+        "517 passed, 0 failed",
+        "seven provenance-bound tools",
+        "Synthetic runtime proofs",
         "not a security certification",
         "No step in this validation snapshot scans an external website",
     ),
@@ -212,6 +217,7 @@ REQUIRED_TEXT = {
     "CODE_OF_CONDUCT.md": ("Contributor Covenant", "Enforcement"),
     "CHANGELOG.md": (
         "# Changelog",
+        "Sniper Community 1.1.0",
         "Sniper Community 1.0.0",
         "Apache-2.0",
         "human-confirmed MCP action plans",
@@ -227,7 +233,7 @@ REQUIRED_TEXT = {
         "title: Sniper Community",
         "Gökçe Baran",
         "Karakamış",
-        "version: 1.0.0",
+        "version: 1.1.0",
         "license: Apache-2.0",
         "https://github.com/dytredline/Sniper",
     ),
@@ -351,7 +357,7 @@ FORBIDDEN_ARTIFACT_DIRS = frozenset({
     "runtimes", "data", "backups", "backup", "evidence", ".auth-field-keys",
     "dev-" + "evidence", "frozen-" + "evidence",
 })
-FORBIDDEN_ARTIFACT_NAMES = frozenset({"release.json", ".coverage"})
+FORBIDDEN_ARTIFACT_NAMES = frozenset({".git", "release.json", ".coverage"})
 FORBIDDEN_ARTIFACT_SUFFIXES = (
     ".pyc", ".pyo", ".db", ".sqlite", ".sqlite3", "-wal", "-shm", "-journal", ".key", ".tar",
 )
@@ -497,7 +503,6 @@ def _identity(value: os.stat_result) -> tuple[int, int, int]:
 
 def _content_state(value: os.stat_result) -> tuple[int, int, int]:
     return value.st_size, value.st_mtime_ns, value.st_ctime_ns
-
 
 def _entry_kind(mode: int) -> str:
     if stat.S_ISLNK(mode):
@@ -768,8 +773,11 @@ def _validate_release_tree(entries: list[ReleaseEntry], failures: list[str]) -> 
     version_module_entry = by_relative.get("version.py")
     if community_version_entry is not None and community_version_entry.payload is not None:
         community_version = community_version_entry.payload.decode("utf-8", errors="replace").strip()
-        if community_version != "1.0.0":
-            fail("release tree: COMMUNITY_VERSION must be 1.0.0 for Community v1", failures)
+        if community_version != EXPECTED_COMMUNITY_VERSION:
+            fail(
+                f"release tree: COMMUNITY_VERSION must be {EXPECTED_COMMUNITY_VERSION}",
+                failures,
+            )
         if version_module_entry is not None and version_module_entry.payload is not None:
             version_text = version_module_entry.payload.decode("utf-8", errors="replace")
             if f'__version__ = "{community_version}"' not in version_text:
@@ -837,7 +845,7 @@ def validate(root: Path, *, scan_release_tree: bool = False) -> list[str]:
                 raise ValueError("unexpected schema")
             profiles = tool_lock.get("profiles")
             tools = tool_lock.get("tools")
-            expected_local = {"nuclei", "trivy", "gitleaks", "trufflehog", "opengrep"}
+            expected_local = {"nuclei", "trivy", "gitleaks", "trufflehog", "opengrep", "syft", "grype"}
             if not isinstance(profiles, dict) or set(profiles.get("local", ())) != expected_local:
                 raise ValueError("local profile does not contain the supported locked engines")
             if not isinstance(tools, dict) or not expected_local.issubset(tools):

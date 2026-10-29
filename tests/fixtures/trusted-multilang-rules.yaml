@@ -1,0 +1,73 @@
+rules:
+  - id: sniper.python.eval-call
+    languages: [python]
+    severity: ERROR
+    message: Dynamic evaluation can execute untrusted code.
+    pattern: eval(...)
+  - id: sniper.python.pickle.loads-call
+    languages: [python]
+    severity: ERROR
+    message: Deserializing untrusted data with pickle.loads is dangerous.
+    pattern: pickle.loads(...)
+  - id: sniper.python.pickle.load-call
+    languages: [python]
+    severity: ERROR
+    message: Deserializing untrusted data with pickle.load is dangerous.
+    pattern: pickle.load(...)
+  - id: sniper.python.os.system-call
+    languages: [python]
+    severity: ERROR
+    message: Command execution via os.system can run arbitrary shell commands.
+    pattern: os.system(...)
+  - id: sniper.python.subprocess-run-shell-true
+    languages: [python]
+    severity: WARNING
+    message: Subprocess with shell=True may execute untrusted command lines.
+    pattern: subprocess.run(..., shell = True, ...)
+  - id: sniper.python.subprocess-popen-shell-true
+    languages: [python]
+    severity: WARNING
+    message: Subprocess with shell=True may execute untrusted command lines.
+    pattern: subprocess.Popen(..., shell = True, ...)
+  - id: sniper.python.subprocess-call-shell-true
+    languages: [python]
+    severity: WARNING
+    message: Subprocess with shell=True may execute untrusted command lines.
+    pattern: subprocess.call(..., shell = True, ...)
+  - id: sniper.python.yaml-load-unsafe-loader
+    languages: [python]
+    severity: ERROR
+    message: Deserializing YAML with unsafe Loader can execute arbitrary code.
+    pattern: yaml.load(..., Loader = yaml.Loader, ...)
+  - id: sniper.python.yaml-load-unsafe-universalloader
+    languages: [python]
+    severity: ERROR
+    message: Deserializing YAML with unsafe Loader can execute arbitrary code.
+    pattern: yaml.load(..., Loader = yaml.UnsafeLoader, ...)
+  - id: sniper.python.requests-get-verify-false
+    languages: [python]
+    severity: WARNING
+    message: requests.get with verify=False disables TLS certificate validation.
+    options:
+      constant_propagation: false
+      symbolic_propagation: false
+    patterns:
+      - pattern: requests.get(..., verify=$TLS_VERIFY, ...)
+      - metavariable-regex:
+          metavariable: $TLS_VERIFY
+          regex: ^False$
+      - pattern-regex: \brequests\s*\.\s*get\s*\(
+      - pattern-inside: |
+          import requests
+          ...
+      - pattern-not-inside: |
+          requests = $VALUE
+          ...
+      - pattern-not-inside: |
+          def $FUNC(requests, ...):
+            ...
+  - id: sniper.javascript-typescript.eval-call
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: "Direct JavaScript eval can execute dynamic code; review its input and trust boundary."
+    pattern: eval(...)

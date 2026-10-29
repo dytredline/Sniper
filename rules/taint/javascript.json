@@ -121,7 +121,13 @@
         "bent",
         "undici.stream",
         "undici.pipeline",
-        "NextResponse.rewrite"
+        "NextResponse.rewrite",
+        "ofetch",
+        "$fetch",
+        "ky.put",
+        "ky.patch",
+        "ky.delete",
+        "ky.head"
       ],
       "args": [
         0
@@ -163,7 +169,11 @@
         "node-serialize.unserialize",
         "serialize-to-js.deserialize",
         "funcster.deepDeserialize",
-        "cryo.parse"
+        "cryo.parse",
+        "jsyaml.load",
+        "js-yaml.load",
+        "flatted.parse",
+        "telejson.parse"
       ],
       "args": [
         0
@@ -198,7 +208,9 @@
         "shell.exec",
         "execa.command",
         "execaCommand",
-        "execa.commandSync"
+        "execa.commandSync",
+        "execa.sync",
+        "zx.$"
       ],
       "args": [
         0

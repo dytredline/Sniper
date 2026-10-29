@@ -59,35 +59,61 @@ API 経路、シークレット、依存関係、SBOM、CI 設定を一つのリ
 各候補は、許可された範囲で、別々のテストユーザー／ロールと合成オブジェクトを使って手動検証するための
 根拠付きの開始点になります。
 
+## セキュリティレビューの主な強み
+
+- 対応するデータフローから、SQL／コマンドインジェクション、XSS、SSRF、オープンリダイレクト、
+  パストラバーサル、安全でないデシリアライズ、XXE などの重要なレビュー箇所を追跡します。
+- ルート、ロール、オブジェクト識別子を整理し、IDOR（CWE-639）と認可チェック（CWE-862）の
+  手動検証を優先順位付けします。
+- シークレット候補とプライバシー関連フローを確認し、依存関係、コンテナ、CycloneDX／SPDX SBOM、
+  VEX、到達可能性コンテキストを一つのレビューにまとめます。
+- Dockerfile、Terraform、Kubernetes、Helm、Compose、クラウド IAM、CI、モバイル、ブラウザー拡張、
+  デスクトップアプリのセキュリティ設定を確認します。
+- CVSS 3.1/4.0、CISA SSVC、攻撃経路、ベースライン、品質ゲートで対応順を整理し、JSON、HTML、SARIF、
+  GitLab、SBOM、VEX、対応する PDF ワークフローへ出力します。
+- ループバック Web、CLI、CI、ローカル stdio MCP を通じて、同じエビデンスを人と AI が活用できます。
+
+## IDOR と手動ペネトレーションテストの支援
+
+対応する Python および JavaScript/TypeScript のソースでは、組み込みのルート／認可インベントリが、
+認可チェックの欠落候補（CWE-862）と Insecure Direct Object Reference（IDOR）の候補（CWE-639）を、
+ファイル、ルート、行番号の根拠とともに提示します。これにより、許可を得たテスターは、別々のテストユーザー、
+ロール、合成オブジェクトを使う手動ペネトレーションテストを優先順位付けできます。
+
+各候補は、許可された範囲で、別々のテストユーザー／ロールと合成オブジェクトを使って手動検証するための
+根拠付きの開始点になります。
+
 ## 内蔵機能と任意のエンジン
 
 内蔵アナライザー、レポートパーサー、MCP サーバー、CLI、ループバック Web UI はソースツリーに含まれます。
-これらに加え、ルート権限を使わないローカルプロファイルでは、次の 5 つのバージョン固定された
+これらに加え、ルート権限を使わないローカルプロファイルでは、次の 7 つのバージョン固定された
 サードパーティ製エンジンを任意で導入できます。
 
 - Nuclei 3.11.1
 - Trivy 0.75.0
 - Gitleaks 8.30.1
 - TruffleHog 3.99.0
+- Syft 1.55.0
+- Grype 0.121.0
 - Opengrep 1.30.1
 
 任意エンジンは、それぞれの実行ファイル、SHA-256、必要データ、入力範囲、ライセンスの準備確認に合格した場合に
 のみ利用可能として表示されます。Nuclei の広範な許可済み HTTP ワークフローには別途固定されたテンプレート
 カタログが必要で、Trivy の脆弱性プロファイルには別途固定されたオフラインデータベースが必要です。
-内蔵分析はこれら 5 エンジンとは別に提供されます。インターフェースと HTML レポートの多言語対応については [LOCALIZATION.md](LOCALIZATION.md) を参照してください。
+内蔵分析はこれら 7 エンジンとは別に提供されます。インターフェースと HTML レポートの多言語対応については [LOCALIZATION.md](LOCALIZATION.md) を参照してください。
 
 ## リリース状況と含まれる内容
 
-このリポジトリは Sniper Community v1.0.0 のソースリリースであり、Apache License 2.0（[LICENSE](../LICENSE)）の下で提供されます。ローカルプロジェクト分析、ローカルレポートと品質ゲート、AI 優先の stdio MCP ワークフロー、状態変更アクションに対するチャット経由の人間承認ゲート、手動 CLI、ループバック Web UI、およびテストとドキュメントが含まれます。
+このリポジトリは Sniper Community v1.1.0 のソースリリースであり、Apache License 2.0（[LICENSE](../LICENSE)）の下で提供されます。ローカルプロジェクト分析、ローカルレポートと品質ゲート、AI 優先の stdio MCP ワークフロー、状態変更アクションに対するチャット経由の人間承認ゲート、手動 CLI、ループバック Web UI、およびテストとドキュメントが含まれます。
 
 ## セットアップ
 
-テスト済みのインタープリターは Python 3.12 です。Community v1 の完全なネイティブ 5 エンジンセットアップは Linux ARM64／x86-64 をサポートします。
+テスト済みのインタープリターは Python 3.12 です。Community v1 の完全なネイティブ 7 エンジンセットアップは Linux ARM64／x86-64 をサポートします。
 **macOS（Apple Silicon）**では、ネイティブの `--core-only` ソースセットアップ（`python3 scripts/setup-community --core-only`）と、
 Docker Desktop を用いた 5 エンジンプロファイル（`./scripts/deploy-community-tools --accept-third-party-licenses`）の**両方が実機で検証・サポートされています**（実験的ではありません）。
 **Windows** では、ネイティブの `--core-only` ソースセットアップ（`python3 scripts/setup-community --core-only`）、WSL2、および Docker Desktop の Linux コンテナをサポートします（詳細は [VALIDATION.md](../VALIDATION.md) および [DEPLOYMENT.md](../DEPLOYMENT.md) を参照してください）。
 
-Linux で固定依存関係と 5 つのローカルツールを導入・検証する場合：
+Linux で固定依存関係と 7 つのローカルツールを導入・検証する場合：
 
 ```bash
 python3 scripts/setup-community --accept-third-party-licenses

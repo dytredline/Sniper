@@ -19,7 +19,7 @@ class TestCommunityRelease(unittest.TestCase):
         workflow = WORKFLOW.read_text(encoding="utf-8")
         version = VERSION_PATH.read_text(encoding="utf-8").strip()
 
-        self.assertEqual(version, "1.0.0")
+        self.assertEqual(version, "1.1.0")
         self.assertRegex(version, r"^[0-9]+\.[0-9]+\.[0-9]+$")
         self.assertIn('tags: ["v*"]', workflow)
         self.assertIn("VERSION=$(tr -d '\\n\\r' < COMMUNITY_VERSION)", workflow)
@@ -42,6 +42,14 @@ class TestCommunityRelease(unittest.TestCase):
             workflow,
         )
         self.assertIn("permissions:\n  contents: write", workflow)
+        self.assertIn("id-token: write", workflow)
+        self.assertIn("attestations: write", workflow)
+        self.assertIn("artifact-metadata: write", workflow)
+        self.assertIn(
+            "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2",
+            workflow,
+        )
+        self.assertIn("subject-path: sniper-community-*.tar.gz", workflow)
         self.assertIn("if: github.ref_type == 'tag'", workflow)
         self.assertIn("GH_TOKEN: ${{ github.token }}", workflow)
         self.assertIn('gh release create "v${VERSION}"', workflow)
@@ -66,7 +74,7 @@ class TestCommunityRelease(unittest.TestCase):
             "review artifact, not a promoted release",
         ):
             self.assertNotIn(stale, combined)
-        self.assertIn("sniper community v1.0.0 source release", texts[0].casefold())
+        self.assertIn("sniper community v1.1.0 source release", texts[0].casefold())
 
     def test_builder_excludes_installed_release_record_and_rebrands_version(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -82,14 +90,14 @@ class TestCommunityRelease(unittest.TestCase):
             )
             self.assertEqual(built.returncode, 0, built.stderr)
             self.assertFalse((output / "RELEASE.json").exists())
-            self.assertEqual((output / "COMMUNITY_VERSION").read_text(encoding="utf-8").strip(), "1.0.0")
+            self.assertEqual((output / "COMMUNITY_VERSION").read_text(encoding="utf-8").strip(), "1.1.0")
             self.assertEqual(
                 (output / "COMMUNITY-RELEASE-LIMITATIONS.md").read_text(encoding="utf-8"),
                 (ROOT / "COMMUNITY-RELEASE-LIMITATIONS.md").read_text(encoding="utf-8"),
             )
 
             version_text = (output / "version.py").read_text(encoding="utf-8")
-            self.assertIn('__version__ = "1.0.0"', version_text)
+            self.assertIn('__version__ = "1.1.0"', version_text)
             self.assertIn("Sniper Community", version_text)
             self.assertNotIn("Sniper Enterprise", version_text)
 
