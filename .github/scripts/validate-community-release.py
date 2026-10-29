@@ -156,7 +156,7 @@ REQUIRED_TEXT = {
     ),
     "VALIDATION.md": (
         "Sniper Community validation evidence",
-        "3,077 tests, 0 failures, 0 errors",
+        "3,079 tests, 0 failures, 0 errors",
         "337 passed",
         "517 passed, 0 failed",
         "seven provenance-bound tools",

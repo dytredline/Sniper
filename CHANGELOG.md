@@ -33,6 +33,9 @@ Community releases.
   supply chain, containers and infrastructure, risk prioritization, reporting, and AI/CLI/web workflows.
 - Added multilingual AI-assisted release-preflight guidance for mobile store submissions, website/API launches, and
   release pull requests.
+- Synchronized the v1.1 capability tags and feature summaries across English, Turkish, Japanese, Simplified Chinese,
+  and Korean READMEs; added a contributor note and an automated parity gate so future public feature additions must
+  update all five language documents together.
 
 ## Sniper Community 1.0.0 — 2026-10-24
 

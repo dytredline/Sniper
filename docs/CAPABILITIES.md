@@ -474,7 +474,7 @@ yazılı kapsam, zaman aralığı, hız sınırı, veri işleme ve durdurma koş
 | --- | --- |
 | Community metadata/yayın yüzeyi | PASS — 43 gerekli yayın dosyası |
 | Deterministik kaynak oluşturma ve release-tree taraması | PASS |
-| Python `unittest` launcher | 3.077 test, 0 hata, 0 başarısızlık |
+| Python `unittest` launcher | 3.079 test, 0 hata, 0 başarısızlık |
 | Python `pytest` modülleri | 337 geçti |
 | JavaScript/Node testleri | 517 geçti, 0 başarısızlık |
 | Kilitli araç kurulumu smoke | PASS — Linux ARM64 için yedi araç çevrimdışı cache'den kurulup yeniden doğrulandı; tarayıcı çalıştırılmadı |

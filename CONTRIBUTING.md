@@ -10,6 +10,9 @@ Thank you for helping improve defensive application security.
 3. Add a test that fails on the old behavior and passes on the new behavior. Include a safe control and an edge case.
 4. Never run tests against an external target unless you own it or have explicit written authorization. Repository
    tests must use local fixtures, temporary directories, or loopback-only services.
+5. When adding or changing a public feature group, capability tag, or release-preflight description, update the
+   English, Turkish, Japanese, Simplified Chinese, and Korean README files in the same change. Follow
+   [the README feature-parity contract](docs/LOCALIZATION.md#readme-özellik-eşitliği-sözleşmesi) and run its test.
 
 Do not commit credentials, tokens, private keys, production data, customer identifiers, local databases, generated
 evidence, or machine-specific absolute paths.
