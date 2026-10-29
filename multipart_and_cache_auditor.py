@@ -25,17 +25,27 @@ _UNSAFE_UPLOAD_JOIN_RE = re.compile(
     r")"
 )
 
-_SAFE_UPLOAD_ID_GUARD_RE = re.compile(
-    r"(?:"
-    r"\bfn\s+upload_dir\s*\("
-    r"|\bself\.upload_dir\s*\("
-    r"|\bupload_dir\s*\(\s*&?\s*(?:self\s*,\s*)?&?\s*(?:id|upload_id|uploadId)\b"
-    r"|\bvalidate_upload_id\s*\("
-    r"|\bis_valid_upload_id\s*\("
-    r"|\bis_ascii_alphanumeric\s*\("
-    r"|re\.fullmatch\s*\(\s*r?[\"']\^?\[a-zA-Z0-9_-]+\+\$?[\"']\s*,\s*(?:upload_id|uploadId)\s*\)"
-    r")"
-)
+def _has_safe_upload_id_guard(content: str) -> bool:
+    compact = "".join(content.split())
+    direct_markers = (
+        "fnupload_dir(", "self.upload_dir(", "upload_dir(&self,&id", "upload_dir(&self,id",
+        "upload_dir(&id", "upload_dir(id", "upload_dir(&upload_id", "upload_dir(upload_id",
+        "upload_dir(&uploadId", "upload_dir(uploadId", "validate_upload_id(",
+        "is_valid_upload_id(", "is_ascii_alphanumeric(",
+    )
+    if any(marker in compact for marker in direct_markers):
+        return True
+    cursor = 0
+    while True:
+        start = compact.find("re.fullmatch(", cursor)
+        if start < 0:
+            return False
+        call = compact[start:start + 512]
+        if "[a-zA-Z0-9_-]+" in call and any(
+            marker in call for marker in (",upload_id)", ",uploadId)")
+        ):
+            return True
+        cursor = start + len("re.fullmatch(")
 
 _UNCONDITIONAL_DELETE_SINK_RE = re.compile(
     r"\b(?:tokio::fs::remove_dir_all|std::fs::remove_dir_all|fs::remove_dir_all|remove_dir_all|shutil\.rmtree|fs\.rmSync|fs\.rmdirSync)\s*\("
@@ -95,7 +105,7 @@ def audit_multipart_upload_and_state_cache(
     if _UPLOAD_PARAM_RE.search(content):
         join_match = _UNSAFE_UPLOAD_JOIN_RE.search(content)
         delete_match = _UNCONDITIONAL_DELETE_SINK_RE.search(content)
-        has_upload_id_guard = bool(_SAFE_UPLOAD_ID_GUARD_RE.search(content))
+        has_upload_id_guard = _has_safe_upload_id_guard(content)
         has_delete_guard = bool(_SAFE_DELETE_GUARD_RE.search(content))
 
         unsafe_join = bool(join_match and not has_upload_id_guard)

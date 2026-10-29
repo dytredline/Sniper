@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
+import sys
 
 import pytest
 
@@ -135,7 +137,7 @@ def test_runtime_digest_pin_mismatch_fails_before_any_engine_execution(tmp_path:
             source_snippet=PYTHON_SOURCE,
             project_root=tmp_path,
             confirm_local=True,
-            runtime_path="/usr/bin/python3.12",
+            runtime_path=os.path.realpath(sys.executable),
             runtime_sha256="0" * 64,
             support_path=module,
             support_sha256=support_sha,
@@ -162,43 +164,53 @@ def test_generated_harnesses_publish_source_and_harness_digests_and_js_bounds() 
 
 
 def test_real_sandbox_runner_enforces_wall_clock_and_output_edges(tmp_path: Path) -> None:
-    timed = fuzz_runtime._run_stage(
-        tmp_path,
-        "deadline",
-        [],
-        ["/usr/bin/python3.12", "-c", "import time; time.sleep(5)"],
-        (),
-        timeout=1,
-        output_bytes=4096,
-    )
+    runtime_path = os.path.realpath(sys.executable)
+    try:
+        timed = fuzz_runtime._run_stage(
+            tmp_path,
+            "deadline",
+            [],
+            [runtime_path, "-c", "import time; time.sleep(5)"],
+            (),
+            timeout=1,
+            output_bytes=4096,
+        )
+    except fuzz_runtime._RuntimeUnavailable as exc:
+        pytest.skip(f"networkless sandbox unavailable on this runner: {exc}")
     assert timed == (-9, "", False, True)
 
-    capped = fuzz_runtime._run_stage(
-        tmp_path,
-        "output-cap",
-        [],
-        ["/usr/bin/python3.12", "-c", "import sys; sys.stdout.write('x' * 100000); sys.stdout.flush()"],
-        (),
-        timeout=2,
-        output_bytes=4096,
-    )
+    try:
+        capped = fuzz_runtime._run_stage(
+            tmp_path,
+            "output-cap",
+            [],
+            [runtime_path, "-c", "import sys; sys.stdout.write('x' * 100000); sys.stdout.flush()"],
+            (),
+            timeout=2,
+            output_bytes=4096,
+        )
+    except fuzz_runtime._RuntimeUnavailable as exc:
+        pytest.skip(f"networkless sandbox unavailable on this runner: {exc}")
     assert len(capped[1].encode()) <= 4096
     assert capped[2] is True
     assert capped[3] is False
 
 
 def test_pinned_runtime_inode_is_the_one_executed_in_networkless_sandbox(tmp_path: Path) -> None:
-    runtime_path = "/usr/bin/python3.12"
+    runtime_path = os.path.realpath(sys.executable)
     runtime_sha = file_sha256(runtime_path, "Python")
     with open_verified_executable(runtime_path, {runtime_sha: "test"}, label="Python") as runtime:
         binds, command = fuzz_runtime._safe_runtime_root(None, runtime, "/runtime")
-        completed = fuzz_runtime._run_stage(
-            tmp_path,
-            "pinned-runtime",
-            binds,
-            [command, "-c", "print('SNIPER_PINNED_RUNTIME_OK')"],
-            (runtime.fd,),
-            timeout=2,
-            output_bytes=4096,
-        )
+        try:
+            completed = fuzz_runtime._run_stage(
+                tmp_path,
+                "pinned-runtime",
+                binds,
+                [command, "-c", "print('SNIPER_PINNED_RUNTIME_OK')"],
+                (runtime.fd,),
+                timeout=2,
+                output_bytes=4096,
+            )
+        except fuzz_runtime._RuntimeUnavailable as exc:
+            pytest.skip(f"networkless sandbox unavailable on this runner: {exc}")
     assert completed == (0, "SNIPER_PINNED_RUNTIME_OK\n", False, False)

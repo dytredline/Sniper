@@ -285,6 +285,23 @@ def _local_workflow_path(spec: str) -> str | None:
     return relative.as_posix()
 
 
+def _has_remote_workflow_path_shape(value: str) -> bool:
+    parts = value.split("/")
+    if len(parts) != 5 or parts[2:4] != [".github", "workflows"]:
+        return False
+    owner, repository, _github, _workflows, filename = parts
+    allowed = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-")
+    return (
+        bool(owner)
+        and bool(repository)
+        and all(character in allowed for character in owner)
+        and all(character in allowed for character in repository)
+        and filename.endswith((".yml", ".yaml"))
+        and len(filename) > 4
+        and all(character in allowed for character in filename)
+    )
+
+
 def _remote_workflow_reference(spec: str) -> dict[str, str] | None:
     """Classify a remote reusable-workflow reference without echoing unsafe input."""
     normalized = spec.strip().strip("'\"")
@@ -305,10 +322,7 @@ def _remote_workflow_reference(spec: str) -> dict[str, str] | None:
             "resolution": "pending_mirror",
         }
     repository_and_path, separator, ref = normalized.rpartition("@")
-    if separator and re.fullmatch(
-        r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/\.github/workflows/[A-Za-z0-9_.-]+\.ya?ml",
-        repository_and_path,
-    ):
+    if separator and _has_remote_workflow_path_shape(repository_and_path):
         if SHA40_PATTERN.fullmatch(ref):
             return {**base, "resolution": "noncanonical_identity"}
         return {**base, "resolution": "mutable_ref"}

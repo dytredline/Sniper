@@ -37,6 +37,8 @@ EXCLUDED_NAMES_CASEFOLD = frozenset(name.casefold() for name in EXCLUDED_NAMES)
 # These files are maintainer evaluation fixtures, not the runtime measurement
 # modules used by the product. Keep this list narrow and review additions.
 INTERNAL_EVALUATION_PATHS = frozenset({
+    "docs/advisories",
+    "docs/SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md",
     "docs/sniper-2-evaluation.md",
     "docs/olcum",
     "scripts/ai_triage_eval.py",
@@ -818,11 +820,45 @@ def _transform_project_audit_i18n_wording(text: str) -> str:
     return _replace_exact(text, old, new, expected=1, relative=relative)
 
 
+def _transform_public_readme(text: str) -> str:
+    """Remove maintainer disclosure work from the assembled product README."""
+    return _replace_pattern(
+        text,
+        r"^### Gökçe Baran Karakamış — macOS Kurulum Doğrulaması.*?(?=^## Validation and tests)",
+        (
+            "### Independent validation\n\n"
+            "Community release claims are limited to the reproducible checks in "
+            "[VALIDATION.md](VALIDATION.md). Maintainer vulnerability research and "
+            "coordinated-disclosure work are intentionally not distributed with the product source archive.\n\n"
+        ),
+        expected=1,
+        relative="README.md",
+    )
+
+
+def _transform_public_readme_tr(text: str) -> str:
+    """Remove maintainer disclosure work from the assembled Turkish README."""
+    return _replace_pattern(
+        text,
+        r"^### Gökçe Baran Karakamış — macOS Kurulum Doğrulaması.*?(?=^## Doğrulama ve testler)",
+        (
+            "### Bağımsız doğrulama\n\n"
+            "Community sürüm iddiaları [VALIDATION.md](../VALIDATION.md) içindeki yeniden üretilebilir "
+            "kontrollerle sınırlıdır. Bakımcı güvenlik araştırması ve koordineli bildirim çalışmaları ürün "
+            "kaynak arşiviyle bilerek dağıtılmaz.\n\n"
+        ),
+        expected=1,
+        relative="docs/README.tr.md",
+    )
+
+
 def _apply_artifact_transform(relative: Path, text: str) -> str:
     transforms = {
         "Dockerfile": _transform_dockerfile,
+        "README.md": _transform_public_readme,
         "data_retention.py": _transform_data_retention,
         "docs/KULLANIM-KILAVUZU.md": _transform_user_guide,
+        "docs/README.tr.md": _transform_public_readme_tr,
         "mcp_triage_server.py": _transform_mcp_community_wording,
         "report_renderers.py": _transform_report_renderers,
         "server.py": _transform_server,

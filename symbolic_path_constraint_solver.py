@@ -176,9 +176,17 @@ def _extract_atomic_guards(guards: list[str] | str) -> list[str]:
         if not cleaned or cleaned.startswith(("#", "//", "/*")):
             continue
         # Strip inline comments outside quotes
-        m_stmt = re.match(r"^(?:if|elif|while|assert|guard)\b\s*(.*)$", cleaned)
-        if m_stmt:
-            cleaned = m_stmt.group(1).strip()
+        statement_body: str | None = None
+        for keyword in ("if", "elif", "while", "assert", "guard"):
+            if cleaned.startswith(keyword):
+                boundary = len(keyword)
+                if boundary == len(cleaned) or not (
+                    cleaned[boundary] == "_" or cleaned[boundary].isalnum()
+                ):
+                    statement_body = cleaned[boundary:].strip()
+                    break
+        if statement_body is not None:
+            cleaned = statement_body
             if cleaned.endswith(":"):
                 cleaned = cleaned[:-1].strip()
             if cleaned.endswith("{"):

@@ -96,6 +96,7 @@ _SECRET_REDACT_RE = re.compile(
 )
 
 _ASCII_LOWER = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
+_WHITESPACE_RUN = re.compile(r"\s*")
 _SYSTEM_PROMPT_NAMES = ("system_prompt", "systemprompt")
 _LLM_OUTPUT_ASSIGNMENT_MARKERS = (
     "response.choices",
@@ -225,12 +226,10 @@ def _system_prompt_exposure_offset(source_line: str) -> int | None:
             break
         offset = start + len("export")
         if offset < len(lowered) and lowered[offset].isspace():
-            while offset < len(lowered) and lowered[offset].isspace():
-                offset += 1
+            offset = _WHITESPACE_RUN.match(lowered, offset).end()
             if lowered.startswith("const", offset):
                 offset += len("const")
-                while offset < len(lowered) and lowered[offset].isspace():
-                    offset += 1
+                offset = _WHITESPACE_RUN.match(lowered, offset).end()
                 if _prompt_name_at(offset):
                     candidates.append(start)
                     break
@@ -242,8 +241,7 @@ def _system_prompt_exposure_offset(source_line: str) -> int | None:
         if start < 0:
             break
         offset = start + len("window.")
-        while offset < len(lowered) and lowered[offset].isspace():
-            offset += 1
+        offset = _WHITESPACE_RUN.match(lowered, offset).end()
         if _prompt_name_at(offset):
             candidates.append(start)
             break
@@ -276,13 +274,11 @@ def _system_prompt_exposure_offset(source_line: str) -> int | None:
             break
         previous = source_line[start - 1] if start else ""
         offset = start + len(assignment_name)
-        while offset < len(source_line) and source_line[offset].isspace():
-            offset += 1
+        offset = _WHITESPACE_RUN.match(source_line, offset).end()
         if (not previous or not (previous == "_" or previous.isalnum())) \
                 and offset < len(source_line) and source_line[offset] in ":=":
             offset += 1
-            while offset < len(source_line) and source_line[offset].isspace():
-                offset += 1
+            offset = _WHITESPACE_RUN.match(source_line, offset).end()
             if offset < len(source_line) and source_line[offset] in "\"'":
                 value_start = offset + 1
                 value_end = value_start
@@ -974,10 +970,13 @@ def audit_mcp_config_privileges(
     has_mcp_context = bool(
         re.search(
             r"(?i)(?:server-filesystem|mcpServers|mcp_servers|StdioServerParameters|"
-            r"@modelcontextprotocol|fastmcp|McpServer|\bmcp\b)",
+            r"@modelcontextprotocol|fastmcp|McpServer|server-everything|mcp-server-shell|"
+            r"mcp-server-commands|mcp_server_shell|mcp_server_commands|\bmcp\b)",
             raw_content,
         )
     ) or "mcp" in clean_filename.lower()
+    if not has_mcp_context:
+        return {"findings": [], "count": 0, "filename": clean_filename}
     has_fs_or_args = bool(
         re.search(r"(?i)(?:server-filesystem|\bargs\b)", raw_content)
     )

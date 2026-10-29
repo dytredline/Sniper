@@ -191,7 +191,7 @@ def _lookup(body: str, ids: set[str], *, subject_re: re.Pattern[str], base_line:
 
 def spring_routes(relpath: str, text: str) -> list[dict[str, Any]]:
     routes: list[dict[str, Any]] = []
-    class_re = re.compile(r"\bclass\s+(?P<name>[A-Za-z_]\w*)[^\{;]*\{", re.MULTILINE)
+    class_re = re.compile(r"\bclass\s++(?P<name>[A-Za-z_]\w*+)[^\{;]*+\{", re.MULTILINE)
     method_re = re.compile(
         r"(?P<attrs>(?:^[ \t]*+@[A-Za-z_]\w*(?:\((?:[^)\"'\n]++|\"(?:[^\"\\]++|\\.)*+\"|'(?:[^'\\]++|\\.)*+')*+\))?[ \t]*+\n)++)"
         r"[ \t]*+(?:(?:public|protected|private|static|final|synchronized|abstract)\s++)*+"
@@ -267,7 +267,7 @@ def _controller_token(path: str, class_name: str) -> str:
 
 def aspnet_routes(relpath: str, text: str) -> list[dict[str, Any]]:
     routes: list[dict[str, Any]] = []
-    class_re = re.compile(r"\bclass\s+(?P<name>[A-Za-z_]\w*)[^\{;]*\{", re.MULTILINE)
+    class_re = re.compile(r"\bclass\s++(?P<name>[A-Za-z_]\w*+)[^\{;]*+\{", re.MULTILINE)
     method_re = re.compile(
         r"(?P<attrs>(?:^[ \t]*+\[(?:[^\]\"\n]++|\"(?:[^\"\\]++|\\.)*+\")++\][ \t]*+\n)++)"
         r"[ \t]*+(?:(?:public|protected|private|internal|static|sealed|virtual|override|async)\s++)*+"

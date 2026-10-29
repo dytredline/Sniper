@@ -504,12 +504,33 @@ _HASH_COMMENT_SUFFIXES = frozenset({
 _LLM_TOKEN_METRIC_RE = re.compile(
     r"(?i)\b(?:(?:prompt|completion|total|max|input|output|cached|reasoning|num)[_-]?tokens?|token[_-]?(?:count|usage|limit|budget)s?|tokens[_-]?used)\b"
 )
-_BENIGN_SECRET_LITERAL_RE = re.compile(
-    r"(?i)^(?:placeholder.*|changeme.*|your[_\s-].*|example.*|dummy.*|no[_-]?api[_-]?key.*|"
-    r"not[_-]?used[_-]?at[_-]?runtime|build[_-]?only|oauth\s+client\s+secret.*|"
-    r".*[-_]not[-_]configured|\[redacted\]|\*+|/[A-Za-z0-9_./-]+|"
-    r"<[^>]+>|\$\{[^}]+\}|\{\{[^}]+\}\}|\S+\s+\S+\s+.*)$"
-)
+def _is_benign_secret_literal(raw_value: str) -> bool:
+    value = raw_value.strip()
+    lowered = value.casefold()
+    prefix_markers = (
+        "placeholder", "changeme", "your_", "your ", "your-", "example", "dummy",
+        "no_api_key", "no-api-key", "noapikey", "oauth client secret",
+    )
+    if lowered.startswith(prefix_markers):
+        return True
+    if lowered in {"not_used_at_runtime", "not-used-at-runtime", "build_only", "build-only", "[redacted]"}:
+        return True
+    if lowered.endswith(("-not-configured", "_not_configured", "-not_configured", "_not-configured")):
+        return True
+    if value and all(character == "*" for character in value):
+        return True
+    if len(value) > 1 and value.startswith("/") and all(
+        character in "_./-" or character.isascii() and character.isalnum()
+        for character in value[1:]
+    ):
+        return True
+    if len(value) >= 3 and value.startswith("<") and value.endswith(">") and ">" not in value[1:-1]:
+        return True
+    if len(value) >= 4 and value.startswith("${") and value.endswith("}") and "}" not in value[2:-1]:
+        return True
+    if len(value) >= 6 and value.startswith("{{") and value.endswith("}}") and "}" not in value[2:-2]:
+        return True
+    return len(value.split()) >= 3
 _SQL_CONTEXT_LINE_RE = re.compile(
     r"(?i)(?:\b(?:SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|JOIN|INTO|VALUES|CREATE|ALTER|DROP|TABLE|SET|UNION)\b"
     r"|\b(?:db|sql|conn|connection|cursor|cur|stmt|pool|tx|session|engine|knex|sequelize|prisma|repo|store)\s*\.(?:\w+\s*\.)?\s*(?:execute|query)\s*\()"
@@ -2070,7 +2091,7 @@ def _analyze_project(
                                 and len(value.value) >= 8
                                 and not (
                                     isinstance(value.value, str)
-                                    and _BENIGN_SECRET_LITERAL_RE.match(value.value.strip())
+                                    and _is_benign_secret_literal(value.value)
                                 )
                             ):
                                 add(
@@ -2398,7 +2419,7 @@ def _analyze_project(
                             r"(?i)\b(?:api[_-]?key|client[_-]?secret|private[_-]?key|password|passwd)\b\s*+[:=]\s*+[\"']([^\"']{8,}+)[\"']",
                             line,
                         )
-                        if m_sec and _BENIGN_SECRET_LITERAL_RE.match(m_sec.group(1).strip()):
+                        if m_sec and _is_benign_secret_literal(m_sec.group(1)):
                             continue
                     if title == "Günlüğe hassas veri yazma olasılığı":
                         line_without_metrics = _LLM_TOKEN_METRIC_RE.sub("", line)
