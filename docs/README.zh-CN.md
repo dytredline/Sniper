@@ -10,6 +10,31 @@ Sniper Community 是一套开源、本地优先的防御性应用安全工具，
 对于您拥有或已获得明确授权的 Web/API 目标，Sniper 还可以先生成一个范围明确、需要人工审查的执行计划。
 结果可通过本地 stdio MCP 提供给 AI 客户端，也可通过 CLI 或本地回环 Web 界面查看。
 
+## 功能标签
+
+`应用安全` · `SAST` · `SCA` · `SBOM` · `IaC 安全` · `API 安全` · `网站安全` · `移动安全` ·
+`Android` · `iOS` · `IDOR` · `授权` · `GraphQL` · `Rails` · `Spring` · `ASP.NET` · `Kubernetes` ·
+`Helm` · `Terraform` · `容器安全` · `CI/CD 安全` · `软件供应链` · `SLSA` · `OCI 来源证明` ·
+`Syft` · `Grype` · `模糊测试` · `内存安全` · `MCP` · `AI 安全` · `SARIF` · `OpenVEX` · `GHSA` ·
+`CVSS` · `SSVC` · `密钥检测` · `隐私` · `静态分析` · `运行时证据` · `多仓库分析` · `信任图` ·
+`制品来源证明` · `协议安全` · `归档与符号链接安全` · `二进制加固` · `DevSecOps` · `本地优先`
+
+Sniper Community v1.1 在以下领域增加了更深入、可审查的能力：
+
+- **跨框架访问控制：** 关联受支持的 Rails 继承关系、Spring 和 ASP.NET 路由、GraphQL 解析器、
+  对象标识符、授权注解、策略、角色、所有者以及租户约束查询。
+- **多仓库信任图：** 映射受支持的 HTTP/OpenAPI、Webhook、Kafka、身份验证契约、GraphQL、精确 PyPI
+  依赖项、CI 制品和可复用工作流关系，且不返回私有端点或凭据。
+- **有边界的模糊测试与运行时证据：** 为 C/C++、Rust、Go、Python、Java 和 JavaScript/TypeScript
+  准备可审查的模糊测试目标；对受支持的可选执行路径实施精确运行时固定、网络隔离、资源上限和
+  失败时关闭的就绪状态。
+- **供应链与平台审查：** 检查受支持的 OCI/SLSA 来源证明、SBOM/VEX 证据、Kubernetes、Helm、
+  Terraform、容器、模式迁移、CI/CD 信任、归档、符号链接、协议和二进制加固信号。
+- **AI 辅助防御工作流：** 在以已显示计划和明确人工确认契约保护状态变更操作的同时，通过本地
+  stdio MCP 提供响应比较、授权矩阵、令牌序列、流量解码、GHSA/OpenVEX 准备和漏洞赏金就绪审查。
+- **基于证据的优先级排序：** 将受支持的发现与 SARIF 代码流、CVSS 3.1/4.0、CISA SSVC、可达性、
+  攻击路径、负责人、基线以及面向修复的质量门关联起来。
+
 ## 发布前使用 AI 进行安全审查
 
 **使用强大的开源工具包查找网站安全弱点。** 将经授权的网站和 API 扫描与本地代码及依赖项审查相结合，将发现转化为按优先级排列的修复计划。外部扫描需要相应的引擎、数据、就绪检查和明确的范围批准。参见[网站与 API 审查路径](USE-CASES.md#plan-an-authorized-website-or-api-action)。

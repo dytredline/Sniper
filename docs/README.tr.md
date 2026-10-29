@@ -12,6 +12,36 @@ akışında birleştirir. Size ait veya açıkça yetkilendirilmiş bir web/API 
 kapsamı sınırlandırılmış çalışma zamanı eylem planları hazırlayabilir. Sonuçlara yerel stdio MCP üzerinden bir yapay zekâ
 istemcisiyle, komut satırı (CLI) aracılığıyla veya yerel loopback web arayüzünden ulaşabilirsiniz.
 
+## Yetenek etiketleri
+
+`Uygulama Güvenliği` · `SAST` · `SCA` · `SBOM` · `IaC Güvenliği` · `API Güvenliği` · `Web Sitesi Güvenliği` ·
+`Mobil Güvenlik` · `Android` · `iOS` · `IDOR` · `Yetkilendirme` · `GraphQL` · `Rails` · `Spring` · `ASP.NET` ·
+`Kubernetes` · `Helm` · `Terraform` · `Konteyner Güvenliği` · `CI/CD Güvenliği` · `Yazılım Tedarik Zinciri` ·
+`SLSA` · `OCI Kökeni` · `Syft` · `Grype` · `Fuzzing` · `Bellek Güvenliği` · `MCP` · `Yapay Zekâ Güvenliği` ·
+`SARIF` · `OpenVEX` · `GHSA` · `CVSS` · `SSVC` · `Sır Tespiti` · `Gizlilik` · `Statik Analiz` ·
+`Çalışma Zamanı Kanıtı` · `Çoklu Depo Analizi` · `Güven Grafikleri` · `Artifact Kökeni` · `Protokol Güvenliği` ·
+`Arşiv ve Sembolik Bağ Güvenliği` · `İkili Sertleştirme` · `DevSecOps` · `Yerel Öncelikli`
+
+Sniper Community v1.1 şu alanlarda daha derin ve incelenebilir kapsam ekler:
+
+- **Çerçeveler arası erişim denetimi:** Desteklenen Rails kalıtımını, Spring ve ASP.NET rotalarını, GraphQL
+  resolver'larını, nesne kimliklerini, yetkilendirme anotasyonlarını, ilkeleri, rolleri, sahipleri ve kiracıya bağlı
+  sorguları ilişkilendirir.
+- **Çoklu depo güven grafikleri:** Desteklenen HTTP/OpenAPI, webhook, Kafka, kimlik doğrulama sözleşmesi, GraphQL,
+  tam PyPI bağımlılığı, CI artifact'i ve yeniden kullanılabilir iş akışı ilişkilerini özel uç noktaları veya kimlik
+  bilgilerini döndürmeden haritalar.
+- **Sınırlandırılmış fuzz ve çalışma zamanı kanıtı:** C/C++, Rust, Go, Python, Java ve JavaScript/TypeScript için
+  incelenebilir fuzz hedefleri hazırlar; desteklenen isteğe bağlı yürütme yollarında açık runtime sabitlemeleri, ağ
+  yalıtımı, kaynak sınırları ve kapalı kalan hazırlık durumları uygular.
+- **Tedarik zinciri ve platform incelemesi:** Desteklenen OCI/SLSA kökenini, SBOM/VEX kanıtını, Kubernetes, Helm,
+  Terraform, konteyner, şema migration, CI/CD güveni, arşiv, sembolik bağ, protokol ve ikili sertleştirme sinyallerini
+  inceler.
+- **Yapay zekâ destekli savunma akışları:** Durum değiştiren eylemleri gösterilen plan ve açık insan onayı
+  sözleşmesinin arkasında tutarken yerel stdio MCP ile yanıt karşılaştırma, yetki matrisi, token sıralama, trafik
+  çözümleme, GHSA/OpenVEX hazırlama ve bounty hazırlık incelemesi sunar.
+- **Kanıta dayalı önceliklendirme:** Desteklenen bulguları SARIF kod akışları, CVSS 3.1/4.0, CISA SSVC,
+  erişilebilirlik, saldırı yolları, sahiplik, baseline ve iyileştirme odaklı kalite kapılarıyla ilişkilendirir.
+
 ## Yayına çıkmadan önce inceleyin
 
 **Güçlü ve açık kaynak bir araç setiyle web sitenizdeki güvenlik açıklarını bulun.** Yetkilendirilmiş web sitesi ve API

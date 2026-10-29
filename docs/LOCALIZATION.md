@@ -1,6 +1,6 @@
 # Sniper Community localization
 
-Sniper Community 1.0 arayüz ve HTML raporlarında Türkçe (`tr`) kaynak dili ile İngilizce (`en`) temel
+Sniper Community 1.1 arayüz ve HTML raporlarında Türkçe (`tr`) kaynak dili ile İngilizce (`en`) temel
 paketi; Japonca (`ja`), Basitleştirilmiş Çince (`zh-CN`) ve Korece (`ko`) genişletilmiş başlangıç
 paketleri sunar. İngilizce görünür-arayüz sözlüğü mevcut kapsam testinde 1908/2064 (%92,4) dizgeyi
 kapsar; bu nedenle tam çeviri iddiası yoktur. Seçili CJK paketinde bulunmayan metin, İngilizce girdisi
@@ -36,6 +36,19 @@ Bu değişiklikler motor veya veri şeması değişmeden bağımsız bir çeviri
 Semantik sürümlemede yalnız çeviri düzeltmesi yama sürümü; yeni bir dil veya belirgin kapsam genişlemesi küçük
 sürüm olarak işaretlenebilir. Yayın yine tam regresyon ve Community kaynak ağacı doğrulamasından geçer.
 
+## README özellik eşitliği sözleşmesi
+
+Ana `README.md` dosyasına yeni bir özellik grubu, yetenek etiketi veya yayın öncesi kullanım anlatımı eklendiğinde
+aynı değişiklik tek pull request içinde `docs/README.tr.md`, `docs/README.ja.md`, `docs/README.zh-CN.md` ve
+`docs/README.ko.md` dosyalarına doğal çeviriyle eklenmelidir. Teknik ürün adları ve standart kısaltmalar korunabilir;
+başlıklar, açıklamalar ve kullanıcıya dönük cümleler ilgili dilde yazılır. Bir dil dosyasını sonraki sürüme bırakmak
+veya İngilizce bölümü doğrudan kopyalamak yayın için kabul edilmez.
+
+`tests/test_localized_readme_feature_parity.py` beş README'de özellik etiketi bölümünü, v1.1'in altı açıklama
+grubunu ve ortak yüksek değerli teknik etiketleri zorunlu kılar. Yeni bir ortak özellik grubu eklendiğinde bu testin
+beklentisi de aynı değişiklikte yükseltilir. Arayüz sözlük kapsamı ile README belge eşitliği ayrı sözleşmelerdir;
+birinin geçmesi diğerinin güncel olduğunu kanıtlamaz.
+
 ## Mevcut doğrulama
 
 - `tests/test_i18n_server.py`: İngilizce temel paket, rapor ve sözlük sözleşmesi.
@@ -43,3 +56,4 @@ sürüm olarak işaretlenebilir. Yayın yine tam regresyon ve Community kaynak a
 - `tests/test_i18n_ui.mjs`: dil geçişi, İngilizce fallback, güvenli DOM yazımı ve dinamik içerik.
 - `tests/test_i18n_layout_contract.mjs`: seçici ve CJK taşma CSS sözleşmesi.
 - `browser-tests/test_i18n_layout_browser.mjs`: pinli Chromium ile beş dilde masaüstü ve mobil gerçek düzen testi.
+- `tests/test_localized_readme_feature_parity.py`: beş dilde README özellik/etiket eşitliği.
