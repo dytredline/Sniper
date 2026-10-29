@@ -24,10 +24,11 @@ _SAFE_WRAPPER_GUARD_RE = re.compile(
     r"(WithSSRFFilter|ssrf_filter|SafeDialContext|Gitlab::HTTP\.perform_request|Gitlab::HTTP\.get|Gitlab::HTTP\.post|Gitlab::HTTP_V2|UrlBlocker\.validate!)"
 )
 
-_GO_ROUNDTRIP_AUTH_RE = re.compile(
-    r"func\s*\([^)]*\)\s*RoundTrip\s*\([^)]*\)[^{]*\{[\s\S]*?Header\.(?:Set|Add)\(\s*[\"']Authorization[\"']",
+_GO_ROUNDTRIP_RE = re.compile(
+    r"func\s*+\([^)]*+\)\s*+RoundTrip\s*+\([^)]*+\)[^{]*+\{",
     re.MULTILINE,
 )
+_GO_AUTH_HEADER_RE = re.compile(r"Header\.(?:Set|Add)\(\s*+[\"']Authorization[\"']")
 _ORIGIN_CHECK_RE = re.compile(
     r"(CheckRedirect|sameOrigin|sameHost|req\.URL\.Host\s*!=|initialHost|expectedHost|Header\.Del\(\s*[\"']Authorization[\"'])"
 )
@@ -113,7 +114,12 @@ def audit_http_redirect_and_tls_semantics(
             )
 
     # (b) SNIPER-HTTP-REDIR-02
-    rt_match = _GO_ROUNDTRIP_AUTH_RE.search(content)
+    rt_match = None
+    for roundtrip in _GO_ROUNDTRIP_RE.finditer(content):
+        method_window = content[roundtrip.end():roundtrip.end() + 100_000]
+        if _GO_AUTH_HEADER_RE.search(method_window):
+            rt_match = roundtrip
+            break
     if rt_match and not _ORIGIN_CHECK_RE.search(content):
         line_no = _line_number(content, rt_match.start())
         findings.append(

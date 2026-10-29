@@ -434,11 +434,11 @@ def audit_business_logic_inline(
     # 7. Multi-Tenant / Object Ownership Filter Gap — BOLA / IDOR (high, CWE-639, SNIPER-AUTHZ-BOLA-04)
     bola_handler_re = re.compile(
         r"(?im)^[ \t]*(?:"
-        r"@(?:app|router|bp|api)\.(?:get|post|put|delete|patch|route)\s*\([^\n]*\)"
-        r"(?:\s*\n[ \t]*@[^\n]+)*"
-        r"(?:\s*\n[ \t]*(?:async\s+)?def\s+\w+\s*\([^)]*\))?"
-        r"|(?:async\s+)?def\s+\w+\s*\([^)]*\b(?:item_id|order_id|doc_id|invoice_id|record_id|account_id|patient_id)\b[^)]*\)"
-        r"|(?:app|router)\.(?:get|post|put|delete|patch)\s*\([^\n]*"
+        r"@(?:app|router|bp|api)\.(?:get|post|put|delete|patch|route)\s*+\([^\n]*+\)"
+        r"(?:\s*+\n[ \t]*+@[^\n]++)*+"
+        r"(?:\s*+\n[ \t]*+(?:async\s++)?def\s++\w++\s*+\([^)]*+\))?"
+        r"|(?:async\s++)?def\s++\w++\s*+\([^)]{0,1024}\b(?:item_id|order_id|doc_id|invoice_id|record_id|account_id|patient_id)\b[^)]{0,1024}\)"
+        r"|(?:app|router)\.(?:get|post|put|delete|patch)\s*+\([^\n]*+"
         r")"
     )
     bola_lookup_re = re.compile(
@@ -509,12 +509,12 @@ def audit_business_logic_inline(
 
 _FIN_RMW_HANDLER_RE = re.compile(
     r"(?im)^[ \t]*(?:"
-    r"@(?:app|router|bp|api)\.(?:get|post|put|delete|patch|route)\s*\([^\n]*\)"
-    r"(?:\s*\n[ \t]*@[^\n]+)*"
-    r"(?:\s*\n[ \t]*(?:async\s+)?def\s+\w+\s*\([^)]*\))?"
-    r"|(?:async\s+)?(?:def|function)\s+\w+\s*\([^)]*\)"
-    r"|(?:app|router)\.(?:get|post|put|delete|patch)\s*\([^\n]*"
-    r"|func\s+(?:\([^)]+\)\s*)?\w+\s*\([^)]*\)"
+    r"@(?:app|router|bp|api)\.(?:get|post|put|delete|patch|route)\s*+\([^\n]*+\)"
+    r"(?:\s*+\n[ \t]*+@[^\n]++)*+"
+    r"(?:\s*+\n[ \t]*+(?:async\s++)?def\s++\w++\s*+\([^)]*+\))?"
+    r"|(?:async\s++)?(?:def|function)\s++\w++\s*+\([^)]*+\)"
+    r"|(?:app|router)\.(?:get|post|put|delete|patch)\s*+\([^\n]*+"
+    r"|func\s++(?:\([^)]+\)\s*+)?\w++\s*+\([^)]*+\)"
     r")"
 )
 _FIN_RMW_STATE_RE = re.compile(
@@ -523,7 +523,7 @@ _FIN_RMW_STATE_RE = re.compile(
 )
 _FIN_RMW_READ_CHECK_RE = re.compile(
     r"(?:\b(?:get|filter|filter_by|findUnique|findOne|SELECT)\b"
-    r"|if\s+[^:\n]*(?:balance|wallet|credits|funds|stock|inventory|used|redeemed))",
+    r"|if\s++[^:\n]{0,1024}(?:balance|wallet|credits|funds|stock|inventory|used|redeemed))",
     re.IGNORECASE,
 )
 _FIN_RMW_MUTATION_RE = re.compile(
@@ -666,10 +666,8 @@ def audit_business_logic_project(
     }
 
 
-_WEB3_CALL_VALUE_RE = re.compile(
-    r"(?:\.call\s*\{[^}]*\bvalue\s*:|\.call\.value\s*\()",
-    re.IGNORECASE,
-)
+_WEB3_CALL_BLOCK_RE = re.compile(r"\.call\s*+\{", re.IGNORECASE)
+_WEB3_CALL_VALUE_METHOD_RE = re.compile(r"\.call\.value\s*+\(", re.IGNORECASE)
 _WEB3_STATE_MUTATION_RE = re.compile(
     r"\b(?:balances|shares|credits|userBalance|stakes)\s*\[[^\]]+\]\s*(?:-=|(?<![!<>=])=(?!=))",
     re.IGNORECASE,
@@ -682,6 +680,15 @@ _WEB3_DELEGATE_OR_TX_ORIGIN_RE = re.compile(
 _WEB3_ECRECOVER_RE = re.compile(r"\becrecover\s*\(", re.IGNORECASE)
 _WEB3_ZERO_ADDR_RE = re.compile(r"(?:address\s*\(\s*0\s*\)|0x0{1,40}\b)", re.IGNORECASE)
 _WEB3_CHAINID_RE = re.compile(r"\bchainid\b", re.IGNORECASE)
+
+
+def _find_web3_value_call(content: str) -> re.Match[str] | None:
+    direct = _WEB3_CALL_VALUE_METHOD_RE.search(content)
+    for candidate in _WEB3_CALL_BLOCK_RE.finditer(content):
+        close = content.find("}", candidate.end(), candidate.end() + 2048)
+        if close >= 0 and re.search(r"\bvalue\s*+:", content[candidate.end():close]):
+            return candidate
+    return direct
 
 
 def audit_web3_smart_contracts(
@@ -704,7 +711,7 @@ def audit_web3_smart_contracts(
     findings: list[dict[str, Any]] = []
 
     # (a) SNIPER-WEB3-REENT-01: Reentrancy (Checks-Effects-Interactions violation)
-    call_match = _WEB3_CALL_VALUE_RE.search(raw_content)
+    call_match = _find_web3_value_call(raw_content)
     if call_match is not None and not _WEB3_NON_REENTRANT_RE.search(raw_content):
         mut_after_call = None
         for candidate in _WEB3_STATE_MUTATION_RE.finditer(raw_content):

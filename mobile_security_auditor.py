@@ -1238,7 +1238,7 @@ def audit_mobile_package_archive(
 
 
 _BIOMETRIC_WEAK_ANDROID_RE = re.compile(r"\.authenticate\s*\(\s*promptInfo\s*\)")
-_BIOMETRIC_IOS_POLICY_RE = re.compile(r"evaluatePolicy\s*\([^)]*deviceOwnerAuthentication")
+_BIOMETRIC_IOS_POLICY_START_RE = re.compile(r"evaluatePolicy\s*+\(")
 _BIOMETRIC_IOS_KEYCHAIN_RE = re.compile(r"(?:SecItemCopyMatching|Keychain)", re.IGNORECASE)
 
 _DEEPLINK_INTENT_SOURCE_RE = re.compile(
@@ -1246,6 +1246,14 @@ _DEEPLINK_INTENT_SOURCE_RE = re.compile(
 )
 _DEEPLINK_SINK_RE = re.compile(r"(?:loadUrl\s*\(|startActivity\s*\(|evaluateJavascript\s*\()")
 _DEEPLINK_HOST_GUARD_RE = re.compile(r"(?:allowedHosts|host\s*==)")
+
+
+def _find_ios_biometric_policy(content: str) -> re.Match[str] | None:
+    for candidate in _BIOMETRIC_IOS_POLICY_START_RE.finditer(content):
+        close = content.find(")", candidate.end(), candidate.end() + 4096)
+        if close >= 0 and "deviceOwnerAuthentication" in content[candidate.end():close]:
+            return candidate
+    return None
 
 
 def audit_mobile_biometric_and_deeplink_chains(
@@ -1267,7 +1275,7 @@ def audit_mobile_biometric_and_deeplink_chains(
 
     bio_match = _BIOMETRIC_WEAK_ANDROID_RE.search(raw_content)
     if bio_match is None:
-        ios_match = _BIOMETRIC_IOS_POLICY_RE.search(raw_content)
+        ios_match = _find_ios_biometric_policy(raw_content)
         if ios_match is not None and not _BIOMETRIC_IOS_KEYCHAIN_RE.search(raw_content):
             bio_match = ios_match
 

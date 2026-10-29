@@ -3516,10 +3516,10 @@ def is_lockfile_patched(fixed_version: Any, resolved_versions: set[str]) -> bool
 
 
 _PNPM_PKG_RE = re.compile(
-    r"(?m)^\s{2,4}['\"]?/?(@?[a-zA-Z0-9._-]+(?:/[a-zA-Z0-9._-]+)?)@(\d+\.\d+\.\d+[^:(\s'\"]*)['\"]?\s*:"
+    r"(?m)^\s{2,4}['\"]?/?(@?[a-zA-Z0-9._-]++(?:/[a-zA-Z0-9._-]++)?)@(\d++\.\d++\.\d++[^:(\s'\"]*+)['\"]?\s*+:"
 )
 _YARN_PKG_RE = re.compile(
-    r"(?m)^\"?(@?[a-zA-Z0-9._-]+(?:/[a-zA-Z0-9._-]+)?)@(?:npm:)?[^\":\n]+\"?(?:,\s*\"?[^\":\n]+\"?)*:\s*\n\s+version\s*:?\s+\"?(\d+\.\d+\.\d+[^\"\s\n]*)\"?"
+    r"(?m)^\"?(@?[a-zA-Z0-9._-]++(?:/[a-zA-Z0-9._-]++)?)@(?:npm:)?[^\":\n]++\"?(?:,\s*+\"?[^\":\n]++\"?)*+:\s*+\n\s++version\s*+:?\s++\"?(\d++\.\d++\.\d++[^\"\s\n]*+)\"?"
 )
 _LOCKFILE_SKIP_DIRS = frozenset({
     "node_modules", ".git", "target", "vendor", ".venv", "venv", "dist", "build", "__pycache__",

@@ -781,9 +781,16 @@ def _ruby_underscore(name: str) -> str:
     """Rails controller sabitini route DSL'deki ``admin/orders`` biçimine indirger."""
     parts = []
     for component in name.split("::"):
-        component = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", component)
-        component = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", component)
-        parts.append(component.casefold())
+        snake: list[str] = []
+        for index, char in enumerate(component):
+            previous = component[index - 1] if index else ""
+            following = component[index + 1] if index + 1 < len(component) else ""
+            if char.isupper() and snake and (
+                previous.islower() or previous.isdigit() or (previous.isupper() and following.islower())
+            ):
+                snake.append("_")
+            snake.append(char.casefold())
+        parts.append("".join(snake))
     return "/".join(parts)
 
 
@@ -871,7 +878,7 @@ def _rails_prepass(relpath: str, text: str, project: _Project) -> None:
                     _rails_add_route(project, controller, action, methods, base + suffix.replace("/:id", ""))
             continue
         explicit = re.match(
-            r"(get|post|put|patch|delete)\s+['\"]([^'\"]+)['\"]\s*,?\s*(?:to:\s*|=>\s*)['\"]([^'#]+)#(\w+[!?]?)['\"]",
+            r"(get|post|put|patch|delete)\s++['\"]([^'\"]++)['\"]\s*+,?\s*+(?:to:\s*+|=>\s*+)['\"]([^'#]++)#(\w++[!?]?)['\"]",
             line,
         )
         if explicit:
@@ -901,7 +908,7 @@ def _ruby_method_blocks(text: str) -> dict[str, tuple[int, str]]:
             else:
                 if _RUBY_BLOCK_START_RE.match(code):
                     depth += 1
-                depth += len(re.findall(r"\bdo\s*(?:\|[^|]*\|)?\s*(?:$|#)", code))
+                depth += len(re.findall(r"\bdo\s*+(?:\|[^|]*+\|)?\s*+(?:$|#)", code))
             j += 1
         if depth == 0:
             methods[name] = (i + 1, "\n".join(lines[i:j + 1]))
@@ -1740,7 +1747,7 @@ _NEST_EXPRESS_ROUTE_RE = re.compile(
     r"(?:@(?:Get|Post|Put|Delete|Patch)\s*\(|\b(?:app|router)\s*\.\s*(?:get|post|put|delete|patch)\s*\()"
 )
 _PRISMA_ID_LOOKUP_RE = re.compile(
-    r"\b(?:this\.)?prisma\s*\.\s*\w+\s*\.\s*(?:findUnique|findFirst|update|delete)\s*\(\s*\{\s*where\s*:\s*\{([^}]*)\}",
+    r"\b(?:this\.)?prisma\s*+\.\s*+\w++\s*+\.\s*+(?:findUnique|findFirst|update|delete)\s*+\(\s*+\{\s*+where\s*+:\s*+\{([^}]*+)\}",
     re.DOTALL,
 )
 _NEST_TENANT_SAFE_RE = re.compile(
@@ -1748,9 +1755,9 @@ _NEST_TENANT_SAFE_RE = re.compile(
 )
 
 _PY_ID_LOOKUP_RE = re.compile(
-    r"(?:\b[A-Z]\w*\.objects\.get\s*\(([^)]*)"
-    r"|\bget_object_or_404\s*\(\s*[A-Z]\w*\s*,([^)]*)"
-    r"|\b(?:session|db)\.get\s*\(\s*[A-Z]\w*\s*,\s*([^)]*)\))"
+    r"(?:\b[A-Z]\w*\.objects\.get\s*+\(([^)]*+)"
+    r"|\bget_object_or_404\s*+\(\s*+[A-Z]\w*\s*+,([^)]*+)"
+    r"|\b(?:session|db)\.get\s*+\(\s*+[A-Z]\w*\s*+,\s*+([^)]*+)\))"
 )
 _PY_TENANT_SAFE_RE = re.compile(
     r"(?:\b(?:user|owner|tenant|tenant_id|organization|organization_id|user_id|account_id)\s*="

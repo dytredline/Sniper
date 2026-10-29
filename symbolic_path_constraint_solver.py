@@ -135,14 +135,24 @@ def _split_conjunctions(expr: str) -> list[str]:
                 buf = []
                 i += 2
                 continue
-            m_and = re.match(r"^\s+and\s+", expr[i:])
-            if m_and:
-                piece = "".join(buf).strip()
-                if piece:
-                    parts.append(piece)
-                buf = []
-                i += m_and.end()
-                continue
+            if ch.isspace():
+                token_start = i
+                while token_start < n and expr[token_start].isspace():
+                    token_start += 1
+                token_end = token_start + 3
+                if (
+                    expr[token_start:token_end] == "and"
+                    and token_end < n
+                    and expr[token_end].isspace()
+                ):
+                    while token_end < n and expr[token_end].isspace():
+                        token_end += 1
+                    piece = "".join(buf).strip()
+                    if piece:
+                        parts.append(piece)
+                    buf = []
+                    i = token_end
+                    continue
         buf.append(ch)
         i += 1
     tail = "".join(buf).strip()

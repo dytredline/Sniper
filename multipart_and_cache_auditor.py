@@ -19,9 +19,9 @@ _UPLOAD_PARAM_RE = re.compile(r"\b(?:uploadId|upload_id)\b")
 _UNSAFE_UPLOAD_JOIN_RE = re.compile(
     r"(?:"
     r"\.join\s*\(\s*\"uploads\"\s*\)\s*\.join\s*\(\s*&?\s*(?:id|upload_id|uploadId)\b"
-    r"|os\.path\.join\s*\([^)]*,\s*upload_id\s*\)"
-    r"|Path\s*\([^)]*\)\s*(?:/\s*[\"']uploads[\"']\s*)?/\s*upload_id\b"
-    r"|path\.join\s*\([^)]*,\s*uploadId\s*\)"
+    r"|os\.path\.join\s*+\([^,)]*+,\s*+upload_id\s*+\)"
+    r"|Path\s*+\([^)]*+\)\s*+(?:/\s*+[\"']uploads[\"']\s*+)?/\s*+upload_id\b"
+    r"|path\.join\s*+\([^,)]*+,\s*+uploadId\s*+\)"
     r")"
 )
 
@@ -44,7 +44,7 @@ _UNCONDITIONAL_DELETE_SINK_RE = re.compile(
 _SAFE_DELETE_GUARD_RE = re.compile(
     r"(?:"
     r"\bif\s+removed\.is_some\s*\(\s*\)"
-    r"|\bif\s+let\s+Some\s*\([^)]*\)\s*=\s*(?:removed|[A-Za-z0-9_.]*remove\s*\()"
+    r"|\bif\s++let\s++Some\s*+\([^)]*+\)\s*+=\s*+(?:removed|[A-Za-z0-9_.]*+remove\s*+\()"
     r"|\bif\s+(?:upload_id|uploadId)\s+in\s+[A-Za-z0-9_.]+"
     r"|\bif\s*\(\s*[A-Za-z0-9_.]+\.(?:delete|has)\s*\(\s*(?:uploadId|upload_id)\s*\)\s*\)"
     r")"

@@ -786,7 +786,7 @@ def audit_cloud_privesc_chains(
             re.finditer(r"token\.actions\.githubusercontent\.com:sub\b", raw_content, re.IGNORECASE)
         )
         wildcard_sub_re = re.compile(
-            r'["\']\s*(?:\*|repo:\*(?:[:/][^"\']*)?|repo:[^/"\']+/\*(?:[:/][^"\']*)?)\s*["\']',
+            r'["\']\s*+(?:\*|repo:\*(?:[:/][^"\']*+)?|repo:[^/"\']++/\*(?:[:/][^"\']*+)?)\s*+["\']',
             re.IGNORECASE,
         )
         has_missing_or_wildcard_sub = False

@@ -16,10 +16,10 @@ from typing import Any
 FORMAT_VERSION = "sniper-symlink-archive-semantics/1"
 
 _JAVA_NOFOLLOW_CHECK_RE = re.compile(
-    r"Files\.(?:notExists|exists|isRegularFile|isDirectory)\s*\([^)]*NOFOLLOW_LINKS[^)]*\)"
+    r"Files\.(?:notExists|exists|isRegularFile|isDirectory)\s{0,32}\([^)]{0,2048}NOFOLLOW_LINKS[^)]{0,2048}\)"
 )
 _JAVA_FOLLOW_SINK_RE = re.compile(
-    r"Files\.(?:copy|move|newInputStream|newOutputStream|readAllBytes|readString|write)\s*\((?![^;]*NOFOLLOW_LINKS)[^;]+"
+    r"Files\.(?:copy|move|newInputStream|newOutputStream|readAllBytes|readString|write)\s{0,32}\((?![^;]{0,2048}NOFOLLOW_LINKS)[^;]{1,2048}"
 )
 
 _GO_LSTAT_RE = re.compile(r"\bos\.Lstat\s*\(")
@@ -27,13 +27,13 @@ _GO_UNSAFE_OPEN_RE = re.compile(r"\bos\.(?:Open|ReadFile|Create|WriteFile)\s*\("
 _GO_NOFOLLOW_GUARD_RE = re.compile(r"(O_NOFOLLOW|EvalSymlinks|os\.SameFile)")
 
 _PY_ZIP_EXTRACTALL_RE = re.compile(
-    r"(?:zipfile\.ZipFile\([^)]*\)[\s\S]{0,120}?|\.|\bzf\.)extractall\s*\("
+    r"(?:zipfile\.ZipFile\([^)]{0,2048}\)[\s\S]{0,120}?|\.|\bzf\.)extractall\s{0,32}\("
 )
 _PY_TAR_SAFE_FILTER_RE = re.compile(
-    r"extractall\s*\([^)]*filter\s*=\s*['\"]data['\"][^)]*\)"
+    r"extractall\s{0,32}\([^)]{0,2048}filter\s{0,32}=\s{0,32}['\"]data['\"][^)]{0,2048}\)"
 )
 _PY_CUSTOM_JOIN_EXTRACT_RE = re.compile(
-    r"os\.path\.join\s*\([^,]+,\s*[A-Za-z0-9_]+\.(?:filename|name)\s*\)"
+    r"os\.path\.join\s{0,32}\([^,]{1,2048},\s{0,32}[A-Za-z0-9_]++\.(?:filename|name)\s{0,32}\)"
 )
 _PY_PATH_GUARD_RE = re.compile(
     r"(os\.path\.commonpath|os\.path\.realpath|is_relative_to|\.resolve\(\))"
@@ -127,7 +127,7 @@ def audit_symlink_toctou_and_archive_semantics(
     custom_join_match = _PY_CUSTOM_JOIN_EXTRACT_RE.search(content)
     if (
         custom_join_match
-        and re.search(r"\bopen\s*\([^)]*['\"]w[b+]?['\"]", content)
+        and re.search(r"\bopen\s{0,32}\([^)]{0,2048}['\"]w[b+]?['\"]", content)
         and not _PY_PATH_GUARD_RE.search(content)
     ):
         line_no = _line_number(content, custom_join_match.start())

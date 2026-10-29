@@ -668,9 +668,18 @@ def haml_segments(text: str) -> list[tuple[str, str, int]]:
         if body.startswith("- "):
             out.append(("", body[2:].strip(), line))
             continue
-        match = re.match(r"^(?:[%#.][\w:-]+(?:\([^)]*\)|\{[^}]*\})?\s*)?(!?=)\s*(.+)$", body)
-        if match:
-            out.append(("==" if match.group(1) == "!=" else "=", match.group(2), line))
+        expression = body
+        prefix = re.match(r"^[%#.][\w:-]++(?:\([^)]*+\)|\{[^}]*+\})?", expression)
+        if prefix is not None:
+            expression = expression[prefix.end():].lstrip()
+        if expression.startswith("!="):
+            value = expression[2:].strip()
+            if value:
+                out.append(("==", value, line))
+        elif expression.startswith("="):
+            value = expression[1:].strip()
+            if value:
+                out.append(("=", value, line))
     return out
 
 

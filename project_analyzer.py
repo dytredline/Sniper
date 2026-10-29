@@ -161,6 +161,21 @@ def validate_project_path(value: str, allowed_roots: tuple[Path, ...] | None = N
     return resolved
 
 
+def _is_sniper_source_tree(tree: ProjectTree) -> bool:
+    """Recognize Sniper itself through the already pinned project descriptor.
+
+    The recognition check must not reopen attacker-controlled absolute paths:
+    the same descriptor-anchored tree used by the scanner performs both file
+    checks and rejects symlink/non-regular replacements.
+    """
+    try:
+        for relative in ("project_analyzer.py", "report_renderers.py"):
+            tree.read_bytes(relative, 1, allow_empty=True, truncate=True)
+    except ProjectTreeError:
+        return False
+    return True
+
+
 # Üretilmiş/küçültülmüş paketler: kaynak analizi için gürültü (bağımlılık taraması ayrı yapılır).
 GENERATED_SUFFIXES = scan_scope.GENERATED_SUFFIXES
 
@@ -1593,6 +1608,7 @@ def _analyze_project(
     try:
         with ProjectTree(root) as activation_tree:
             taint_flow.activate_project_js_handlers(root, SKIP_DIRS, project_tree=activation_tree)
+            is_sniper_source_tree = _is_sniper_source_tree(activation_tree)
     except ProjectTreeError as exc:
         raise ProjectRejected("Proje ağacı güvenli biçimde açılamadı veya doğrulamadan sonra değişti.") from exc
     findings: list[dict[str, Any]] = []
@@ -2379,18 +2395,18 @@ def _analyze_project(
                         ):
                             continue
                         m_sec = re.search(
-                            r"(?i)\b(?:api[_-]?key|client[_-]?secret|private[_-]?key|password|passwd)\b\s*[:=]\s*[\"']([^\"']{8,})[\"']",
+                            r"(?i)\b(?:api[_-]?key|client[_-]?secret|private[_-]?key|password|passwd)\b\s*+[:=]\s*+[\"']([^\"']{8,}+)[\"']",
                             line,
                         )
                         if m_sec and _BENIGN_SECRET_LITERAL_RE.match(m_sec.group(1).strip()):
                             continue
                     if title == "Günlüğe hassas veri yazma olasılığı":
                         line_without_metrics = _LLM_TOKEN_METRIC_RE.sub("", line)
-                        line_without_literals = re.sub(r"""(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')""", '""', line_without_metrics)
+                        line_without_literals = re.sub(r"""(?:"(?:\\.|[^"\\]++)*+"|'(?:\\.|[^'\\]++)*+')""", '""', line_without_metrics)
                         if not pattern.search(line_without_literals):
                             continue
                     if title == "Servis tüm ağ arayüzlerinde dinliyor" and re.search(
-                        r"""(?:[=!]==?\s*["']0\.0\.0\.0["']|["']0\.0\.0\.0["']\s*[=!]==?|\.(?:replace|includes|contains|startsWith|equals)\s*\(\s*["']0\.0\.0\.0["']|\b(?:in|case)\s+[^\n]*["']0\.0\.0\.0["'])""",
+                        r"""(?:[=!]==?\s*+["']0\.0\.0\.0["']|["']0\.0\.0\.0["']\s*+[=!]==?|\.(?:replace|includes|contains|startsWith|equals)\s*+\(\s*+["']0\.0\.0\.0["']|\b(?:in|case)\s++[^\n]{0,2048}["']0\.0\.0\.0["'])""",
                         line,
                     ):
                         continue
@@ -2602,11 +2618,7 @@ def _analyze_project(
                 rust_unsafe_files[0] += 1
 
         # Kurumsal v2 saldırı zinciri ve yapısal dedektörler (Kategori A: 1, 2, 3, 4)
-        _is_sniper_self_detector = (
-            (root / "project_analyzer.py").is_file()
-            and (root / "report_renderers.py").is_file()
-        )
-        if not _is_sniper_self_detector and suffix in {".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs"}:
+        if not is_sniper_source_tree and suffix in {".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs"}:
             cors_m = re.search(
                 r'(?i)(?:allow_origins\s*=\s*\[\s*["\']\*["\']\s*\]|Access-Control-Allow-Origin["\']?\s*[:=]\s*["\']\*["\'])',
                 text,
@@ -2670,7 +2682,7 @@ def _analyze_project(
                     findings[-1]["exploitability"] = "proven_exploitable"
 
             ws_cswsh_m = re.search(
-                r"CheckOrigin\s*:\s*func\s*\([^)]*\)\s*bool\s*\{\s*return\s+true\s*\}",
+                r"CheckOrigin\s*+:\s*+func\s*+\([^)]*+\)\s*+bool\s*+\{\s*+return\s++true\s*+\}",
                 text,
             )
             if not ws_cswsh_m:
@@ -3356,9 +3368,16 @@ def _analyze_project(
                 or "migrate" in file_rel_posix
                 or "migration" in file_rel_posix
                 or "alembic" in file_rel_posix
-            ) and re.search(
-                r"(?i)(?:ROW\s+LEVEL\s+SECURITY|CREATE\s+POLICY|DROP\s+COLUMN|DROP\s+NOT\s+NULL|remove_column|op\.drop_column|ADD\s+COLUMN.*(?:password|api_key|secret_key|private_key))",
-                text,
+            ) and (
+                re.search(
+                    r"(?i)(?:ROW\s++LEVEL\s++SECURITY|CREATE\s++POLICY|DROP\s++COLUMN|DROP\s++NOT\s++NULL|remove_column|op\.drop_column)",
+                    text,
+                )
+                or any(
+                    re.search(r"(?i)ADD\s++COLUMN", source_line)
+                    and re.search(r"(?i)\b(?:password|api_key|secret_key|private_key)\b", source_line)
+                    for source_line in text.splitlines()
+                )
             ):
                 try:
                     import schema_migration_security_auditor
@@ -3412,9 +3431,9 @@ def _analyze_project(
                 )
             )
             asym_join_m = re.search(
-                r"(?:\.join\s*\([^;\n)]*\)\s*\.join\s*\(\s*&?\s*(?:upload_id|part_number|version_id|session_id|token)\b"
-                r"|\bPaths\.get\s*\([^;\n)]*,\s*(?:keyId|uploadId|getOptionValue\s*\([^)]*\)|[a-zA-Z0-9_]*Id)\s*\)"
-                r"|\b(?:remove_dir_all|read_to_string|write|readAllBytes|deleteIfExists|newInputStream)\s*\([^;\n)]*(?:upload_id|keyId|getOptionValue))",
+                r"(?:\.join\s*+\([^;\n)]*+\)\s*+\.join\s*+\(\s*+&?\s*+(?:upload_id|part_number|version_id|session_id|token)\b"
+                r"|\bPaths\.get\s*+\([^,;\n)]*+,\s*+(?:keyId|uploadId|getOptionValue\s*+\([^)]*+\)|[a-zA-Z0-9_]*+Id)\s*+\)"
+                r"|\b(?:remove_dir_all|read_to_string|write|readAllBytes|deleteIfExists|newInputStream)\s*+\([^;\n)]{0,2048}(?:upload_id|keyId|getOptionValue))",
                 text,
             )
             if has_partial_path_guard and asym_join_m:
@@ -3677,7 +3696,8 @@ def _analyze_project(
                         has_pr_trigger
                         and has_checkout
                         and not has_same_repo_guard
-                        and re.search(r"(?i)\bruns-on\s*:[^\n#]*\bself-hosted\b", raw_line)
+                        and re.search(r"(?i)\bruns-on\s*+:", raw_line)
+                        and "self-hosted" in raw_line.casefold()
                     ):
                         add(
                             "supplychain", "high", "CI/CD iş akışında self-hosted runner üzerinde çatal (fork) PR kodu çalıştırma riski",
@@ -3687,7 +3707,7 @@ def _analyze_project(
                             "CWE-829",
                         )
                     uses_m = re.search(
-                        r"(?i)^\s*-?\s*uses\s*:\s*[\"']?([a-z0-9_.-]+)/([a-z0-9_.-]+)(?:/[^\s@\"'#]+)?@([^\s\"'#]+)",
+                        r"(?i)^\s*+-?\s*+uses\s*+:\s*+[\"']?([a-z0-9_.-]++)/([a-z0-9_.-]++)(?:/[^\s@\"'#]++)?@([^\s\"'#]++)",
                         raw_line,
                     )
                     if uses_m and (has_write_perms or has_prt_trigger or has_self_hosted):
@@ -4242,7 +4262,7 @@ def _analyze_project(
     if c_family_files and not partial_info:
         clang_analysis = _add_clang_findings(root, c_family_files, findings, add)
 
-    if (root / "project_analyzer.py").is_file() and (root / "report_renderers.py").is_file():
+    if is_sniper_source_tree:
         findings.clear()
         api_contract_findings = 0
 

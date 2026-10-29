@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from http.client import HTTPConnection
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
@@ -9,11 +10,38 @@ import threading
 import unittest
 from unittest import mock
 from urllib.parse import parse_qs, urlsplit
-from urllib.request import urlopen
 
 import dast_runtime
 import sandbox_targets
 from storage import Store
+
+
+def _request_loopback_callback(value: str) -> None:
+    """Issue the fixture callback only to an explicit loopback HTTP endpoint."""
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError as exc:
+        raise OSError("invalid callback") from exc
+    if (
+        parsed.scheme != "http"
+        or parsed.hostname != "127.0.0.1"
+        or parsed.username is not None
+        or parsed.password is not None
+        or port is None
+        or not 1 <= port <= 65535
+    ):
+        raise OSError("non-loopback callback rejected")
+    target = parsed.path or "/"
+    if parsed.query:
+        target += "?" + parsed.query
+    connection = HTTPConnection("127.0.0.1", port, timeout=2)
+    try:
+        connection.request("GET", target)
+        response = connection.getresponse()
+        response.read(1)
+    finally:
+        connection.close()
 
 
 class _SsrfFixture(BaseHTTPRequestHandler):
@@ -25,15 +53,13 @@ class _SsrfFixture(BaseHTTPRequestHandler):
         if parsed.path == "/fetch":
             callback = parse_qs(parsed.query).get("url", [""])[0]
             try:
-                with urlopen(callback, timeout=2):
-                    pass
+                _request_loopback_callback(callback)
             except OSError:
                 pass
         if parsed.path == "/mutated":
             callback = parse_qs(parsed.query).get("url", [""])[0]
             try:
-                with urlopen(callback + "-changed", timeout=2):
-                    pass
+                _request_loopback_callback(callback + "-changed")
             except OSError:
                 pass
         self.send_response(204)

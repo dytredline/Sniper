@@ -15,7 +15,7 @@ from typing import Any
 FORMAT_VERSION = "sniper-cspt-sdk-url-template-audit/1"
 
 _SDK_REQUEST_CALL_RE = re.compile(
-    r"\b(makeRequest|getRequest|putRequest|postRequest|deleteRequest|fetch|axios(?:\.(?:get|post|put|delete|patch|request))?)\s*(?:<[^>]*>)?\s*\("
+    r"\b(makeRequest|getRequest|putRequest|postRequest|deleteRequest|fetch|axios(?:\.(?:get|post|put|delete|patch|request))?)\s*+(?:<[^>]*+>)?\s*+\("
 )
 
 _CSPT_RAW_PATH_TEMPLATE_RE = re.compile(

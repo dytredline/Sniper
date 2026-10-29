@@ -1998,15 +1998,15 @@ def audit_dos_resilience_project(
 
 
 _REDOS_STAR_HEIGHT_RE = re.compile(
-    r"""(?<!\\)\((?:\\.|[^()\\"\'\n])*(?<!\\)(?:\+|\*|\{\d+,)(?:\\.|[^()\\"\'\n])*(?<!\\)\)\s*(?:\+|\*|\{\d+,)"""
+    r"""(?<!\\)\((?:\\.|[^()\\"\'\n]){0,600}(?<!\\)(?:\+|\*|\{\d{1,12},)(?:\\.|[^()\\"\'\n]){0,600}(?<!\\)\)\s{0,32}(?:\+|\*|\{\d{1,12},)"""
 )
 _REDOS_OVERLAPPING_ALT_RE = re.compile(
-    r"(?<!\\)\((?:\?:)?([^|()\n]+)\|\1[^()\n]*(?<!\\)\)\s*(?:\+|\*|\{\d+,)"
+    r"(?<!\\)\((?:\?:)?([^|()\n]{1,600})\|\1[^()\n]{0,600}(?<!\\)\)\s{0,32}(?:\+|\*|\{\d{1,12},)"
 )
 
 
 _REDOS_CONTEXT_RE = re.compile(
-    r"(?:\b(?:re\.(?:compile|search|match|fullmatch|sub|findall|finditer)|RegExp|MustCompile|Compile|Regex::new|Pattern\.compile)\s*\(|/[^/\n]+/[gimsuy]*\.(?:test|exec|match)\s*\(|^\s*r?['\"]?\^?\()"
+    r"(?:\b(?:re\.(?:compile|search|match|fullmatch|sub|findall|finditer)|RegExp|MustCompile|Compile|Regex::new|Pattern\.compile)\s*+\(|/[^/\n]{1,600}/[gimsuy]*+\.(?:test|exec|match)\s*+\(|^\s*+r?['\"]?\^?\()"
 )
 
 

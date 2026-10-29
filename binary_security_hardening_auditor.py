@@ -45,9 +45,9 @@ _RELRO_DISABLE_RE = re.compile(
 )
 
 _RPATH_DIRECTIVE_RE = re.compile(
-    r"(?:Library\s+r(?:un)?path:\s*\[([^\]]+)\]|"
-    r"\((?:RPATH|RUNPATH)\)\s+[^\n\r\x00\[]*?\[([^\]]+)\]|"
-    r"\b(?:DT_)?(?:RPATH|RUNPATH)\s*(?:=|:|\s+)\s*\[?([^\s\]\x00\"']+))",
+    r"(?:Library\s++r(?:un)?path:\s*+\[([^\]]++)\]|"
+    r"\((?:RPATH|RUNPATH)\)\s++[^\n\r\x00\[]*+\[([^\]]++)\]|"
+    r"\b(?:DT_)?(?:RPATH|RUNPATH)\s*+(?:=|:|\s++)\s*+\[?([^\s\]\x00\"']++))",
     re.IGNORECASE,
 )
 _AT_RPATH_RE = re.compile(r"(@(?:rpath|loader_path|executable_path)/[^\s\x00\"':]+)")

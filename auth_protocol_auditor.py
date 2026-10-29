@@ -564,8 +564,8 @@ def audit_fido2_saml_oidc_code(
 
 
 _OIDC_CONDITIONAL_CRED_RE = re.compile(
-    r"if\s*\(\s*hasCredentials\b[^)]*\)\s*\{?[^{}]*\b(?:authenticateClient|verifyRevocationClient)\b"
-    r"|\bhasCredentials\s*(?:&&|\?)[^;\n]*\b(?:authenticateClient|verifyRevocationClient)\b",
+    r"if\s{0,32}\(\s{0,32}hasCredentials\b[^)]{0,512}\)\s{0,32}\{?[^{}]{0,1024}\b(?:authenticateClient|verifyRevocationClient)\b"
+    r"|\bhasCredentials\s{0,32}(?:&&|\?)[^;\n]{0,1024}\b(?:authenticateClient|verifyRevocationClient)\b",
     re.DOTALL,
 )
 _OIDC_OPTIONAL_CLIENT_ID_BIND_RE = re.compile(
@@ -585,17 +585,17 @@ _OIDC_AUTH_CLIENT_RE = re.compile(
 )
 _OAUTH_RESET_SESSION_RE = re.compile(r"\bresetSession\s*\(\s*\)")
 _OAUTH_STATE_GUARD_RE = re.compile(
-    r"(?:queryParameters\s*\[\s*['\"]state['\"]\s*\]|\bstate\b)[^\n;{}]*(?:!=|!==|==|===)\s*[A-Za-z0-9_.\"'\[\]()]+|"
-    r"guard\s+[^\n]*\bstate\b"
+    r"(?:queryParameters\s*+\[\s*+['\"]state['\"]\s*+\]|\bstate\b)[^\n;{}]{0,1024}(?:!=|!==|==|===)\s*+[A-Za-z0-9_.\"'\[\]()]++|"
+    r"guard\s++[^\n]{0,1024}\bstate\b"
 )
 _OAUTH_MOBILE_TOKEN_CB_RE = re.compile(
     r"\bAuthorizationResponse\.Type\.TOKEN\b|\bswapCodeForToken\s*\("
 )
 _OAUTH_MOBILE_STATE_COMPARE_RE = re.compile(
-    r"(?:getState\s*\(\s*\)|\.state\b)[^\n;]*(?:\.equals\s*\(|!=|!==|==|===)[^\n;]*"
+    r"(?:getState\s*+\(\s*+\)|\.state\b)[^\n;]{0,1024}(?:\.equals\s*+\(|!=|!==|==|===)[^\n;]{0,1024}"
     r"(?:expectedState|request\.getState|storedState|pendingState|mState|csrfState|sessionState)"
-    r"|(?:expectedState|request\.getState\s*\(\s*\)|storedState|pendingState|mState|csrfState|sessionState)[^\n;]*"
-    r"(?:\.equals\s*\(|!=|!==|==|===)[^\n;]*(?:getState\s*\(\s*\)|\.state\b)"
+    r"|(?:expectedState|request\.getState\s*+\(\s*+\)|storedState|pendingState|mState|csrfState|sessionState)[^\n;]{0,1024}"
+    r"(?:\.equals\s*+\(|!=|!==|==|===)[^\n;]{0,1024}(?:getState\s*+\(\s*+\)|\.state\b)"
 )
 _PKCE_MATH_RANDOM_RE = re.compile(r"\bMath\.random\s*\(\s*\)")
 

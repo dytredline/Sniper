@@ -255,9 +255,10 @@ def render_project_audit_sarif(audit: dict[str, Any]) -> dict[str, Any]:
             },
             "locations": [_sarif_location(uri, start_line)],
             "partialFingerprints": {
-                "sniperFinding/v1": hashlib.sha256(
-                    f"{rule_id}|{uri}|{start_line}|{title}".encode("utf-8")
-                ).hexdigest()[:32],
+                # SARIF permits an arbitrary stable string.  Rule, location,
+                # and line are already public result metadata and avoid
+                # hashing a title that may describe sensitive data.
+                "sniperFinding/v1": f"{rule_id}|{uri}|{start_line}"[:512],
             },
             "properties": {
                 "id": str(finding.get("id") or ""),

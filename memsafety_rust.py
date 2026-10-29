@@ -32,7 +32,58 @@ from taint_native_core import match_close, split_args
 SUFFIXES = frozenset({".rs"})
 MAX_FILE_BYTES = 2_000_000
 _FN_RE_EXTERN = re.compile(r"extern\s+\"C\"\s+fn")
-_COMMENT_RE = re.compile(r"//[^\n]*|/\*[\s\S]*?\*/")
+
+
+def _strip_rust_comments(text: str) -> str:
+    """Remove Rust comments in linear time while preserving source offsets."""
+    out = list(text)
+    index = 0
+    state = "code"
+    block_depth = 0
+    escaped = False
+    while index < len(text):
+        char = text[index]
+        following = text[index + 1] if index + 1 < len(text) else ""
+        if state == "code":
+            if char == '"':
+                state, escaped = "string", False
+            elif char == "'":
+                state, escaped = "char", False
+            elif char == "/" and following == "/":
+                out[index] = out[index + 1] = " "
+                state = "line_comment"
+                index += 1
+            elif char == "/" and following == "*":
+                out[index] = out[index + 1] = " "
+                state, block_depth = "block_comment", 1
+                index += 1
+        elif state in {"string", "char"}:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif (state == "string" and char == '"') or (state == "char" and char == "'"):
+                state = "code"
+        elif state == "line_comment":
+            if char == "\n":
+                state = "code"
+            else:
+                out[index] = " "
+        else:
+            if char == "/" and following == "*":
+                out[index] = out[index + 1] = " "
+                block_depth += 1
+                index += 1
+            elif char == "*" and following == "/":
+                out[index] = out[index + 1] = " "
+                block_depth -= 1
+                index += 1
+                if block_depth == 0:
+                    state = "code"
+            elif char != "\n":
+                out[index] = " "
+        index += 1
+    return "".join(out)
 
 
 @dataclass
@@ -306,12 +357,12 @@ def analyze_text(text: str, path: str = "") -> list[RustMemFinding]:
         body = (fn[0], fn[1]) if fn else (0, n)
         fn_start_line = toks[fn[2]].line if fn else 1
         fn_back = (
-            _COMMENT_RE.sub("", "\n".join(lines[max(0, fn_start_line - 1):max(0, t.line - 1)]))
+            _strip_rust_comments("\n".join(lines[max(0, fn_start_line - 1):max(0, t.line - 1)]))
             + "\n"
             + _text(toks, body[0], i)
         )
         back = (
-            _COMMENT_RE.sub("", "\n".join(lines[max(fn_start_line - 1 if fn else 0, t.line - 8):max(0, t.line - 1)]))
+            _strip_rust_comments("\n".join(lines[max(fn_start_line - 1 if fn else 0, t.line - 8):max(0, t.line - 1)]))
             + "\n"
             + _text(toks, max(body[0], i - 40), i)
         )
@@ -443,8 +494,8 @@ def analyze_text(text: str, path: str = "") -> list[RustMemFinding]:
 analyze_rust = analyze_text
 
 _RUST_AUDIT_FN_RE = re.compile(
-    r"\b(?:pub(?:\s*\([^)]*\))?\s+)?(?:async\s+)?(?:unsafe\s+)?(?:extern\s+\"[^\"]*\"\s+)?"
-    r"fn\s+(?P<name>[A-Za-z_]\w*)\s*(?:<[^>]*>)?\s*\((?P<params>[^)]*)\)(?P<ret>[^{;]*)\{",
+    r"\b(?:pub(?:\s*+\([^)]*+\))?\s++)?(?:async\s++)?(?:unsafe\s++)?(?:extern\s++\"[^\"]*+\"\s++)?"
+    r"fn\s++(?P<name>[A-Za-z_]\w*)\s*+(?:<[^>]*+>)?\s*+\((?P<params>[^)]*+)\)(?P<ret>[^{;]*+)\{",
     re.DOTALL,
 )
 _RUST_PARSER_FN_NAME_RE = re.compile(
@@ -495,7 +546,7 @@ def audit_rust_binary_parser_and_stride_hazards(
             "findings": [],
         }
 
-    cleaned = _COMMENT_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
+    cleaned = _strip_rust_comments(text)
     findings: list[dict[str, Any]] = []
     seen: set[tuple[str, int]] = set()
 
@@ -578,9 +629,11 @@ def audit_rust_binary_parser_and_stride_hazards(
             panic_sink_pos: int | None = None
             panic_reason = ""
 
-            for m_slice in re.finditer(r"\b(?P<svar>[A-Za-z_]\w*)\s*\[\s*(?P<rng>[^\]]*\.\.[^\]]*)\]", body):
+            for m_slice in re.finditer(r"\b(?P<svar>[A-Za-z_]\w*)\s*+\[\s*+(?P<rng>[^\]]*+)\]", body):
                 svar = m_slice.group("svar")
                 rng = m_slice.group("rng").strip()
+                if ".." not in rng:
+                    continue
                 pre_slice = body[: m_slice.start()]
                 svar_esc = re.escape(svar)
                 has_var_in_rng = bool(re.search(r"[A-Za-z_]\w*", rng))

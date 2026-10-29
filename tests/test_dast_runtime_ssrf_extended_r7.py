@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from http.client import HTTPConnection
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
@@ -14,11 +15,38 @@ import time
 import unittest
 from unittest import mock
 from urllib.parse import parse_qs, urlencode, urlsplit
-from urllib.request import urlopen
 
 import dast_runtime
 import sandbox_targets
 from storage import Store
+
+
+def _request_loopback_callback(value: str) -> None:
+    """Issue a bounded fixture callback without accepting an arbitrary host."""
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError as exc:
+        raise OSError("invalid callback") from exc
+    if (
+        parsed.scheme != "http"
+        or parsed.hostname != "127.0.0.1"
+        or parsed.username is not None
+        or parsed.password is not None
+        or port is None
+        or not 1 <= port <= 65535
+    ):
+        raise OSError("non-loopback callback rejected")
+    target = parsed.path or "/"
+    if parsed.query:
+        target += "?" + parsed.query
+    connection = HTTPConnection("127.0.0.1", port, timeout=2)
+    try:
+        connection.request("GET", target)
+        response = connection.getresponse()
+        response.read(1)
+    finally:
+        connection.close()
 
 
 def _dns_query(name: str) -> bytes:
@@ -37,8 +65,7 @@ class _ExtendedSsrfFixture(BaseHTTPRequestHandler):
             if delay:
                 time.sleep(delay)
             try:
-                with urlopen(value, timeout=2):
-                    pass
+                _request_loopback_callback(value)
             except OSError:
                 pass
 

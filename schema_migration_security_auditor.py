@@ -153,14 +153,46 @@ def _is_cleartext_secret_column(col_name: str) -> bool:
 
 
 def _strip_sql_comments(text: str) -> str:
-    # Satır numaralarını korumak için yorum karakterlerini boşlukla değiştirir
-    without_line_comments = re.sub(r"--[^\n]*", lambda m: " " * len(m.group(0)), text)
-    return re.sub(
-        r"/\*.*?\*/",
-        lambda m: "".join("\n" if ch == "\n" else " " for ch in m.group(0)),
-        without_line_comments,
-        flags=re.DOTALL,
-    )
+    # Satır ve sütun konumlarını koruyan doğrusal yorum ayrıştırıcısı.
+    out = list(text)
+    index = 0
+    state = "code"
+    escaped = False
+    while index < len(text):
+        char = text[index]
+        following = text[index + 1] if index + 1 < len(text) else ""
+        if state == "code":
+            if char in {"'", '"', "`"}:
+                state, escaped = char, False
+            elif char == "-" and following == "-":
+                out[index] = out[index + 1] = " "
+                state = "line"
+                index += 1
+            elif char == "/" and following == "*":
+                out[index] = out[index + 1] = " "
+                state = "block"
+                index += 1
+        elif state in {"'", '"', "`"}:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == state:
+                state = "code"
+        elif state == "line":
+            if char == "\n":
+                state = "code"
+            else:
+                out[index] = " "
+        else:
+            if char == "*" and following == "/":
+                out[index] = out[index + 1] = " "
+                state = "code"
+                index += 1
+            elif char != "\n":
+                out[index] = " "
+        index += 1
+    return "".join(out)
 
 
 def _build_finding(

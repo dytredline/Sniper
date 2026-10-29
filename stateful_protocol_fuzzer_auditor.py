@@ -82,7 +82,7 @@ _RESET_ROLLBACK_STATES = frozenset(
 )
 
 _BRANCH_HEADER_RE = re.compile(
-    r"""(?:^\s*case\s+(?:[A-Za-z0-9_]+\.)?['"]?([A-Z][A-Z0-9_]{1,40})['"]?\s*:|^\s*(?:el)?if\b[^\n{;:]*?(?:type|action|step|stage|cmd|command|event|state)\s*['"\]]*\s*[=!]==?\s*['"]([A-Z][A-Z0-9_]{1,40})['"])""",
+    r"""(?:^\s*+case\s++(?:[A-Za-z0-9_]++\.)?['"]?([A-Z][A-Z0-9_]{1,40})['"]?\s*+:|^\s*+(?:el)?if\b[^\n{;:]{0,2048}?(?:type|action|step|stage|cmd|command|event|state)\s*+['"\]]*+\s*+[=!]==?\s*+['"]([A-Z][A-Z0-9_]{1,40})['"])""",
     re.MULTILINE,
 )
 

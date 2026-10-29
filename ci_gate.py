@@ -213,7 +213,15 @@ def _rule_id(finding: dict[str, Any]) -> str:
     else:
         base = str(finding.get("cwe") or finding.get("reference") or "")
         if not base:
-            base = "t-" + hashlib.sha256(finding_tracking._norm(finding.get("title")).encode("utf-8")).hexdigest()[:12]
+            # A SARIF rule identifier is metadata, not a password verifier.
+            # Keep it readable and avoid feeding potentially sensitive finding
+            # text to a fast cryptographic digest.
+            title_slug = re.sub(
+                r"[^A-Za-z0-9_.\-]+",
+                "-",
+                finding_tracking._norm(finding.get("title")),
+            ).strip("-")
+            base = "t-" + (title_slug[:96] or "finding")
     base = re.sub(r"[^A-Za-z0-9_.\-]+", "-", base).strip("-") or "kural"
     return f"sniper/{group}/{base}"[:255]
 

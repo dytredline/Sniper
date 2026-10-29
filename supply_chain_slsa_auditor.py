@@ -135,10 +135,10 @@ PACKAGE_JSON_HOOK_SCRIPT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 WORKFLOW_RUN_TRIGGER_PATTERN = re.compile(
-    r"(?m)^\s*workflow_run\s*:|\bon\s*:\s*\[?[^\n\]]*\bworkflow_run\b",
+    r"(?m)^\s*+workflow_run\s*+:|\bon\s*+:\s*+\[?[^\n\]]{0,2048}\bworkflow_run\b",
 )
 DOWNLOAD_ARTIFACT_PATTERN = re.compile(
-    r"uses\s*:\s*['\"]?actions/download-artifact(?:@[^'\"\s#]+)?['\"]?",
+    r"uses\s*+:\s*+['\"]?actions/download-artifact(?:@[^'\"\s#]++)?['\"]?",
     re.IGNORECASE,
 )
 ARTIFACT_SHELL_EXEC_PATTERN = re.compile(
@@ -157,19 +157,21 @@ WORKFLOW_MIRROR_MAX_LOCK_BYTES = 256 * 1024
 WORKFLOW_MIRROR_MAX_WORKFLOW_BYTES = 1_000_000
 WORKFLOW_MIRROR_MAX_ENTRIES = 128
 _REMOTE_WORKFLOW_PATTERN = re.compile(
-    r"(?P<repository>[a-z0-9_.-]+/[a-z0-9_.-]+)/"
-    r"(?P<workflow>\.github/workflows/[A-Za-z0-9_.-]+\.ya?ml)@(?P<commit>[0-9a-f]{40})\Z"
+    r"(?P<repository>[a-z0-9_.-]++/[a-z0-9_.-]++)/"
+    r"(?P<workflow>\.github/workflows/[A-Za-z0-9_.-]{1,240}\.ya?ml)@(?P<commit>[0-9a-f]{40})\Z"
 )
 
 
 def _yaml_entry(raw_line: str) -> tuple[int, str, str] | None:
     if not raw_line.strip() or raw_line.lstrip().startswith("#"):
         return None
-    match = re.match(r"^(\s*)([A-Za-z0-9_.-]+)\s*:\s*(.*?)\s*$", raw_line)
-    if match is None:
+    indentation = len(raw_line) - len(raw_line.lstrip())
+    key_raw, separator, value_raw = raw_line.lstrip().partition(":")
+    key = key_raw.strip()
+    if not separator or re.fullmatch(r"[A-Za-z0-9_.-]++", key) is None:
         return None
-    value = match.group(3).split(" #", 1)[0].strip().strip("'\"")
-    return len(match.group(1)), match.group(2), value
+    value = value_raw.split(" #", 1)[0].strip().strip("'\"")
+    return indentation, key, value
 
 
 def _permission_set_at_indent(lines: list[str], indent: int) -> tuple[bool, set[str]]:
@@ -183,7 +185,7 @@ def _permission_set_at_indent(lines: list[str], indent: int) -> tuple[bool, set[
         if value and value not in {"{}", "null", "read-all"}:
             return True, {
                 match.group(1).casefold()
-                for match in re.finditer(r"([A-Za-z0-9_-]+)\s*:\s*write\b", value, re.IGNORECASE)
+                for match in re.finditer(r"([A-Za-z0-9_-]++)\s*+:\s*+write\b", value, re.IGNORECASE)
             }
         writes: set[str] = set()
         for nested_line in lines[index + 1:]:
@@ -961,7 +963,7 @@ def audit_supply_chain_enterprise_inline(
         dl_match = DOWNLOAD_ARTIFACT_PATTERN.search(text)
         if dl_match is not None:
             after_download = text[dl_match.end():]
-            run_match = re.search(r"(?m)^\s*(?:-\s*)?run\s*:", after_download)
+            run_match = re.search(r"(?m)^\s*+(?:-\s*+)?run\s*+:", after_download)
             if run_match is not None:
                 exec_match = ARTIFACT_SHELL_EXEC_PATTERN.search(after_download[run_match.start():])
                 if exec_match is not None:
