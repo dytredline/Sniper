@@ -24,6 +24,11 @@ class AsanProjectProofTests(unittest.TestCase):
         )
         if probe.returncode != 0:
             self.skipTest("bwrap userns bu çekirdekte kısıtlı")
+        try:
+            with asan_project_proof.tool_sandbox.open_bwrap():
+                pass
+        except asan_project_proof.tool_sandbox.SandboxUnavailable:
+            self.skipTest("sabitlenmiş bwrap ikilisi yapılandırılmamış")
         self.temp = tempfile.TemporaryDirectory(dir=Path.home())
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name) / "project"
