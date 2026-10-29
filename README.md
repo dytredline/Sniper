@@ -13,6 +13,34 @@ artifacts, infrastructure as code (IaC), CI configuration, and saved security re
 authorized web target, Sniper can also prepare a bounded runtime action for human review. Results are available to
 an AI client over local stdio MCP, to a person through the CLI, or in the loopback web interface.
 
+## Capability tags
+
+`Application Security` · `SAST` · `SCA` · `SBOM` · `IaC Security` · `API Security` · `Website Security` ·
+`Mobile Security` · `Android` · `iOS` · `IDOR` · `Authorization` · `GraphQL` · `Rails` · `Spring` · `ASP.NET` ·
+`Kubernetes` · `Helm` · `Terraform` · `Container Security` · `CI/CD Security` · `Software Supply Chain` ·
+`SLSA` · `OCI Provenance` · `Syft` · `Grype` · `Fuzzing` · `Memory Safety` · `MCP` · `AI Security` ·
+`SARIF` · `OpenVEX` · `GHSA` · `CVSS` · `SSVC` · `Secrets Detection` · `Privacy` · `Static Analysis` ·
+`Runtime Evidence` · `Multi-Repository Analysis` · `Trust Graphs` · `Artifact Provenance` · `Protocol Security` ·
+`Archive and Symlink Security` · `Binary Hardening` · `DevSecOps` · `Local First`
+
+Sniper Community v1.1 adds deeper, reviewable coverage in these areas:
+
+- **Cross-framework access control:** correlate supported Rails inheritance, Spring and ASP.NET routes, GraphQL
+  resolvers, object identifiers, authorization annotations, policies, roles, owners, and tenant-bound lookups.
+- **Multi-repository trust graphs:** map supported HTTP/OpenAPI, webhook, Kafka, authentication-contract, GraphQL,
+  exact PyPI dependency, CI artifact, and reusable-workflow relationships without returning private endpoints or
+  credentials.
+- **Bounded fuzz and runtime evidence:** prepare reviewable C/C++, Rust, Go, Python, Java, and JavaScript/TypeScript
+  fuzz targets, with explicit runtime pins, network isolation, resource limits, and fail-closed readiness states for
+  supported optional execution paths.
+- **Supply-chain and platform review:** inspect supported OCI/SLSA provenance, SBOM/VEX evidence, Kubernetes, Helm,
+  Terraform, containers, schema migrations, CI/CD trust, archives, symlinks, protocols, and binary-hardening signals.
+- **AI-assisted defensive workflows:** use local stdio MCP tools for response comparison, authorization matrices,
+  token sequencing, traffic decoding, GHSA/OpenVEX preparation, and bounty-readiness review while keeping
+  state-changing actions behind the displayed plan and explicit human-confirmation contract.
+- **Evidence-led prioritization:** connect supported findings to SARIF code flows, CVSS 3.1/4.0, CISA SSVC,
+  reachability, attack paths, ownership, baselines, and remediation-oriented quality gates.
+
 ## Review before you ship
 
 **Find website security weaknesses with a powerful, open-source toolkit.** Combine authorized website and API
