@@ -20,6 +20,7 @@ from typing import NamedTuple
 
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[2]
+EXPECTED_COMMUNITY_VERSION = "1.1.0"
 MAX_REGULAR_FILE_BYTES = 64 * 1024 * 1024
 MAX_SNAPSHOT_BYTES = 512 * 1024 * 1024
 READ_CHUNK_BYTES = 1024 * 1024
@@ -155,9 +156,9 @@ REQUIRED_TEXT = {
     ),
     "VALIDATION.md": (
         "Sniper Community validation evidence",
-        "3,044 tests, 0 failures, 0 errors",
-        "313 passed",
-        "513 passed, 0 failed",
+        "3,077 tests, 0 failures, 0 errors",
+        "337 passed",
+        "517 passed, 0 failed",
         "seven provenance-bound tools",
         "Synthetic runtime proofs",
         "not a security certification",
@@ -216,6 +217,7 @@ REQUIRED_TEXT = {
     "CODE_OF_CONDUCT.md": ("Contributor Covenant", "Enforcement"),
     "CHANGELOG.md": (
         "# Changelog",
+        "Sniper Community 1.1.0",
         "Sniper Community 1.0.0",
         "Apache-2.0",
         "human-confirmed MCP action plans",
@@ -231,7 +233,7 @@ REQUIRED_TEXT = {
         "title: Sniper Community",
         "Gökçe Baran",
         "Karakamış",
-        "version: 1.0.0",
+        "version: 1.1.0",
         "license: Apache-2.0",
         "https://github.com/dytredline/Sniper",
     ),
@@ -771,8 +773,11 @@ def _validate_release_tree(entries: list[ReleaseEntry], failures: list[str]) -> 
     version_module_entry = by_relative.get("version.py")
     if community_version_entry is not None and community_version_entry.payload is not None:
         community_version = community_version_entry.payload.decode("utf-8", errors="replace").strip()
-        if community_version != "1.0.0":
-            fail("release tree: COMMUNITY_VERSION must be 1.0.0 for Community v1", failures)
+        if community_version != EXPECTED_COMMUNITY_VERSION:
+            fail(
+                f"release tree: COMMUNITY_VERSION must be {EXPECTED_COMMUNITY_VERSION}",
+                failures,
+            )
         if version_module_entry is not None and version_module_entry.payload is not None:
             version_text = version_module_entry.payload.decode("utf-8", errors="replace")
             if f'__version__ = "{community_version}"' not in version_text:

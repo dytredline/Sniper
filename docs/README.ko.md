@@ -80,25 +80,27 @@ SBOM, CI 구성을 하나의 출시 전 화면에서 보고 발견 사항 설명
 ## 내장 기능과 선택형 엔진
 
 내장 분석기, 보고서 파서, MCP 서버, CLI, 루프백 Web UI는 소스 트리에 포함됩니다. 여기에 더해 root 권한이
-필요 없는 로컬 프로필로 다음 다섯 개의 버전 고정 서드파티 엔진을 선택적으로 설치할 수 있습니다.
+필요 없는 로컬 프로필로 다음 일곱 개의 버전 고정 서드파티 엔진을 선택적으로 설치할 수 있습니다.
 
 - Nuclei 3.11.1
 - Trivy 0.75.0
 - Gitleaks 8.30.1
 - TruffleHog 3.99.0
+- Syft 1.55.0
+- Grype 0.121.0
 - Opengrep 1.30.1
 
 선택형 엔진은 실행 파일, SHA-256, 필수 데이터, 입력 범위, 라이선스 준비 상태 검사를 통과한 경우에만 사용 가능한
 것으로 표시됩니다. Nuclei의 광범위한 승인 HTTP 흐름에는 별도로 고정된 템플릿 카탈로그가 필요하고, Trivy의
-취약점 프로필에는 별도로 고정된 오프라인 데이터베이스가 필요합니다. 내장 분석은 이 다섯 엔진과 별도로 제공됩니다. 다국어 인터페이스 및 언어 팩 안내는 [LOCALIZATION.md](LOCALIZATION.md)를 참조하세요.
+취약점 프로필에는 별도로 고정된 오프라인 데이터베이스가 필요합니다. 내장 분석은 이 일곱 엔진과 별도로 제공됩니다. 다국어 인터페이스 및 언어 팩 안내는 [LOCALIZATION.md](LOCALIZATION.md)를 참조하세요.
 
 ## 릴리스 상태 및 포함 항목
 
-이 저장소는 Sniper Community v1.0.0 소스 릴리스이며 Apache License 2.0([LICENSE](../LICENSE))으로 제공됩니다. 로컬 프로젝트 분석, 로컬 보고서 및 품질 게이트 명령, AI 우선 stdio MCP 워크플로, 상태 변경 작업에 대한 대화형 사람 승인 경계, 수동 CLI, 루프백 웹 인터페이스, 테스트 및 문서가 포함되어 있습니다.
+이 저장소는 Sniper Community v1.1.0 소스 릴리스이며 Apache License 2.0([LICENSE](../LICENSE))으로 제공됩니다. 로컬 프로젝트 분석, 로컬 보고서 및 품질 게이트 명령, AI 우선 stdio MCP 워크플로, 상태 변경 작업에 대한 대화형 사람 승인 경계, 수동 CLI, 루프백 웹 인터페이스, 테스트 및 문서가 포함되어 있습니다.
 
 ## 설치
 
-테스트된 인터프리터는 Python 3.12입니다. Community v1의 전체 네이티브 5개 선택형 엔진 설치는
+테스트된 인터프리터는 Python 3.12입니다. Community v1의 전체 네이티브 7개 선택형 엔진 설치는
 Linux ARM64/x86-64에서 지원됩니다. **macOS(Apple Silicon)**에서는 네이티브 `--core-only` 소스 설치
 (`python3 scripts/setup-community --core-only`)와 Docker Desktop 5개 엔진 프로필
 (`./scripts/deploy-community-tools --accept-third-party-licenses`)이 **모두 실제 macOS 장비에서 검증되었으며
@@ -106,7 +108,7 @@ Linux ARM64/x86-64에서 지원됩니다. **macOS(Apple Silicon)**에서는 네�
 (`python3 scripts/setup-community --core-only`), WSL2, 그리고 Docker Desktop의 Linux 컨테이너를
 지원합니다(자세한 검증 증거는 [VALIDATION.md](../VALIDATION.md) 및 [DEPLOYMENT.md](../DEPLOYMENT.md) 참조).
 
-Linux에서 고정된 의존성과 로컬 도구 5개를 설치 및 검증하려면 다음을 실행합니다:
+Linux에서 고정된 의존성과 로컬 도구 7개를 설치 및 검증하려면 다음을 실행합니다:
 
 ```bash
 python3 scripts/setup-community --accept-third-party-licenses

@@ -209,7 +209,7 @@ else:
 
 payload = info.system_version_payload(pathlib.Path.cwd(), root)
 assert payload['format'] == 'sniper-community-version/1'
-assert payload['product_version'] == '1.0.0'
+assert payload['product_version'] == '1.1.0'
 assert payload['distribution'] == 'community-source'
 assert payload['packaged'] is False
 assert 'entitlement' not in payload
@@ -244,7 +244,7 @@ assert 'entitlement' not in payload
         builder = _load(BUILDER, "community_output_path_builder_test")
         source = self.root / "minimal-output-source"
         source.mkdir()
-        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
+        (source / "COMMUNITY_VERSION").write_text("1.1.0\n", encoding="utf-8")
 
         redirected = self.root / "redirected-output"
         requested = self.root / "requested-output"
@@ -265,7 +265,7 @@ assert 'entitlement' not in payload
         builder = _load(BUILDER, "community_source_race_builder_test")
         source = self.root / "minimal-race-source"
         source.mkdir()
-        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
+        (source / "COMMUNITY_VERSION").write_text("1.1.0\n", encoding="utf-8")
         raced = source / "zz-race.txt"
         raced.write_text("inside\n", encoding="utf-8")
         outside = self.root / "outside-race.txt"
@@ -293,7 +293,7 @@ assert 'entitlement' not in payload
         builder = _load(BUILDER, "community_excluded_payload_builder_test")
         source = self.root / "minimal-excluded-source"
         (source / "data").mkdir(parents=True)
-        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
+        (source / "COMMUNITY_VERSION").write_text("1.1.0\n", encoding="utf-8")
         excluded = source / "data" / "sniper.db"
         excluded.write_bytes(b"runtime-state-must-not-be-read")
         output = self.root / "excluded-output"
@@ -318,7 +318,7 @@ assert 'entitlement' not in payload
         source = self.root / "minimal-tool-runtime-source"
         runtime = source / "runtimes" / "demo-1.0"
         runtime.mkdir(parents=True)
-        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
+        (source / "COMMUNITY_VERSION").write_text("1.1.0\n", encoding="utf-8")
         installed_binary = runtime / "demo"
         installed_binary.write_bytes(b"third-party-runtime-must-not-be-read")
         install_manifest = source / "runtimes" / "SNIPER-COMMUNITY-TOOLS-MANIFEST.json"
@@ -347,7 +347,7 @@ assert 'entitlement' not in payload
         source = self.root / "minimal-codebase-index-source"
         index = source / ".codebase-memory"
         index.mkdir(parents=True)
-        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
+        (source / "COMMUNITY_VERSION").write_text("1.1.0\n", encoding="utf-8")
         graph = index / "graph.db.zst"
         graph.write_bytes(b"local-structural-index-must-not-be-published")
         output = self.root / "codebase-index-output"
@@ -372,7 +372,7 @@ assert 'entitlement' not in payload
         builder = _load(BUILDER, "community_git_worktree_pointer_exclusion_test")
         source = self.root / "minimal-git-worktree-source"
         source.mkdir()
-        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
+        (source / "COMMUNITY_VERSION").write_text("1.1.0\n", encoding="utf-8")
         git_pointer = source / ".git"
         git_pointer.write_text(
             "gitdir: /home/community-user/project/.git/worktrees/community\n",
@@ -400,7 +400,7 @@ assert 'entitlement' not in payload
         builder = _load(BUILDER, "community_deployment_secret_exclusion_test")
         source = self.root / "minimal-secret-name-source"
         source.mkdir()
-        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
+        (source / "COMMUNITY_VERSION").write_text("1.1.0\n", encoding="utf-8")
         secret_paths = (
             source / ".env",
             source / ".env.local",
@@ -493,7 +493,7 @@ assert 'entitlement' not in payload
         validator = _load(VALIDATOR, "community_size_bound_validator_test")
         source = self.root / "minimal-size-source"
         source.mkdir()
-        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
+        (source / "COMMUNITY_VERSION").write_text("1.1.0\n", encoding="utf-8")
         oversized_source = source / "oversized.bin"
         with oversized_source.open("wb") as stream:
             stream.truncate(builder.MAX_REGULAR_FILE_BYTES + 1)

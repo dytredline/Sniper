@@ -5,6 +5,20 @@ Community releases.
 
 ## Unreleased
 
+## Sniper Community 1.1.0 — 2026-10-29
+
+- Expanded authorization review across supported Rails inheritance, Spring and ASP.NET routes, and GraphQL
+  resolvers; added bounded multi-repository trust graphs for CI artifacts, webhooks, services, and dependency lineage.
+- Added reviewable fuzz-target generation and bounded local runtimes for supported C/C++, Rust, Go, Python, Java,
+  and JavaScript/TypeScript targets, plus memory-safety and runtime-evidence correlation improvements.
+- Added local supply-chain, OCI provenance, Kubernetes, migration, protocol, archive/symlink, and binary-hardening
+  checks, together with Syft/Grype integration and seven-tool Linux Community profiles.
+- Added Community MCP tools for local response comparison, authorization matrices, token sequencing, traffic
+  decoding, GHSA/OpenVEX preparation, and bounty-readiness review. Every advertised tool now declares its MCP
+  read-only, destructive, idempotent, and open-world effects.
+- Hardened deterministic source assembly so Git worktree pointer files are excluded before they can be read or
+  copied, and the assembled-tree validator rejects any manifest-listed `.git` artifact.
+- Added GitHub OIDC provenance attestation for tagged source archives while preserving SHA-256 release checksums.
 - Verified both the macOS Apple Silicon native `--core-only` source setup and the macOS Apple Silicon + Docker Desktop
   setup path for the five license-gated local engines, with health/readiness checks, persistent project volume, and
   end-to-end local SAST audit verification.

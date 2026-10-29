@@ -5,7 +5,7 @@ tedarik zinciri için yerel-öncelikli bir savunma güvenliği araç takımıdı
 bağımlılıkları, SBOM dosyalarını, konteyner arşivlerini ve desteklenen kayıtlı araç raporlarını inceler; sonuçları
 CLI, loopback web arayüzü veya stdio MCP üzerinden insan incelemesine sunar.
 
-Bu sayfa **v1.0.0 kaynak sözleşmesini** açıklar. Bir özelliğin katalogda bulunması, gerekli motorun veya verinin o
+Bu sayfa **v1.1.0 kaynak sözleşmesini** açıklar. Bir özelliğin katalogda bulunması, gerekli motorun veya verinin o
 makinede hazır olduğu ya da bir dış hedef için izin bulunduğu anlamına gelmez.
 
 ## Yetenek etiketleri
@@ -468,7 +468,7 @@ yazılı kapsam, zaman aralığı, hız sınırı, veri işleme ve durdurma koş
 
 ## Doğrulama kanıtı
 
-[`VALIDATION.md`](../VALIDATION.md) içindeki **2026-10-24** Community v1.0.0 yayın adayı anlık görüntüsü:
+[`VALIDATION.md`](../VALIDATION.md) içindeki **2026-10-29** Community v1.1.0 doğrulama anlık görüntüsü:
 
 | Kanıt kapısı | Gözlenen sonuç |
 | --- | --- |

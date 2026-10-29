@@ -69,34 +69,36 @@ iOS、Flutter、React Native 源码与移动端清单。API 路径、密钥线�
 
 每个候选项都为授权范围内的人工验证提供有证据的起点；测试人员可使用不同的测试用户、角色和合成对象进行核验。
 
-## 内置功能与五个可选引擎
+## 内置功能与七个可选引擎
 
 内置分析器、报告解析器、MCP 服务器、CLI 和仅回环访问的 Web UI 都包含在源代码树中。除此之外，
-无 root 的本地配置还可以选择安装五个锁定版本的第三方引擎：
+无 root 的本地配置还可以选择安装七个锁定版本的第三方引擎：
 
 - Nuclei 3.11.1
 - Trivy 0.75.0
 - Gitleaks 8.30.1
 - TruffleHog 3.99.0
+- Syft 1.55.0
+- Grype 0.121.0
 - Opengrep 1.30.1
 
 只有在相应的可执行文件、SHA-256、所需数据、输入范围和许可证就绪检查通过后，可选引擎才会显示为可用。
 Nuclei 的广泛授权 HTTP 流程还需要单独固定的模板目录；Trivy 的漏洞配置还需要单独固定的离线数据库。
-Sniper 的内置分析独立于这五个可选引擎。多语言界面与语言包说明见 [LOCALIZATION.md](LOCALIZATION.md)。
+Sniper 的内置分析独立于这七个可选引擎。多语言界面与语言包说明见 [LOCALIZATION.md](LOCALIZATION.md)。
 
 ## 版本状态与包含内容
 
-本仓库为 Sniper Community v1.0.0 源码版本，采用 Apache License 2.0（[LICENSE](../LICENSE)）授权。包含本地项目分析、本地报告与质量门禁命令、AI 优先的 stdio MCP 工作流、针对状态变更操作的对话式人工审批边界、手动 CLI、本地回环 Web 界面以及测试与文档。
+本仓库为 Sniper Community v1.1.0 源码版本，采用 Apache License 2.0（[LICENSE](../LICENSE)）授权。包含本地项目分析、本地报告与质量门禁命令、AI 优先的 stdio MCP 工作流、针对状态变更操作的对话式人工审批边界、手动 CLI、本地回环 Web 界面以及测试与文档。
 
 ## 安装
 
-经过测试的解释器为 Python 3.12。Community v1 的完整原生五引擎安装支持 Linux ARM64/x86-64。
+经过测试的解释器为 Python 3.12。Community v1 的完整原生七引擎安装支持 Linux ARM64/x86-64。
 在 **macOS（Apple Silicon）**上，原生 `--core-only` 源码安装（`python3 scripts/setup-community --core-only`）与
 Docker Desktop 五引擎配置（`./scripts/deploy-community-tools --accept-third-party-licenses`）**均已在真实
 macOS 主机上完成验证并受支持（并非实验性功能）**。在 **Windows** 上，Sniper 支持原生 `--core-only` 源码安装
 （`python3 scripts/setup-community --core-only`）、WSL2 以及 Docker Desktop 的 Linux 容器（详见 [VALIDATION.md](../VALIDATION.md) 与 [DEPLOYMENT.md](../DEPLOYMENT.md)）。
 
-在 Linux 上安装并验证锁定的依赖项和五个本地工具：
+在 Linux 上安装并验证锁定的依赖项和七个本地工具：
 
 ```bash
 python3 scripts/setup-community --accept-third-party-licenses

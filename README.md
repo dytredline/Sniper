@@ -114,9 +114,16 @@ reintroduction of the excluded delivery files.
 
 ## Release status
 
-This repository is the Sniper Community v1.0.0 source release. `COMMUNITY_VERSION` is the source-version marker;
+This repository is the Sniper Community v1.1.0 source release. `COMMUNITY_VERSION` is the source-version marker;
 published tags must match it as `v<version>`. The source is licensed under the Apache License 2.0. See
 [LICENSE](LICENSE). The publication status does not make that license grant provisional.
+
+GitHub publishes an OIDC-backed provenance attestation for the source archive. After downloading the release asset,
+verify its identity and digest with:
+
+```bash
+gh attestation verify sniper-community-1.1.0.tar.gz --repo dytredline/Sniper
+```
 
 ## What is included
 
