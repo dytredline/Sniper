@@ -1,0 +1,105 @@
+{
+  "date": "2026-10-29",
+  "network_isolation": "loopback_only_127.0.0.1",
+  "suite": "GitLab 7-Candidate 3-Layer Real-World Impact Verification Suite",
+  "target_commit_ce": "449ed2875c2e3c4b51169484b799f4f803194ab5",
+  "target_commit_ee": "06cc52e0bc0c1bd96affa9c3bec857ccf754938f",
+  "tracks": {
+    "REPORT-01_CAND-02A-02B-02C": {
+      "GREEN": {
+        "device_authorize_status": 503,
+        "maintenance_mode_write_succeeded": false,
+        "post_token_admin_action_succeeded": false,
+        "redacted_token_sample": null,
+        "standard_oauth_blocked": true,
+        "token_exchange_status": 503,
+        "token_minted_admin_mode": false
+      },
+      "RED": {
+        "device_authorize_status": 200,
+        "maintenance_mode_write_succeeded": true,
+        "post_token_admin_action_succeeded": true,
+        "redacted_token_sample": "[REDACTED_TEST_TOKEN_SHA256:91ba3cabf8cbd392]",
+        "standard_oauth_blocked": true,
+        "token_exchange_status": 200,
+        "token_minted_admin_mode": true
+      },
+      "patches": {
+        "GITLAB-CAND-02-COMBINED.patch": "33f6cf48a91be9d564f3964e9b9c7a4c6d412b6814ebfa71356102767bddc698",
+        "GITLAB-CAND-02C-MAINTENANCE-MODE.patch": "80bfc7b3ee0e328487e4de303a9d707e575989f848d778914b359494fac90aa8"
+      }
+    },
+    "REPORT-02_CAND-05-06-01": {
+      "GREEN": {
+        "bearer_token_leaked_to_canary": false,
+        "canary_b_request_count": 0,
+        "cross_org_server_mutated": false,
+        "iam_role_credentials_exposed": false,
+        "reflected_flash_contains_secret": false
+      },
+      "RED": {
+        "bearer_token_leaked_to_canary": true,
+        "canary_b_request_count": 2,
+        "cross_org_server_mutated": true,
+        "iam_role_credentials_exposed": true,
+        "reflected_flash_contains_secret": true
+      },
+      "patches": {
+        "GITLAB-CAND-01.patch": "77be0cfe3092c808ea8f0a1f33689c61de1c9db01155e950b1192f883984b689",
+        "GITLAB-CAND-05.patch": "e63dce6d6b71fcb0fa357103078290e07d66a0c756607b7b35da9eae209b687e",
+        "GITLAB-CAND-06-MCP-IDOR-CSRF.patch": "8bed587ca203bfcde8fcf8e4ec27b12038e4e5366dc33f3d285b742811d2632b"
+      }
+    },
+    "REPORT-03_CAND-08": {
+      "GREEN": {
+        "automated_issue_created_without_prompt": false,
+        "downstream_victim_project_tools_call_status": 404,
+        "unapproved_write_tool_injected": false,
+        "workflow_definition_overridden": false
+      },
+      "RED": {
+        "automated_issue_created_without_prompt": true,
+        "downstream_victim_project_tools_call_status": 404,
+        "unapproved_write_tool_injected": true,
+        "workflow_definition_overridden": true
+      },
+      "patches": {
+        "GITLAB-CAND-08-WORKFLOW-ITEM-VERSION-AUTHZ.patch": "d40f6e104c2fba0e8900cab8d45ddfb4cf9c49a60c8bb12e3aa573ddb1228704"
+      }
+    },
+    "REPORT-04_CAND-07": {
+      "GREEN": {
+        "builtin_gitlab_overwritten": false,
+        "effective_gitlab_url": "http://127.0.0.1/api/v4/mcp",
+        "effective_tools_filter": [
+          "get_issue",
+          "list_commits"
+        ],
+        "workhorse_all_tools_available": false
+      },
+      "RED": {
+        "builtin_gitlab_overwritten": true,
+        "effective_gitlab_url": "https://attacker-controlled-mcp.example/sse",
+        "effective_tools_filter": null,
+        "workhorse_all_tools_available": true
+      },
+      "patches": {
+        "GITLAB-CAND-07-AGENT-MCP-CROSS-ORG-AND-KEY-COLLISION.patch": "8fc8646b4681d8d558cf25d2adc1c9ccd89363809243f17e9a79134956567f60"
+      }
+    },
+    "REPORT-05_CAND-04": {
+      "GREEN": {
+        "cross_project_cache_collision_accepted": false,
+        "http_status": 404,
+        "location_header": "",
+        "open_redirect_triggered": false
+      },
+      "RED": {
+        "cross_project_cache_collision_accepted": true,
+        "http_status": 302,
+        "location_header": "https://evil-phishing.example/oauth/callback?steal=1",
+        "open_redirect_triggered": true
+      }
+    }
+  }
+}
