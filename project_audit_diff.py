@@ -178,6 +178,21 @@ def _sarif_location(uri: str, line: int, message: str | None = None) -> dict[str
     return location
 
 
+def _sarif_partial_fingerprint(rule_id: str, uri: str, line: int) -> str:
+    """Build a fixed-width SARIF identity from already-published location metadata."""
+    def slot(value: str, width: int) -> str:
+        normalized = "".join(
+            character if character.isascii() and character.isalnum() else "_"
+            for character in value
+        )
+        if len(normalized) <= width:
+            return normalized.ljust(width, "_")
+        left = width // 2
+        return normalized[:left] + normalized[-(width - left):]
+
+    return f"{max(1, line) & 0xFFFFFFFF:08x}{slot(rule_id, 8)}{slot(uri, 16)}"
+
+
 def _sarif_code_flow(flow: dict[str, Any], sink_uri: str, sink_line: int) -> dict[str, Any]:
     """Kaynak → (ara adımlar) → hedef yolunu SARIF threadFlow olarak ver (CodeQL biçimi)."""
     source_uri = str(flow.get("source_file") or sink_uri)
@@ -255,11 +270,9 @@ def render_project_audit_sarif(audit: dict[str, Any]) -> dict[str, Any]:
             },
             "locations": [_sarif_location(uri, start_line)],
             "partialFingerprints": {
-                # Hash only already-public result metadata.  Finding titles
-                # and evidence can describe sensitive data and are excluded.
-                "sniperFinding/v1": hashlib.sha256(
-                    f"{rule_id}\0{uri}\0{start_line}".encode("utf-8")
-                ).hexdigest()[:32],
+                # SARIF permits a stable arbitrary string. Finding titles,
+                # evidence, secrets, and passwords are deliberately excluded.
+                "sniperFinding/v1": _sarif_partial_fingerprint(rule_id, uri, start_line),
             },
             "properties": {
                 "id": str(finding.get("id") or ""),
