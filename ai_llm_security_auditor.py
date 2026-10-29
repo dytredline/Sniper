@@ -105,6 +105,16 @@ _LLM_OUTPUT_ASSIGNMENT_MARKERS = (
     "generate_content",
     ".invoke(",
 )
+_AI_SIGNAL_MARKERS = (
+    "prompt", "messages", "user_input", "user_query", "req.body", "req.query", "request.args",
+    "request.form", "request.json", "sk-", "aizasy", "hf_", "r8_", "gsk_", "xai-", "_api_key",
+    "replicate_api_token", "torch.load", "pickle.", "joblib.", "dill.", "cloudpickle.",
+    "trust_remote_code", "load_dataset", "trainer", "response.choices", "chat.completions",
+    "messages.create", "generate_content", ".invoke(", "llm_", "ai_reply", "completion", "model_output",
+    "agent_output", "assistant_reply", "generated_", "@tool", ".tool(", "mcp", "structuredtool",
+    "function_declarations", "tools", "pyautogui", "xdotool", "pynput", "computer_use",
+    "similarity_search", "vector", "qdrant", "pinecone", "chromadb", "weaviate", "temperature",
+)
 
 
 def calculate_score(findings: list[dict[str, Any]]) -> tuple[int, str]:
@@ -363,6 +373,22 @@ def _build_llm_top10_summary(findings: list[dict[str, Any]]) -> dict[str, dict[s
     return summary
 
 
+def _empty_inline_report(filename: str) -> dict[str, Any]:
+    score, grade = calculate_score([])
+    return {
+        "format": "sniper-ai-llm-inline-audit-v1",
+        "filename": filename,
+        "score": score,
+        "grade": grade,
+        "finding_count": 0,
+        "findings_truncated": False,
+        "finding_groups": summarize_finding_groups([]),
+        "findings": [],
+        "llm_top10_summary": _build_llm_top10_summary([]),
+        "controls_evaluated": sorted(DEFAULT_CONTROLS_EVALUATED),
+    }
+
+
 def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict[str, Any]:
     if not isinstance(raw_content, str) or not raw_content.strip():
         raise ValueError("Denetlenecek yapay zeka / LLM kaynak içeriği boş olamaz.")
@@ -374,6 +400,12 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
     clean_filename = filename.strip()
     ext = Path(clean_filename).suffix.lower()
     lines = raw_content.splitlines()
+
+    lowered_content = raw_content.casefold()
+    if "mcp" not in clean_filename.casefold() and not any(
+        marker in lowered_content for marker in _AI_SIGNAL_MARKERS
+    ):
+        return _empty_inline_report(clean_filename)
 
     findings: list[dict[str, Any]] = []
     seen_fingerprints: set[tuple[str, int, str]] = set()

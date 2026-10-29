@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import os
 from pathlib import Path
+import shutil
 import sys
 
 import pytest
@@ -197,10 +198,13 @@ def test_real_sandbox_runner_enforces_wall_clock_and_output_edges(tmp_path: Path
 
 
 def test_pinned_runtime_inode_is_the_one_executed_in_networkless_sandbox(tmp_path: Path) -> None:
-    runtime_path = os.path.realpath(sys.executable)
+    runtime_copy = tmp_path / "python-runtime"
+    shutil.copyfile(os.path.realpath(sys.executable), runtime_copy)
+    runtime_copy.chmod(0o700)
+    runtime_path = str(runtime_copy)
     runtime_sha = file_sha256(runtime_path, "Python")
     with open_verified_executable(runtime_path, {runtime_sha: "test"}, label="Python") as runtime:
-        binds, command = fuzz_runtime._safe_runtime_root(None, runtime, "/runtime")
+        binds, command = fuzz_runtime._safe_runtime_root(tmp_path, runtime, "/runtime")
         try:
             completed = fuzz_runtime._run_stage(
                 tmp_path,
