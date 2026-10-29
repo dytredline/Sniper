@@ -2,25 +2,6 @@
 
 [English](../05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md) | **Türkçe** | [日本語](../ja/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md) | [简体中文](../zh-CN/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md) | [한국어](../ko/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md)
 
-## GitHub GHSA ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `trycua/cua`
-- **GitHub Danışma (Advisory) URL'si:** `https://github.com/trycua/cua/security/advisories/GHSA-3x8g-6h2v-8qx9`
-- **Mevcut GHSA Kimliği:** `GHSA-3x8g-6h2v-8qx9`
-- **Ekosistem:** `Cargo`
-- **Paket Adı:** `cua-compat`
-- **Etkilenen Sürümler:** `<= 0.8.0 (cua-spacesd <= 0.8.0, commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **Yamalı Sürümler:** `Yok (Savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-22 (Dosya Yolunun Kısıtlı Dizinle Sınırlandırılmaması — Path Traversal)`
-- **CVSS v3.1:** `8.1 Yüksek (High) — CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:H`
-- **MITRE Üreticisi:** `TryCua`
-- **MITRE Zafiyet Türü:** `Keyfi Dizin Silmeye Yol Açan Dizin Geçişi / Path Traversal (CWE-22)`
-- **MITRE Etkilenen Bileşen(ler):** `libs/cua/crates/cua-compat/src/daytona/objectstore.rs (handle, satır 320-325, 360-422)`
-- **MITRE Önerilen CVE Açıklaması (Türkçe Özeti):**
-  > TryCua `cua-compat` 0.8.0 ve önceki sürümlerinde (`trycua/cua`), Daytona uyumlu S3 nesne deposu (`libs/cua/crates/cua-compat/src/daytona/objectstore.rs`) nesne anahtarını `object_path(&key)` ile dizin geçişine (`..`) karşı doğrularken `uploadId` sorgu parametresini doğrulamaz. HTTP `DELETE` (`AbortMultipartUpload`) işleyicisinde `uploads.remove(&id)` çağrısı `uploadId` değerinin gerçekten var olup olmadığını yok sayar ve koşulsuz olarak `tokio::fs::remove_dir_all(root.join("uploads").join(&id))` çalıştırır; bu durum yükleme yetkisine sahip bir istemcinin nesne deposunu veya üst dizinleri özyinelemeli olarak silmesine olanak tanır.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma

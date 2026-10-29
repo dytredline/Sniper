@@ -2,25 +2,6 @@
 
 [English](../03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md) | **Türkçe** | [日本語](../ja/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md) | [简体中文](../zh-CN/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md) | [한국어](../ko/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md)
 
-## GitHub GHSA ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `trycua/cua`
-- **GitHub Danışma (Advisory) URL'si:** `https://github.com/trycua/cua/security/advisories/GHSA-cp36-x5hg-3gg8`
-- **Mevcut GHSA Kimliği:** `GHSA-cp36-x5hg-3gg8`
-- **Ekosistem:** `npm`
-- **Paket Adı:** `cuabot`
-- **Etkilenen Sürümler:** `>= 1.0.1, <= 1.0.16 (commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **Yamalı Sürümler:** `Yok (Savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-306 (Kritik İşlev İçin Eksik Kimlik Doğrulama) / CWE-942 (Aşırı İzin Verici Çapraz Alan Adı Beyaz Listesi)`
-- **CVSS v3.1:** `9.6 Kritik (Critical) — CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:H`
-- **MITRE Üreticisi:** `TryCua`
-- **MITRE Zafiyet Türü:** `Eksik Kimlik Doğrulama ve İzin Verici CORS Nedeniyle Uzaktan Komut Çalıştırma (CWE-306 / CWE-942)`
-- **MITRE Etkilenen Bileşen(ler):** `libs/cuabot/src/cuabotd.ts (satır 34-36, 259-260, 741-743, 969-1002, 1018-1063, 1120)`
-- **MITRE Önerilen CVE Açıklaması (Türkçe Özeti):**
-  > TryCua `cuabot` 1.0.1 ile 1.0.16 arasındaki sürümlerde (`trycua/cua`), `cuabotd` arka plan servisi (`libs/cuabot/src/cuabotd.ts`) kimlik doğrulaması olmadan `0.0.0.0:7842` portuna bağlanır, `POST /bash` ve `OPTIONS` ön-kontrol (preflight) yanıtları dahil tüm HTTP uç noktalarında `Access-Control-Allow-Origin: *` başlığı ayarlar ve ana bilgisayarın `~/.cuabot/user/.claude` dizinini okuma-yazma yetkisiyle bağlarken hiçbir `Origin` kontrolü olmayan bir WebSocket PTY terminali açar. Kullanıcının tarayıcısında ziyaret ettiği herhangi bir güvenilmeyen web sitesi veya yerel ağdaki herhangi bir cihaz `POST /bash` üzerinden keyfi komutlar çalıştırabilir ve bağlı Claude OAuth kimlik bilgilerini sızdırabilir veya ana bilgisayar kancalarını (hooks) değiştirebilir.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma

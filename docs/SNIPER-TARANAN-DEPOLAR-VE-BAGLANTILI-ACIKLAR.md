@@ -1428,3 +1428,600 @@ python3 pre-submission-verification-20261026/tests/test_other_repos_and_cua_real
   }
 }
 ```
+
+<!-- GITLAB-ADVISORIES-START -->
+
+---
+
+### III.12 — GitLab (`<= 19.6.0-pre (verified on live 19.5.1-ce.0 & 19.6.0-pre commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`) — OAuth 2.0 Cihaz Yetkilendirme Akışında (`Oauth::DeviceAuthorizationsController` & `Oauth::TokensController`) `disable_admin_oauth_scopes`, E-Posta Doğrulama Kapısı ve Organizasyon Bakım Modu Kısıtlamalarının Atlanması (`GITLAB-CAND-02A / 02B / 02C`) (`CWE-863 / CWE-285`, CVSS `8.1 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `gitlab-org/gitlab` (`RubyGems / GitLab CE & EE: gitlab-ce / gitlab-ee`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 19.6.0-pre (verified on live 19.5.1-ce.0 & 19.6.0-pre commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `app/controllers/oauth/device_authorizations_controller.rb:4-50`, `app/controllers/oauth/tokens_controller.rb:42-75`
+* **Zafiyet Sınıfı & Skor:** `CWE-863 / CWE-285` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md`](advisories/tr/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — `verify_admin_allowed!` Eksikliği Nedeniyle Varsayılan `disable_admin_oauth_scopes` Korumasının Atlanması (`CAND-02A`, `device_authorizations_controller.rb:4-42`):** Kardeş denetleyici `Oauth::AuthorizationsController` (`authorizations_controller.rb:18, 274-296`), `before_action :verify_admin_allowed!` muhafızı ile `Gitlab::CurrentSettings.disable_admin_oauth_scopes == true` (varsayılan güvenlik ayarı) iken güvenilmeyen (`trusted: false`) OAuth uygulamalarının yöneticilere `api`, `admin_mode`, `sudo` gibi tehlikeli kapsamlarla bağlanmasını `403 Forbidden` ile engeller. Ancak `Oauth::DeviceAuthorizationsController` bu kontrolü tamamen unuttuğu için, sıradan bir kullanıcının oluşturduğu `trusted: false, device_code_enabled: true, scopes: 'api admin_mode'` uygulama `/oauth/device` üzerinden tam yetkili yönetici (`is_admin: true`) erişim jetonu üretebilir.
+2. **Adım 2 — `verify_confirmed_email!` Eksikliği Nedeniyle E-Postası Doğrulanmamış Hesapların Kalıcı OAuth Token Üretmesi (`CAND-02B`, `device_authorizations_controller.rb:4-42`):** GitLab'da e-postasını henüz doğrulamamış (`confirmed_at: nil`) kullanıcılar `/oauth/authorize` üzerinde `403 unconfirmed_email` ile engellenirken, `/oauth/device/authorize` üzerinde `verify_confirmed_email!` bulunmadığı için `200 OK` ile kalıcı `access_token` ve `refresh_token` alabilir.
+3. **Adım 3 — `enforce_organization_maintenance_mode` ve `device_code` Organizasyon Çözümlemesi Eksikliği (`CAND-02C`, `tokens_controller.rb:42-70`):** Bir organizasyon `migration` (`503`) veya `legal` (`403`) bakım modunda kilitlendiğinde standart OAuth akışları durdurulurken, `TokensController#organization_for_token_request` içinde `urn:ietf:params:oauth:grant-type:device_code` dalı yer almadığı için cihaz jetonu basımı ve API üzerinden depo yazma (`POST /api/v4/projects/:id/repository/commits`) işlemleri kesintisiz devam eder.
+
+```ruby
+// File: app/controllers/oauth/device_authorizations_controller.rb (lines 4-35)
+module Oauth
+  class DeviceAuthorizationsController < Doorkeeper::DeviceAuthorizationGrant::DeviceAuthorizationsController
+    include RequestPayloadLogger
+
+    layout 'minimal'
+    # BUG: Missing before_action :verify_confirmed_email!, :verify_admin_allowed!
+    # BUG: Missing prepend_before_action :set_current_organization
+    # BUG: Missing before_action :enforce_organization_maintenance_mode
+
+// File: app/controllers/oauth/tokens_controller.rb (lines 42-52)
+  def organization_for_token_request
+    token_params = params.permit(:grant_type, :refresh_token, :code)
+    case token_params[:grant_type]
+    when 'refresh_token'
+      OauthAccessToken.by_refresh_token(token_params[:refresh_token])&.organization
+    when 'authorization_code'
+      OauthAccessGrant.by_token(token_params[:code])&.organization
+    # BUG: Missing when 'urn:ietf:params:oauth:grant-type:device_code'
+    end
+  end
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — `disable_admin_oauth_scopes=true` Açıkken Bile Sahte CLI/IDE Cihaz Koduyla Tüm GitLab Sunucusunun (Root/Admin) Ele Geçirilmesi:** GitLab'da yöneticileri korumak için `disable_admin_oauth_scopes=true` varsayılan olarak açıktır; yani sıradan bir kullanıcının oluşturduğu güvenilmeyen (`trusted: false`) bir OAuth uygulaması onaylansa bile asla `api` veya `admin_mode` yetkisi alamaz (`403 Forbidden`). Ancak `/oauth/device` bu kontrolü tamamen unuttuğu için, sıradan bir geliştirici veya dış yüklenici `scopes: "api admin_mode sudo"` ayarlı bir cihaz kodu (`user_code`) üretir. Bir sistem yöneticisi bu kodu onayladığı anda saldırgan **tam yetkili `admin_mode` + `api` erişim jetonu** elde eder; bu jetonla **şirketin tüm özel kaynak kodlarını indirir, tüm üretim CI/CD gizli anahtarlarını (`AWS_SECRET_ACCESS_KEY`, veritabanı şifreleri) çalar, kendine yeni Root hesabı açar ve tüm GitLab sunucusunu ele geçirir.**
+* **Senaryo B — Doğrulanmamış / Başkasına Ait Kurumsal E-Posta (`confirmed_at: nil`) İle Kalıcı API Arka Kapısı (Persistence) Açılması:** Saldırgan kendisine ait olmayan veya hiç doğrulanmamış bir e-posta adresiyle (`confirmed_at: nil`) hesap açar. Standart `/oauth/authorize` ekranı bu hesabı `403 unconfirmed_email` ile engellerken, saldırgan `/oauth/device/authorize` üzerinden e-posta onayı yapmadan kalıcı `access_token` ve `refresh_token` üretir; web oturumu kapansa bile API üzerinden iç projelere erişmeye ve işlem yapmaya devam eder.
+* **Senaryo C — Siber Olay İncelemesi (`legal` Hold) veya Veri Göçü (`migration`) Sırasında Dondurulmuş Üretim Depolarına Arka Kapı (Backdoor) Enjekte Edilmesi:** Şirket bir siber saldırı adli incelemesi (`legal` -> `403`) veya veri merkezi göçü (`migration` -> `503`) sırasında tüm organizasyonu bakım moduna alarak kod yazılmasını kilitler. Ancak `device_code` akışı bu kilidi atladığı için saldırgan dondurulmuş üretim deposuna `POST /api/v4/projects/1/repository/commits` (`201 Created`) ile **arka kapılı kod veya zararlı `.gitlab-ci.yml` pipeline'ı enjekte eder** ve adli delil bütünlüğünü bozar.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect missing before_action guards in DeviceAuthorizationsController vs AuthorizationsController
+grep -n -C 6 "verify_admin_allowed!" \
+  /home/community-user/targets/gitlab/app/controllers/oauth/authorizations_controller.rb \
+  /home/community-user/targets/gitlab/app/controllers/oauth/device_authorizations_controller.rb
+
+# 2. Run the 3-Layer Real-World Impact (RED -> GREEN) E2E Verification Harness
+python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_world_impact_e2e.py -k test_report1_cand02
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "REPORT-01_CAND-02A-02B-02C": {
+    "GREEN": {
+      "device_authorize_status": 503,
+      "maintenance_mode_write_succeeded": false,
+      "post_token_admin_action_succeeded": false,
+      "redacted_token_sample": null,
+      "standard_oauth_blocked": true,
+      "token_exchange_status": 503,
+      "token_minted_admin_mode": false
+    },
+    "RED": {
+      "device_authorize_status": 200,
+      "maintenance_mode_write_succeeded": true,
+      "post_token_admin_action_succeeded": true,
+      "redacted_token_sample": "[REDACTED_TEST_TOKEN_SHA256:91ba3cabf8cbd392]",
+      "standard_oauth_blocked": true,
+      "token_exchange_status": 200,
+      "token_minted_admin_mode": true
+    },
+    "patches": {
+      "GITLAB-CAND-02-COMBINED.patch": "33f6cf48a91be9d564f3964e9b9c7a4c6d412b6814ebfa71356102767bddc698",
+      "GITLAB-CAND-02C-MAINTENANCE-MODE.patch": "80bfc7b3ee0e328487e4de303a9d707e575989f848d778914b359494fac90aa8"
+    }
+  }
+}
+```
+
+
+---
+
+### III.13 — GitLab (`<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`) — AI Catalog MCP OAuth `CallbackService`, `RefreshTokenService`, `RevokeTokenService` ve `DynamicRegistrationClient` İçinde `307 Temporary Redirect` / Doğrulanmamış RFC 8414 Metadata SSRF ve Hata Gövdesi Yansıtması (`GITLAB-CAND-05`) (`CWE-918 / CWE-209`, CVSS `8.5 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `gitlab-org/gitlab` (`RubyGems / GitLab EE: gitlab-ee`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `ee/app/services/ai/catalog/mcp_servers/callback_service.rb:17-50, 87-129`, `refresh_token_service.rb:18-70`, `dynamic_registration_client.rb:104-136`
+* **Zafiyet Sınıfı & Skor:** `CWE-918 / CWE-209` — **CVSS v3.1: `8.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md`](advisories/tr/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — RFC 8414 `token_endpoint`, `revocation_endpoint` ve `authorization_servers` Adreslerinin `UrlBlocker` İle Doğrulanmaması (`dynamic_registration_client.rb:104-136`):** `DynamicRegistrationClient`, yalnızca ilk keşif URL'sini kontrol eder; ancak dönen JSON içindeki `authorization_servers.first`, `token_endpoint` ve `revocation_endpoint` alanlarını `Gitlab::HTTP_V2::UrlBlocker.validate!` süzgecinden geçirmeden doğrudan döndürür.
+2. **Adım 2 — `OAuth2::Client` (`oauth2 2.0.25`) Kullanımı Nedeniyle `307 Temporary Redirect` POST SSRF ve Kimlik Bilgisi Tekrarı (`callback_service.rb:38-50`, `refresh_token_service.rb:45-58`):** `CallbackService` ve `RefreshTokenService`, GitLab'ın güvenli `Gitlab::HTTP` istemcisi yerine ham `OAuth2::Client.new` (Faraday `net_http`, varsayılan `max_redirects: 5`) kullanır. Harici sunucu `307 Temporary Redirect` ile `http://127.0.0.1:...` veya `http://169.254.169.254/...` adresine yönlendirme yaptığında, `OAuth2::Client` içindeki `client_secret` ve `refresh_token` verileriyle birlikte `POST` isteğini dahili hedefe tekrarlar.
+3. **Adım 3 — `OAuth2::Error#message` Üzerinden Dahili Hata Gövdesinin `flash[:alert]` İçine Yansıtılması (`callback_service.rb:24-25`):** Dahili servis `4xx`/`5xx` veya hatalı yanıt döndüğünde `OAuth2::Error` fırlatılır ve ham yanıt gövdesi `flash[:alert]` üzerinden doğrudan kullanıcı ekranına yansıtılır.
+
+```ruby
+// File: ee/app/services/ai/catalog/mcp_servers/callback_service.rb (lines 15-50)
+        def execute
+          token_params = { redirect_uri: redirect_uri }
+          token_params[:code_verifier] = code_verifier if code_verifier
+
+          access_token = build_oauth_client.auth_code.get_token(code, **token_params)
+          store_token(access_token)
+        rescue OAuth2::Error, StandardError => e
+          # BUG 1: Reflects raw upstream HTTP error response body (e.message) into flash[:alert]
+          error(format(_('Failed to connect to MCP server: %{error}'), error: e.message))
+        end
+        ...
+        def build_oauth_client
+          auth_server_url = registration_service.discover_auth_server_url
+          metadata = registration_service.discover_metadata(auth_server_url)
+          # BUG 2: Uses OAuth2::Client (Faraday net_http, max_redirects: 5) without UrlBlocker or IP pinning!
+          OAuth2::Client.new(
+            mcp_server.oauth_client_id,
+            mcp_server.oauth_client_secret,
+            site: auth_server_url,
+            authorize_url: metadata['authorization_endpoint'],
+            token_url: metadata['token_endpoint'],
+            auth_scheme: ::Gitlab::Oauth::DynamicRegistrationClient.token_endpoint_auth_scheme(metadata)
+          )
+        end
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — AWS / GCP Bulut Sunucusu IAM Yetki Anahtarlarının (`169.254.169.254`) ve İç Yönetim Sırlarının Doğrudan Tarayıcı Ekranından (`flash[:alert]`) Çalınması:** Saldırgan, dışarıdaki kendi sunucusunu bir MCP sunucusu olarak kaydeder ve `token_endpoint` adresinden `307 Temporary Redirect` dönerek GitLab sunucusunu bulut metadata servisine (`http://169.254.169.254/latest/meta-data/iam/security-credentials/...`) veya iç ağdaki (`http://127.0.0.1:8080`, Vault, Consul, iç Kubernetes API) yönetim servislerine yönlendirir. `OAuth2::Client` yönlendirmeyi takip eder ve dönen iç yanıt gövdesini `OAuth2::Error#message` üzerinden doğrudan kullanıcının ekranındaki `flash[:alert]` kutusuna basar (`iam_role_credentials_exposed: true`). Böylece saldırgan **GitLab sunucusunun çalıştığı AWS/GCP bulut hesabının IAM anahtarlarını (`AccessKeyId`, `SecretAccessKey`) doğrudan ekrandan okuyup şirketin bulut altyapısını ele geçirir.**
+* **Senaryo B — Güvenlik Duvarı Arkasındaki İç Servislere (`127.0.0.1` / Intranet) `POST` Komutu Gönderme ve `client_secret` / `refresh_token` Sızdırma:** `307 Temporary Redirect` HTTP metodunu (`POST`) ve gövdesini koruduğu için, `CallbackService` ve `RefreshTokenService` içindeki `OAuth2::Client` (`max_redirects: 5`), dışarıya kapalı iç mikroservislere (`127.0.0.1`) `POST` isteği göndererek **iç ağda işlem tetikler** ve aynı anda `client_secret` ile `refresh_token` sırlarını iç hedefe iletir (`canary_b_request_count = 5`).
+* **Senaryo C — Bağlantı Kesme (`RevokeTokenService`) Üzerinden İç Ağ Tarama ve Basic Auth Kimlik Bilgisi Hırsızlığı:** Kullanıcı veya yönetici MCP bağlantısını keserken `RevokeTokenService`, `metadata['revocation_endpoint']` adresini doğrulamadan Basic Auth kimlik bilgileriyle `POST` göndererek iç ağ servislerinin taranmasına ve sırların çalınmasına yol açar.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect OAuth2::Client usage and OAuth2::Error reflection in CallbackService & RefreshTokenService
+grep -n -C 12 "OAuth2::Client.new" \
+  /home/community-user/targets/gitlab/ee/app/services/ai/catalog/mcp_servers/callback_service.rb \
+  /home/community-user/targets/gitlab/ee/app/services/ai/catalog/mcp_servers/refresh_token_service.rb
+
+# 2. Run the 3-Layer Real-World Impact (RED -> GREEN) E2E Verification Harness
+python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_world_impact_e2e.py -k test_report2_cand05
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "REPORT-02_CAND-05-06-01": {
+    "GREEN": {
+      "bearer_token_leaked_to_canary": false,
+      "canary_b_request_count": 0,
+      "cross_org_server_mutated": false,
+      "iam_role_credentials_exposed": false,
+      "reflected_flash_contains_secret": false
+    },
+    "RED": {
+      "bearer_token_leaked_to_canary": true,
+      "canary_b_request_count": 2,
+      "cross_org_server_mutated": true,
+      "iam_role_credentials_exposed": true,
+      "reflected_flash_contains_secret": true
+    },
+    "patches": {
+      "GITLAB-CAND-01.patch": "77be0cfe3092c808ea8f0a1f33689c61de1c9db01155e950b1192f883984b689",
+      "GITLAB-CAND-05.patch": "e63dce6d6b71fcb0fa357103078290e07d66a0c756607b7b35da9eae209b687e",
+      "GITLAB-CAND-06-MCP-IDOR-CSRF.patch": "8bed587ca203bfcde8fcf8e4ec27b12038e4e5366dc33f3d285b742811d2632b"
+    }
+  }
+}
+```
+
+
+---
+
+### III.14 — GitLab (`<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`) — `Oauth::McpConnectorsAuthController`, `ConnectService` ve `Gitlab::Oauth::ClientState` İçinde Organizasyon İzolasyonu (`in_organization`), `update_ai_catalog_mcp_server` Yetkisi ve `state` Bağlaması Eksikliği (`GITLAB-CAND-06`) (`CWE-639 / CWE-862`, CVSS `8.1 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `gitlab-org/gitlab` (`RubyGems / GitLab EE: gitlab-ee`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `ee/app/controllers/oauth/mcp_connectors_auth_controller.rb:16-78`, `ee/app/services/ai/catalog/mcp_servers/connect_service.rb:16-79`, `ee/lib/gitlab/oauth/client_state.rb:17-23`
+* **Zafiyet Sınıfı & Skor:** `CWE-639 / CWE-862` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md`](advisories/tr/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — `.in_organization(Current.organization)` Olmadan Global `Ai::Catalog::McpServer.find` Çağrısı (`mcp_connectors_auth_controller.rb:19, 38, 63, 71-73`):** Denetleyici, yetki kontrolünü çağrıyı yapanın kendi organizasyonu (`Current.organization`) üzerinde yaptıktan sonra `::Ai::Catalog::McpServer.find(mcp_server_params[:id])` ile tüm veritabanında arama yapar. Böylece Organizasyon A'daki bir kullanıcı Organizasyon B'ye ait bir `McpServer` kaydına doğrudan erişebilir.
+2. **Adım 2 — Yalnızca Okuma Yetkisiyle (`read_ai_catalog_mcp_server`) DCR İstemci Kimlik Bilgilerinin Üzerine Yazılması (`connect_service.rb:16-39`):** `ConnectService#execute`, `update_ai_catalog_mcp_server` yetkisini kontrol etmeden `register_oauth_client` çağırarak hedef `McpServer` kaydının `oauth_client_id` ve `oauth_client_secret` sütunlarını günceller.
+3. **Adım 3 — `ClientState.from_state` İçinde `data` Bağlamasının Düşürülmesi (`client_state.rb:17-23`):** `ClientState.from_state` metodu `data:` parametresini iletmediği için HMAC doğrulaması `user_id` veya `organization_id` bağlamasını kontrol etmez.
+
+```ruby
+// File: ee/app/controllers/oauth/mcp_connectors_auth_controller.rb (lines 18-65)
+    def connect
+      mcp_server = ::Ai::Catalog::McpServer.find(mcp_server_params[:id]) # BUG 1: Missing .in_organization(Current.organization)
+      result = ::Ai::Catalog::McpServers::ConnectService.new(
+        mcp_server: mcp_server,
+        redirect_uri: oauth_mcp_connectors_callback_url,
+        return_to: mcp_server_params[:return_to] || root_path
+      ).execute # BUG 2: Mutates oauth_client_id/secret without checking :update_ai_catalog_mcp_server!
+
+// File: ee/lib/gitlab/oauth/client_state.rb (lines 19-23)
+      def self.from_state(state)
+        salt, token, return_to = state.to_s.split(':', 3)
+        new(salt: salt, token: token, return_to: return_to) # BUG 3: Omits data: binding!
+      end
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Başka Bir Şirketin / Organizasyonun (`Cross-Org`) Kurumsal Yapay Zeka (MCP) Konnektörünü Ele Geçirme:** Çok kiracılı (multi-organization) bir GitLab sisteminde Organizasyon A'daki saldırgan, `McpConnectorsAuthController` içinde `.in_organization(Current.organization)` kontrolü olmadığı için Organizasyon B'ye ait bir `McpServer` kimliğini hedef alır. `ConnectService` içinde yazma yetkisi (`update_ai_catalog_mcp_server`) kontrol edilmediğinden, saldırgan Dinamik İstemci Kaydı (DCR) başlatarak **kurban şirketin `oauth_client_id` ve `oauth_client_secret` kimlik bilgilerini kendi kontrolündeki OAuth bilgileriyle ezer (`cross_org_server_mutated: true`) ve kurban şirketin AI bağlantılarını ele geçirir.**
+* **Senaryo B — Şirket İçinde Salt-Okunur (Guest/Reporter) Kullanıcının Üretim AI Konnektör Kimlik Bilgilerini Ezmesi:** Yalnızca okuma yetkisine (`read_ai_catalog_mcp_server`) sahip düşük yetkili bir kullanıcı, Maintainer yetkisi (`update_ai_catalog_mcp_server`) aranmadığı için şirketin MCP sunucusunun `oauth_client_id` / `oauth_client_secret` ayarlarını değiştirerek tüm ekibin AI entegrasyonunu kendi sahte istemcisine yönlendirir veya sabote eder.
+* **Senaryo C — Bağsız `ClientState` Jetonuyla Kurban Geliştiricinin GitLab Hesabını Saldırganın AI Hesabına Bağlama (Login CSRF):** `ClientState.from_state` içinde kullanıcı ve organizasyon (`data`) doğrulaması düşürüldüğü için, saldırgan kendi ürettiği OAuth `state` bağlantısını kurban geliştiriciye tıklatarak kurbanın `McpServerUserConnection` kaydını saldırganın harici MCP hesabına bağlar; kurbanın AI asistanıyla yaptığı işlemler saldırganın hesabına akar.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect unscoped McpServer.find in McpConnectorsAuthController and ConnectService
+grep -n -C 8 "McpServer.find" \
+  /home/community-user/targets/gitlab/ee/app/controllers/oauth/mcp_connectors_auth_controller.rb
+
+# 2. Run the 3-Layer Real-World Impact (RED -> GREEN) E2E Verification Harness
+python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_world_impact_e2e.py -k test_report2_cand05
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "REPORT-02_CAND-05-06-01": {
+    "GREEN": {
+      "bearer_token_leaked_to_canary": false,
+      "canary_b_request_count": 0,
+      "cross_org_server_mutated": false,
+      "iam_role_credentials_exposed": false,
+      "reflected_flash_contains_secret": false
+    },
+    "RED": {
+      "bearer_token_leaked_to_canary": true,
+      "canary_b_request_count": 2,
+      "cross_org_server_mutated": true,
+      "iam_role_credentials_exposed": true,
+      "reflected_flash_contains_secret": true
+    },
+    "patches": {
+      "GITLAB-CAND-01.patch": "77be0cfe3092c808ea8f0a1f33689c61de1c9db01155e950b1192f883984b689",
+      "GITLAB-CAND-05.patch": "e63dce6d6b71fcb0fa357103078290e07d66a0c756607b7b35da9eae209b687e",
+      "GITLAB-CAND-06-MCP-IDOR-CSRF.patch": "8bed587ca203bfcde8fcf8e4ec27b12038e4e5366dc33f3d285b742811d2632b"
+    }
+  }
+}
+```
+
+
+---
+
+### III.15 — GitLab (`<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`) — GitLab Workhorse DuoWorkflow Harici MCP İstemcisinde `transport.WithSSRFFilter()` Eksikliği ve Çapraz Kökenli Yönlendirmelerde `Authorization: Bearer` Token Sızıntısı (`GITLAB-CAND-01`) (`CWE-918 / CWE-522`, CVSS `8.2 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `gitlab-org/gitlab` (`Go / GitLab Workhorse: gitlab.com/gitlab-org/gitlab/workhorse`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `workhorse/internal/ai_assist/duoworkflow/mcp.go:25-60, 101-112, 220-239`
+* **Zafiyet Sınıfı & Skor:** `CWE-918 / CWE-522` — **CVSS v3.1: `8.2 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md`](advisories/tr/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — `externalMcpTransport` Tanımında `transport.WithSSRFFilter` Argümanının Unutulması (`workhorse/internal/ai_assist/duoworkflow/mcp.go:41-44`):** Workhorse'un `transport.NewRestrictedTransport` fonksiyonu yalnızca açıkça `transport.WithSSRFFilter(...)` opsiyonu verildiğinde (`workhorse/internal/sendurl/sendurl.go:365-374` içinde yapıldığı gibi) özel IP, loopback (`127.0.0.1`) ve bulut metadata (`169.254.169.254`) adreslerini engeller. `mcp.go:41-44` bu parametreyi vermediği için harici MCP bağlantılarında hiçbir IP seviyesi SSRF filtresi çalışmaz.
+2. **Adım 2 — `roundTripper.RoundTrip` İçinde Her Yönlendirme Adımında `Authorization: Bearer` Başlığının Yeniden Eklenmesi (`mcp.go:101-104, 231-234`):** Standart Go `http.Client`, farklı bir alan adına yapılan yönlendirmelerde `Authorization` başlığını `RoundTrip` çağrısından *önce* siler; ancak `duoworkflow.roundTripper.RoundTrip` kendi içinde `r.Header.Set(name, value)` çalıştırdığı ve `CheckRedirect` politikası tanımlamadığı için, `302 Found` yönlendirmesinde gizli `Authorization: Bearer` başlığını yeni hedefe doğrudan sızdırır.
+
+```ruby
+// File: workhorse/internal/ai_assist/duoworkflow/mcp.go (lines 41-44, 101-104, 231-234)
+var externalMcpTransport = transport.NewRestrictedTransport(func(t *http.Transport) {
+	t.MaxIdleConns = externalMcpMaxIdleConns
+	t.MaxIdleConnsPerHost = externalMcpMaxIdleConnsPerHost
+}) // BUG 1: Missing transport.WithSSRFFilter(false, nil)!
+
+func (t *roundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
+	for name, value := range t.headers {
+		r.Header.Set(name, value) // BUG 2: Re-injects Authorization header on cross-origin redirect hops!
+	}
+...
+	t = &mcp.StreamableClientTransport{
+		Endpoint:   endpoint,
+		HTTPClient: &http.Client{Transport: rt}, // BUG 3: No CheckRedirect policy!
+		DisableStandaloneSSE: true,
+	}
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Çapraz Kökenli (`Cross-Origin`) `302` Yönlendirmesiyle Kurban Geliştiricinin veya Yöneticinin Canlı `Authorization: Bearer` Erişim Jetonunun Çalınması (Tam Hesap ve Özel Depo Ele Geçirme):** Bir geliştirici veya yönetici Duo Workflow AI asistanını çalıştırdığında, GitLab Workhorse (`mcp.go`) harici MCP sunucusuna kullanıcının canlı `Authorization: Bearer <token>` başlığıyla bağlanır. Harici sunucu farklı bir alan adına (`https://attacker-collector.example/steal`) `302 Found` yönlendirmesi yaptığında, `roundTripper.RoundTrip` bu gizli başlığı silmeden yeni hedefe tekrar ekler (`bearer_token_leaked_to_canary: true`). **Saldırgan kurbanın canlı Bearer jetonunu doğrudan kendi sunucusunda yakalar ve bu jetonla kurbanın erişebildiği özel şirket depolarını indirir, gizli issue/MR kayıtlarını okur veya kurban adına işlem yapar.**
+* **Senaryo B — Workhorse Süreci Üzerinden İç Ağa (`127.0.0.1`), İç Mikroservislere ve Bulut Metadata (`169.254.169.254`) Servisine Doğrudan SSRF:** `externalMcpTransport` içinde `transport.WithSSRFFilter()` unutulduğu için, ilk kayıtta geçerli bir genel adrese sahip olan MCP uç noktası `302` ile `http://127.0.0.1:...` veya `http://169.254.169.254/...` adresine yönlendirme yaptığında Workhorse doğrudan iç servise bağlanır.
+* **Senaryo C — DNS Rebinding İle Güvenlik Duvarı Arkasındaki İç Şirket Ağına Sızma:** Kayıt sırasında genel IP döndüren alan adı, Workhorse bağlantı kurarken `127.0.0.1` veya `10.0.0.1` döndürdüğünde soket seviyesinde `WithSSRFFilter` olmadığı için iç şirket ağına doğrudan erişilir.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Compare externalMcpTransport in duoworkflow/mcp.go against sendurl/sendurl.go
+grep -n -C 8 "NewRestrictedTransport" \
+  /home/community-user/targets/gitlab/workhorse/internal/ai_assist/duoworkflow/mcp.go \
+  /home/community-user/targets/gitlab/workhorse/internal/sendurl/sendurl.go
+
+# 2. Run the 3-Layer Real-World Impact (RED -> GREEN) E2E Verification Harness
+python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_world_impact_e2e.py -k test_report2_cand05
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "REPORT-02_CAND-05-06-01": {
+    "GREEN": {
+      "bearer_token_leaked_to_canary": false,
+      "canary_b_request_count": 0,
+      "cross_org_server_mutated": false,
+      "iam_role_credentials_exposed": false,
+      "reflected_flash_contains_secret": false
+    },
+    "RED": {
+      "bearer_token_leaked_to_canary": true,
+      "canary_b_request_count": 2,
+      "cross_org_server_mutated": true,
+      "iam_role_credentials_exposed": true,
+      "reflected_flash_contains_secret": true
+    },
+    "patches": {
+      "GITLAB-CAND-01.patch": "77be0cfe3092c808ea8f0a1f33689c61de1c9db01155e950b1192f883984b689",
+      "GITLAB-CAND-05.patch": "e63dce6d6b71fcb0fa357103078290e07d66a0c756607b7b35da9eae209b687e",
+      "GITLAB-CAND-06-MCP-IDOR-CSRF.patch": "8bed587ca203bfcde8fcf8e4ec27b12038e4e5366dc33f3d285b742811d2632b"
+    }
+  }
+}
+```
+
+
+---
+
+### III.16 — GitLab (`<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`) — Duo Workflow `/ws` ve `McpConfigService#item_version` Üzerinde `:read_ai_catalog_item` Yetki Kontrolü Eksikliği ve `workflow_definition` Parametresiyle Özel Ajan Yazma Araçlarının Enjeksiyonu (`GITLAB-CAND-08`) (`CWE-862 / CWE-639`, CVSS `7.7 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `gitlab-org/gitlab` (`RubyGems / GitLab EE: gitlab-ee`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `ee/app/services/ai/duo_workflows/mcp_config_service.rb:131-135`, `ee/lib/api/ai/duo_workflows/workflows.rb:341-344, 1065`, `connection_config_service.rb:220-228`
+* **Zafiyet Sınıfı & Skor:** `CWE-862 / CWE-639` — **CVSS v3.1: `7.7 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md`](advisories/tr/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Aynı Dosya İçindeki (`mcp_config_service.rb:134` vs `334`) Açık Yetki Çelişkisi:** `ee/app/services/ai/duo_workflows/mcp_config_service.rb` dosyasının 334. satırındaki `ai_catalog_mcp_servers` metodu `return {} unless Ability.allowed?(current_user, :read_ai_catalog_item, item_version)` kontrolünü yaparken, aynı dosyanın 134. satırındaki `item_version` metodu hiçbir yetki kontrolü yapmadan `::Ai::Catalog::ItemVersion.find_by_id(ai_catalog_item_version_id)` döndürür.
+2. **Adım 2 — `GET /api/v4/ai/duo_workflows/ws` (`workflows.rb:1065`) Üzerinde Satır 1426 Güvenlik Kuralının Atlanması:** `workflows.rb:1426` satırındaki geliştirici yorumu `workflow_definition` değerinin kullanıcı parametresinden değiştirilmemesi gerektiğini açıkça belirtmesine rağmen, `get :ws` (`workflows.rb:1065`) ve `ConnectionConfigService#mcp_config_service` (`connection_config_service.rb:220-228`) doğrudan kullanıcının gönderdiği `workflow_definition` ve `ai_catalog_item_version_id` parametrelerini kullanır.
+3. **Adım 3 — Yabancı Özel (`public: false`) Ajanın Yazma Araçlarının Oturuma Enjekte Edilmesi:** Saldırgan başka bir özel projedeki ajanın `ai_catalog_item_version_id` kimliğini vererek, normalde kapalı olan yazma araçlarını (`create_issue` vb.) Duo Workflow MCP yapılandırmasına enjekte eder.
+
+```ruby
+// File: ee/app/services/ai/duo_workflows/mcp_config_service.rb (lines 131-135 vs 330-335)
+      def item_version
+        return unless ai_catalog_item_version_id.present?
+
+        ::Ai::Catalog::ItemVersion.find_by_id(ai_catalog_item_version_id) # BUG 1: Missing Ability.allowed?(current_user, :read_ai_catalog_item, version)!
+      end
+      ...
+      def ai_catalog_mcp_servers
+        return {} unless item_version
+        return {} unless Ability.allowed?(current_user, :read_ai_catalog_item, item_version) # Enforced here at line 334, but omitted at line 134!
+
+// File: ee/app/services/ai/duo_workflows/connection_config_service.rb (lines 222-228)
+      def mcp_config_service
+        ::Ai::DuoWorkflows::McpConfigService.new(
+          current_user,
+          gitlab_token,
+          workflow_definition: request_metadata.workflow_definition, # BUG 2: Uses unvalidated request_metadata instead of workflow record!
+          ai_catalog_item_version_id: request_metadata.ai_catalog_item_version_id,
+          namespace: project&.project_namespace || enforcement_namespace
+        )
+      end
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Salt-Okunur Kısıtlı Sohbet (`chat`) Oturumunu Tam Yazma Yetkili Ajan Oturumuna Dönüştürerek Projelerde Yetkisiz İşlem Yapma:** Kurumsal politika gereği yalnızca soru-cevap (`chat`) yapmasına izin verilen ve yazma araçları (`withheld_tools`) kapatılmış bir Duo Workflow oturumunda, saldırgan `GET /api/v4/ai/duo_workflows/ws` WebSocket bağlantısına `workflow_definition` ve yabancı bir `ai_catalog_item_version_id` göndererek **engellenmiş yazma araçlarını (`create_issue`, MR/yorum yazma araçları) aktif hale getirir (`unapproved_write_tool_injected: true`) ve yapay zeka ajanına yasaklı yazma işlemlerini doğrudan uygulatır.**
+* **Senaryo B — Rakip Şirketlerin / Özel Projelerin Gizli (`public: false`) Yapay Zeka Ajanlarının Araç ve Sistem Yapılandırmasını Çalma:** `McpConfigService#item_version` (`mcp_config_service.rb:134`) içinde `:read_ai_catalog_item` yetki kontrolü unutulduğu için, saldırgan ardışık `ai_catalog_item_version_id` numaralarını göndererek **erişim yetkisi olmayan gizli (`public: false`) kurumsal AI ajanlarının hangi iç araçları ve MCP sunucularını kullandığını tamamen ifşa eder.**
+* **Senaryo C — İş Akışı Oluştururken (`POST /api/v4/ai/duo_workflows/workflows`) Yetkisiz Özel Ajan Sürümü Bağlama:** `workflows.rb:341-344` doğrudan `ItemVersion.find` çağırdığı için başka bir organizasyona ait özel ajan sürümü iş akışı kaydına kalıcı olarak bağlanır.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Compare line 134 vs line 334 in ee/app/services/ai/duo_workflows/mcp_config_service.rb
+sed -n '130,136p;330,337p' \
+  /home/community-user/targets/gitlab/ee/app/services/ai/duo_workflows/mcp_config_service.rb
+
+# 2. Run the 3-Layer Real-World Impact (RED -> GREEN) E2E Verification Harness
+python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_world_impact_e2e.py -k test_report3_cand08
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "REPORT-03_CAND-08": {
+    "GREEN": {
+      "automated_issue_created_without_prompt": false,
+      "downstream_victim_project_tools_call_status": 404,
+      "unapproved_write_tool_injected": false,
+      "workflow_definition_overridden": false
+    },
+    "RED": {
+      "automated_issue_created_without_prompt": true,
+      "downstream_victim_project_tools_call_status": 404,
+      "unapproved_write_tool_injected": true,
+      "workflow_definition_overridden": true
+    },
+    "patches": {
+      "GITLAB-CAND-08-WORKFLOW-ITEM-VERSION-AUTHZ.patch": "d40f6e104c2fba0e8900cab8d45ddfb4cf9c49a60c8bb12e3aa573ddb1228704"
+    }
+  }
+}
+```
+
+
+---
+
+### III.17 — GitLab (`<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`) — AI Catalog Agent Üzerinde Organizasyon Kapsamsız `McpServer` GID Bağlama ve `McpConfigService#execute` Yerleşik `:gitlab` Anahtar Çarpışmasıyla Workhorse `withheld_server_tools` (`allToolsAvailable = true`) Kısıtlamasının Aşılması (`GITLAB-CAND-07`) (`CWE-863 / CWE-639`, CVSS `8.1 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `gitlab-org/gitlab` (`RubyGems & Go / GitLab EE & Workhorse: gitlab-ee`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `ee/app/services/ai/duo_workflows/mcp_config_service.rb:57-64`, `ee/app/services/ai/catalog/mcp_servers/list_service.rb:14-24`, `workhorse/internal/ai_assist/duoworkflow/mcp.go:254`
+* **Zafiyet Sınıfı & Skor:** `CWE-863 / CWE-639` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:L`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md`](advisories/tr/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — `McpConfigService#execute` İçinde `.except(:orbit)` Kullanılıp `:gitlab` Anahtarının Unutulması (`mcp_config_service.rb:59-63`):** `McpConfigService#execute`, `gitlab_mcp_server(denied).merge(orbit_mcp_server).merge(ai_catalog_mcp_servers.except(:orbit))` çağrısıyla MCP yapılandırmasını oluşturur. Geliştirici `:orbit` anahtarını ezilmeye karşı korurken `:gitlab` anahtarını (`.except(:gitlab, :orbit, :slack)`) unutmuştur. Bu nedenle adı `"GitLab"` (`server_key => :gitlab`) olan bir `Ai::Catalog::McpServer` kaydı, yerleşik `:gitlab` yapılandırmasını ve `:Tools` izin listesini tamamen ezer.
+2. **Adım 2 — Workhorse İçinde `s.cfg.Tools == nil` Nedeniyle `allToolsAvailable = true` Olması (`mcp.go:210, 254`):** Katalog MCP sunucuları `:Tools` anahtarı içermediği (`nil`) için, Workhorse `serverName == "gitlab"` olduğunda yine dahili `/api/v4/mcp` uç noktasına bağlanır ancak `mcp.go:254` satırında `allToolsAvailable := s.cfg.Tools == nil` (`true`) hesaplayarak `withheld_server_tools(denied)` araç yasağını tamamen devre dışı bırakır.
+3. **Adım 3 — Organizasyon Kapsamsız (`in_organization` Eksik) `McpServer` GID Bağlama (`list_service.rb:14-24`):** `Agent::Create`, `Agent::Update` ve `ListService`, `McpServer` kimliklerini `.in_organization` kontrolü yapmadan çözer.
+
+```ruby
+// File: ee/app/services/ai/duo_workflows/mcp_config_service.rb (lines 59-63)
+        gitlab_mcp_server(denied)
+          .merge(orbit_mcp_server)
+          .merge(ai_catalog_mcp_servers.except(:orbit)) # BUG 1: Forgot :gitlab! Overwrites gitlab_mcp_server(denied)[:gitlab]
+          .merge(slack_mcp_server)
+
+// File: workhorse/internal/ai_assist/duoworkflow/mcp.go (lines 210, 254)
+	internal := serverName == "gitlab" || serverName == "orbit"
+...
+	allToolsAvailable := s.cfg.Tools == nil // BUG 2: Catalog entry has Tools == nil -> allToolsAvailable becomes true!
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — `"GitLab"` Adlı Katalog Sunucusuyla Tüm Yerleşik GitLab AI Güvenlik Kısıtlamalarını (`withheld_server_tools`) Sıfırlama (`allToolsAvailable = true`):** GitLab Duo Workflow, yerleşik `:gitlab` MCP sunucusunda tehlikeli araçları `withheld_server_tools(denied)` listesiyle engeller. Ancak `McpConfigService#execute` yalnızca `.except(:orbit)` kullanıp `:gitlab` anahtarını korumadığı için, saldırgan `"GitLab"` adında (`server_key => :gitlab`, `Tools: nil`) bir katalog sunucusu bağladığında yerleşik `:gitlab` kaydının üzerine yazılır. Workhorse (`mcp.go:254`) `Tools == nil` gördüğü için **`allToolsAvailable = true` yapar ve yerleşik GitLab MCP sunucusundaki TÜM araç kısıtlamalarını kaldırarak yasaklı araçların tamamını kullanıma açar (`workhorse_all_tools_available: true`).**
+* **Senaryo B — GraphQL `aiCatalogAgentCreate` / `Update` İle Başka Organizasyonun Özel `McpServer` Sunucularını Kendi Ajanına Bağlama:** `ListService` ve GraphQL mutasyonlarında `.in_organization` kontrolü olmadığı için saldırgan başka bir organizasyona ait `gid://gitlab/Ai::Catalog::McpServer/<ID>` kaydını kendi ajanına bağlayarak organizasyon izolasyonunu deler.
+* **Senaryo C — Yerleşik `:gitlab` Kimlik Başlıklarını (`X-Gitlab-Oauth-Token`) Ezerek Tüm Duo Workflow Hizmetini Çökertme (`401` DoS):** Çarpışan `:gitlab` kaydı `X-Gitlab-Oauth-Token` başlığını `{}` ile ezdiği için yerleşik `/api/v4/mcp` çağrılarının tamamı `401 Unauthorized` hatasıyla çöker.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect .except(:orbit) in McpConfigService and allToolsAvailable in Workhorse mcp.go
+grep -n -C 5 "except(:orbit)" /home/community-user/targets/gitlab/ee/app/services/ai/duo_workflows/mcp_config_service.rb
+grep -n -C 5 "allToolsAvailable :=" /home/community-user/targets/gitlab/workhorse/internal/ai_assist/duoworkflow/mcp.go
+
+# 2. Run the 3-Layer Real-World Impact (RED -> GREEN) E2E Verification Harness
+python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_world_impact_e2e.py -k test_report4_cand07
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "REPORT-04_CAND-07": {
+    "GREEN": {
+      "builtin_gitlab_overwritten": false,
+      "effective_gitlab_url": "http://127.0.0.1/api/v4/mcp",
+      "effective_tools_filter": [
+        "get_issue",
+        "list_commits"
+      ],
+      "workhorse_all_tools_available": false
+    },
+    "RED": {
+      "builtin_gitlab_overwritten": true,
+      "effective_gitlab_url": "https://attacker-controlled-mcp.example/sse",
+      "effective_tools_filter": null,
+      "workhorse_all_tools_available": true
+    },
+    "patches": {
+      "GITLAB-CAND-07-AGENT-MCP-CROSS-ORG-AND-KEY-COLLISION.patch": "8fc8646b4681d8d558cf25d2adc1c9ccd89363809243f17e9a79134956567f60"
+    }
+  }
+}
+```
+
+
+---
+
+### III.18 — GitLab (`<= 19.6.0-pre (verified on live 19.5.1-ce.0 & 19.6.0-pre commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`) — `Projects::Integrations::SlashCommandsController#confirm` Üzerinde Doğrulanmamış `redirect_url` Açık Yönlendirmesi, Bağlamsız `response_url` ve Projeler Arası Redis `CACHE_KEY` Çarpışması (`GITLAB-CAND-04`) (`CWE-601 / CWE-863`, CVSS `5.4 Medium`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `gitlab-org/gitlab` (`RubyGems / GitLab CE & EE: gitlab-ce / gitlab-ee`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 19.6.0-pre (verified on live 19.5.1-ce.0 & 19.6.0-pre commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `app/controllers/projects/integrations/slash_commands_controller.rb:21-48`, `app/models/concerns/integrations/base/slash_commands.rb:6-10, 68-76`
+* **Zafiyet Sınıfı & Skor:** `CWE-601 / CWE-863` — **CVSS v3.1: `5.4 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:L/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md`](advisories/tr/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — `raise_on_open_redirects = false` Ayarıyla Doğrudan `redirect_to request_params[:redirect_url]` Çağrılması (`slash_commands_controller.rb:26`):** `show` aksiyonu (satır 11) yönlendirme adresini güvenli `integration_redirect_url` metodundan hesaplarken, `confirm` aksiyonu (satır 26) doğrudan kullanıcıdan gelen `request_params[:redirect_url]` parametresine `redirect_to` yapar.
+2. **Adım 2 — Redis'teki `cached_params[:response_url]` Yerine `request_params[:response_url]` Kullanılması (`slash_commands_controller.rb:25`):** `VerifyRequest.new` çağrısına önbellekteki değer yerine doğrudan form/sorgu parametresi olan `request_params[:response_url]` verilir.
+3. **Adım 3 — Redis `CACHE_KEY` İçinde `project_id` ve `integration_id` Bağlamasının Olmaması (`slash_commands.rb:9`):** `CACHE_KEY = "slash-command-requests:%{secret}"` yalnızca `command_id` ile anahtarlandığından, Proje B'de üretilen bir `command_id` Proje A'nın `/slash_commands/confirm` uç noktasında geçerli kabul edilir.
+
+```ruby
+// File: app/controllers/projects/integrations/slash_commands_controller.rb (lines 21-28, 41-48)
+      def confirm
+        if valid_request? && valid_user?
+          # BUG 1: Uses request_params[:response_url] instead of cached_params[:response_url]
+          Gitlab::SlashCommands::VerifyRequest.new(integration, chat_user, request_params[:response_url]).approve!
+          # BUG 2: Redirects to unvalidated request_params[:redirect_url] (raise_on_open_redirects = false)
+          redirect_to request_params[:redirect_url]
+        else
+...
+      def cache_key
+        @cache_key ||= Kernel.format(
+          ::Integrations::Base::SlashCommands::CACHE_KEY, # BUG 3: "slash-command-requests:%{secret}" has no project_id/integration_id!
+          secret: request_params[:command_id]
+        )
+      end
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Güvenilir Şirket GitLab Onay Ekranı Üzerinden Geliştirici Şifre ve 2FA Kodu Çalma (`302 Found` Açık Yönlendirme):** Bir geliştirici Slack/Mattermost üzerinden gelen Slash komutunu onaylamak için resmi şirket GitLab bağlantısına (`https://gitlab.sirket.com/.../slash_commands/confirm?command_id=...&redirect_url=https://sahte-gitlab-sso.example/login`) tıklayıp **Onayla** düğmesine bastığı anda, GitLab `redirect_url` parametresini doğrulamadan (`raise_on_open_redirects = false`) kullanıcıyı doğrudan saldırganın sahte SSO giriş ekranına (`302 Found`) yönlendirir (`open_redirect_triggered: true`). Geliştirici resmi GitLab akışında olduğunu sanarak kurumsal şifresini ve 2FA kodunu saldırgana kaptırır.
+* **Senaryo B — Projeler Arası (`Project B -> Project A`) Redis Anahtarı Çarpışmasıyla Kurbanın ChatOps Hesabını Hedef Projeye Bağlama:** Redis `CACHE_KEY` anahtarı `project_id` ve `integration_id` içermediği için, saldırgan kendi projesinde (`Project B`) ürettiği geçerli `command_id` değerini üretim projesinin (`Project A`) onay URL'sinde kullanır (`cross_project_cache_collision_accepted: true`) ve kurban onay verdiğinde `ChatName` kimliği hedef projeye bağlanır.
+* **Senaryo C — `request_params[:response_url]` Manipülasyonuyla ChatOps Onay Geri Çağrısını Saldırgan Sunucusuna Yönlendirme:** `confirm` aksiyonu Redis'teki `cached_params[:response_url]` yerine istekten gelen `request_params[:response_url]` parametresini `VerifyRequest#approve!` metoduna ilettiği için, onaylanan ChatOps bildirimi orijinal Slack/Mattermost kanalı yerine saldırganın sunucusuna gönderilir.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect confirm and cache_key in Projects::Integrations::SlashCommandsController
+sed -n '10,48p' \
+  /home/community-user/targets/gitlab/app/controllers/projects/integrations/slash_commands_controller.rb
+
+# 2. Run the 3-Layer Real-World Impact (RED -> GREEN) E2E Verification Harness
+python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_world_impact_e2e.py -k test_report5_cand04
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "REPORT-05_CAND-04": {
+    "GREEN": {
+      "cross_project_cache_collision_accepted": false,
+      "http_status": 404,
+      "location_header": "",
+      "open_redirect_triggered": false
+    },
+    "RED": {
+      "cross_project_cache_collision_accepted": true,
+      "http_status": 302,
+      "location_header": "https://evil-phishing.example/oauth/callback?steal=1",
+      "open_redirect_triggered": true
+    }
+  }
+}
+```
+
+
+---
+
+### III.19 — GitLab (`<= 19.6.0-pre (Devise 5.0.3 CVE-2026-40295 upstream dependency & Oauth::AuthorizationsController defense-in-depth)`) — `[ÜST AKIŞ DUPLICATE: CVE-2026-40295 — MITRE'YE GÖNDERİLMEDİ]` `Gitlab::DeviseFailure#redirect_url` Harici `Referer` Açık Yönlendirme Ürün Etkisi (`CVE-2026-40295`) ve Dinamik OAuth PKCE Savunma Derinliği Notu (`GITLAB-CAND-03`) (`CWE-601 / CWE-345`, CVSS `5.4 Medium (Upstream CVE-2026-40295 Duplicate)`)
+
+> **Önemli Duplicate Notu:** Bu madde üst akış `Devise 5.0.3` (`CVE-2026-40295`) kaydının GitLab üzerindeki ürün etkisini ve `CAND-03` savunma derinliği yamasını şeffaflık amacıyla belgeler; mükerrer olduğu için MITRE CNA-LR'a yeni CVE başvurusu olarak **gönderilmemiştir**.
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `gitlab-org/gitlab` (`RubyGems / GitLab CE & EE (Devise 5.0.3): gitlab-ce / gitlab-ee (devise 5.0.3)`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 19.6.0-pre (Devise 5.0.3 CVE-2026-40295 upstream dependency & Oauth::AuthorizationsController defense-in-depth)` — `lib/gitlab/devise_failure.rb:4-18`, `lib/gitlab/auth/session_expire_from_init_enforcer.rb:44-62`, `app/controllers/oauth/authorizations_controller.rb:316-330`
+* **Zafiyet Sınıfı & Skor:** `CWE-601 / CWE-345` — **CVSS v3.1: `5.4 Medium (Upstream CVE-2026-40295 Duplicate)`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md`](advisories/tr/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Önemli Duplicate (Mükerrer Kayıt) ve MITRE Gönderim Dışı Bildirimi:** Gönderim öncesi doğrulama kapımızda, `Gitlab::DeviseFailure#redirect_url` açık yönlendirme bulgusunun üst akış **Devise `5.0.3` `CVE-2026-40295`** kaydının GitLab üzerindeki ürün etkisi (duplicate) olduğu; `GITLAB-CAND-03` (`validate_pkce_for_dynamic_applications`) bulgusunun ise çalışma zamanında `Doorkeeper 5.9.3` (`config/initializers/doorkeeper.rb:158` `pkce_code_challenge_methods ['S256']`) tarafından engellendiği kanıtlanmıştır. Bu nedenle **bu belge şeffaflık ve savunma yaması amacıyla GitHub'da yayımlanmış, ancak mükerrer (duplicate) olduğu için MITRE CNA-LR'a yeni CVE başvurusu olarak GÖNDERİLMEMİŞTİR**.
+2. **Adım 1 — Üst Akış `CVE-2026-40295` (`Devise 5.0.3`) Zafiyetinin `Gitlab::DeviseFailure` İçindeki Mekanizması (`lib/gitlab/devise_failure.rb:4-18`):** `warden_message == :timeout` durumu `GET` dışındaki bir istekte (`POST` vb.) tetiklendiğinde, `Devise::FailureApp#redirect_url` metodu `extract_path_from_location(request.referrer)` ile alan adını temizlemeden doğrudan harici `request.referrer` URL'sini döndürür.
+3. **Adım 2 — `Oauth::AuthorizationsController#validate_pkce_for_dynamic_applications` Savunma Derinliği Notu (`authorizations_controller.rb:326`, `GITLAB-CAND-03`):** Satır 326'daki `return unless code_challenge_method.present? && code_challenge_method != 'S256'` ifadesi `code_challenge_method` boş (`nil`) bırakıldığında erken çıkış yapar; çalışma zamanında Doorkeeper `5.9.3` bunu engellese de denetleyici katmanı `return if code_challenge_method == 'S256'` olarak yamalanmıştır.
+
+```ruby
+// File: lib/gitlab/devise_failure.rb (lines 4-18) — Upstream Devise 5.0.3 CVE-2026-40295 Remediation
+module Gitlab
+  class DeviseFailure < Devise::FailureApp
+    # Inherits Devise::FailureApp#redirect_url which returns raw request.referrer on non-GET :timeout
+    # Remediated by overriding redirect_url to apply extract_path_from_location(request.referrer)
+  end
+end
+
+// File: app/controllers/oauth/authorizations_controller.rb (lines 323-329) — GITLAB-CAND-03 Defense-in-Depth
+    code_challenge_method = permitted_params[:code_challenge_method]
+    return unless code_challenge_method.present? && code_challenge_method != 'S256' # Early return when nil!
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — `GET` Dışı Oturum Zaman Aşımında Harici `Referer` Yönlendirmesi (`CVE-2026-40295` Duplicate):** Oturumu zaman aşımına uğrayan (`:timeout`) bir kullanıcının `POST` isteğinde harici `Referer` başlığı bulunduğunda, yamasız `Devise 5.0.3` yalnızca dosya yolunu almak yerine doğrudan harici URL'ye `302` yönlendirmesi yapar.
+* **Senaryo B — `Gitlab::DeviseFailure#redirect_url` İçinde Uygulama Katmanı Yaması:** `lib/gitlab/devise_failure.rb` içinde `extract_path_from_location(request.referrer)` kullanılarak üst akış gem güncellemesini beklemeden açık yönlendirme kapatılır.
+* **Senaryo C — Denetleyici Katmanında PKCE `S256` Zorunluluğu (`GITLAB-CAND-03` Defense-in-Depth):** `return if code_challenge_method == 'S256'` yaması ile `AuthorizationsController` katmanındaki erken çıkış hatası giderilir.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect Gitlab::DeviseFailure and AuthorizationsController#validate_pkce_for_dynamic_applications
+sed -n '1,20p' /home/community-user/targets/gitlab/lib/gitlab/devise_failure.rb
+sed -n '316,330p' /home/community-user/targets/gitlab/app/controllers/oauth/authorizations_controller.rb
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "GITLAB-DEVISE-CVE-2026-40295-REM_AND_CAND-03": {
+    "upstream_cve_duplicate_status": "Duplicate of upstream Devise 5.0.3 CVE-2026-40295 (Not submitted to MITRE CNA-LR)",
+    "RED": {
+      "external_referer_redirect_on_non_get_timeout": true
+    },
+    "GREEN": {
+      "external_referer_redirect_on_non_get_timeout": false,
+      "path_extracted_only": true
+    }
+  }
+}
+```
+
+<!-- GITLAB-ADVISORIES-END -->

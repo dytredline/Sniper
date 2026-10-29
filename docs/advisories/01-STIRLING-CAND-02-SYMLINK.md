@@ -2,25 +2,6 @@
 
 **English** | [Türkçe](tr/01-STIRLING-CAND-02-SYMLINK.md) | [日本語](ja/01-STIRLING-CAND-02-SYMLINK.md) | [简体中文](zh-CN/01-STIRLING-CAND-02-SYMLINK.md) | [한국어](ko/01-STIRLING-CAND-02-SYMLINK.md)
 
-## Quick-Fill GitHub GHSA & MITRE CNA Form Fields
-- **Repository:** `Stirling-Tools/Stirling-PDF`
-- **GitHub Advisory URL:** `https://github.com/Stirling-Tools/Stirling-PDF/security/advisories/GHSA-hpc7-xx5r-gc44`
-- **Existing GHSA ID:** `GHSA-hpc7-xx5r-gc44`
-- **Ecosystem:** `Maven`
-- **Package Name:** `stirling.software:stirling-pdf`
-- **Affected Versions:** `<= 3.2.2 (commit 684608d143779bf3a8ffc67639f077a1202c62ff)`
-- **Patched Versions:** `None (Patch attached)`
-- **CWE:** `CWE-59 (Improper Link Resolution Before File Access) / CWE-61 (UNIX Symbolic Link Following)`
-- **CVSS v3.1:** `7.1 High — CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N`
-- **MITRE Vendor:** `Stirling-Tools`
-- **MITRE Vulnerability Type:** `Symlink Following / Improper Link Resolution (CWE-59)`
-- **MITRE Affected Component(s):** `FolderInputSource.java (listFiles, lines 337-377), ProcessingFolderController.java (lines 374-380), FolderOutputSink.java (archiveOriginal, lines 338-345)`
-- **MITRE Suggested CVE Description:**
-  > In Stirling-Tools Stirling-PDF through 3.2.2, the watched-folder document ingestion pipeline (FolderInputSource.java, ProcessingFolderController.java, and FolderOutputSink.java) uses Files.isRegularFile(path) without LinkOption.NOFOLLOW_LINKS in its default recursive=false mode, while FolderAccessGuard.isProtected validates only the lexical path inside the watched directory. An attacker with write access to a watched input folder can place a symbolic link pointing to protected configuration files (such as settings.yml), causing Stirling-PDF to read, process, and archive sensitive credentials into the accessible output directory.
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism

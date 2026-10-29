@@ -2,23 +2,6 @@
 
 [English](../14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md) | [Türkçe](../tr/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md) | [日本語](../ja/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md) | **简体中文** | [한국어](../ko/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md)
 
-## Quick-Fill GitHub / HackerOne & MITRE CNA Form Fields
-- **Repository:** `gitlab-org/gitlab` (`https://gitlab.com/gitlab-org/gitlab`)
-- **Public Technical Advisory URL:** `https://github.com/dytredline/Sniper/blob/main/docs/advisories/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md`
-- **Candidate / Tracking ID:** `GITLAB-CAND-06` (`HackerOne: gitlab | MITRE CNA-LR Submitted`)
-- **Ecosystem:** `RubyGems / GitLab EE`
-- **Package Name:** `gitlab-ee`
-- **Affected Versions:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`
-- **Patched Versions:** `None upstream on master as of 2026-10-30 (Verified defensive patch attached below)`
-- **CWE:** `CWE-639 / CWE-862`
-- **CVSS v3.1:** `8.1 High — CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N`
-- **MITRE Vendor:** `GitLab`
-- **MITRE Suggested CVE Description:**
-  > In GitLab EE through 19.6.0-pre, Oauth::McpConnectorsAuthController (ee/app/controllers/oauth/mcp_connectors_auth_controller.rb) loads Ai::Catalog::McpServer records via global Ai::Catalog::McpServer.find(params[:id]) without scoping to .in_organization(Current.organization), Ai::Catalog::McpServers::ConnectService (connect_service.rb) mutates oauth_client_id and oauth_client_secret via Dynamic Client Registration while checking only read_ai_catalog_mcp_server instead of update_ai_catalog_mcp_server, and Gitlab::Oauth::ClientState.from_state (ee/lib/gitlab/oauth/client_state.rb) discards the signed data payload when reconstructing state tokens. An authenticated low-privileged user can access or overwrite MCP server OAuth credentials across organization boundaries and replay OAuth callback states.
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism
@@ -48,14 +31,14 @@
 
 ## 2. Concrete Everyday Real-World Production Scenarios (`Scenario A` / `Scenario B` / `Scenario C`)
 
-### Scenario A — Cross-Organization MCP Server DCR Credential Hijack
-A low-privileged user in Organization A invokes `POST /oauth/mcp_connectors/:id/connect` targeting an unconfigured `McpServer` in Organization B, triggering `register_oauth_client` and overwriting Organization B's `oauth_client_id` and `oauth_client_secret` (`cross_org_server_mutated: true`).
+### Scenario A — Hijacking Another Organization's Enterprise AI / MCP Connector Across Tenant Boundaries (`Cross-Org IDOR`)
+On a multi-organization GitLab deployment, an attacker in Organization A targets an `McpServer` ID belonging to Organization B via `POST /oauth/mcp_connectors/:id/connect`. Because `Oauth::McpConnectorsAuthController` omits `.in_organization(Current.organization)` and `ConnectService` omits `update_ai_catalog_mcp_server`, the attacker triggers Dynamic Client Registration (`register_oauth_client`) and overwrites Organization B's `oauth_client_id` and `oauth_client_secret` (`cross_org_server_mutated: true`)—redirecting the victim organization's AI connector OAuth flows and developer prompts/tokens to the attacker's OAuth client.
 
-### Scenario B — Non-Maintainer Member Overwrites Project/Org MCP Server Credentials
-A regular developer with only `read_ai_catalog_mcp_server` triggers DCR registration on an internal MCP connector before a maintainer finishes configuring it.
+### Scenario B — Read-Only Developer/Guest Overwrites Production AI Connector Credentials Within a Company
+A low-privileged user with only read permission (`read_ai_catalog_mcp_server`) invokes `/oauth/mcp_connectors/:id/connect` before or during connector setup and overwrites the server's `oauth_client_id` and `oauth_client_secret` without maintainer privileges (`update_ai_catalog_mcp_server`), hijacking or breaking the company's AI integration.
 
-### Scenario C — OAuth Callback State Replay / Login CSRF Across Sessions
-Because `ClientState.from_state` drops `data` and `callback` only attaches `code_verifier` if present in the session, an attacker can replay a valid `state` token across sessions to bind their external MCP account to a victim's `McpServerUserConnection`.
+### Scenario C — Cross-Session OAuth Account Binding (Login CSRF) via Unbound `ClientState` Token
+Because `ClientState.from_state` discards the `data` hash (`user_id` / `organization_id`) and `callback` makes PKCE `code_verifier` optional when absent from the session, an attacker tricks a victim developer into visiting a crafted `/oauth/mcp_connectors/callback?state=...&code=...` link, silently binding the victim's GitLab session to the attacker's external MCP account (`McpServerUserConnection`) so every AI tool call the victim makes streams workspace data to the attacker.
 
 ---
 

@@ -2,25 +2,6 @@
 
 [English](../03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md) | [Türkçe](../tr/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md) | [日本語](../ja/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md) | **简体中文** | [한국어](../ko/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md)
 
-## GitHub GHSA 与 MITRE CNA 表单快速填写字段
-- **代码仓库:** `trycua/cua`
-- **GitHub 安全公告 URL:** `https://github.com/trycua/cua/security/advisories/GHSA-cp36-x5hg-3gg8`
-- **现有 GHSA ID:** `GHSA-cp36-x5hg-3gg8`
-- **生态系统:** `npm`
-- **软件包名称:** `cuabot`
-- **受影响版本:** `>= 1.0.1, <= 1.0.16 (commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **已修复版本:** `无（附修复补丁）`
-- **CWE:** `CWE-306 (关键功能缺少身份验证) / CWE-942 (过度宽松的跨域白名单)`
-- **CVSS v3.1:** `9.6 Critical — CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:H`
-- **MITRE 厂商:** `TryCua`
-- **MITRE 漏洞类型:** `Missing Authentication / Permissive CORS Leading to Remote Command Execution (CWE-306 / CWE-942)`
-- **MITRE 受影响组件:** `libs/cuabot/src/cuabotd.ts (lines 34-36, 259-260, 741-743, 969-1002, 1018-1063, 1120)`
-- **MITRE 建议漏洞描述:**
-  > 在 TryCua cuabot 1.0.1 至 1.0.16（`trycua/cua`）中，`cuabotd` 守护进程（`libs/cuabot/src/cuabotd.ts`）在无身份验证的情况下绑定到 `0.0.0.0:7842`，对包括 `POST /bash` 和 `OPTIONS` 预检请求在内的所有 HTTP 端点设置 `Access-Control-Allow-Origin: *`，暴露无 `Origin` 检查的 WebSocket PTY 终端，同时以读写方式挂载宿主机的 `~/.cuabot/user/.claude` 目录。用户在浏览器中访问的任何不可信网站或局域网内的任何节点均可通过 `POST /bash` 执行任意命令，窃取挂载的 Claude OAuth 凭据或篡改宿主机持久化钩子。
-- **报告者 / 致谢:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. 代码缺陷如何演变为可被利用的安全漏洞
 
 ### 分步技术机制剖析

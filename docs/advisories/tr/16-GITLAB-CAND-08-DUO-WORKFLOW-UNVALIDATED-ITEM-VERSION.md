@@ -2,23 +2,6 @@
 
 [English](../16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md) | **Türkçe** | [日本語](../ja/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md) | [简体中文](../zh-CN/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md) | [한국어](../ko/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md)
 
-## GitHub / HackerOne ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `gitlab-org/gitlab` (`https://gitlab.com/gitlab-org/gitlab`)
-- **Açık Teknik Danışma (Advisory) URL'si:** `https://github.com/dytredline/Sniper/blob/main/docs/advisories/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md`
-- **Aday / İzleme Kimliği:** `GITLAB-CAND-08` (`HackerOne: gitlab | MITRE CNA-LR Submitted`)
-- **Ekosistem:** `RubyGems / GitLab EE`
-- **Paket Adı:** `gitlab-ee`
-- **Etkilenen Sürümler:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`
-- **Yamalı Sürümler:** `Yok (30.10.2026 itibarıyla upstream master üzerinde yamasız; savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-862 / CWE-639`
-- **CVSS v3.1:** `7.7 High — CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`
-- **MITRE Üreticisi:** `GitLab`
-- **MITRE Önerilen CVE Açıklaması:**
-  > In GitLab EE through 19.6.0-pre, Ai::DuoWorkflows::McpConfigService#item_version (ee/app/services/ai/duo_workflows/mcp_config_service.rb:131-135) resolves Ai::Catalog::ItemVersion.find_by_id(ai_catalog_item_version_id) without checking Ability.allowed?(current_user, :read_ai_catalog_item, item_version) (which is enforced at line 334 of the same file), while API::Ai::DuoWorkflows::Workflows (ee/lib/api/ai/duo_workflows/workflows.rb:341-344, 1065) and ConnectionConfigService#mcp_config_service (ee/app/services/ai/duo_workflows/connection_config_service.rb:220-228) allow callers on GET /api/v4/ai/duo_workflows/ws to override workflow_definition and supply arbitrary ai_catalog_item_version_id values from private cross-project/cross-organization AI Catalog items, injecting unapproved opt-in write tools into the Duo Workflow MCP tool configuration.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma
@@ -55,14 +38,14 @@
 
 ## 2. Günlük Hayatta Yol Açabileceği Kritik Senaryolar (`Senaryo A` / `Senaryo B` / `Senaryo C`)
 
-### Senaryo A — Salt-Okunur `chat` İş Akışına `/ws` Parametreleriyle Yazma Araçlarının Enjekte Edilmesi
-Kullanıcı kısıtlı bir `chat` iş akışı oluşturduktan sonra `GET /api/v4/ai/duo_workflows/ws` bağlantısında `workflow_definition` ve yabancı bir `ai_catalog_item_version_id` göndererek normalde engellenen `create_issue` gibi yazma araçlarını oturumda etkinleştirir (`unapproved_write_tool_injected: true`).
+### Senaryo A — Salt-Okunur Kısıtlı Sohbet (`chat`) Oturumunu Tam Yazma Yetkili Ajan Oturumuna Dönüştürerek Projelerde Yetkisiz İşlem Yapma
+Kurumsal politika gereği yalnızca soru-cevap (`chat`) yapmasına izin verilen ve yazma araçları (`withheld_tools`) kapatılmış bir Duo Workflow oturumunda, saldırgan `GET /api/v4/ai/duo_workflows/ws` WebSocket bağlantısına `workflow_definition` ve yabancı bir `ai_catalog_item_version_id` göndererek **engellenmiş yazma araçlarını (`create_issue`, MR/yorum yazma araçları) aktif hale getirir (`unapproved_write_tool_injected: true`) ve yapay zeka ajanına yasaklı yazma işlemlerini doğrudan uygulatır.**
 
-### Senaryo B — Başka Organizasyon ve Özel Projelere Ait (`public: false`) AI Ajanlarının Araç Yapılandırmasının Sızdırılması
-`item_version` üzerinde `:read_ai_catalog_item` kontrolü yapılmadığı için özel ajanların kullandığı araç listesi (`Tools`) dışarıya sızar.
+### Senaryo B — Rakip Şirketlerin / Özel Projelerin Gizli (`public: false`) Yapay Zeka Ajanlarının Araç ve Sistem Yapılandırmasını Çalma
+`McpConfigService#item_version` (`mcp_config_service.rb:134`) içinde `:read_ai_catalog_item` yetki kontrolü unutulduğu için, saldırgan ardışık `ai_catalog_item_version_id` numaralarını göndererek **erişim yetkisi olmayan gizli (`public: false`) kurumsal AI ajanlarının hangi iç araçları ve MCP sunucularını kullandığını tamamen ifşa eder.**
 
-### Senaryo C — `POST /api/v4/ai/duo_workflows/workflows` (`create_workflow_params`) Üzerinde Yetkisiz `ItemVersion` Bağlama
-İş akışı oluşturulurken `workflows.rb:341-344` doğrudan `ItemVersion.find` çağırdığı için özel bir ajan sürümü iş akışı kaydına bağlanır.
+### Senaryo C — İş Akışı Oluştururken (`POST /api/v4/ai/duo_workflows/workflows`) Yetkisiz Özel Ajan Sürümü Bağlama
+`workflows.rb:341-344` doğrudan `ItemVersion.find` çağırdığı için başka bir organizasyona ait özel ajan sürümü iş akışı kaydına kalıcı olarak bağlanır.
 
 ---
 

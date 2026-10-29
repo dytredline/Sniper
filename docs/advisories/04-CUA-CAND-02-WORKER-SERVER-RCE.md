@@ -2,25 +2,6 @@
 
 **English** | [Türkçe](tr/04-CUA-CAND-02-WORKER-SERVER-RCE.md) | [日本語](ja/04-CUA-CAND-02-WORKER-SERVER-RCE.md) | [简体中文](zh-CN/04-CUA-CAND-02-WORKER-SERVER-RCE.md) | [한국어](ko/04-CUA-CAND-02-WORKER-SERVER-RCE.md)
 
-## Quick-Fill GitHub GHSA & MITRE CNA Form Fields
-- **Repository:** `trycua/cua`
-- **GitHub Advisory URL:** `https://github.com/trycua/cua/security/advisories/GHSA-xm8w-gj3g-4f25`
-- **Existing GHSA ID:** `GHSA-xm8w-gj3g-4f25`
-- **Ecosystem:** `pip`
-- **Package Name:** `cua-bench-rl (and cua-bench)`
-- **Affected Versions:** `<= 0.1.0 (cua-bench <= 0.3.1, commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **Patched Versions:** `None (Patch attached)`
-- **CWE:** `CWE-94 (Improper Control of Generation of Code) / CWE-942 (Overly Permissive Cross-domain Whitelist)`
-- **CVSS v3.1:** `8.8 High — CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`
-- **MITRE Vendor:** `TryCua`
-- **MITRE Vulnerability Type:** `Dynamic Code Execution via Wildcard CORS and Fail-Open IP Filter (CWE-94 / CWE-942)`
-- **MITRE Affected Component(s):** `libs/cua-bench-rl/cua_bench_rl/workers/worker_server.py (lines 79-108, 338-360, 499) and libs/cua-bench/cua_bench/core.py (make, lines 25-51)`
-- **MITRE Suggested CVE Description:**
-  > In TryCua cua-bench-rl through 0.1.0 and cua-bench through 0.3.1 (trycua/cua), worker_server.py binds to 0.0.0.0:8001 without authentication, enables CORSMiddleware with allow_origins=['*'], and uses an ip_filter_middleware that allows cross-origin browser requests to 127.0.0.1 and fails open to all remote IPs when OSGYM_ALLOWED_IPS is set to an empty string. An attacker can invoke POST /reset with an arbitrary env_path parameter, causing cua_bench.core.make to execute <env_path>/main.py on the host via spec.loader.exec_module.
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism

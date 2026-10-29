@@ -2,25 +2,6 @@
 
 [English](../01-STIRLING-CAND-02-SYMLINK.md) | [Türkçe](../tr/01-STIRLING-CAND-02-SYMLINK.md) | **日本語** | [简体中文](../zh-CN/01-STIRLING-CAND-02-SYMLINK.md) | [한국어](../ko/01-STIRLING-CAND-02-SYMLINK.md)
 
-## GitHub GHSA & MITRE CNA フォーム入力フィールド
-- **対象リポジトリ:** `Stirling-Tools/Stirling-PDF`
-- **GitHub Advisory URL:** `https://github.com/Stirling-Tools/Stirling-PDF/security/advisories/GHSA-hpc7-xx5r-gc44`
-- **既存 GHSA ID:** `GHSA-hpc7-xx5r-gc44`
-- **エコシステム:** `Maven`
-- **パッケージ名:** `stirling.software:stirling-pdf`
-- **影響を受けるバージョン:** `<= 3.2.2 (commit 684608d143779bf3a8ffc67639f077a1202c62ff)`
-- **修正済みバージョン:** `なし（修正パッチ添付）`
-- **CWE:** `CWE-59 (ファイルアクセス前の不適切なリンク解決) / CWE-61 (UNIX シンボリックリンク追跡)`
-- **CVSS v3.1:** `7.1 High — CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N`
-- **MITRE ベンダー:** `Stirling-Tools`
-- **MITRE 脆弱性タイプ:** `Symlink Following / Improper Link Resolution (CWE-59)`
-- **MITRE 影響を受けるコンポーネント:** `FolderInputSource.java (listFiles, lines 337-377), ProcessingFolderController.java (lines 374-380), FolderOutputSink.java (archiveOriginal, lines 338-345)`
-- **MITRE 推奨説明文:**
-  > Stirling-Tools Stirling-PDF 3.2.2 以前において、監視フォルダ（Watched Folder）自動取り込みパイプライン（`FolderInputSource.java`、`ProcessingFolderController.java`、`FolderOutputSink.java`）は、デフォルトの `recursive=false` モードで `LinkOption.NOFOLLOW_LINKS` を指定せずに `Files.isRegularFile(path)` を呼び出す一方、`FolderAccessGuard.isProtected` は監視ディレクトリ内の字句パス（lexical path）のみを検証します。監視対象の入力フォルダへの書き込み権限を持つ攻撃者が保護された設定ファイル（`settings.yml` など）を指すシンボリックリンクを配置すると、Stirling-PDF が機密情報や認証情報を読み取り、アクセス可能な出力ディレクトリへ出力・アーカイブしてしまいます。
-- **報告者 / クレジット:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. コードの欠陥がどのように悪用可能な脆弱性に変わるか
 
 ### ステップバイステップの技術的メカニズム

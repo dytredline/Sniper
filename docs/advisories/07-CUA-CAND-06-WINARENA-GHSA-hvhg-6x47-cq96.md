@@ -2,25 +2,6 @@
 
 **English** | [Türkçe](tr/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md) | [日本語](ja/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md) | [简体中文](zh-CN/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md) | [한국어](ko/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md)
 
-## Quick-Fill GitHub GHSA & MITRE CNA Form Fields
-- **Repository:** `trycua/cua`
-- **GitHub Advisory URL:** `https://github.com/trycua/cua/security/advisories/GHSA-hvhg-6x47-cq96`
-- **Existing GHSA ID:** `GHSA-hvhg-6x47-cq96`
-- **Ecosystem:** `pip`
-- **Package Name:** `cua-bench`
-- **Affected Versions:** `<= 0.3.1 (commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **Patched Versions:** `None (Patch attached)`
-- **CWE:** `CWE-668 (Exposure of Resource to Wrong Sphere) / CWE-732 (Incorrect Permission Assignment for Critical Resource)`
-- **CVSS v3.1:** `8.6 High — CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H`
-- **MITRE Vendor:** `TryCua`
-- **MITRE Vulnerability Type:** `Unauthenticated Network Exposure and Writable Host Volume Mount (CWE-668 / CWE-732)`
-- **MITRE Affected Component(s):** `libs/cua-bench/tasks/winarena_adapter/cli.py (lines 262-265, 421-424, 646-649) and infra/vm/setup/server/main.py (lines 180-248, 290-321)`
-- **MITRE Suggested CVE Description:**
-  > In TryCua cua-bench through 0.3.1 (trycua/cua), the WinArena container orchestrator (libs/cua-bench/tasks/winarena_adapter/cli.py) publishes the Windows guest VM's unauthenticated noVNC web desktop (-p 8006:8006) and passwordless RDP service (-p 3390:3389) on 0.0.0.0 (all network interfaces) instead of 127.0.0.1, while mounting the host setup_path directory read-write (-v {setup_path}:/shared). Adjacent network peers can take over the guest desktop and modify host-shared setup files.
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism

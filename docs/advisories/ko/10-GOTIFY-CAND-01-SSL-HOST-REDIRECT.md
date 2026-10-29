@@ -2,25 +2,6 @@
 
 [English](../10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md) | [Türkçe](../tr/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md) | [日本語](../ja/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md) | [简体中文](../zh-CN/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md) | **한국어**
 
-## GitHub GHSA 및 MITRE CNA 양식 필드 요약
-- **저장소:** `gotify/server`
-- **GitHub 보안 권고 URL:** `https://github.com/gotify/server/security/advisories/GHSA-cc9f-m5vr-pm75`
-- **기존 GHSA ID:** `GHSA-cc9f-m5vr-pm75`
-- **에코시스템:** `Go`
-- **패키지 이름:** `github.com/gotify/server/v2`
-- **영향받는 버전:** `<= v2.9.1 (commit f4de61997c1b30bf9ac43ec662dc5120c2ec981b)`
-- **패치된 버전:** `없음 (패치 첨부)`
-- **CWE:** `CWE-601 (신뢰할 수 없는 사이트로의 URL 리다이렉션 — 오픈 리다이렉트)`
-- **CVSS v3.1:** `4.7 Medium — CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:N/I:L/A:N`
-- **MITRE 벤더:** `Gotify`
-- **MITRE 취약점 유형:** `Open Redirect via Unvalidated Host Header (CWE-601)`
-- **MITRE 영향받는 컴포넌트:** `router/router.go (Create, lines 52-73, 93-102)`
-- **MITRE 권장 CVE 설명:**
-  > Gotify Server 2.9.1 이하(`github.com/gotify/server/v2`)에서 `SSL.Enabled` 및 `SSL.RedirectToHTTPS`가 활성화되어 있을 때, `router/router.go`의 HTTP-to-HTTPS 리다이렉트 미들웨어는 설정된 SSL 호스트 이름 대신 검증되지 않은 클라이언트 제공 `ctx.Request.Host` 헤더로부터 직접 308/302 `Location` 헤더를 생성하여, 공격자가 조작된 `Host` 헤더를 통해 클라이언트와 URL 토큰을 임의의 외부 도메인으로 리다이렉트할 수 있게 합니다.
-- **제보자 / 크레딧:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. 코드 결함이 실제 악용 가능한 취약점으로 전환되는 메커니즘
 
 ### 단계별 기술적 메커니즘

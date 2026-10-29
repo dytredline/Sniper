@@ -2,25 +2,6 @@
 
 [English](../10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md) | [Türkçe](../tr/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md) | [日本語](../ja/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md) | **简体中文** | [한국어](../ko/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md)
 
-## GitHub GHSA 与 MITRE CNA 表单快速填写字段
-- **代码仓库:** `gotify/server`
-- **GitHub 安全公告 URL:** `https://github.com/gotify/server/security/advisories/GHSA-cc9f-m5vr-pm75`
-- **现有 GHSA ID:** `GHSA-cc9f-m5vr-pm75`
-- **生态系统:** `Go`
-- **软件包名称:** `github.com/gotify/server/v2`
-- **受影响版本:** `<= v2.9.1 (commit f4de61997c1b30bf9ac43ec662dc5120c2ec981b)`
-- **已修复版本:** `无（附修复补丁）`
-- **CWE:** `CWE-601 (URL 重定向至不可信站点 — 开放重定向)`
-- **CVSS v3.1:** `4.7 Medium — CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:N/I:L/A:N`
-- **MITRE 厂商:** `Gotify`
-- **MITRE 漏洞类型:** `Open Redirect via Unvalidated Host Header (CWE-601)`
-- **MITRE 受影响组件:** `router/router.go (Create, lines 52-73, 93-102)`
-- **MITRE 建议漏洞描述:**
-  > 在 Gotify Server 2.9.1 及更早版本（`github.com/gotify/server/v2`）中，当启用 `SSL.Enabled` 和 `SSL.RedirectToHTTPS` 时，`router/router.go` 中的 HTTP 至 HTTPS 重定向中间件直接使用未经校验的客户端 `ctx.Request.Host` 请求头（而非已配置的 SSL 主机名）构造 308/302 `Location` 响应头，使攻击者能够通过伪造 `Host` 头将客户端和 URL 中的令牌重定向到任意外部域名。
-- **报告者 / 致谢:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. 代码缺陷如何演变为可被利用的安全漏洞
 
 ### 分步技术机制剖析

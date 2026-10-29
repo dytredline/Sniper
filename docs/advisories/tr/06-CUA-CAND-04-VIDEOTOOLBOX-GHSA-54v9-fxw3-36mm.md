@@ -2,25 +2,6 @@
 
 [English](../06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md) | **Türkçe** | [日本語](../ja/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md) | [简体中文](../zh-CN/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md) | [한국어](../ko/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md)
 
-## GitHub GHSA ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `trycua/cua`
-- **GitHub Danışma (Advisory) URL'si:** `https://github.com/trycua/cua/security/advisories/GHSA-54v9-fxw3-36mm`
-- **Mevcut GHSA Kimliği:** `GHSA-54v9-fxw3-36mm`
-- **Ekosistem:** `Cargo`
-- **Paket Adı:** `cua-media-codec`
-- **Etkilenen Sürümler:** `<= 0.8.0 (cua-sdk <= 0.9.0, cua-spacesd <= 0.8.0, commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **Yamalı Sürümler:** `Yok (Savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-125 (Sınır Dışı Bellek Okuma — Out-of-bounds Read)`
-- **CVSS v3.1:** `5.5 Orta (Medium) — CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:H`
-- **MITRE Üreticisi:** `TryCua`
-- **MITRE Zafiyet Türü:** `Sınır Dışı Bellek Okuma / Safe-Rust Bellek Güvenliği İhlali (CWE-125)`
-- **MITRE Etkilenen Bileşen(ler):** `libs/cua/crates/cua-media-codec/src/backends/videotoolbox/mod.rs (VtEncoder::pixel_buffer_for ve VtEncoder::encode, satır 334-420, 471-479)`
-- **MITRE Önerilen CVE Açıklaması (Türkçe Özeti):**
-  > TryCua `cua-media-codec` 0.8.0 ve önceki sürümlerinde (`trycua/cua`), güvenli (safe) Rust metodu `VtEncoder::encode` tarafından çağrılan `VtEncoder::pixel_buffer_for` (`libs/cua/crates/cua-media-codec/src/backends/videotoolbox/mod.rs`), Apple VideoToolbox `CVPixelBuffer` belleğine `unsafe std::ptr::copy_nonoverlapping` ile kopyalama yapmadan önce `FrameData::Nv12` `y` ve `uv` dilim uzunluklarının ve `stride` değerlerinin kare geometrisini karşıladığını doğrulamaz. Safe Rust içerisinden küçük boyutlu bir NV12 veya BGRA tamponu geçirilmesi, komşu yığın (heap) belleğinin kodlanan video karesine okunmasına veya sürecin çökmesine (`SIGSEGV`) yol açar.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma

@@ -2,23 +2,6 @@
 
 [English](../18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md) | **Türkçe** | [日本語](../ja/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md) | [简体中文](../zh-CN/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md) | [한국어](../ko/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md)
 
-## GitHub / HackerOne ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `gitlab-org/gitlab` (`https://gitlab.com/gitlab-org/gitlab`)
-- **Açık Teknik Danışma (Advisory) URL'si:** `https://github.com/dytredline/Sniper/blob/main/docs/advisories/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md`
-- **Aday / İzleme Kimliği:** `GITLAB-CAND-04` (`HackerOne: gitlab | MITRE CNA-LR Submitted`)
-- **Ekosistem:** `RubyGems / GitLab CE & EE`
-- **Paket Adı:** `gitlab-ce / gitlab-ee`
-- **Etkilenen Sürümler:** `<= 19.6.0-pre (verified on live 19.5.1-ce.0 & 19.6.0-pre commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`
-- **Yamalı Sürümler:** `Yok (30.10.2026 itibarıyla upstream master üzerinde yamasız; savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-601 / CWE-863`
-- **CVSS v3.1:** `5.4 Medium — CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:L/A:N`
-- **MITRE Üreticisi:** `GitLab`
-- **MITRE Önerilen CVE Açıklaması:**
-  > In GitLab CE/EE through 19.6.0-pre, Projects::Integrations::SlashCommandsController#confirm (app/controllers/projects/integrations/slash_commands_controller.rb:21-48) passes unvalidated request_params[:response_url] to Gitlab::SlashCommands::VerifyRequest and calls redirect_to request_params[:redirect_url] (with config.action_controller.raise_on_open_redirects = false), while Integrations::Base::SlashCommands::CACHE_KEY (app/models/concerns/integrations/base/slash_commands.rb:9) keys Redis entries solely by command_id without binding project_id or integration_id. An attacker can replay a command_id across projects to bind a victim's ChatName integration and trigger an authenticated open redirect to an arbitrary external URL.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma
@@ -49,14 +32,14 @@
 
 ## 2. Günlük Hayatta Yol Açabileceği Kritik Senaryolar (`Senaryo A` / `Senaryo B` / `Senaryo C`)
 
-### Senaryo A — Slash Command Onayı Sonrası Kimlik Doğrulamalı Açık Yönlendirme (Open Redirect)
-Kullanıcı güvenilir bir GitLab projesindeki slash command onay bağlantısını onayladığında, `request_params[:redirect_url]` üzerinden `302 Found` ile saldırganın kimlik avı sayfasına yönlendirilir (`open_redirect_triggered: true`).
+### Senaryo A — Güvenilir Şirket GitLab Onay Ekranı Üzerinden Geliştirici Şifre ve 2FA Kodu Çalma (`302 Found` Açık Yönlendirme)
+Bir geliştirici Slack/Mattermost üzerinden gelen Slash komutunu onaylamak için resmi şirket GitLab bağlantısına (`https://gitlab.sirket.com/.../slash_commands/confirm?command_id=...&redirect_url=https://sahte-gitlab-sso.example/login`) tıklayıp **Onayla** düğmesine bastığı anda, GitLab `redirect_url` parametresini doğrulamadan (`raise_on_open_redirects = false`) kullanıcıyı doğrudan saldırganın sahte SSO giriş ekranına (`302 Found`) yönlendirir (`open_redirect_triggered: true`). Geliştirici resmi GitLab akışında olduğunu sanarak kurumsal şifresini ve 2FA kodunu saldırgana kaptırır.
 
-### Senaryo B — Projeler Arası `command_id` Çarpışmasıyla `ChatName` Bağlama
-Saldırgan Proje B'de ürettiği geçerli `command_id` değerini Proje A'nın onay URL'sinde kullanarak önbellek doğrulamasını geçer (`cross_project_cache_collision_accepted: true`).
+### Senaryo B — Projeler Arası (`Project B -> Project A`) Redis Anahtarı Çarpışmasıyla Kurbanın ChatOps Hesabını Hedef Projeye Bağlama
+Redis `CACHE_KEY` anahtarı `project_id` ve `integration_id` içermediği için, saldırgan kendi projesinde (`Project B`) ürettiği geçerli `command_id` değerini üretim projesinin (`Project A`) onay URL'sinde kullanır (`cross_project_cache_collision_accepted: true`) ve kurban onay verdiğinde `ChatName` kimliği hedef projeye bağlanır.
 
-### Senaryo C — `request_params[:response_url]` Manipülasyonu
-Onay isteğinde gönderilen `response_url` parametresi Redis'teki orijinal değer yerine `VerifyRequest#approve!` tarafından kullanılır.
+### Senaryo C — `request_params[:response_url]` Manipülasyonuyla ChatOps Onay Geri Çağrısını Saldırgan Sunucusuna Yönlendirme
+`confirm` aksiyonu Redis'teki `cached_params[:response_url]` yerine istekten gelen `request_params[:response_url]` parametresini `VerifyRequest#approve!` metoduna ilettiği için, onaylanan ChatOps bildirimi orijinal Slack/Mattermost kanalı yerine saldırganın sunucusuna gönderilir.
 
 ---
 

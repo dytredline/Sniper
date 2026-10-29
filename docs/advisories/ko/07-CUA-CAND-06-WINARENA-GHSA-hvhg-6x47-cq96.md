@@ -2,25 +2,6 @@
 
 [English](../07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md) | [Türkçe](../tr/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md) | [日本語](../ja/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md) | [简体中文](../zh-CN/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md) | **한국어**
 
-## GitHub GHSA 및 MITRE CNA 양식 필드 요약
-- **저장소:** `trycua/cua`
-- **GitHub 보안 권고 URL:** `https://github.com/trycua/cua/security/advisories/GHSA-hvhg-6x47-cq96`
-- **기존 GHSA ID:** `GHSA-hvhg-6x47-cq96`
-- **에코시스템:** `pip`
-- **패키지 이름:** `cua-bench`
-- **영향받는 버전:** `<= 0.3.1 (commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **패치된 버전:** `없음 (패치 첨부)`
-- **CWE:** `CWE-668 (잘못된 영역으로의 리소스 노출) / CWE-732 (중요 리소스에 대한 부적절한 권한 할당)`
-- **CVSS v3.1:** `8.6 High — CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H`
-- **MITRE 벤더:** `TryCua`
-- **MITRE 취약점 유형:** `Unauthenticated Network Exposure and Writable Host Volume Mount (CWE-668 / CWE-732)`
-- **MITRE 영향받는 컴포넌트:** `libs/cua-bench/tasks/winarena_adapter/cli.py (lines 262-265, 421-424, 646-649) 및 infra/vm/setup/server/main.py (lines 180-248, 290-321)`
-- **MITRE 권장 CVE 설명:**
-  > TryCua cua-bench 0.3.1 이하(`trycua/cua`)에서 WinArena 컨테이너 오케스트레이터(`libs/cua-bench/tasks/winarena_adapter/cli.py`)는 Windows 게스트 VM의 비인증 noVNC 웹 데스크톱(`-p 8006:8006`)과 무암호 RDP 서비스(`-p 3390:3389`)를 `127.0.0.1` 대신 `0.0.0.0`(모든 네트워크 인터페이스)에 바인딩하며, 호스트의 `setup_path` 디렉터리를 읽기/쓰기 가능하게(`-v {setup_path}:/shared`) 마운트합니다. 인접 네트워크의 공격자는 게스트 데스크톱을 장악하고 호스트와 공유된 설정 스크립트 파일을 변조할 수 있습니다.
-- **제보자 / 크레딧:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. 코드 결함이 실제 악용 가능한 취약점으로 전환되는 메커니즘
 
 ### 단계별 기술적 메커니즘

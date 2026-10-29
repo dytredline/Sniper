@@ -2,25 +2,6 @@
 
 [English](../11-XROAD-CAND-01-RUNNER-INJECTION.md) | [Türkçe](../tr/11-XROAD-CAND-01-RUNNER-INJECTION.md) | [日本語](../ja/11-XROAD-CAND-01-RUNNER-INJECTION.md) | [简体中文](../zh-CN/11-XROAD-CAND-01-RUNNER-INJECTION.md) | **한국어**
 
-## GitHub GHSA 및 MITRE CNA 양식 필드 요약
-- **저장소:** `nordic-institute/X-Road`
-- **GitHub 보안 권고 URL:** `https://github.com/nordic-institute/X-Road/security/advisories/GHSA-4fcw-7xqx-fjv5`
-- **기존 GHSA ID:** `GHSA-4fcw-7xqx-fjv5`
-- **에코시스템:** `GitHub Actions`
-- **패키지 이름:** `nordic-institute/X-Road (.github/workflows/_build-and-package.yml)`
-- **영향받는 버전:** `develop 브랜치 커밋 38cd99ec0ebbcc13ddbaaeb9187018d49bdd278b 이하`
-- **패치된 버전:** `없음 (패치 첨부)`
-- **CWE:** `CWE-78 (OS 명령에 사용되는 특수 요소의 부적절한 무력화 — OS 명령 인젝션)`
-- **CVSS v3.1:** `7.8 High — CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N`
-- **MITRE 벤더:** `Nordic Institute for Interoperability Solutions (NIIS)`
-- **MITRE 취약점 유형:** `OS Command Injection in CI Workflow on Self-Hosted Runner (CWE-78)`
-- **MITRE 영향받는 컴포넌트:** `.github/workflows/build.yaml (lines 14-58) 및 .github/workflows/_build-and-package.yml (lines 27, 84-91)`
-- **MITRE 권장 CVE 설명:**
-  > Nordic Institute for Interoperability Solutions (NIIS) X-Road 커밋 `38cd99ec0ebbcc13ddbaaeb9187018d49bdd278b` 이하에서, 영구 자체 호스팅 러너 `xrd-runner-8c`에서 `build.yaml`에 의해 `secrets: inherit` 및 `packages: write` 권한으로 호출되는 `.github/workflows/_build-and-package.yml`은 `${{ github.head_ref }}` 및 `${{ github.ref_name }}`을 bash `run:` 스크립트 블록에 직접 보간하여, 조작된 풀 리퀘스트 브랜치 이름을 통한 셸 명령 인젝션을 허용합니다.
-- **제보자 / 크레딧:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. 코드 결함이 실제 악용 가능한 취약점으로 전환되는 메커니즘
 
 ### 단계별 기술적 메커니즘

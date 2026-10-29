@@ -2,25 +2,6 @@
 
 [English](../02-STIRLING-CAND-01-WEASYPRINT-SSRF.md) | **Türkçe** | [日本語](../ja/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md) | [简体中文](../zh-CN/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md) | [한국어](../ko/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md)
 
-## GitHub GHSA ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `Stirling-Tools/Stirling-PDF`
-- **GitHub Danışma (Advisory) URL'si:** `https://github.com/Stirling-Tools/Stirling-PDF/security/advisories/GHSA-ff6j-8xch-j8r6`
-- **Mevcut GHSA Kimliği:** `GHSA-ff6j-8xch-j8r6 (GHSA-j5rg-wh78-9f2q / CVE-2026-71270 Eksik Yaması / Varyantı)`
-- **Ekosistem:** `Maven`
-- **Paket Adı:** `stirling.software:stirling-pdf`
-- **Etkilenen Sürümler:** `<= 3.2.2 (commit 684608d143779bf3a8ffc67639f077a1202c62ff)`
-- **Yamalı Sürümler:** `Yok (Savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-918 (Sunucu Taraflı İstek Sahteciliği — SSRF)`
-- **CVSS v3.1:** `8.6 Yüksek (High) — CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N`
-- **MITRE Üreticisi:** `Stirling-Tools`
-- **MITRE Zafiyet Türü:** `Sunucu Taraflı İstek Sahteciliği (SSRF) / CVE-2026-71270 Eksik Yaması (CWE-918)`
-- **MITRE Etkilenen Bileşen(ler):** `ConvertWebsiteToPDF.java (urlToPdf, satır 116-143 — POST /api/v1/convert/url/pdf)`
-- **MITRE Önerilen CVE Açıklaması (Türkçe Özeti):**
-  > Stirling-Tools Stirling-PDF 3.2.2 ve önceki sürümlerinde, `ConvertWebsiteToPDF.java` (`POST /api/v1/convert/url/pdf`) içindeki eksik bir `CVE-2026-71270` (`GHSA-j5rg-wh78-9f2q`) düzeltmesi nedeniyle `fetchRemoteHtml(URL)` ile indirilen uzak HTML içeriği `CustomHtmlSanitizer.sanitize()` çağrılmadan doğrudan `--base-url <URL>` ve `--allowed-protocols data,http,https` parametreleriyle WeasyPrint'e aktarılır. Uzak saldırganlar, yerel döngüye (`127.0.0.1`) veya iç ağ uç noktalarına işaret eden alt kaynaklar (`<link rel="stylesheet">` veya `<img>` gibi) içeren bir web sayfası göndererek iç ağ yanıtlarını oluşturulan PDF dosyası üzerinden sızdırabilir.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma

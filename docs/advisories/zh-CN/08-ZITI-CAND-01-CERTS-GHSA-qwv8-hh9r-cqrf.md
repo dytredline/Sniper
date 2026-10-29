@@ -2,25 +2,6 @@
 
 [English](../08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md) | [Türkçe](../tr/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md) | [日本語](../ja/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md) | **简体中文** | [한국어](../ko/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md)
 
-## GitHub GHSA 与 MITRE CNA 表单快速填写字段
-- **代码仓库:** `openziti/ziti`
-- **GitHub 安全公告 URL:** `https://github.com/openziti/security/security/advisories/GHSA-qwv8-hh9r-cqrf`
-- **现有 GHSA ID:** `GHSA-qwv8-hh9r-cqrf`
-- **生态系统:** `Go`
-- **软件包名称:** `github.com/openziti/ziti/v2`
-- **受影响版本:** `<= v2 (commit 236f351a5149fe68328fc8083bebe514f0307d0c)`
-- **已修复版本:** `无（附修复补丁）`
-- **CWE:** `CWE-295 (证书校验不当 — Improper Certificate Validation)`
-- **CVSS v3.1:** `7.4 High — CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N`
-- **MITRE 厂商:** `NetFoundry / OpenZiti`
-- **MITRE 漏洞类型:** `Improper Certificate Validation (CWE-295)`
-- **MITRE 受影响组件:** `ziti/util/certs.go (AreCertsTrusted & InsecureClient, lines 91-103, 199-208) 与 ziti/cmd/edge/login.go (fetchTrustedServerCerts, lines 511, 535-549)`
-- **MITRE 建议漏洞描述:**
-  > 在 OpenZiti ziti 提交 `236f351a5149fe68328fc8083bebe514f0307d0c` 及更早版本（`github.com/openziti/ziti/v2`）中，`ziti/util/certs.go` 中的 `util.AreCertsTrusted` 调用了 `InsecureClient(&client, certs)`，而该函数即使在 `len(certs) > 0` 时也无条件设置 `tls.Config{InsecureSkipVerify: true}`。由于 Go 的 `crypto/tls` 在 `InsecureSkipVerify` 为 `true` 时会忽略 `RootCAs`，`AreCertsTrusted` 中的 `x509.UnknownAuthorityError` 检查成为永不可达的死代码，`AreCertsTrusted` 在 `ziti edge login` 期间始终返回 `true`，从而使持有不可信 TLS 证书的中间人（MITM）攻击者能够截获管理员凭据。
-- **报告者 / 致谢:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. 代码缺陷如何演变为可被利用的安全漏洞
 
 ### 分步技术机制剖析

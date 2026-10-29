@@ -2,23 +2,6 @@
 
 [English](../15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md) | [Türkçe](../tr/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md) | [日本語](../ja/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md) | **简体中文** | [한국어](../ko/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md)
 
-## Quick-Fill GitHub / HackerOne & MITRE CNA Form Fields
-- **Repository:** `gitlab-org/gitlab` (`https://gitlab.com/gitlab-org/gitlab`)
-- **Public Technical Advisory URL:** `https://github.com/dytredline/Sniper/blob/main/docs/advisories/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md`
-- **Candidate / Tracking ID:** `GITLAB-CAND-01` (`HackerOne: gitlab | MITRE CNA-LR Submitted`)
-- **Ecosystem:** `Go / GitLab Workhorse`
-- **Package Name:** `gitlab.com/gitlab-org/gitlab/workhorse`
-- **Affected Versions:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`
-- **Patched Versions:** `None upstream on master as of 2026-10-30 (Verified defensive patch attached below)`
-- **CWE:** `CWE-918 / CWE-522`
-- **CVSS v3.1:** `8.2 High — CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`
-- **MITRE Vendor:** `GitLab`
-- **MITRE Suggested CVE Description:**
-  > In GitLab Workhorse through 19.6.0-pre (workhorse/internal/ai_assist/duoworkflow/mcp.go), externalMcpTransport is constructed via transport.NewRestrictedTransport without passing transport.WithSSRFFilter() (unlike workhorse/internal/sendurl/sendurl.go), and roundTripper.RoundTrip unconditionally injects configured authentication headers (such as Authorization: Bearer) on every HTTP request including cross-origin redirect hops without a CheckRedirect policy. An external MCP server can redirect Workhorse to internal loopback/metadata services or cross-origin hosts and exfiltrate the user's MCP Bearer token.
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism
@@ -49,14 +32,14 @@ func (t *roundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
 
 ## 2. Concrete Everyday Real-World Production Scenarios (`Scenario A` / `Scenario B` / `Scenario C`)
 
-### Scenario A — Cross-Origin `302` Redirect Steals User's MCP `Authorization: Bearer` Token
-When a Duo Workflow session connects to an external MCP server, a `302 Found` redirect to an external collector causes Workhorse's `roundTripper.RoundTrip` to forward the user's `Authorization: Bearer` token to the third-party host (`bearer_token_leaked_to_canary: true`).
+### Scenario A — Stealing a Victim Developer's or Administrator's Live `Authorization: Bearer` Token via Cross-Origin `302` Redirect (Full Account & Private Repository Takeover)
+When a developer or administrator runs a Duo Workflow AI session connected to an external MCP tool server, GitLab Workhorse (`mcp.go`) attaches the user's live `Authorization: Bearer <token>` header. When the external server responds with a `302 Found` redirect to an attacker-controlled domain (`https://attacker-collector.example/collect`), `roundTripper.RoundTrip` re-injects `Authorization: Bearer <token>` on the cross-origin hop (`bearer_token_leaked_to_canary: true`). The attacker captures the live Bearer token and immediately uses it to clone private repositories, read sensitive issues/merge requests, or push malicious code as the victim.
 
-### Scenario B — Workhorse Redirect SSRF to Internal Loopback (`127.0.0.1`) and Cloud Metadata (`169.254.169.254`)
-An external MCP endpoint allowed by Rails initial URL checks redirects (`302`) to `http://127.0.0.1:8080` or `http://169.254.169.254/`; because `externalMcpTransport` lacks `transport.WithSSRFFilter`, Workhorse connects directly to the internal service.
+### Scenario B — Workhorse Server-Side Request Forgery (SSRF) Against Internal Loopback (`127.0.0.1`), Gitaly/Redis/Puma Exporters, and Cloud Metadata (`169.254.169.254`)
+Because `externalMcpTransport` in `mcp.go:41-44` omits `transport.WithSSRFFilter()` (unlike `sendurl.go`), an external MCP URL that passes initial Rails validation can issue a `302` redirect directly to `http://127.0.0.1:8080`, internal Prometheus/Puma admin endpoints, or `http://169.254.169.254/`, allowing attackers to reach internal services directly from the Workhorse reverse-proxy process.
 
-### Scenario C — DNS Rebinding Against Workhorse Long-Lived MCP Transport
-Without `transport.WithSSRFFilter` dial-time IP validation in `externalMcpTransport`, an external hostname that resolves to a public IP during Rails configuration validation and rebinds to `127.0.0.1` when Workhorse dials reaches local services on the Workhorse host.
+### Scenario C — DNS Rebinding Bypass Into the Internal Corporate Network
+An external MCP hostname resolves to a public IP when registered in GitLab Rails, then rebinds (`TTL=0`) to `127.0.0.1` or `10.0.0.1` when Workhorse opens the long-lived MCP stream—bypassing Rails URL validation because Workhorse's socket dialer lacks `WithSSRFFilter`.
 
 ---
 

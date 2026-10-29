@@ -2,25 +2,6 @@
 
 **English** | [Türkçe](tr/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md) | [日本語](ja/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md) | [简体中文](zh-CN/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md) | [한국어](ko/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md)
 
-## Quick-Fill GitHub GHSA & MITRE CNA Form Fields
-- **Repository:** `trycua/cua`
-- **GitHub Advisory URL:** `https://github.com/trycua/cua/security/advisories/GHSA-cp36-x5hg-3gg8`
-- **Existing GHSA ID:** `GHSA-cp36-x5hg-3gg8`
-- **Ecosystem:** `npm`
-- **Package Name:** `cuabot`
-- **Affected Versions:** `>= 1.0.1, <= 1.0.16 (commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **Patched Versions:** `None (Patch attached)`
-- **CWE:** `CWE-306 (Missing Authentication for Critical Function) / CWE-942 (Overly Permissive Cross-domain Whitelist)`
-- **CVSS v3.1:** `9.6 Critical — CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:H`
-- **MITRE Vendor:** `TryCua`
-- **MITRE Vulnerability Type:** `Missing Authentication / Permissive CORS Leading to Remote Command Execution (CWE-306 / CWE-942)`
-- **MITRE Affected Component(s):** `libs/cuabot/src/cuabotd.ts (lines 34-36, 259-260, 741-743, 969-1002, 1018-1063, 1120)`
-- **MITRE Suggested CVE Description:**
-  > In TryCua cuabot 1.0.1 through 1.0.16 (trycua/cua), the cuabotd daemon (libs/cuabot/src/cuabotd.ts) binds to 0.0.0.0:7842 without authentication, sets 'Access-Control-Allow-Origin: *' on all HTTP endpoints including POST /bash and OPTIONS preflights, and exposes a WebSocket PTY terminal with no Origin check while mounting the host's ~/.cuabot/user/.claude directory read-write. Any untrusted website visited in the user's browser or any peer on the local network can execute arbitrary commands via POST /bash and exfiltrate mounted Claude OAuth credentials or modify host hooks.
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism

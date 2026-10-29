@@ -2,25 +2,6 @@
 
 [English](../02-STIRLING-CAND-01-WEASYPRINT-SSRF.md) | [Türkçe](../tr/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md) | **日本語** | [简体中文](../zh-CN/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md) | [한국어](../ko/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md)
 
-## GitHub GHSA & MITRE CNA フォーム入力フィールド
-- **対象リポジトリ:** `Stirling-Tools/Stirling-PDF`
-- **GitHub Advisory URL:** `https://github.com/Stirling-Tools/Stirling-PDF/security/advisories/GHSA-ff6j-8xch-j8r6`
-- **既存 GHSA ID:** `GHSA-ff6j-8xch-j8r6 (GHSA-j5rg-wh78-9f2q / CVE-2026-71270 の亜種・不完全な修正)`
-- **エコシステム:** `Maven`
-- **パッケージ名:** `stirling.software:stirling-pdf`
-- **影響を受けるバージョン:** `<= 3.2.2 (commit 684608d143779bf3a8ffc67639f077a1202c62ff)`
-- **修正済みバージョン:** `なし（修正パッチ添付）`
-- **CWE:** `CWE-918 (サーバーサイド・リクエスト・フォージェリ — SSRF)`
-- **CVSS v3.1:** `8.6 High — CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N`
-- **MITRE ベンダー:** `Stirling-Tools`
-- **MITRE 脆弱性タイプ:** `Server-Side Request Forgery (SSRF) / Incomplete Fix for CVE-2026-71270 (CWE-918)`
-- **MITRE 影響を受けるコンポーネント:** `ConvertWebsiteToPDF.java (urlToPdf, lines 116-143 — POST /api/v1/convert/url/pdf)`
-- **MITRE 推奨説明文:**
-  > Stirling-Tools Stirling-PDF 3.2.2 以前において、`ConvertWebsiteToPDF.java`（`POST /api/v1/convert/url/pdf`）における `CVE-2026-71270`（`GHSA-j5rg-wh78-9f2q`）の修正漏れにより、`fetchRemoteHtml(URL)` で取得したリモート HTML を `CustomHtmlSanitizer.sanitize()` に通さず、`--base-url <URL>` および `--allowed-protocols data,http,https` を指定して WeasyPrint に直接渡しています。リモートの攻撃者はループバック（`127.0.0.1`）や内部ネットワークを指すサブリソース（`<link rel="stylesheet">` や `<img>` など）を含む Web ページを指定することで、内部サービスの応答を生成された PDF 内へ流出させることができます。
-- **報告者 / クレジット:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. コードの欠陥がどのように悪用可能な脆弱性に変わるか
 
 ### ステップバイステップの技術的メカニズム

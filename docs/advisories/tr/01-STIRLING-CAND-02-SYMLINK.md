@@ -2,25 +2,6 @@
 
 [English](../01-STIRLING-CAND-02-SYMLINK.md) | **Türkçe** | [日本語](../ja/01-STIRLING-CAND-02-SYMLINK.md) | [简体中文](../zh-CN/01-STIRLING-CAND-02-SYMLINK.md) | [한국어](../ko/01-STIRLING-CAND-02-SYMLINK.md)
 
-## GitHub GHSA ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `Stirling-Tools/Stirling-PDF`
-- **GitHub Danışma (Advisory) URL'si:** `https://github.com/Stirling-Tools/Stirling-PDF/security/advisories/GHSA-hpc7-xx5r-gc44`
-- **Mevcut GHSA Kimliği:** `GHSA-hpc7-xx5r-gc44`
-- **Ekosistem:** `Maven`
-- **Paket Adı:** `stirling.software:stirling-pdf`
-- **Etkilenen Sürümler:** `<= 3.2.2 (commit 684608d143779bf3a8ffc67639f077a1202c62ff)`
-- **Yamalı Sürümler:** `Yok (Savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-59 (Dosya Erişimi Öncesi Hatalı Bağ Çözümleme) / CWE-61 (UNIX Sembolik Bağ Takibi)`
-- **CVSS v3.1:** `7.1 Yüksek (High) — CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N`
-- **MITRE Üreticisi:** `Stirling-Tools`
-- **MITRE Zafiyet Türü:** `Sembolik Bağ Takibi / Hatalı Bağ Çözümleme (CWE-59)`
-- **MITRE Etkilenen Bileşen(ler):** `FolderInputSource.java (listFiles, satır 337-377), ProcessingFolderController.java (satır 374-380), FolderOutputSink.java (archiveOriginal, satır 338-345)`
-- **MITRE Önerilen CVE Açıklaması (Türkçe Özeti):**
-  > Stirling-Tools Stirling-PDF 3.2.2 ve önceki sürümlerinde, izlenen klasör belge işleme hattı (`FolderInputSource.java`, `ProcessingFolderController.java` ve `FolderOutputSink.java`) varsayılan `recursive=false` modunda `LinkOption.NOFOLLOW_LINKS` bayrağı olmadan `Files.isRegularFile(path)` metodunu kullanırken, `FolderAccessGuard.isProtected` yalnızca izlenen dizin içindeki sözcüksel (lexical) yolu doğrular. İzlenen giriş klasörüne yazma erişimi olan bir saldırgan, korumalı yapılandırma dosyalarına (`settings.yml` gibi) işaret eden bir sembolik bağ bırakarak Stirling-PDF'in hassas kimlik bilgilerini okuyup erişilebilir çıktı dizinine kopyalamasına ve arşivlemesine neden olabilir.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma

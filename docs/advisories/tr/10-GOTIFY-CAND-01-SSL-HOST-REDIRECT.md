@@ -2,25 +2,6 @@
 
 [English](../10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md) | **Türkçe** | [日本語](../ja/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md) | [简体中文](../zh-CN/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md) | [한국어](../ko/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md)
 
-## GitHub GHSA ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `gotify/server`
-- **GitHub Danışma (Advisory) URL'si:** `https://github.com/gotify/server/security/advisories/GHSA-cc9f-m5vr-pm75`
-- **Mevcut GHSA Kimliği:** `GHSA-cc9f-m5vr-pm75`
-- **Ekosistem:** `Go`
-- **Paket Adı:** `github.com/gotify/server/v2`
-- **Etkilenen Sürümler:** `<= v2.9.1 (commit f4de61997c1b30bf9ac43ec662dc5120c2ec981b)`
-- **Yamalı Sürümler:** `Yok (Savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-601 (Güvenilmeyen Siteye URL Yönlendirmesi — Open Redirect)`
-- **CVSS v3.1:** `4.7 Orta (Medium) — CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:N/I:L/A:N`
-- **MITRE Üreticisi:** `Gotify`
-- **MITRE Zafiyet Türü:** `Doğrulanmamış Host Başlığı Üzerinden Açık Yönlendirme / Open Redirect (CWE-601)`
-- **MITRE Etkilenen Bileşen(ler):** `router/router.go (Create, satır 52-73, 93-102)`
-- **MITRE Önerilen CVE Açıklaması (Türkçe Özeti):**
-  > Gotify Server 2.9.1 ve önceki sürümlerinde (`github.com/gotify/server/v2`), `SSL.Enabled` ve `SSL.RedirectToHTTPS` etkinleştirildiğinde `router/router.go` içindeki HTTP-to-HTTPS yönlendirme ara katmanı `308`/`302` `Location` başlıklarını yapılandırılmış SSL sunucu adı yerine doğrudan istemci tarafından gönderilen doğrulanmamış `ctx.Request.Host` başlığından oluşturur; bu durum saldırganların özel bir `Host` başlığı aracılığıyla istemcileri ve URL içindeki anahtarları (token) keyfi bir dış alan adına yönlendirmesine olanak tanır.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma

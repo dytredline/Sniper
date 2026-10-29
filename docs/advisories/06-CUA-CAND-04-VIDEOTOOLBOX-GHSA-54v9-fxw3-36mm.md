@@ -2,25 +2,6 @@
 
 **English** | [Türkçe](tr/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md) | [日本語](ja/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md) | [简体中文](zh-CN/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md) | [한국어](ko/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md)
 
-## Quick-Fill GitHub GHSA & MITRE CNA Form Fields
-- **Repository:** `trycua/cua`
-- **GitHub Advisory URL:** `https://github.com/trycua/cua/security/advisories/GHSA-54v9-fxw3-36mm`
-- **Existing GHSA ID:** `GHSA-54v9-fxw3-36mm`
-- **Ecosystem:** `Cargo`
-- **Package Name:** `cua-media-codec`
-- **Affected Versions:** `<= 0.8.0 (cua-sdk <= 0.9.0, cua-spacesd <= 0.8.0, commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **Patched Versions:** `None (Patch attached)`
-- **CWE:** `CWE-125 (Out-of-bounds Read)`
-- **CVSS v3.1:** `5.5 Medium — CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:H`
-- **MITRE Vendor:** `TryCua`
-- **MITRE Vulnerability Type:** `Buffer Over-read / Safe-Rust Soundness Violation (CWE-125)`
-- **MITRE Affected Component(s):** `libs/cua/crates/cua-media-codec/src/backends/videotoolbox/mod.rs (VtEncoder::pixel_buffer_for and VtEncoder::encode, lines 334-420, 471-479)`
-- **MITRE Suggested CVE Description:**
-  > In TryCua cua-media-codec through 0.8.0 (trycua/cua), the safe Rust method VtEncoder::encode calls VtEncoder::pixel_buffer_for (libs/cua/crates/cua-media-codec/src/backends/videotoolbox/mod.rs), which fails to validate that FrameData::Nv12 y and uv slice lengths and strides satisfy the frame geometry before invoking unsafe std::ptr::copy_nonoverlapping into an Apple VideoToolbox CVPixelBuffer. Passing an undersized NV12 or BGRA buffer from safe Rust causes an out-of-bounds heap read into the encoded video frame or a process crash (SIGSEGV).
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism

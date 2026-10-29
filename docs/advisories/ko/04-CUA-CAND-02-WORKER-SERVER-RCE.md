@@ -2,25 +2,6 @@
 
 [English](../04-CUA-CAND-02-WORKER-SERVER-RCE.md) | [Türkçe](../tr/04-CUA-CAND-02-WORKER-SERVER-RCE.md) | [日本語](../ja/04-CUA-CAND-02-WORKER-SERVER-RCE.md) | [简体中文](../zh-CN/04-CUA-CAND-02-WORKER-SERVER-RCE.md) | **한국어**
 
-## GitHub GHSA 및 MITRE CNA 양식 필드 요약
-- **저장소:** `trycua/cua`
-- **GitHub 보안 권고 URL:** `https://github.com/trycua/cua/security/advisories/GHSA-xm8w-gj3g-4f25`
-- **기존 GHSA ID:** `GHSA-xm8w-gj3g-4f25`
-- **에코시스템:** `pip`
-- **패키지 이름:** `cua-bench-rl (및 cua-bench)`
-- **영향받는 버전:** `<= 0.1.0 (cua-bench <= 0.3.1, commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **패치된 버전:** `없음 (패치 첨부)`
-- **CWE:** `CWE-94 (코드 생성 제어 부적절) / CWE-942 (과도하게 허용된 교차 도메인 화이트리스트)`
-- **CVSS v3.1:** `8.8 High — CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`
-- **MITRE 벤더:** `TryCua`
-- **MITRE 취약점 유형:** `Dynamic Code Execution via Wildcard CORS and Fail-Open IP Filter (CWE-94 / CWE-942)`
-- **MITRE 영향받는 컴포넌트:** `libs/cua-bench-rl/cua_bench_rl/workers/worker_server.py (lines 79-108, 338-360, 499) 및 libs/cua-bench/cua_bench/core.py (make, lines 25-51)`
-- **MITRE 권장 CVE 설명:**
-  > TryCua cua-bench-rl 0.1.0 이하 및 cua-bench 0.3.1 이하(`trycua/cua`)에서 `worker_server.py`는 인증 없이 `0.0.0.0:8001`에 바인딩하며, `allow_origins=['*']`로 `CORSMiddleware`를 활성화하고, `127.0.0.1`로 들어오는 교차 출처 브라우저 요청을 허용할 뿐만 아니라 `OSGYM_ALLOWED_IPS`가 빈 문자열로 설정될 때 모든 원격 IP에 대해 필터가 우회(Fail-Open)되는 `ip_filter_middleware`를 사용합니다. 공격자는 임의의 `env_path` 매개변수로 `POST /reset`을 호출하여 `cua_bench.core.make`가 `spec.loader.exec_module`을 통해 호스트에서 `<env_path>/main.py`를 직접 실행하도록 만들 수 있습니다.
-- **제보자 / 크레딧:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. 코드 결함이 실제 악용 가능한 취약점으로 전환되는 메커니즘
 
 ### 단계별 기술적 메커니즘

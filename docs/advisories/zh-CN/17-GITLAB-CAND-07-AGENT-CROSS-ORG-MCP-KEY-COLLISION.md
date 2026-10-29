@@ -2,23 +2,6 @@
 
 [English](../17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md) | [Türkçe](../tr/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md) | [日本語](../ja/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md) | **简体中文** | [한국어](../ko/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md)
 
-## Quick-Fill GitHub / HackerOne & MITRE CNA Form Fields
-- **Repository:** `gitlab-org/gitlab` (`https://gitlab.com/gitlab-org/gitlab`)
-- **Public Technical Advisory URL:** `https://github.com/dytredline/Sniper/blob/main/docs/advisories/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md`
-- **Candidate / Tracking ID:** `GITLAB-CAND-07` (`HackerOne: gitlab | MITRE CNA-LR Submitted`)
-- **Ecosystem:** `RubyGems & Go / GitLab EE & Workhorse`
-- **Package Name:** `gitlab-ee`
-- **Affected Versions:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`
-- **Patched Versions:** `None upstream on master as of 2026-10-30 (Verified defensive patch attached below)`
-- **CWE:** `CWE-863 / CWE-639`
-- **CVSS v3.1:** `8.1 High — CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:L`
-- **MITRE Vendor:** `GitLab`
-- **MITRE Suggested CVE Description:**
-  > In GitLab EE through 19.6.0-pre, Ai::DuoWorkflows::McpConfigService#execute (ee/app/services/ai/duo_workflows/mcp_config_service.rb:57-64) merges ai_catalog_mcp_servers.except(:orbit) after gitlab_mcp_server(denied) without excluding the ':gitlab' key, while Mutations::Ai::Catalog::Agent::Create/Update and Ai::Catalog::McpServers::ListService resolve McpServer IDs without .in_organization scoping. Attaching an Ai::Catalog::McpServer named 'GitLab' (server_key => :gitlab, Tools: nil) overwrites the built-in ':gitlab' MCP server configuration and causes GitLab Workhorse (workhorse/internal/ai_assist/duoworkflow/mcp.go:254) to evaluate 'allToolsAvailable := s.cfg.Tools == nil' as true, bypassing withheld_server_tools restrictions.
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism
@@ -44,14 +27,14 @@
 
 ## 2. Concrete Everyday Real-World Production Scenarios (`Scenario A` / `Scenario B` / `Scenario C`)
 
-### Scenario A — Bypassing `withheld_server_tools(denied)` on Built-in GitLab MCP Server (`allToolsAvailable = true`)
-An AI Catalog Agent attaches an `McpServer` named `"GitLab"` (`server_key => :gitlab`). During a Duo Workflow run, `ai_catalog_mcp_servers.except(:orbit)` overwrites `:gitlab` with `Tools: nil`, causing Workhorse (`mcp.go:254`) to set `allToolsAvailable = true` and expose denied built-in GitLab MCP tools (`workhorse_all_tools_available: true`).
+### Scenario A — Disabling All Built-in GitLab AI Tool Restrictions (`withheld_server_tools`) by Attaching a Catalog MCP Server Named `"GitLab"` (`allToolsAvailable = true`)
+GitLab Duo Workflow enforces `withheld_server_tools(denied)` on its built-in `:gitlab` MCP server to block dangerous internal operations. Because `McpConfigService#execute` calls `.merge(ai_catalog_mcp_servers.except(:orbit))` without excluding `:gitlab`, an attacker creates an `Ai::Catalog::McpServer` named `"GitLab"` (`server_key => :gitlab`, `Tools: nil`). During any Duo Workflow run, this catalog entry overwrites the built-in `:gitlab` key so Workhorse (`mcp.go:254`) evaluates `allToolsAvailable := s.cfg.Tools == nil` as `true` (`workhorse_all_tools_available: true`), unlocking every prohibited built-in GitLab MCP tool across the instance.
 
-### Scenario B — Cross-Organization `McpServer` GID Attachment via GraphQL `aiCatalogAgentCreate` / `Update`
-A maintainer in Organization A passes a `gid://gitlab/Ai::Catalog::McpServer/<id>` belonging to Organization B into `aiCatalogAgentCreate`; `ListService` resolves it across organization boundaries because `.in_organization` is missing.
+### Scenario B — Cross-Organization Tenant Boundary Breach via GraphQL `aiCatalogAgentCreate` / `aiCatalogAgentUpdate`
+Because `ListService` and GraphQL agent mutations resolve `mcp_servers` Global IDs (`gid://gitlab/Ai::Catalog::McpServer/<id>`) without `.in_organization`, an attacker in Organization A binds Organization B's private MCP servers to their agent.
 
-### Scenario C — Built-in GitLab MCP `401 Unauthorized` Denial of Service When Unconnected
-If an agent with a colliding `"GitLab"` catalog MCP server is executed by a user without a `McpServerUserConnection`, `Headers` is overwritten with `{}` (stripping `X-Gitlab-Oauth-Token`), causing all built-in `/api/v4/mcp` calls to fail with `401 Unauthorized`.
+### Scenario C — Breaking All Built-in GitLab Duo Workflow `/api/v4/mcp` Calls (`401 Unauthorized` DoS) via `:gitlab` Header Collision
+When a colliding `"GitLab"` catalog MCP server is attached without an active user connection, `Headers` on `:gitlab` is overwritten with `{}` (stripping `X-Gitlab-Oauth-Token`), causing every built-in GitLab MCP tool call in Duo Workflow to fail with `401 Unauthorized`.
 
 ---
 

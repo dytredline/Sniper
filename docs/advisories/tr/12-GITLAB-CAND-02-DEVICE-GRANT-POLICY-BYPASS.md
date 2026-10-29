@@ -2,23 +2,6 @@
 
 [English](../12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md) | **Türkçe** | [日本語](../ja/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md) | [简体中文](../zh-CN/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md) | [한국어](../ko/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md)
 
-## GitHub / HackerOne ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `gitlab-org/gitlab` (`https://gitlab.com/gitlab-org/gitlab`)
-- **Açık Teknik Danışma (Advisory) URL'si:** `https://github.com/dytredline/Sniper/blob/main/docs/advisories/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md`
-- **Aday / İzleme Kimliği:** `GITLAB-CAND-02 (CAND-02A + CAND-02B + CAND-02C)` (`HackerOne: gitlab | MITRE CNA-LR Submitted`)
-- **Ekosistem:** `RubyGems / GitLab CE & EE`
-- **Paket Adı:** `gitlab-ce / gitlab-ee`
-- **Etkilenen Sürümler:** `<= 19.6.0-pre (verified on live 19.5.1-ce.0 & 19.6.0-pre commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`
-- **Yamalı Sürümler:** `Yok (30.10.2026 itibarıyla upstream master üzerinde yamasız; savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-863 / CWE-285`
-- **CVSS v3.1:** `8.1 High — CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N`
-- **MITRE Üreticisi:** `GitLab`
-- **MITRE Önerilen CVE Açıklaması:**
-  > In GitLab CE/EE through 19.6.0-pre (and verified on live 19.5.1-ce.0), Oauth::DeviceAuthorizationsController (app/controllers/oauth/device_authorizations_controller.rb) and Oauth::TokensController (app/controllers/oauth/tokens_controller.rb) omit the verify_admin_allowed!, verify_confirmed_email!, set_current_organization, and enforce_organization_maintenance_mode before_action guards enforced by the sibling Oauth::AuthorizationsController. This allows untrusted user-created OAuth applications to mint full-privilege admin ('api' / 'admin_mode') access tokens when disable_admin_oauth_scopes is enabled (true by default), allows unconfirmed accounts (confirmed_at: nil) to mint persistent OAuth tokens, and allows OAuth device token issuance and state-changing API writes to proceed while an organization is locked in maintenance mode.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma
@@ -55,14 +38,14 @@ module Oauth
 
 ## 2. Günlük Hayatta Yol Açabileceği Kritik Senaryolar (`Senaryo A` / `Senaryo B` / `Senaryo C`)
 
-### Senaryo A — `disable_admin_oauth_scopes=true` Aktifken Güvenilmeyen Kullanıcı Uygulamasının Tam Yetkili Admin (`api` / `admin_mode`) Jetonu Üretmesi
-Sıradan bir kullanıcı `POST /oauth/applications` ile `scopes: "api admin_mode", device_code_enabled: true` ayarlı güvenilmeyen (`trusted: false`) bir uygulama oluşturur. Bir yönetici `/oauth/device` ekranında `user_code` onayladığında, `disable_admin_oauth_scopes` engeli atlanır ve `/api/v4/admin/Sidekiq_queues` dahil yönetici API'lerine erişen tam yetkili admin token üretilir.
+### Senaryo A — `disable_admin_oauth_scopes=true` Açıkken Bile Sahte CLI/IDE Cihaz Koduyla Tüm GitLab Sunucusunun (Root/Admin) Ele Geçirilmesi
+GitLab'da yöneticileri korumak için `disable_admin_oauth_scopes=true` varsayılan olarak açıktır; yani sıradan bir kullanıcının oluşturduğu güvenilmeyen (`trusted: false`) bir OAuth uygulaması onaylansa bile asla `api` veya `admin_mode` yetkisi alamaz (`403 Forbidden`). Ancak `/oauth/device` bu kontrolü tamamen unuttuğu için, sıradan bir geliştirici veya dış yüklenici `scopes: "api admin_mode sudo"` ayarlı bir cihaz kodu (`user_code`) üretir. Bir sistem yöneticisi bu kodu onayladığı anda saldırgan **tam yetkili `admin_mode` + `api` erişim jetonu** elde eder; bu jetonla **şirketin tüm özel kaynak kodlarını indirir, tüm üretim CI/CD gizli anahtarlarını (`AWS_SECRET_ACCESS_KEY`, veritabanı şifreleri) çalar, kendine yeni Root hesabı açar ve tüm GitLab sunucusunu ele geçirir.**
 
-### Senaryo B — E-Postası Doğrulanmamış (`confirmed_at: nil`) Hesabın Kalıcı API ve Refresh Token Üretmesi
-E-posta doğrulamasını tamamlamamış bir hesap `/oauth/authorize` üzerinde `403 unconfirmed_email` ile reddedilirken, `/oauth/device/authorize` üzerinden `200 OK` alarak kalıcı `access_token` ve `refresh_token` elde eder.
+### Senaryo B — Doğrulanmamış / Başkasına Ait Kurumsal E-Posta (`confirmed_at: nil`) İle Kalıcı API Arka Kapısı (Persistence) Açılması
+Saldırgan kendisine ait olmayan veya hiç doğrulanmamış bir e-posta adresiyle (`confirmed_at: nil`) hesap açar. Standart `/oauth/authorize` ekranı bu hesabı `403 unconfirmed_email` ile engellerken, saldırgan `/oauth/device/authorize` üzerinden e-posta onayı yapmadan kalıcı `access_token` ve `refresh_token` üretir; web oturumu kapansa bile API üzerinden iç projelere erişmeye ve işlem yapmaya devam eder.
 
-### Senaryo C — Organizasyon Göç/Hukuki Bakım Modu (`migration` / `legal`) Sırasında Token Basımı ve Depo Yazma İşlemi
-Organizasyon bakım moduna alınarak tüm standart OAuth ve web yazma işlemleri `503`/`403` ile kilitlenmişken, `grant_type=urn:ietf:params:oauth:grant-type:device_code` ile yeni token basılır ve `POST /api/v4/projects/1/repository/commits` (`201 Created`) ile depoya commit yazılır.
+### Senaryo C — Siber Olay İncelemesi (`legal` Hold) veya Veri Göçü (`migration`) Sırasında Dondurulmuş Üretim Depolarına Arka Kapı (Backdoor) Enjekte Edilmesi
+Şirket bir siber saldırı adli incelemesi (`legal` -> `403`) veya veri merkezi göçü (`migration` -> `503`) sırasında tüm organizasyonu bakım moduna alarak kod yazılmasını kilitler. Ancak `device_code` akışı bu kilidi atladığı için saldırgan dondurulmuş üretim deposuna `POST /api/v4/projects/1/repository/commits` (`201 Created`) ile **arka kapılı kod veya zararlı `.gitlab-ci.yml` pipeline'ı enjekte eder** ve adli delil bütünlüğünü bozar.
 
 ---
 

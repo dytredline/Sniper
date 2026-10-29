@@ -2,25 +2,6 @@
 
 **English** | [Türkçe](tr/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md) | [日本語](ja/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md) | [简体中文](zh-CN/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md) | [한국어](ko/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md)
 
-## Quick-Fill GitHub GHSA & MITRE CNA Form Fields
-- **Repository:** `openziti/ziti`
-- **GitHub Advisory URL:** `https://github.com/openziti/security/security/advisories/GHSA-qwv8-hh9r-cqrf`
-- **Existing GHSA ID:** `GHSA-qwv8-hh9r-cqrf`
-- **Ecosystem:** `Go`
-- **Package Name:** `github.com/openziti/ziti/v2`
-- **Affected Versions:** `<= v2 (commit 236f351a5149fe68328fc8083bebe514f0307d0c)`
-- **Patched Versions:** `None (Patch attached)`
-- **CWE:** `CWE-295 (Improper Certificate Validation)`
-- **CVSS v3.1:** `7.4 High — CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N`
-- **MITRE Vendor:** `NetFoundry / OpenZiti`
-- **MITRE Vulnerability Type:** `Improper Certificate Validation (CWE-295)`
-- **MITRE Affected Component(s):** `ziti/util/certs.go (AreCertsTrusted & InsecureClient, lines 91-103, 199-208) and ziti/cmd/edge/login.go (fetchTrustedServerCerts, lines 511, 535-549)`
-- **MITRE Suggested CVE Description:**
-  > In OpenZiti ziti through commit 236f351a5149fe68328fc8083bebe514f0307d0c (github.com/openziti/ziti/v2), util.AreCertsTrusted in ziti/util/certs.go calls InsecureClient(&client, certs), which unconditionally sets tls.Config{InsecureSkipVerify: true} even when len(certs) > 0. Because Go's crypto/tls ignores RootCAs when InsecureSkipVerify is true, the x509.UnknownAuthorityError check in AreCertsTrusted is unreachable dead code and AreCertsTrusted always returns true during 'ziti edge login', allowing a man-in-the-middle attacker with an untrusted TLS certificate to intercept administrator credentials.
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism

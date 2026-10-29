@@ -2,23 +2,6 @@
 
 [English](../18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md) | [Türkçe](../tr/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md) | **日本語** | [简体中文](../zh-CN/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md) | [한국어](../ko/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md)
 
-## Quick-Fill GitHub / HackerOne & MITRE CNA Form Fields
-- **Repository:** `gitlab-org/gitlab` (`https://gitlab.com/gitlab-org/gitlab`)
-- **Public Technical Advisory URL:** `https://github.com/dytredline/Sniper/blob/main/docs/advisories/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md`
-- **Candidate / Tracking ID:** `GITLAB-CAND-04` (`HackerOne: gitlab | MITRE CNA-LR Submitted`)
-- **Ecosystem:** `RubyGems / GitLab CE & EE`
-- **Package Name:** `gitlab-ce / gitlab-ee`
-- **Affected Versions:** `<= 19.6.0-pre (verified on live 19.5.1-ce.0 & 19.6.0-pre commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`
-- **Patched Versions:** `None upstream on master as of 2026-10-30 (Verified defensive patch attached below)`
-- **CWE:** `CWE-601 / CWE-863`
-- **CVSS v3.1:** `5.4 Medium — CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:L/A:N`
-- **MITRE Vendor:** `GitLab`
-- **MITRE Suggested CVE Description:**
-  > In GitLab CE/EE through 19.6.0-pre, Projects::Integrations::SlashCommandsController#confirm (app/controllers/projects/integrations/slash_commands_controller.rb:21-48) passes unvalidated request_params[:response_url] to Gitlab::SlashCommands::VerifyRequest and calls redirect_to request_params[:redirect_url] (with config.action_controller.raise_on_open_redirects = false), while Integrations::Base::SlashCommands::CACHE_KEY (app/models/concerns/integrations/base/slash_commands.rb:9) keys Redis entries solely by command_id without binding project_id or integration_id. An attacker can replay a command_id across projects to bind a victim's ChatName integration and trigger an authenticated open redirect to an arbitrary external URL.
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism
@@ -49,14 +32,14 @@
 
 ## 2. Concrete Everyday Real-World Production Scenarios (`Scenario A` / `Scenario B` / `Scenario C`)
 
-### Scenario A — Authenticated Open Redirect After Slash Command Approval
-An attacker sends a link to a legitimate GitLab project slash command confirmation endpoint containing a crafted `redirect_url=https://evil-phishing.example/oauth/callback`. Once the authenticated user confirms, GitLab responds with `302 Found` to the attacker's domain (`open_redirect_triggered: true`).
+### Scenario A — Credential & 2FA Theft via Trusted GitLab Slash Command Confirmation Redirect (`302 Found` Open Redirect)
+A developer clicks a legitimate corporate GitLab slash-command confirmation link (`https://gitlab.company.com/.../slash_commands/confirm?command_id=...&redirect_url=https://evil-gitlab-sso.example/login`) shared in Slack/Mattermost and presses **Confirm**. Because `SlashCommandsController#confirm` calls `redirect_to request_params[:redirect_url]` with `raise_on_open_redirects = false`, GitLab immediately redirects (`302 Found`) the authenticated user from the trusted corporate GitLab domain to the attacker's SSO credential-harvesting page (`open_redirect_triggered: true`).
 
-### Scenario B — Cross-Project `command_id` Replay Binds Victim's `ChatName` to Another Project's Integration
-An attacker triggers a slash command on Project B to obtain a valid `command_id` in Redis, then crafts a confirmation URL on Project A using that `command_id` (`cross_project_cache_collision_accepted: true`).
+### Scenario B — Cross-Project ChatOps Account Binding (`Project B -> Project A`) via Unscoped Redis `CACHE_KEY` Collision
+Because Redis `CACHE_KEY = "slash-command-requests:%{secret}"` omits `project_id` and `integration_id`, an attacker generates a valid `command_id` on an attacker-controlled project (`Project B`) and crafts a `/slash_commands/confirm` link on a target production project (`Project A`). When the victim confirms on `Project A`, GitLab accepts the foreign `command_id` (`cross_project_cache_collision_accepted: true`) and binds the victim's `ChatName` identity to the target project's slash command integration.
 
-### Scenario C — Arbitrary `response_url` Callback Target Manipulation
-Supplying a custom `request_params[:response_url]` on `POST /confirm` causes `VerifyRequest#approve!` to send the slash command approval callback to the caller-supplied URL rather than the cached integration URL.
+### Scenario C — Hijacking ChatOps Approval Callbacks via Unbound `request_params[:response_url]`
+Instead of using `cached_params[:response_url]` stored in Redis, `#confirm` passes `request_params[:response_url]` directly into `VerifyRequest.new(integration, chat_user, request_params[:response_url]).approve!`, allowing an attacker to redirect the ChatOps confirmation webhook payload to their own server.
 
 ---
 

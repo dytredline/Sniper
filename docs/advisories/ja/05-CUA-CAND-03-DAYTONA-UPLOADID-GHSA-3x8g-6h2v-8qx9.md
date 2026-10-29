@@ -2,25 +2,6 @@
 
 [English](../05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md) | [Türkçe](../tr/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md) | **日本語** | [简体中文](../zh-CN/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md) | [한국어](../ko/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md)
 
-## GitHub GHSA & MITRE CNA フォーム入力フィールド
-- **対象リポジトリ:** `trycua/cua`
-- **GitHub Advisory URL:** `https://github.com/trycua/cua/security/advisories/GHSA-3x8g-6h2v-8qx9`
-- **既存 GHSA ID:** `GHSA-3x8g-6h2v-8qx9`
-- **エコシステム:** `Cargo`
-- **パッケージ名:** `cua-compat`
-- **影響を受けるバージョン:** `<= 0.8.0 (cua-spacesd <= 0.8.0, commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **修正済みバージョン:** `なし（修正パッチ添付）`
-- **CWE:** `CWE-22 (制限されたディレクトリへのパス名の不適切な制限 — パストラバーサル)`
-- **CVSS v3.1:** `8.1 High — CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:H`
-- **MITRE ベンダー:** `TryCua`
-- **MITRE 脆弱性タイプ:** `Directory Traversal Leading to Arbitrary Directory Deletion (CWE-22)`
-- **MITRE 影響を受けるコンポーネント:** `libs/cua/crates/cua-compat/src/daytona/objectstore.rs (handle, lines 320-325, 360-422)`
-- **MITRE 推奨説明文:**
-  > TryCua cua-compat 0.8.0 以前（`trycua/cua`）において、Daytona 互換 S3 オブジェクトストア（`libs/cua/crates/cua-compat/src/daytona/objectstore.rs`）は `object_path(&key)` によってオブジェクトキーのパストラバーサルを検証しますが、`uploadId` クエリパラメータを一切検証していません。さらに HTTP `DELETE`（`AbortMultipartUpload`）ハンドラでは、`uploads.remove(&id)` で該当 `uploadId` が存在したかどうかを確認せず、無条件に `tokio::fs::remove_dir_all(root.join("uploads").join(&id))` を実行するため、push 権限を持つクライアントがオブジェクトストア全体や親ディレクトリを再帰的に削除できます。
-- **報告者 / クレジット:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. コードの欠陥がどのように悪用可能な脆弱性に変わるか
 
 ### ステップバイステップの技術的メカニズム

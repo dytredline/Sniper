@@ -2,23 +2,6 @@
 
 [English](../16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md) | [Türkçe](../tr/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md) | [日本語](../ja/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md) | [简体中文](../zh-CN/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md) | **한국어**
 
-## Quick-Fill GitHub / HackerOne & MITRE CNA Form Fields
-- **Repository:** `gitlab-org/gitlab` (`https://gitlab.com/gitlab-org/gitlab`)
-- **Public Technical Advisory URL:** `https://github.com/dytredline/Sniper/blob/main/docs/advisories/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md`
-- **Candidate / Tracking ID:** `GITLAB-CAND-08` (`HackerOne: gitlab | MITRE CNA-LR Submitted`)
-- **Ecosystem:** `RubyGems / GitLab EE`
-- **Package Name:** `gitlab-ee`
-- **Affected Versions:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`
-- **Patched Versions:** `None upstream on master as of 2026-10-30 (Verified defensive patch attached below)`
-- **CWE:** `CWE-862 / CWE-639`
-- **CVSS v3.1:** `7.7 High — CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`
-- **MITRE Vendor:** `GitLab`
-- **MITRE Suggested CVE Description:**
-  > In GitLab EE through 19.6.0-pre, Ai::DuoWorkflows::McpConfigService#item_version (ee/app/services/ai/duo_workflows/mcp_config_service.rb:131-135) resolves Ai::Catalog::ItemVersion.find_by_id(ai_catalog_item_version_id) without checking Ability.allowed?(current_user, :read_ai_catalog_item, item_version) (which is enforced at line 334 of the same file), while API::Ai::DuoWorkflows::Workflows (ee/lib/api/ai/duo_workflows/workflows.rb:341-344, 1065) and ConnectionConfigService#mcp_config_service (ee/app/services/ai/duo_workflows/connection_config_service.rb:220-228) allow callers on GET /api/v4/ai/duo_workflows/ws to override workflow_definition and supply arbitrary ai_catalog_item_version_id values from private cross-project/cross-organization AI Catalog items, injecting unapproved opt-in write tools into the Duo Workflow MCP tool configuration.
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism
@@ -55,14 +38,14 @@
 
 ## 2. Concrete Everyday Real-World Production Scenarios (`Scenario A` / `Scenario B` / `Scenario C`)
 
-### Scenario A — Injecting Write Tools into a Restricted `chat` Workflow via `/ws` Parameter Override
-A user starts a read-only `chat` workflow (`workflow.workflow_definition == 'chat'`), then connects to `GET /api/v4/ai/duo_workflows/ws` with an overridden `workflow_definition` and a foreign private `ai_catalog_item_version_id`, enabling write tools (`create_issue`) that were withheld from the workflow record (`unapproved_write_tool_injected: true`).
+### Scenario A — Turning a Restricted Read-Only `chat` Session into a Full Write-Capable Agent Session via `/ws` Parameter Override
+An organization restricts a user or workflow to read-only `chat` mode (`workflow.workflow_definition == 'chat'`), where state-mutating tools (`create_issue`, `create_merge_request`, repository/comment writes) are withheld. By passing an overridden `workflow_definition` and a foreign private `ai_catalog_item_version_id` on `GET /api/v4/ai/duo_workflows/ws`, the caller bypasses the workflow record's restrictions and injects write tools directly into the live Duo Workflow session (`unapproved_write_tool_injected: true`), allowing the AI agent to perform unauthorized write operations across projects.
 
-### Scenario B — Cross-Project / Cross-Organization Private AI Agent Tool Reconnaissance
-An attacker iterates `ai_catalog_item_version_id` values on `/ws` (or `POST /api/v4/ai/duo_workflows/workflows`) to read the configured `def_tools` and `def_mcp_tools` of private (`public: false`) AI Catalog agents belonging to other organizations.
+### Scenario B — Stealing Proprietary AI Agent Configurations & Toolsets From Other Organizations' Private (`public: false`) Projects
+Because `McpConfigService#item_version` (`mcp_config_service.rb:134`) omits `Ability.allowed?(current_user, :read_ai_catalog_item, item_version)`, an attacker enumerates `ai_catalog_item_version_id` integers on `/ws` or `POST /api/v4/ai/duo_workflows/workflows` to extract the confidential `def_tools` and `def_mcp_tools` configurations of private (`public: false`) AI Catalog agents owned by other organizations.
 
-### Scenario C — Automated Write Tool Execution Without Expected Workflow Definition Restrictions
-During a Duo Workflow WebSocket session, tools injected via unvalidated `item_version` / `workflow_definition` parameters execute state-changing actions in accessible projects.
+### Scenario C — Attaching Unauthorized Private Agent Versions During Workflow Creation (`POST /api/v4/ai/duo_workflows/workflows`)
+In `workflows.rb:341-344` (`create_workflow_params`), `Ai::Catalog::ItemVersion.find` is called without `:read_ai_catalog_item` authorization, allowing a user to permanently bind a private cross-organization agent version to their workflow record.
 
 ---
 

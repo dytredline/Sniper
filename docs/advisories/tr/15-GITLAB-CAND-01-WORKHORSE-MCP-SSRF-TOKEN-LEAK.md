@@ -2,23 +2,6 @@
 
 [English](../15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md) | **Türkçe** | [日本語](../ja/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md) | [简体中文](../zh-CN/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md) | [한국어](../ko/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md)
 
-## GitHub / HackerOne ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `gitlab-org/gitlab` (`https://gitlab.com/gitlab-org/gitlab`)
-- **Açık Teknik Danışma (Advisory) URL'si:** `https://github.com/dytredline/Sniper/blob/main/docs/advisories/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md`
-- **Aday / İzleme Kimliği:** `GITLAB-CAND-01` (`HackerOne: gitlab | MITRE CNA-LR Submitted`)
-- **Ekosistem:** `Go / GitLab Workhorse`
-- **Paket Adı:** `gitlab.com/gitlab-org/gitlab/workhorse`
-- **Etkilenen Sürümler:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`
-- **Yamalı Sürümler:** `Yok (30.10.2026 itibarıyla upstream master üzerinde yamasız; savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-918 / CWE-522`
-- **CVSS v3.1:** `8.2 High — CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`
-- **MITRE Üreticisi:** `GitLab`
-- **MITRE Önerilen CVE Açıklaması:**
-  > In GitLab Workhorse through 19.6.0-pre (workhorse/internal/ai_assist/duoworkflow/mcp.go), externalMcpTransport is constructed via transport.NewRestrictedTransport without passing transport.WithSSRFFilter() (unlike workhorse/internal/sendurl/sendurl.go), and roundTripper.RoundTrip unconditionally injects configured authentication headers (such as Authorization: Bearer) on every HTTP request including cross-origin redirect hops without a CheckRedirect policy. An external MCP server can redirect Workhorse to internal loopback/metadata services or cross-origin hosts and exfiltrate the user's MCP Bearer token.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma
@@ -49,14 +32,14 @@ func (t *roundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
 
 ## 2. Günlük Hayatta Yol Açabileceği Kritik Senaryolar (`Senaryo A` / `Senaryo B` / `Senaryo C`)
 
-### Senaryo A — Çapraz Kökenli `302` Yönlendirmesiyle Kullanıcının MCP `Authorization: Bearer` Jetonunun Çalınması
-Duo Workflow oturumu harici bir MCP sunucusuna bağlandığında, sunucunun yaptığı `302 Found` yönlendirmesinde Workhorse `roundTripper.RoundTrip` kullanıcının `Authorization: Bearer` jetonunu üçüncü taraf sunucuya sızdırır (`bearer_token_leaked_to_canary: true`).
+### Senaryo A — Çapraz Kökenli (`Cross-Origin`) `302` Yönlendirmesiyle Kurban Geliştiricinin veya Yöneticinin Canlı `Authorization: Bearer` Erişim Jetonunun Çalınması (Tam Hesap ve Özel Depo Ele Geçirme)
+Bir geliştirici veya yönetici Duo Workflow AI asistanını çalıştırdığında, GitLab Workhorse (`mcp.go`) harici MCP sunucusuna kullanıcının canlı `Authorization: Bearer <token>` başlığıyla bağlanır. Harici sunucu farklı bir alan adına (`https://attacker-collector.example/steal`) `302 Found` yönlendirmesi yaptığında, `roundTripper.RoundTrip` bu gizli başlığı silmeden yeni hedefe tekrar ekler (`bearer_token_leaked_to_canary: true`). **Saldırgan kurbanın canlı Bearer jetonunu doğrudan kendi sunucusunda yakalar ve bu jetonla kurbanın erişebildiği özel şirket depolarını indirir, gizli issue/MR kayıtlarını okur veya kurban adına işlem yapar.**
 
-### Senaryo B — Workhorse Üzerinden Dahili Loopback (`127.0.0.1`) ve Bulut Metadata (`169.254.169.254`) SSRF
-İlk aşamada geçerli bir genel IP adresine sahip olan harici MCP uç noktası `302` ile `http://127.0.0.1:...` adresine yönlendirme yaptığında, `WithSSRFFilter` olmadığı için Workhorse dahili servise bağlanır.
+### Senaryo B — Workhorse Süreci Üzerinden İç Ağa (`127.0.0.1`), İç Mikroservislere ve Bulut Metadata (`169.254.169.254`) Servisine Doğrudan SSRF
+`externalMcpTransport` içinde `transport.WithSSRFFilter()` unutulduğu için, ilk kayıtta geçerli bir genel adrese sahip olan MCP uç noktası `302` ile `http://127.0.0.1:...` veya `http://169.254.169.254/...` adresine yönlendirme yaptığında Workhorse doğrudan iç servise bağlanır.
 
-### Senaryo C — Workhorse MCP İstemcisine Karşı DNS Rebinding
-`externalMcpTransport` soket bağlantı anında (`DialContext`) IP doğrulaması yapmadığı için DNS Rebinding ile yerel ağ servislerine erişilir.
+### Senaryo C — DNS Rebinding İle Güvenlik Duvarı Arkasındaki İç Şirket Ağına Sızma
+Kayıt sırasında genel IP döndüren alan adı, Workhorse bağlantı kurarken `127.0.0.1` veya `10.0.0.1` döndürdüğünde soket seviyesinde `WithSSRFFilter` olmadığı için iç şirket ağına doğrudan erişilir.
 
 ---
 

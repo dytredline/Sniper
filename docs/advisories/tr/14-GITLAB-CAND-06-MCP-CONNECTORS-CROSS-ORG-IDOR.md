@@ -2,23 +2,6 @@
 
 [English](../14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md) | **Türkçe** | [日本語](../ja/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md) | [简体中文](../zh-CN/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md) | [한국어](../ko/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md)
 
-## GitHub / HackerOne ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `gitlab-org/gitlab` (`https://gitlab.com/gitlab-org/gitlab`)
-- **Açık Teknik Danışma (Advisory) URL'si:** `https://github.com/dytredline/Sniper/blob/main/docs/advisories/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md`
-- **Aday / İzleme Kimliği:** `GITLAB-CAND-06` (`HackerOne: gitlab | MITRE CNA-LR Submitted`)
-- **Ekosistem:** `RubyGems / GitLab EE`
-- **Paket Adı:** `gitlab-ee`
-- **Etkilenen Sürümler:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`
-- **Yamalı Sürümler:** `Yok (30.10.2026 itibarıyla upstream master üzerinde yamasız; savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-639 / CWE-862`
-- **CVSS v3.1:** `8.1 High — CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N`
-- **MITRE Üreticisi:** `GitLab`
-- **MITRE Önerilen CVE Açıklaması:**
-  > In GitLab EE through 19.6.0-pre, Oauth::McpConnectorsAuthController (ee/app/controllers/oauth/mcp_connectors_auth_controller.rb) loads Ai::Catalog::McpServer records via global Ai::Catalog::McpServer.find(params[:id]) without scoping to .in_organization(Current.organization), Ai::Catalog::McpServers::ConnectService (connect_service.rb) mutates oauth_client_id and oauth_client_secret via Dynamic Client Registration while checking only read_ai_catalog_mcp_server instead of update_ai_catalog_mcp_server, and Gitlab::Oauth::ClientState.from_state (ee/lib/gitlab/oauth/client_state.rb) discards the signed data payload when reconstructing state tokens. An authenticated low-privileged user can access or overwrite MCP server OAuth credentials across organization boundaries and replay OAuth callback states.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma
@@ -48,14 +31,14 @@
 
 ## 2. Günlük Hayatta Yol Açabileceği Kritik Senaryolar (`Senaryo A` / `Senaryo B` / `Senaryo C`)
 
-### Senaryo A — Organizasyonlar Arası (`Cross-Org`) MCP Sunucusu DCR Kimlik Bilgisi Ele Geçirme
-Organizasyon A'daki düşük yetkili bir kullanıcı, Organizasyon B'deki bir `McpServer` kimliğini hedef alarak `connect` aksiyonunu çağırır ve `oauth_client_id` / `oauth_client_secret` alanlarını kendi DCR kaydıyla ezer (`cross_org_server_mutated: true`).
+### Senaryo A — Başka Bir Şirketin / Organizasyonun (`Cross-Org`) Kurumsal Yapay Zeka (MCP) Konnektörünü Ele Geçirme
+Çok kiracılı (multi-organization) bir GitLab sisteminde Organizasyon A'daki saldırgan, `McpConnectorsAuthController` içinde `.in_organization(Current.organization)` kontrolü olmadığı için Organizasyon B'ye ait bir `McpServer` kimliğini hedef alır. `ConnectService` içinde yazma yetkisi (`update_ai_catalog_mcp_server`) kontrol edilmediğinden, saldırgan Dinamik İstemci Kaydı (DCR) başlatarak **kurban şirketin `oauth_client_id` ve `oauth_client_secret` kimlik bilgilerini kendi kontrolündeki OAuth bilgileriyle ezer (`cross_org_server_mutated: true`) ve kurban şirketin AI bağlantılarını ele geçirir.**
 
-### Senaryo B — Maintainer Olmayan Kullanıcının DCR Kaydını Tetiklemesi
-Yalnızca okuma yetkisine (`read_ai_catalog_mcp_server`) sahip sıradan bir üye, `update_ai_catalog_mcp_server` kontrolü olmadığı için sunucu kimlik bilgilerini değiştirir.
+### Senaryo B — Şirket İçinde Salt-Okunur (Guest/Reporter) Kullanıcının Üretim AI Konnektör Kimlik Bilgilerini Ezmesi
+Yalnızca okuma yetkisine (`read_ai_catalog_mcp_server`) sahip düşük yetkili bir kullanıcı, Maintainer yetkisi (`update_ai_catalog_mcp_server`) aranmadığı için şirketin MCP sunucusunun `oauth_client_id` / `oauth_client_secret` ayarlarını değiştirerek tüm ekibin AI entegrasyonunu kendi sahte istemcisine yönlendirir veya sabote eder.
 
-### Senaryo C — Oturumlar Arası OAuth `state` Tekrarı (Login CSRF)
-`ClientState.from_state` içinde kullanıcı ve organizasyon bağlaması doğrulanmadığı için üretilen `state` parametresi farklı bir oturumda tekrar oynatılabilir.
+### Senaryo C — Bağsız `ClientState` Jetonuyla Kurban Geliştiricinin GitLab Hesabını Saldırganın AI Hesabına Bağlama (Login CSRF)
+`ClientState.from_state` içinde kullanıcı ve organizasyon (`data`) doğrulaması düşürüldüğü için, saldırgan kendi ürettiği OAuth `state` bağlantısını kurban geliştiriciye tıklatarak kurbanın `McpServerUserConnection` kaydını saldırganın harici MCP hesabına bağlar; kurbanın AI asistanıyla yaptığı işlemler saldırganın hesabına akar.
 
 ---
 

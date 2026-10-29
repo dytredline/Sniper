@@ -2,23 +2,6 @@
 
 [English](../17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md) | **Türkçe** | [日本語](../ja/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md) | [简体中文](../zh-CN/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md) | [한국어](../ko/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md)
 
-## GitHub / HackerOne ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `gitlab-org/gitlab` (`https://gitlab.com/gitlab-org/gitlab`)
-- **Açık Teknik Danışma (Advisory) URL'si:** `https://github.com/dytredline/Sniper/blob/main/docs/advisories/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md`
-- **Aday / İzleme Kimliği:** `GITLAB-CAND-07` (`HackerOne: gitlab | MITRE CNA-LR Submitted`)
-- **Ekosistem:** `RubyGems & Go / GitLab EE & Workhorse`
-- **Paket Adı:** `gitlab-ee`
-- **Etkilenen Sürümler:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`
-- **Yamalı Sürümler:** `Yok (30.10.2026 itibarıyla upstream master üzerinde yamasız; savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-863 / CWE-639`
-- **CVSS v3.1:** `8.1 High — CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:L`
-- **MITRE Üreticisi:** `GitLab`
-- **MITRE Önerilen CVE Açıklaması:**
-  > In GitLab EE through 19.6.0-pre, Ai::DuoWorkflows::McpConfigService#execute (ee/app/services/ai/duo_workflows/mcp_config_service.rb:57-64) merges ai_catalog_mcp_servers.except(:orbit) after gitlab_mcp_server(denied) without excluding the ':gitlab' key, while Mutations::Ai::Catalog::Agent::Create/Update and Ai::Catalog::McpServers::ListService resolve McpServer IDs without .in_organization scoping. Attaching an Ai::Catalog::McpServer named 'GitLab' (server_key => :gitlab, Tools: nil) overwrites the built-in ':gitlab' MCP server configuration and causes GitLab Workhorse (workhorse/internal/ai_assist/duoworkflow/mcp.go:254) to evaluate 'allToolsAvailable := s.cfg.Tools == nil' as true, bypassing withheld_server_tools restrictions.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma
@@ -44,14 +27,14 @@
 
 ## 2. Günlük Hayatta Yol Açabileceği Kritik Senaryolar (`Senaryo A` / `Senaryo B` / `Senaryo C`)
 
-### Senaryo A — Yerleşik `:gitlab` MCP Sunucusunda `withheld_server_tools(denied)` Kısıtlamasının Kaldırılması (`allToolsAvailable = true`)
-Bir AI Catalog ajanına `"GitLab"` (`server_key => :gitlab`) adında bir `McpServer` bağlandığında, yerleşik `:gitlab` girdisi `Tools: nil` ile ezilir ve Workhorse (`mcp.go:254`) `allToolsAvailable = true` atayarak yasaklı (`denied`) tüm yerleşik GitLab MCP araçlarını açar (`workhorse_all_tools_available: true`).
+### Senaryo A — `"GitLab"` Adlı Katalog Sunucusuyla Tüm Yerleşik GitLab AI Güvenlik Kısıtlamalarını (`withheld_server_tools`) Sıfırlama (`allToolsAvailable = true`)
+GitLab Duo Workflow, yerleşik `:gitlab` MCP sunucusunda tehlikeli araçları `withheld_server_tools(denied)` listesiyle engeller. Ancak `McpConfigService#execute` yalnızca `.except(:orbit)` kullanıp `:gitlab` anahtarını korumadığı için, saldırgan `"GitLab"` adında (`server_key => :gitlab`, `Tools: nil`) bir katalog sunucusu bağladığında yerleşik `:gitlab` kaydının üzerine yazılır. Workhorse (`mcp.go:254`) `Tools == nil` gördüğü için **`allToolsAvailable = true` yapar ve yerleşik GitLab MCP sunucusundaki TÜM araç kısıtlamalarını kaldırarak yasaklı araçların tamamını kullanıma açar (`workhorse_all_tools_available: true`).**
 
-### Senaryo B — GraphQL `aiCatalogAgentCreate` / `Update` İle Başka Organizasyonun `McpServer` Kaydını Bağlama
-`ListService` ve GraphQL mutasyonlarında `.in_organization` kontrolü olmadığı için farklı bir organizasyona ait `McpServer` GID'si ajana bağlanır.
+### Senaryo B — GraphQL `aiCatalogAgentCreate` / `Update` İle Başka Organizasyonun Özel `McpServer` Sunucularını Kendi Ajanına Bağlama
+`ListService` ve GraphQL mutasyonlarında `.in_organization` kontrolü olmadığı için saldırgan başka bir organizasyona ait `gid://gitlab/Ai::Catalog::McpServer/<ID>` kaydını kendi ajanına bağlayarak organizasyon izolasyonunu deler.
 
-### Senaryo C — `Headers: {}` Ezilmesi Nedeniyle Yerleşik `/api/v4/mcp` Çağrılarında `401` Servis Reddi (DoS)
-Çarpışan `:gitlab` kaydında `X-Gitlab-Oauth-Token` başlığı ezildiği için yerleşik GitLab MCP araçları `401 Unauthorized` ile düşer.
+### Senaryo C — Yerleşik `:gitlab` Kimlik Başlıklarını (`X-Gitlab-Oauth-Token`) Ezerek Tüm Duo Workflow Hizmetini Çökertme (`401` DoS)
+Çarpışan `:gitlab` kaydı `X-Gitlab-Oauth-Token` başlığını `{}` ile ezdiği için yerleşik `/api/v4/mcp` çağrılarının tamamı `401 Unauthorized` hatasıyla çöker.
 
 ---
 
