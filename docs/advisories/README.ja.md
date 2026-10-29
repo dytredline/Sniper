@@ -51,6 +51,6 @@ python3 scripts/sniper-project-audit /path/to/target-repo --format json --output
 python3 -m json.tool docs/advisories/other-repos-and-cua-real-world-impact-e2e-20261029.json
 
 # 3. 各アドバイザリ文書（01..11）内の隔離検証ハーネスを実行
-# 各ドキュメント（01-STIRLING-CAND-02-SYMLINK.md .. 11-XROAD-CAND-01-RUNNER-INJECTION.md）には
+# 各ドキュメント（01-STIRLING-CAND-02-SYMLINK.md .. 19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md）には
 # 専用のローカル検証・再現コマンドが記載されています。
 ```

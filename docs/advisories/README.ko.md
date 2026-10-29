@@ -6,7 +6,7 @@
 **탐지 및 검증 엔진:** **Sniper Security Toolkit** (`https://github.com/dytredline/Sniper`)  
 **검증 표준:** 3단계 실제 환경 영향 검증 (`1. 코드 결함이 취약점으로 전환되는 메커니즘 -> 2. 일상 운영 환경에서 발생 가능한 3가지 핵심 시나리오 (시나리오 A / B / C) -> 3. 예제 실행 및 검증 명령어와 런타임 증명 (RED -> GREEN + BENIGN)`)
 
-이 디렉터리에는 **Sniper** 정적/동적 분석 엔진을 사용한 보안 감사 과정에서 발견된 **11건의 검증된 보안 취약점**(6개 오픈소스 프로젝트 대상)이 수록되어 있습니다. 각 보고서는 **코드 내 버그가 어떻게 실제 보안 취약점으로 이어지는지 누구나 이해할 수 있는 설명과 소스 코드 수준 분석**, **일상 업무 환경에서 발생할 수 있는 3가지 차별화된 핵심 시나리오(`시나리오 A`, `시나리오 B`, `시나리오 C`)**, **예제 실행 및 검증 명령어**, 그리고 **엔드투엔드 런타임 증명(`RED -> GREEN + BENIGN`)**을 포함합니다.
+이 디렉터리에는 **Sniper** 정적/동적 분석 엔진을 사용한 보안 감사 과정에서 발견된 **19건의 검증된 보안 권고(18건의 고유 취약점 + 1건의 업스트림 중복 심층 방어 기록)**(6개 오픈소스 프로젝트 대상)이 수록되어 있습니다. 각 보고서는 **코드 내 버그가 어떻게 실제 보안 취약점으로 이어지는지 누구나 이해할 수 있는 설명과 소스 코드 수준 분석**, **일상 업무 환경에서 발생할 수 있는 3가지 차별화된 핵심 시나리오(`시나리오 A`, `시나리오 B`, `시나리오 C`)**, **예제 실행 및 검증 명령어**, 그리고 **엔드투엔드 런타임 증명(`RED -> GREEN + BENIGN`)**을 포함합니다.
 
 - **엔드투엔드 런타임 증명 기록 (11/11 PASS):** [`other-repos-and-cua-real-world-impact-e2e-20261029.json`](other-repos-and-cua-real-world-impact-e2e-20261029.json)
 - **스캔된 저장소 및 보안 권고 전체 카탈로그 (8개 사전 스캔 저장소 + 11건의 검증된 취약점):** [`../SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ko.md`](../SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ko.md)
@@ -50,7 +50,7 @@ python3 scripts/sniper-project-audit /path/to/target-repo --format json --output
 # 2. 11건의 검증된 보안 권고 전체에 대한 엔드투엔드 런타임 증명 요약 확인
 python3 -m json.tool docs/advisories/other-repos-and-cua-real-world-impact-e2e-20261029.json
 
-# 3. 각 개별 보안 권고 문서(01..11) 내부의 격리 검증 하네스 실행
-# 각 문서(01-STIRLING-CAND-02-SYMLINK.md .. 11-XROAD-CAND-01-RUNNER-INJECTION.md)에는
+# 3. 각 개별 보안 권고 문서(01..19) 내부의 격리 검증 하네스 실행
+# 각 문서(01-STIRLING-CAND-02-SYMLINK.md .. 19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md)에는
 # 전용 로컬 검증 및 재현 명령어가 포함되어 있습니다.
 ```

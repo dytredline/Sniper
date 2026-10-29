@@ -303,7 +303,7 @@ Her deponun dosya/satır düzeyindeki tam kanıt incelemesi, `Senaryo A / B / C`
 
 #### Kendi Sniper Taramamızda Bulduğumuz Doğrulanmış Açıklar
 
-**Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü**, **Adım Adım 3 Farklı Günlük Hayat Kritik Senaryosu (`Senaryo A / B / C`)**, **Örnek Çalıştırma Komutları** ve **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ile kanıtlanan **11 güvenlik açığı** ([advisories/README.tr.md](advisories/README.tr.md) ve [SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md](SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md)) aşağıda yayımlanmıştır:
+**Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü**, **Adım Adım 3 Farklı Günlük Hayat Kritik Senaryosu (`Senaryo A / B / C`)**, **Örnek Çalıştırma Komutları** ve **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ile kanıtlanan **19 güvenlik kaydı (18 özgün açık + 1 üst akış duplicate)** ([advisories/README.tr.md](advisories/README.tr.md) ve [SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md](SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md)) aşağıda yayımlanmıştır:
 
 | # | Açık / Advisory & Upstream GHSA | Hedef Proje & Bileşen | CWE & CVSS v3.1 | Açığın Kodda Nasıl Oluştuğu & Günlük Hayatta Yol Açtığı 3 Kritik Senaryo (`Senaryo A / B / C`) | Çalışma Zamanı Kanıtı (`RED -> GREEN`) & Örnek Komut |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -329,7 +329,7 @@ Her deponun dosya/satır düzeyindeki tam kanıt incelemesi, `Senaryo A / B / C`
 
 #### Kendi Sniper Taramamızda Bulduğumuz Doğrulanmış Açıklar (Vulnerabilities Discovered by Our Sniper Scanner)
 
-**Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Adım Adım Günlük Hayat Kritik Senaryoları (`Scenario A / B / C`)**, **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ve **Doğrulanmış Savunma Yamaları (`git diff`)** ile kanıtlanan **11 güvenlik açığı** ([advisories/README.md](advisories/README.md)) aşağıda yayımlanmıştır:
+**Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Adım Adım Günlük Hayat Kritik Senaryoları (`Scenario A / B / C`)**, **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ve **Doğrulanmış Savunma Yamaları (`git diff`)** ile kanıtlanan **19 güvenlik kaydı (18 özgün açık + 1 üst akış duplicate)** ([advisories/README.md](advisories/README.md)) aşağıda yayımlanmıştır:
 
 | # | Açık / Advisory Bağlantısı | Hedef Proje & Bileşen | CWE & CVSS v3.1 | Günlük Hayatta Yol Açtığı Kritik Senaryolar (`Scenario A / B / C`) | Çalışma Zamanı Kanıtı (`RED -> GREEN`) |
 | :-: | :--- | :--- | :--- | :--- | :--- |

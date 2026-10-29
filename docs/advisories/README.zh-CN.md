@@ -51,6 +51,6 @@ python3 scripts/sniper-project-audit /path/to/target-repo --format json --output
 python3 -m json.tool docs/advisories/other-repos-and-cua-real-world-impact-e2e-20261029.json
 
 # 3. 执行每份独立安全公告（01..11）内置的隔离验证脚本
-# 每份文档（01-STIRLING-CAND-02-SYMLINK.md .. 11-XROAD-CAND-01-RUNNER-INJECTION.md）
+# 每份文档（01-STIRLING-CAND-02-SYMLINK.md .. 19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md）
 # 均包含对应的本地验证与复现命令。
 ```

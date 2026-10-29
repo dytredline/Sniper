@@ -6,14 +6,14 @@
 **Discovery & Verification Engine:** **Sniper Security Toolkit** (`https://github.com/dytredline/Sniper`)  
 **Verification Standard:** 3-Layer Real-World Impact (`1. Code-to-Vulnerability Mechanics -> 2. Three Diversified Real-World Critical Scenarios (Scenario A / B / C) -> 3. Example Execution Commands & Runtime Proof (RED -> GREEN + BENIGN)`)
 
-This directory contains **11 verified security vulnerabilities** (across 6 open-source projects) discovered during our security audits with the **Sniper** static/dynamic analysis engine, complete with plain-language and code-level explanations of **how each bug turns into a vulnerability**, **3 diversified real-world critical scenarios (`Scenario A`, `Scenario B`, `Scenario C`)**, **example execution and verification commands**, and **end-to-end runtime proofs (`RED -> GREEN + BENIGN`)**.
+This directory contains **19 verified security advisories (18 original vulnerabilities + 1 upstream `CVE-2026-40295` duplicate defense-in-depth note)** (across 7 open-source projects, including GitLab) discovered during our security audits with the **Sniper** static/dynamic analysis engine, complete with plain-language and code-level explanations of **how each bug turns into a vulnerability**, **3 diversified real-world critical scenarios (`Scenario A`, `Scenario B`, `Scenario C`)**, **example execution and verification commands**, and **end-to-end runtime proofs (`RED -> GREEN + BENIGN`)**.
 
 - **End-to-End Runtime Proof Record (11/11 PASS):** [`other-repos-and-cua-real-world-impact-e2e-20261029.json`](other-repos-and-cua-real-world-impact-e2e-20261029.json)
 - **Full Scanned Repositories & Advisories Catalog (8 Earlier Scanned Repos + 11 Verified Advisories):** [`../SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md`](../SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md)
 
 ---
 
-## 1. Summary Table: 11 Verified Vulnerabilities Discovered by Our Sniper Scanner (`Scenario A / B / C` & Runtime Proofs)
+## 1. Summary Table: 19 Verified Security Advisories (18 Original Vulnerabilities + 1 Upstream Duplicate Note) Discovered by Our Sniper Scanner (`Scenario A / B / C` & Runtime Proofs)
 
 | # | Advisory Document & Upstream GHSA | Target Project & Component | CWE & CVSS v3.1 | How the Bug Turns into a Vulnerability & 3 Critical Real-World Scenarios (`Scenario A / B / C`) | Runtime Proof (`RED -> GREEN`) & Example Command |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -39,18 +39,18 @@ This directory contains **11 verified security vulnerabilities** (across 6 open-
 
 ---
 
-## 2. Quick Local Verification & Execution Commands for All 11 Advisories
+## 2. Quick Local Verification & Execution Commands for All 19 Advisories
 
-You can verify both the **Sniper static analysis (SAST/IaC)** detections and the **isolated local runtime proofs (`RED -> GREEN + BENIGN`)** for all 11 vulnerabilities with the following commands:
+You can verify both the **Sniper static analysis (SAST/IaC)** detections and the **isolated local runtime proofs (`RED -> GREEN + BENIGN`)** for all 19 advisories with the following commands:
 
 ```bash
 # 1. Run a Sniper local project audit (SAST + IaC + SCA + Route/Boundary Analysis)
 python3 scripts/sniper-project-audit /path/to/target-repo --format json --output audit-report.json
 
-# 2. Inspect the end-to-end runtime proof summary across all 11 verified advisories
+# 2. Inspect the end-to-end runtime proof summary across all 19 verified advisories
 python3 -m json.tool docs/advisories/other-repos-and-cua-real-world-impact-e2e-20261029.json
 
-# 3. Execute the isolated verification harnesses inside each standalone advisory (01..11)
-# Each document (01-STIRLING-CAND-02-SYMLINK.md .. 11-XROAD-CAND-01-RUNNER-INJECTION.md)
+# 3. Execute the isolated verification harnesses inside each standalone advisory (01..19)
+# Each document (01-STIRLING-CAND-02-SYMLINK.md .. 19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md)
 # includes dedicated local verification commands in its "Example Execution & Verification Commands" section.
 ```

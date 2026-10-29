@@ -6,14 +6,14 @@
 **Keşif ve Doğrulama Motoru:** **Sniper Security Toolkit** (`https://github.com/dytredline/Sniper`)  
 **Doğrulama Standardı:** 3 Katmanlı Gerçek Dünya Etkisi (`1. Kodda Zafiyete Dönüşüm Mekanizması -> 2. Üç Farklı Günlük Hayat Kritik Senaryosu (Senaryo A / B / C) -> 3. Örnek Çalıştırma Komutları ve Çalışma Zamanı Kanıtı (RED -> GREEN + BENIGN)`)
 
-Bu dizin, **Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen **11 doğrulanmış güvenlik açığının** (6 açık kaynak projede) **herkesin anlayabileceği şekilde kodda nasıl zafiyete dönüştüğünü**, **günlük hayatta yol açabileceği 3 farklı kritik senaryoyu (`Senaryo A`, `Senaryo B`, `Senaryo C`)**, **örnek çalıştırma ve doğrulama komutlarını** ve **uçtan uca çalışma zamanı kanıtlarını (`RED -> GREEN + BENIGN`)** içermektedir.
+Bu dizin, **Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen **19 doğrulanmış güvenlik kaydının** (7 açık kaynak projede: 18 özgün güvenlik açığı + 1 üst akış `CVE-2026-40295` duplicate savunma derinliği kaydı) **herkesin anlayabileceği şekilde kodda nasıl zafiyete dönüştüğünü**, **günlük hayatta yol açabileceği 3 farklı kritik senaryoyu (`Senaryo A`, `Senaryo B`, `Senaryo C`)**, **örnek çalıştırma ve doğrulama komutlarını** ve **uçtan uca çalışma zamanı kanıtlarını (`RED -> GREEN + BENIGN`)** içermektedir.
 
 - **Uçtan Uca Çalışma Zamanı Kanıt Kaydı (11/11 PASS):** [`other-repos-and-cua-real-world-impact-e2e-20261029.json`](other-repos-and-cua-real-world-impact-e2e-20261029.json)
-- **Ana Türkçe Katalog ve Önceki Taramalar (8 Depo + 11 Doğrulanmış Açık):** [`../SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md`](../SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md)
+- **Ana Türkçe Katalog ve Önceki Taramalar (8 Depo + 19 Doğrulanmış Güvenlik Kaydı (18 Özgün Açık + 1 Üst Akış Duplicate)):** [`../SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md`](../SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md)
 
 ---
 
-## 1. Özet Tablo: Kendi Sniper Taramamızda Bulduğumuz 11 Doğrulanmış Açık (`Senaryo A / B / C` ve Çalışma Zamanı Kanıtları)
+## 1. Özet Tablo: Kendi Sniper Taramamızda Bulduğumuz 19 Doğrulanmış Güvenlik Kaydı (18 Özgün Açık + 1 Üst Akış Duplicate) (`Senaryo A / B / C` ve Çalışma Zamanı Kanıtları)
 
 | # | Açık / Advisory Belgesi & Upstream GHSA | Hedef Proje & Bileşen | CWE & CVSS v3.1 | Açığın Kodda Nasıl Oluştuğu & Günlük Hayatta Yol Açtığı 3 Kritik Senaryo (`Senaryo A / B / C`) | Çalışma Zamanı Kanıtı (`RED -> GREEN`) & Örnek Komut |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -39,9 +39,9 @@ Bu dizin, **Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenl
 
 ---
 
-## 2. Tüm 11 Açığı Yerel Ortamda Doğrulama ve Çalıştırma Komutları
+## 2. Tüm 19 Kaydı Yerel Ortamda Doğrulama ve Çalıştırma Komutları
 
-Aşağıdaki komutlarla tüm 11 güvenlik açığının hem **Sniper statik analiz (SAST/IaC)** tespitlerini hem de **izole yerel çalışma zamanı kanıtlarını (`RED -> GREEN + BENIGN`)** tek komutla doğrulayabilirsiniz:
+Aşağıdaki komutlarla tüm 19 güvenlik kaydı (18 özgün açık + 1 üst akış duplicate)nın hem **Sniper statik analiz (SAST/IaC)** tespitlerini hem de **izole yerel çalışma zamanı kanıtlarını (`RED -> GREEN + BENIGN`)** tek komutla doğrulayabilirsiniz:
 
 ```bash
 # 1. Sniper yerel proje denetimini çalıştırma (SAST + IaC + SCA + Rota/Sınır Analizi)
@@ -50,7 +50,7 @@ python3 scripts/sniper-project-audit /path/to/target-repo --format json --output
 # 2. 11 doğrulanmış açığın uçtan uca çalışma zamanı kanıt özetini inceleme
 python3 -m json.tool docs/advisories/other-repos-and-cua-real-world-impact-e2e-20261029.json
 
-# 3. Tekil açık belgelerindeki (01..11) izole doğrulama senaryolarını çalıştırma
+# 3. Tekil açık belgelerindeki (01..19) izole doğrulama senaryolarını çalıştırma
 # Her bir Türkçe açık belgesinin (tr/01-STIRLING-CAND-02-SYMLINK.md .. tr/11-XROAD-CAND-01-RUNNER-INJECTION.md)
 # "Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları" bölümünde o açığa özel yerel komutlar yer almaktadır.
 ```

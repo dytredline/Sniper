@@ -334,7 +334,7 @@ For the complete file-and-line evidence audit of all 8 repositories, full `Scena
 
 #### Verified Vulnerabilities Discovered by Our Sniper Scanner
 
-Below are the **11 verified security vulnerabilities** discovered during our security audits with the **Sniper** static/dynamic analysis engine — complete with **How the Code Bug Turns into a Vulnerability**, **3 Diversified Real-World Critical Scenarios (`Scenario A / B / C`)**, **Example Execution Commands**, and **End-to-End Runtime Proofs (`RED -> GREEN + BENIGN`)** (see [docs/advisories/README.md](docs/advisories/README.md) and [docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md](docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md)):
+Below are the **19 verified security advisories (18 original vulnerabilities + 1 upstream `CVE-2026-40295` duplicate defense-in-depth note)** discovered during our security audits with the **Sniper** static/dynamic analysis engine — complete with **How the Code Bug Turns into a Vulnerability**, **3 Diversified Real-World Critical Scenarios (`Scenario A / B / C`)**, **Example Execution Commands**, and **End-to-End Runtime Proofs (`RED -> GREEN + BENIGN`)** (see [docs/advisories/README.md](docs/advisories/README.md) and [docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md](docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md)):
 
 | # | Advisory Document & Upstream GHSA | Target Project & Component | CWE & CVSS v3.1 | How the Bug Turns into a Vulnerability & 3 Critical Real-World Scenarios (`Scenario A / B / C`) | Runtime Proof (`RED -> GREEN`) & Example Command |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -360,7 +360,7 @@ Below are the **11 verified security vulnerabilities** discovered during our sec
 
 #### Kendi Sniper Taramamızda Bulduğumuz Doğrulanmış Açıklar (Vulnerabilities Discovered by Our Sniper Scanner)
 
-**Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Adım Adım Günlük Hayat Kritik Senaryoları (`Scenario A / B / C`)**, **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ve **Doğrulanmış Savunma Yamaları (`git diff`)** ile kanıtlanan **11 güvenlik açığı** ([docs/advisories/README.md](docs/advisories/README.md)) aşağıda yayımlanmıştır:
+**Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Adım Adım Günlük Hayat Kritik Senaryoları (`Scenario A / B / C`)**, **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ve **Doğrulanmış Savunma Yamaları (`git diff`)** ile kanıtlanan **19 güvenlik kaydı (18 özgün açık + 1 üst akış duplicate)** ([docs/advisories/README.md](docs/advisories/README.md)) aşağıda yayımlanmıştır:
 
 | # | Açık / Advisory Bağlantısı | Hedef Proje & Bileşen | CWE & CVSS v3.1 | Günlük Hayatta Yol Açtığı Kritik Senaryolar (`Scenario A / B / C`) | Çalışma Zamanı Kanıtı (`RED -> GREEN`) |
 | :-: | :--- | :--- | :--- | :--- | :--- |
