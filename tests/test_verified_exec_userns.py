@@ -41,7 +41,8 @@ class NamespacedRootOwnedTests(unittest.TestCase):
     def test_root_owned_system_binary_accepted_in_namespace(self):
         target = "/usr/bin/env"
         with mock.patch.object(verified_exec, "_visible_root_uid", return_value=65534), \
-                mock.patch.object(verified_exec.os, "stat", return_value=SimpleNamespace(st_uid=65534, st_mode=0o40755)):
+                mock.patch.object(verified_exec.os, "stat", return_value=SimpleNamespace(st_uid=65534, st_mode=0o40755)), \
+                mock.patch.object(verified_exec.os, "access", return_value=False):
             self.assertTrue(verified_exec._namespaced_root_owned(target, _info(65534)))
 
     def test_outside_namespace_overflow_owner_rejected(self):

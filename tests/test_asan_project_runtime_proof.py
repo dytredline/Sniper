@@ -18,6 +18,17 @@ class AsanProjectProofTests(unittest.TestCase):
     def setUp(self) -> None:
         if shutil.which("gcc") is None or shutil.which("bwrap") is None:
             self.skipTest("gcc veya bwrap yok")
+        probe = subprocess.run(
+            ["bwrap", "--unshare-all", "--ro-bind", "/", "/", "/bin/true"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        if probe.returncode != 0:
+            self.skipTest("bwrap userns bu çekirdekte kısıtlı")
+        try:
+            with asan_project_proof.tool_sandbox.open_bwrap():
+                pass
+        except asan_project_proof.tool_sandbox.SandboxUnavailable:
+            self.skipTest("sabitlenmiş bwrap ikilisi yapılandırılmamış")
         self.temp = tempfile.TemporaryDirectory(dir=Path.home())
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name) / "project"
