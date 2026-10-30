@@ -2,25 +2,6 @@
 
 [English](../08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md) | [Türkçe](../tr/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md) | **日本語** | [简体中文](../zh-CN/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md) | [한국어](../ko/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md)
 
-## GitHub GHSA & MITRE CNA フォーム入力フィールド
-- **対象リポジトリ:** `openziti/ziti`
-- **GitHub Advisory URL:** `https://github.com/openziti/security/security/advisories/GHSA-qwv8-hh9r-cqrf`
-- **既存 GHSA ID:** `GHSA-qwv8-hh9r-cqrf`
-- **エコシステム:** `Go`
-- **パッケージ名:** `github.com/openziti/ziti/v2`
-- **影響を受けるバージョン:** `<= v2 (commit 236f351a5149fe68328fc8083bebe514f0307d0c)`
-- **修正済みバージョン:** `なし（修正パッチ添付）`
-- **CWE:** `CWE-295 (不適切な証明書検証 — Improper Certificate Validation)`
-- **CVSS v3.1:** `7.4 High — CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N`
-- **MITRE ベンダー:** `NetFoundry / OpenZiti`
-- **MITRE 脆弱性タイプ:** `Improper Certificate Validation (CWE-295)`
-- **MITRE 影響を受けるコンポーネント:** `ziti/util/certs.go (AreCertsTrusted & InsecureClient, lines 91-103, 199-208) および ziti/cmd/edge/login.go (fetchTrustedServerCerts, lines 511, 535-549)`
-- **MITRE 推奨説明文:**
-  > OpenZiti ziti コミット `236f351a5149fe68328fc8083bebe514f0307d0c` 以前（`github.com/openziti/ziti/v2`）において、`ziti/util/certs.go` の `util.AreCertsTrusted` は `InsecureClient(&client, certs)` を呼び出しますが、この関数は `len(certs) > 0` の場合でも無条件に `tls.Config{InsecureSkipVerify: true}` を設定します。Go の `crypto/tls` は `InsecureSkipVerify` が `true` の場合に `RootCAs` を無視するため、`AreCertsTrusted` 内の `x509.UnknownAuthorityError` チェックは到達不能なデッドコードとなり、`ziti edge login` 実行時に `AreCertsTrusted` が常に `true` を返すことで、信頼できない TLS 証明書を持つ中間者（MITM）攻撃者が管理者認証情報を傍受できます。
-- **報告者 / クレジット:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. コードの欠陥がどのように悪用可能な脆弱性に変わるか
 
 ### ステップバイステップの技術的メカニズム

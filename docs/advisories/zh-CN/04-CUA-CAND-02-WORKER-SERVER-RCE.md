@@ -2,25 +2,6 @@
 
 [English](../04-CUA-CAND-02-WORKER-SERVER-RCE.md) | [Türkçe](../tr/04-CUA-CAND-02-WORKER-SERVER-RCE.md) | [日本語](../ja/04-CUA-CAND-02-WORKER-SERVER-RCE.md) | **简体中文** | [한국어](../ko/04-CUA-CAND-02-WORKER-SERVER-RCE.md)
 
-## GitHub GHSA 与 MITRE CNA 表单快速填写字段
-- **代码仓库:** `trycua/cua`
-- **GitHub 安全公告 URL:** `https://github.com/trycua/cua/security/advisories/GHSA-xm8w-gj3g-4f25`
-- **现有 GHSA ID:** `GHSA-xm8w-gj3g-4f25`
-- **生态系统:** `pip`
-- **软件包名称:** `cua-bench-rl (及 cua-bench)`
-- **受影响版本:** `<= 0.1.0 (cua-bench <= 0.3.1, commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **已修复版本:** `无（附修复补丁）`
-- **CWE:** `CWE-94 (代码生成控制不当) / CWE-942 (过度宽松的跨域白名单)`
-- **CVSS v3.1:** `8.8 High — CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`
-- **MITRE 厂商:** `TryCua`
-- **MITRE 漏洞类型:** `Dynamic Code Execution via Wildcard CORS and Fail-Open IP Filter (CWE-94 / CWE-942)`
-- **MITRE 受影响组件:** `libs/cua-bench-rl/cua_bench_rl/workers/worker_server.py (lines 79-108, 338-360, 499) 与 libs/cua-bench/cua_bench/core.py (make, lines 25-51)`
-- **MITRE 建议漏洞描述:**
-  > 在 TryCua cua-bench-rl 0.1.0 及更早版本与 cua-bench 0.3.1 及更早版本（`trycua/cua`）中，`worker_server.py` 在无身份验证的情况下绑定到 `0.0.0.0:8001`，启用 `allow_origins=['*']` 的 `CORSMiddleware`，且其 `ip_filter_middleware` 既放行发往 `127.0.0.1` 的浏览器跨域请求，又在 `OSGYM_ALLOWED_IPS` 设为空字符串时对所有远程 IP 失效放行（Fail-Open）。攻击者可携带任意 `env_path` 参数调用 `POST /reset`，触发 `cua_bench.core.make` 通过 `spec.loader.exec_module` 在宿主机上直接执行 `<env_path>/main.py`。
-- **报告者 / 致谢:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. 代码缺陷如何演变为可被利用的安全漏洞
 
 ### 分步技术机制剖析

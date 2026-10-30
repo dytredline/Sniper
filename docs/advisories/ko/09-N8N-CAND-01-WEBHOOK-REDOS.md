@@ -2,26 +2,6 @@
 
 [English](../09-N8N-CAND-01-WEBHOOK-REDOS.md) | [Türkçe](../tr/09-N8N-CAND-01-WEBHOOK-REDOS.md) | [日本語](../ja/09-N8N-CAND-01-WEBHOOK-REDOS.md) | [简体中文](../zh-CN/09-N8N-CAND-01-WEBHOOK-REDOS.md) | **한국어**
 
-## GitHub GHSA 및 MITRE CNA 양식 필드 요약
-- **저장소:** `n8n-io/n8n`
-- **GitHub 보안 권고 URL:** `https://github.com/n8n-io/n8n/security/advisories/new`
-- **업스트림 저장소 URL:** `https://github.com/n8n-io/n8n`
-- **기존 GHSA ID:** `security@n8n.io 책임 공개 완료 / CNA 후보`
-- **에코시스템:** `npm`
-- **패키지 이름:** `n8n-workflow`
-- **영향받는 버전:** `<= 2.45.0 (commit cfbd9a56cba2e73901dc1962e47727adbea0b23e)`
-- **패치된 버전:** `없음 (패치 첨부)`
-- **CWE:** `CWE-1333 (비효율적인 정규 표현식 복잡도 — ReDoS)`
-- **CVSS v3.1:** `5.3 Medium — CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L`
-- **MITRE 벤더:** `n8n`
-- **MITRE 취약점 유형:** `Inefficient Regular Expression Complexity / Event-Loop Denial of Service (CWE-1333)`
-- **MITRE 영향받는 컴포넌트:** `packages/workflow/src/extensions/string-extensions.ts (EMAIL_REGEXP, DOMAIN_EXTRACT_REGEXP, isEmail, extractEmail, extractDomain, lines 59, 94, 326, 375, 383)`
-- **MITRE 권장 CVE 설명:**
-  > n8n(`n8n-workflow`) 2.45.0 이하 버전에서 `packages/workflow/src/extensions/string-extensions.ts`의 워크플로 표현식 문자열 확장 메서드 `isEmail()`, `extractEmail()`, `extractDomain()`은 RFC-5321/RFC-1035 입력 길이 제한 없이 중첩 수량자를 포함한 시작 앵커 없는 정규 표현식(`EMAIL_REGEXP` 및 `DOMAIN_EXTRACT_REGEXP`)을 평가합니다. 인증되지 않은 공격자가 이러한 표현식을 평가하는 워크플로 Webhook에 조작된 점(`.`) 구분 문자열을 전송하면 단일 스레드 Node.js 이벤트 루프가 차단되어 동시 실행 중인 다른 Webhook들이 기아(Starvation) 상태에 빠집니다.
-- **제보자 / 크레딧:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. 코드 결함이 실제 악용 가능한 취약점으로 전환되는 메커니즘
 
 ### 단계별 기술적 메커니즘

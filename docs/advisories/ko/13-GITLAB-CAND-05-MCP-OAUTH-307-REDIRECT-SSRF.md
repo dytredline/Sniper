@@ -2,23 +2,6 @@
 
 [English](../13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md) | [Türkçe](../tr/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md) | [日本語](../ja/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md) | [简体中文](../zh-CN/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md) | **한국어**
 
-## Quick-Fill GitHub / HackerOne & MITRE CNA Form Fields
-- **Repository:** `gitlab-org/gitlab` (`https://gitlab.com/gitlab-org/gitlab`)
-- **Public Technical Advisory URL:** `https://github.com/dytredline/Sniper/blob/main/docs/advisories/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md`
-- **Candidate / Tracking ID:** `GITLAB-CAND-05` (`HackerOne: gitlab | MITRE CNA-LR Submitted`)
-- **Ecosystem:** `RubyGems / GitLab EE`
-- **Package Name:** `gitlab-ee`
-- **Affected Versions:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`
-- **Patched Versions:** `None upstream on master as of 2026-10-30 (Verified defensive patch attached below)`
-- **CWE:** `CWE-918 / CWE-209`
-- **CVSS v3.1:** `8.5 High — CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`
-- **MITRE Vendor:** `GitLab`
-- **MITRE Suggested CVE Description:**
-  > In GitLab EE through 19.6.0-pre, Ai::Catalog::McpServers::CallbackService (ee/app/services/ai/catalog/mcp_servers/callback_service.rb), RefreshTokenService (refresh_token_service.rb), RevokeTokenService (revoke_token_service.rb), and Gitlab::Oauth::DynamicRegistrationClient (ee/lib/gitlab/oauth/dynamic_registration_client.rb) accept unvalidated RFC 8414 metadata endpoints (token_endpoint, revocation_endpoint, and authorization_servers) and execute token exchange and refresh requests via OAuth2::Client (Faraday net_http with default max_redirects: 5) instead of Gitlab::HTTP_V2::UrlBlocker, while reflecting raw OAuth2::Error HTTP response bodies into user-visible error messages. An authenticated user can trigger 307 Temporary Redirect POST SSRF to internal loopback (127.0.0.1) or cloud metadata (169.254.169.254) endpoints, replay OAuth client secrets/refresh tokens, and read internal HTTP error response bodies via flash[:alert].
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism
@@ -59,14 +42,14 @@
 
 ## 2. Concrete Everyday Real-World Production Scenarios (`Scenario A` / `Scenario B` / `Scenario C`)
 
-### Scenario A — Cloud Metadata / Internal Service Credential Exfiltration via `307` Redirect & `flash[:alert]` Reflection
-An attacker configures an external OAuth discovery server whose `token_endpoint` responds with `307 Temporary Redirect` to an internal cloud metadata or Kubernetes service (`http://169.254.169.254/...` or `http://127.0.0.1:8080/...`). `OAuth2::Client` follows the redirect and reflects the internal endpoint's error body into `flash[:alert]` (`iam_role_credentials_exposed: true`).
+### Scenario A — Stealing AWS/GCP Cloud IAM Credentials (`169.254.169.254`) and Internal Kubernetes/Vault Secrets Directly into the User's Browser (`flash[:alert]`)
+An attacker registers an external MCP server whose OAuth `token_endpoint` responds with `307 Temporary Redirect` pointing to the cloud instance metadata service (`http://169.254.169.254/latest/meta-data/iam/security-credentials/...`) or an internal Kubernetes/Vault/Consul API (`http://127.0.0.1:8080/...`). `OAuth2::Client` follows the redirect from inside the GitLab server network and reflects the raw HTTP response body via `OAuth2::Error#message` straight into the user's browser `flash[:alert]` banner (`iam_role_credentials_exposed: true`), allowing the attacker to steal the GitLab host's cloud IAM role keys and compromise the underlying cloud infrastructure.
 
-### Scenario B — Internal POST SSRF & OAuth Client Secret / Refresh Token Replay
-During `CallbackService` or `RefreshTokenService`, a `307 Temporary Redirect` causes `OAuth2::Client` to replay the `POST` body containing `client_id`, `client_secret`, and `refresh_token` directly to an internal loopback or RFC1918 endpoint (`canary_b_request_count = 5`).
+### Scenario B — Executing Authenticated Internal `POST` Commands Against Firewalled Intranet Services (`127.0.0.1` / `10.x.x.x`) & Leaking OAuth Secrets
+Because `307 Temporary Redirect` preserves both the `POST` method and request body, an external OAuth endpoint redirects `CallbackService` and `RefreshTokenService` (`max_redirects: 5`) to firewalled internal microservices (`http://127.0.0.1:...`), triggering internal `POST` actions behind the firewall while leaking the MCP connector's `client_secret` and `refresh_token` (`canary_b_request_count = 5`).
 
-### Scenario C — Unvalidated `revocation_endpoint` Redirect in `RevokeTokenService`
-When disconnecting an MCP server, `RevokeTokenService` posts the user's token and Basic Auth client credentials to `metadata['revocation_endpoint']` without `validate_url!` or `follow_redirects: false`.
+### Scenario C — Internal Intranet Port/Service Scanning & Basic-Auth Credential Exfiltration on Disconnect (`RevokeTokenService`)
+When an administrator or developer clicks "Disconnect" on an MCP connector, `RevokeTokenService` sends an unvalidated `POST` request with HTTP Basic Auth (`client_id:client_secret`) to `metadata['revocation_endpoint']`, enabling internal network probing and credential theft.
 
 ---
 

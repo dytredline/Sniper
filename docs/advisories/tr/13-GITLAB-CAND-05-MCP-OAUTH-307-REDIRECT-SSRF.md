@@ -2,23 +2,6 @@
 
 [English](../13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md) | **Türkçe** | [日本語](../ja/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md) | [简体中文](../zh-CN/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md) | [한국어](../ko/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md)
 
-## GitHub / HackerOne ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `gitlab-org/gitlab` (`https://gitlab.com/gitlab-org/gitlab`)
-- **Açık Teknik Danışma (Advisory) URL'si:** `https://github.com/dytredline/Sniper/blob/main/docs/advisories/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md`
-- **Aday / İzleme Kimliği:** `GITLAB-CAND-05` (`HackerOne: gitlab | MITRE CNA-LR Submitted`)
-- **Ekosistem:** `RubyGems / GitLab EE`
-- **Paket Adı:** `gitlab-ee`
-- **Etkilenen Sürümler:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`
-- **Yamalı Sürümler:** `Yok (30.10.2026 itibarıyla upstream master üzerinde yamasız; savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-918 / CWE-209`
-- **CVSS v3.1:** `8.5 High — CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`
-- **MITRE Üreticisi:** `GitLab`
-- **MITRE Önerilen CVE Açıklaması:**
-  > In GitLab EE through 19.6.0-pre, Ai::Catalog::McpServers::CallbackService (ee/app/services/ai/catalog/mcp_servers/callback_service.rb), RefreshTokenService (refresh_token_service.rb), RevokeTokenService (revoke_token_service.rb), and Gitlab::Oauth::DynamicRegistrationClient (ee/lib/gitlab/oauth/dynamic_registration_client.rb) accept unvalidated RFC 8414 metadata endpoints (token_endpoint, revocation_endpoint, and authorization_servers) and execute token exchange and refresh requests via OAuth2::Client (Faraday net_http with default max_redirects: 5) instead of Gitlab::HTTP_V2::UrlBlocker, while reflecting raw OAuth2::Error HTTP response bodies into user-visible error messages. An authenticated user can trigger 307 Temporary Redirect POST SSRF to internal loopback (127.0.0.1) or cloud metadata (169.254.169.254) endpoints, replay OAuth client secrets/refresh tokens, and read internal HTTP error response bodies via flash[:alert].
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma
@@ -59,14 +42,14 @@
 
 ## 2. Günlük Hayatta Yol Açabileceği Kritik Senaryolar (`Senaryo A` / `Senaryo B` / `Senaryo C`)
 
-### Senaryo A — `307` Yönlendirmesi ve `flash[:alert]` Yansıtmasıyla Bulut Metadata / İç Servis Sırlarının Okunması
-Saldırganın harici OAuth sunucusu `token_endpoint` çağrısına `307 Temporary Redirect` dönerek isteği `http://169.254.169.254/...` veya `http://127.0.0.1:...` adresine yönlendirir; iç servisin hata yanıt gövdesi `OAuth2::Error#message` üzerinden `flash[:alert]` içinde kullanıcıya gösterilir.
+### Senaryo A — AWS / GCP Bulut Sunucusu IAM Yetki Anahtarlarının (`169.254.169.254`) ve İç Yönetim Sırlarının Doğrudan Tarayıcı Ekranından (`flash[:alert]`) Çalınması
+Saldırgan, dışarıdaki kendi sunucusunu bir MCP sunucusu olarak kaydeder ve `token_endpoint` adresinden `307 Temporary Redirect` dönerek GitLab sunucusunu bulut metadata servisine (`http://169.254.169.254/latest/meta-data/iam/security-credentials/...`) veya iç ağdaki (`http://127.0.0.1:8080`, Vault, Consul, iç Kubernetes API) yönetim servislerine yönlendirir. `OAuth2::Client` yönlendirmeyi takip eder ve dönen iç yanıt gövdesini `OAuth2::Error#message` üzerinden doğrudan kullanıcının ekranındaki `flash[:alert]` kutusuna basar (`iam_role_credentials_exposed: true`). Böylece saldırgan **GitLab sunucusunun çalıştığı AWS/GCP bulut hesabının IAM anahtarlarını (`AccessKeyId`, `SecretAccessKey`) doğrudan ekrandan okuyup şirketin bulut altyapısını ele geçirir.**
 
-### Senaryo B — Dahili Ağa `POST` SSRF ve `client_secret` / `refresh_token` Sızıntısı
-`CallbackService` ve `RefreshTokenService` içindeki `OAuth2::Client` (`max_redirects: 5`), `307` yönlendirmesini takip ederek `client_secret` ve `refresh_token` içeren `POST` gövdesini iç ağdaki Canary B (`127.0.0.1`) hedefine iletir (`canary_b_request_count = 5`).
+### Senaryo B — Güvenlik Duvarı Arkasındaki İç Servislere (`127.0.0.1` / Intranet) `POST` Komutu Gönderme ve `client_secret` / `refresh_token` Sızdırma
+`307 Temporary Redirect` HTTP metodunu (`POST`) ve gövdesini koruduğu için, `CallbackService` ve `RefreshTokenService` içindeki `OAuth2::Client` (`max_redirects: 5`), dışarıya kapalı iç mikroservislere (`127.0.0.1`) `POST` isteği göndererek **iç ağda işlem tetikler** ve aynı anda `client_secret` ile `refresh_token` sırlarını iç hedefe iletir (`canary_b_request_count = 5`).
 
-### Senaryo C — `RevokeTokenService` İçinde Doğrulanmamış `revocation_endpoint` Yönlendirmesi
-Kullanıcı MCP bağlantısını keserken `RevokeTokenService`, `metadata['revocation_endpoint']` adresini `validate_url!` ile doğrulamadan ve `follow_redirects: false` vermeden Basic Auth kimlik bilgileriyle `POST` eder.
+### Senaryo C — Bağlantı Kesme (`RevokeTokenService`) Üzerinden İç Ağ Tarama ve Basic Auth Kimlik Bilgisi Hırsızlığı
+Kullanıcı veya yönetici MCP bağlantısını keserken `RevokeTokenService`, `metadata['revocation_endpoint']` adresini doğrulamadan Basic Auth kimlik bilgileriyle `POST` göndererek iç ağ servislerinin taranmasına ve sırların çalınmasına yol açar.
 
 ---
 

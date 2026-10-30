@@ -2,25 +2,6 @@
 
 [English](../07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md) | [Türkçe](../tr/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md) | [日本語](../ja/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md) | **简体中文** | [한국어](../ko/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md)
 
-## GitHub GHSA 与 MITRE CNA 表单快速填写字段
-- **代码仓库:** `trycua/cua`
-- **GitHub 安全公告 URL:** `https://github.com/trycua/cua/security/advisories/GHSA-hvhg-6x47-cq96`
-- **现有 GHSA ID:** `GHSA-hvhg-6x47-cq96`
-- **生态系统:** `pip`
-- **软件包名称:** `cua-bench`
-- **受影响版本:** `<= 0.3.1 (commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **已修复版本:** `无（附修复补丁）`
-- **CWE:** `CWE-668 (将资源暴露给错误的范围) / CWE-732 (关键资源权限分配不当)`
-- **CVSS v3.1:** `8.6 High — CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H`
-- **MITRE 厂商:** `TryCua`
-- **MITRE 漏洞类型:** `Unauthenticated Network Exposure and Writable Host Volume Mount (CWE-668 / CWE-732)`
-- **MITRE 受影响组件:** `libs/cua-bench/tasks/winarena_adapter/cli.py (lines 262-265, 421-424, 646-649) 与 infra/vm/setup/server/main.py (lines 180-248, 290-321)`
-- **MITRE 建议漏洞描述:**
-  > 在 TryCua cua-bench 0.3.1 及更早版本（`trycua/cua`）中，WinArena 容器编排器（`libs/cua-bench/tasks/winarena_adapter/cli.py`）将 Windows 客户机虚拟机的未认证 noVNC Web 桌面（`-p 8006:8006`）和免密 RDP 服务（`-p 3390:3389`）发布在 `0.0.0.0`（所有网络接口）而非 `127.0.0.1` 上，同时以读写模式挂载宿主机的 `setup_path` 目录（`-v {setup_path}:/shared`）。局域网相邻节点可直接接管客户机桌面并篡改宿主机共享的安装脚本文件。
-- **报告者 / 致谢:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. 代码缺陷如何演变为可被利用的安全漏洞
 
 ### 分步技术机制剖析

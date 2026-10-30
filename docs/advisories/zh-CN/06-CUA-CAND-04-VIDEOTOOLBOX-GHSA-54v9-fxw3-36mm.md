@@ -2,25 +2,6 @@
 
 [English](../06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md) | [Türkçe](../tr/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md) | [日本語](../ja/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md) | **简体中文** | [한국어](../ko/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md)
 
-## GitHub GHSA 与 MITRE CNA 表单快速填写字段
-- **代码仓库:** `trycua/cua`
-- **GitHub 安全公告 URL:** `https://github.com/trycua/cua/security/advisories/GHSA-54v9-fxw3-36mm`
-- **现有 GHSA ID:** `GHSA-54v9-fxw3-36mm`
-- **生态系统:** `Cargo`
-- **软件包名称:** `cua-media-codec`
-- **受影响版本:** `<= 0.8.0 (cua-sdk <= 0.9.0, cua-spacesd <= 0.8.0, commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **已修复版本:** `无（附修复补丁）`
-- **CWE:** `CWE-125 (越界读取 — Out-of-bounds Read)`
-- **CVSS v3.1:** `5.5 Medium — CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:H`
-- **MITRE 厂商:** `TryCua`
-- **MITRE 漏洞类型:** `Buffer Over-read / Safe-Rust Soundness Violation (CWE-125)`
-- **MITRE 受影响组件:** `libs/cua/crates/cua-media-codec/src/backends/videotoolbox/mod.rs (VtEncoder::pixel_buffer_for 与 VtEncoder::encode, lines 334-420, 471-479)`
-- **MITRE 建议漏洞描述:**
-  > 在 TryCua cua-media-codec 0.8.0 及更早版本（`trycua/cua`）中，Safe Rust 公开方法 `VtEncoder::encode` 调用 `VtEncoder::pixel_buffer_for`（`libs/cua/crates/cua-media-codec/src/backends/videotoolbox/mod.rs`）时，未校验 `FrameData::Nv12` 的 `y` 和 `uv` 切片长度及步长（stride）是否满足视频帧几何尺寸，便直接调用 `unsafe std::ptr::copy_nonoverlapping` 写入 Apple VideoToolbox 的 `CVPixelBuffer`。从 Safe Rust 传入长度不足的 NV12 或 BGRA 缓冲区会导致堆内存越界读取并编码进视频帧，或触发进程崩溃（`SIGSEGV`）。
-- **报告者 / 致谢:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. 代码缺陷如何演变为可被利用的安全漏洞
 
 ### 分步技术机制剖析

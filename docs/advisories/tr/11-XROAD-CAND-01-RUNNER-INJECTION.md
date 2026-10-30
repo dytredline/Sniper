@@ -2,25 +2,6 @@
 
 [English](../11-XROAD-CAND-01-RUNNER-INJECTION.md) | **Türkçe** | [日本語](../ja/11-XROAD-CAND-01-RUNNER-INJECTION.md) | [简体中文](../zh-CN/11-XROAD-CAND-01-RUNNER-INJECTION.md) | [한국어](../ko/11-XROAD-CAND-01-RUNNER-INJECTION.md)
 
-## GitHub GHSA ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `nordic-institute/X-Road`
-- **GitHub Danışma (Advisory) URL'si:** `https://github.com/nordic-institute/X-Road/security/advisories/GHSA-4fcw-7xqx-fjv5`
-- **Mevcut GHSA Kimliği:** `GHSA-4fcw-7xqx-fjv5`
-- **Ekosistem:** `GitHub Actions`
-- **Paket Adı:** `nordic-institute/X-Road (.github/workflows/_build-and-package.yml)`
-- **Etkilenen Sürümler:** `develop (commit 38cd99ec0ebbcc13ddbaaeb9187018d49bdd278b dahil)`
-- **Yamalı Sürümler:** `Yok (Savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-78 (İşletim Sistemi Komutunda Kullanılan Özel Öğelerin Hatalı Etkisizleştirilmesi — OS Command Injection)`
-- **CVSS v3.1:** `7.8 Yüksek (High) — CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N`
-- **MITRE Üreticisi:** `Nordic Institute for Interoperability Solutions (NIIS)`
-- **MITRE Zafiyet Türü:** `Self-Hosted Runner Üzerindeki CI İş Akışında İşletim Sistemi Komut Enjeksiyonu (CWE-78)`
-- **MITRE Etkilenen Bileşen(ler):** `.github/workflows/build.yaml (satır 14-58) ve .github/workflows/_build-and-package.yml (satır 27, 84-91)`
-- **MITRE Önerilen CVE Açıklaması (Türkçe Özeti):**
-  > Nordic Institute for Interoperability Solutions (NIIS) X-Road (`commit 38cd99ec0ebbcc13ddbaaeb9187018d49bdd278b` ve öncesi) içerisinde, kalıcı `xrd-runner-8c` self-hosted runner sunucusu üzerinde `build.yaml` tarafından `secrets: inherit` ve `packages: write` yetkileriyle çağrılan `.github/workflows/_build-and-package.yml` iş akışı, `${{ github.head_ref }}` ve `${{ github.ref_name }}` ifadelerini doğrudan bir bash `run:` betik bloğunun içine yerleştirerek özel oluşturulmuş bir Pull Request dal (branch) adı üzerinden kabuk komutu enjeksiyonuna olanak tanır.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma

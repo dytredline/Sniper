@@ -2,25 +2,6 @@
 
 [English](../11-XROAD-CAND-01-RUNNER-INJECTION.md) | [Türkçe](../tr/11-XROAD-CAND-01-RUNNER-INJECTION.md) | [日本語](../ja/11-XROAD-CAND-01-RUNNER-INJECTION.md) | **简体中文** | [한국어](../ko/11-XROAD-CAND-01-RUNNER-INJECTION.md)
 
-## GitHub GHSA 与 MITRE CNA 表单快速填写字段
-- **代码仓库:** `nordic-institute/X-Road`
-- **GitHub 安全公告 URL:** `https://github.com/nordic-institute/X-Road/security/advisories/GHSA-4fcw-7xqx-fjv5`
-- **现有 GHSA ID:** `GHSA-4fcw-7xqx-fjv5`
-- **生态系统:** `GitHub Actions`
-- **软件包名称:** `nordic-institute/X-Road (.github/workflows/_build-and-package.yml)`
-- **受影响版本:** `develop 分支直至提交 38cd99ec0ebbcc13ddbaaeb9187018d49bdd278b`
-- **已修复版本:** `无（附修复补丁）`
-- **CWE:** `CWE-78 (OS 命令中特殊元素中和不当 — OS 命令注入)`
-- **CVSS v3.1:** `7.8 High — CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N`
-- **MITRE 厂商:** `Nordic Institute for Interoperability Solutions (NIIS)`
-- **MITRE 漏洞类型:** `OS Command Injection in CI Workflow on Self-Hosted Runner (CWE-78)`
-- **MITRE 受影响组件:** `.github/workflows/build.yaml (lines 14-58) 与 .github/workflows/_build-and-package.yml (lines 27, 84-91)`
-- **MITRE 建议漏洞描述:**
-  > 在 Nordic Institute for Interoperability Solutions (NIIS) X-Road 提交 `38cd99ec0ebbcc13ddbaaeb9187018d49bdd278b` 及更早版本中，由 `build.yaml` 携带 `secrets: inherit` 和 `packages: write` 权限在持久化自托管节点 `xrd-runner-8c` 上调用的 `.github/workflows/_build-and-package.yml`，将 `${{ github.head_ref }}` 和 `${{ github.ref_name }}` 直接拼接进 bash `run:` 脚本块中，使攻击者能够通过精心构造的 Pull Request 分支名称注入并执行任意 Shell 命令。
-- **报告者 / 致谢:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. 代码缺陷如何演变为可被利用的安全漏洞
 
 ### 分步技术机制剖析

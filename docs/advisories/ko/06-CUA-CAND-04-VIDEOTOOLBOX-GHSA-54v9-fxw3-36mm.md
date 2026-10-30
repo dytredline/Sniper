@@ -2,25 +2,6 @@
 
 [English](../06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md) | [Türkçe](../tr/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md) | [日本語](../ja/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md) | [简体中文](../zh-CN/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md) | **한국어**
 
-## GitHub GHSA 및 MITRE CNA 양식 필드 요약
-- **저장소:** `trycua/cua`
-- **GitHub 보안 권고 URL:** `https://github.com/trycua/cua/security/advisories/GHSA-54v9-fxw3-36mm`
-- **기존 GHSA ID:** `GHSA-54v9-fxw3-36mm`
-- **에코시스템:** `Cargo`
-- **패키지 이름:** `cua-media-codec`
-- **영향받는 버전:** `<= 0.8.0 (cua-sdk <= 0.9.0, cua-spacesd <= 0.8.0, commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **패치된 버전:** `없음 (패치 첨부)`
-- **CWE:** `CWE-125 (경계 밖 읽기 — Out-of-bounds Read)`
-- **CVSS v3.1:** `5.5 Medium — CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:H`
-- **MITRE 벤더:** `TryCua`
-- **MITRE 취약점 유형:** `Buffer Over-read / Safe-Rust Soundness Violation (CWE-125)`
-- **MITRE 영향받는 컴포넌트:** `libs/cua/crates/cua-media-codec/src/backends/videotoolbox/mod.rs (VtEncoder::pixel_buffer_for 및 VtEncoder::encode, lines 334-420, 471-479)`
-- **MITRE 권장 CVE 설명:**
-  > TryCua cua-media-codec 0.8.0 이하(`trycua/cua`)에서 Safe Rust 공개 메서드 `VtEncoder::encode`는 `VtEncoder::pixel_buffer_for`(`libs/cua/crates/cua-media-codec/src/backends/videotoolbox/mod.rs`)를 호출할 때 `FrameData::Nv12`의 `y` 및 `uv` 슬라이스 길이와 스트라이드가 프레임 지오메트리를 충족하는지 검증하지 않고 Apple VideoToolbox `CVPixelBuffer`로 `unsafe std::ptr::copy_nonoverlapping`을 실행합니다. Safe Rust에서 크기가 부족한 NV12 또는 BGRA 버퍼를 전달하면 인코딩된 비디오 프레임으로 힙 경계 밖 메모리가 읽히거나 프로세스 충돌(`SIGSEGV`)이 발생합니다.
-- **제보자 / 크레딧:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. 코드 결함이 실제 악용 가능한 취약점으로 전환되는 메커니즘
 
 ### 단계별 기술적 메커니즘

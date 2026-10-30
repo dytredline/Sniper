@@ -2,26 +2,6 @@
 
 **English** | [Türkçe](tr/09-N8N-CAND-01-WEBHOOK-REDOS.md) | [日本語](ja/09-N8N-CAND-01-WEBHOOK-REDOS.md) | [简体中文](zh-CN/09-N8N-CAND-01-WEBHOOK-REDOS.md) | [한국어](ko/09-N8N-CAND-01-WEBHOOK-REDOS.md)
 
-## Quick-Fill GitHub GHSA & MITRE CNA Form Fields
-- **Repository:** `n8n-io/n8n`
-- **GitHub Advisory URL:** `https://github.com/n8n-io/n8n/security/advisories/new`
-- **Upstream Repository URL:** `https://github.com/n8n-io/n8n`
-- **Existing GHSA ID:** `Reported via Responsible Disclosure to security@n8n.io / CNA Candidate`
-- **Ecosystem:** `npm`
-- **Package Name:** `n8n-workflow`
-- **Affected Versions:** `<= 2.45.0 (commit cfbd9a56cba2e73901dc1962e47727adbea0b23e)`
-- **Patched Versions:** `None (Patch attached)`
-- **CWE:** `CWE-1333 (Inefficient Regular Expression Complexity — ReDoS)`
-- **CVSS v3.1:** `5.3 Medium — CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L`
-- **MITRE Vendor:** `n8n`
-- **MITRE Vulnerability Type:** `Inefficient Regular Expression Complexity / Event-Loop Denial of Service (CWE-1333)`
-- **MITRE Affected Component(s):** `packages/workflow/src/extensions/string-extensions.ts (EMAIL_REGEXP, DOMAIN_EXTRACT_REGEXP, isEmail, extractEmail, extractDomain, lines 59, 94, 326, 375, 383)`
-- **MITRE Suggested CVE Description:**
-  > In n8n (n8n-workflow) through 2.45.0, the workflow expression string extension methods isEmail(), extractEmail(), and extractDomain() in packages/workflow/src/extensions/string-extensions.ts evaluate unanchored regular expressions (EMAIL_REGEXP and DOMAIN_EXTRACT_REGEXP) with nested quantifiers and no RFC-5321/RFC-1035 input length bounds. An unauthenticated attacker can send crafted dotted strings to a workflow webhook evaluating these expressions, blocking the single-threaded Node.js event loop and starving concurrent webhook executions.
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism

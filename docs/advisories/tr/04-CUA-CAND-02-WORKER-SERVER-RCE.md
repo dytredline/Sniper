@@ -2,25 +2,6 @@
 
 [English](../04-CUA-CAND-02-WORKER-SERVER-RCE.md) | **Türkçe** | [日本語](../ja/04-CUA-CAND-02-WORKER-SERVER-RCE.md) | [简体中文](../zh-CN/04-CUA-CAND-02-WORKER-SERVER-RCE.md) | [한국어](../ko/04-CUA-CAND-02-WORKER-SERVER-RCE.md)
 
-## GitHub GHSA ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `trycua/cua`
-- **GitHub Danışma (Advisory) URL'si:** `https://github.com/trycua/cua/security/advisories/GHSA-xm8w-gj3g-4f25`
-- **Mevcut GHSA Kimliği:** `GHSA-xm8w-gj3g-4f25`
-- **Ekosistem:** `pip`
-- **Paket Adı:** `cua-bench-rl (ve cua-bench)`
-- **Etkilenen Sürümler:** `<= 0.1.0 (cua-bench <= 0.3.1, commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **Yamalı Sürümler:** `Yok (Savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-94 (Kod Üretiminin Hatalı Kontrolü) / CWE-942 (Aşırı İzin Verici Çapraz Alan Adı Beyaz Listesi)`
-- **CVSS v3.1:** `8.8 Yüksek (High) — CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`
-- **MITRE Üreticisi:** `TryCua`
-- **MITRE Zafiyet Türü:** `Wildcard CORS ve Fail-Open IP Filtresi Üzerinden Dinamik Kod Çalıştırma (CWE-94 / CWE-942)`
-- **MITRE Etkilenen Bileşen(ler):** `libs/cua-bench-rl/cua_bench_rl/workers/worker_server.py (satır 79-108, 338-360, 499) ve libs/cua-bench/cua_bench/core.py (make, satır 25-51)`
-- **MITRE Önerilen CVE Açıklaması (Türkçe Özeti):**
-  > TryCua `cua-bench-rl` 0.1.0 ve `cua-bench` 0.3.1 sürümlerine kadar (`trycua/cua`), `worker_server.py` kimlik doğrulaması olmadan `0.0.0.0:8001` portuna bağlanır, `allow_origins=['*']` ile `CORSMiddleware` etkinleştirir ve `127.0.0.1` adresine gelen çapraz kökenli tarayıcı isteklerine izin veren, ayrıca `OSGYM_ALLOWED_IPS` boş dizgeye ayarlandığında tüm uzak IP adreslerine açık kalan (`fail-open`) bir `ip_filter_middleware` kullanır. Bir saldırgan keyfi bir `env_path` parametresiyle `POST /reset` uç noktasını çağırarak `cua_bench.core.make` fonksiyonunun `<env_path>/main.py` dosyasını ana bilgisayar üzerinde `spec.loader.exec_module` aracılığıyla çalıştırmasına neden olabilir.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma

@@ -2,25 +2,6 @@
 
 **English** | [Türkçe](tr/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md) | [日本語](ja/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md) | [简体中文](zh-CN/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md) | [한국어](ko/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md)
 
-## Quick-Fill GitHub GHSA & MITRE CNA Form Fields
-- **Repository:** `gotify/server`
-- **GitHub Advisory URL:** `https://github.com/gotify/server/security/advisories/GHSA-cc9f-m5vr-pm75`
-- **Existing GHSA ID:** `GHSA-cc9f-m5vr-pm75`
-- **Ecosystem:** `Go`
-- **Package Name:** `github.com/gotify/server/v2`
-- **Affected Versions:** `<= v2.9.1 (commit f4de61997c1b30bf9ac43ec662dc5120c2ec981b)`
-- **Patched Versions:** `None (Patch attached)`
-- **CWE:** `CWE-601 (URL Redirection to Untrusted Site — Open Redirect)`
-- **CVSS v3.1:** `4.7 Medium — CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:N/I:L/A:N`
-- **MITRE Vendor:** `Gotify`
-- **MITRE Vulnerability Type:** `Open Redirect via Unvalidated Host Header (CWE-601)`
-- **MITRE Affected Component(s):** `router/router.go (Create, lines 52-73, 93-102)`
-- **MITRE Suggested CVE Description:**
-  > In Gotify Server through 2.9.1 (github.com/gotify/server/v2), when SSL.Enabled and SSL.RedirectToHTTPS are enabled, the HTTP-to-HTTPS redirect middleware in router/router.go constructs 308/302 Location headers directly from the unvalidated client-supplied ctx.Request.Host header instead of the configured SSL hostname, allowing attackers to redirect clients and URL tokens to an arbitrary external domain via a crafted Host header.
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism

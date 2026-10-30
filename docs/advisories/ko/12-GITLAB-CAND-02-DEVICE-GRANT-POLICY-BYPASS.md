@@ -2,23 +2,6 @@
 
 [English](../12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md) | [Türkçe](../tr/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md) | [日本語](../ja/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md) | [简体中文](../zh-CN/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md) | **한국어**
 
-## Quick-Fill GitHub / HackerOne & MITRE CNA Form Fields
-- **Repository:** `gitlab-org/gitlab` (`https://gitlab.com/gitlab-org/gitlab`)
-- **Public Technical Advisory URL:** `https://github.com/dytredline/Sniper/blob/main/docs/advisories/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md`
-- **Candidate / Tracking ID:** `GITLAB-CAND-02 (CAND-02A + CAND-02B + CAND-02C)` (`HackerOne: gitlab | MITRE CNA-LR Submitted`)
-- **Ecosystem:** `RubyGems / GitLab CE & EE`
-- **Package Name:** `gitlab-ce / gitlab-ee`
-- **Affected Versions:** `<= 19.6.0-pre (verified on live 19.5.1-ce.0 & 19.6.0-pre commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)`
-- **Patched Versions:** `None upstream on master as of 2026-10-30 (Verified defensive patch attached below)`
-- **CWE:** `CWE-863 / CWE-285`
-- **CVSS v3.1:** `8.1 High — CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N`
-- **MITRE Vendor:** `GitLab`
-- **MITRE Suggested CVE Description:**
-  > In GitLab CE/EE through 19.6.0-pre (and verified on live 19.5.1-ce.0), Oauth::DeviceAuthorizationsController (app/controllers/oauth/device_authorizations_controller.rb) and Oauth::TokensController (app/controllers/oauth/tokens_controller.rb) omit the verify_admin_allowed!, verify_confirmed_email!, set_current_organization, and enforce_organization_maintenance_mode before_action guards enforced by the sibling Oauth::AuthorizationsController. This allows untrusted user-created OAuth applications to mint full-privilege admin ('api' / 'admin_mode') access tokens when disable_admin_oauth_scopes is enabled (true by default), allows unconfirmed accounts (confirmed_at: nil) to mint persistent OAuth tokens, and allows OAuth device token issuance and state-changing API writes to proceed while an organization is locked in maintenance mode.
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism
@@ -55,14 +38,14 @@ module Oauth
 
 ## 2. Concrete Everyday Real-World Production Scenarios (`Scenario A` / `Scenario B` / `Scenario C`)
 
-### Scenario A — Untrusted User-Created OAuth App Mints Full Admin `api` / `admin_mode` Token Despite `disable_admin_oauth_scopes=true`
-A regular GitLab user registers an untrusted OAuth application (`POST /oauth/applications` with `scopes: "api admin_mode"`, `device_code_enabled: true`) and shares a CLI/device login code (`user_code`). When an administrator approves the code on `/oauth/device`, GitLab bypasses `disable_admin_oauth_scopes` and issues a full-privilege admin `access_token` capable of querying `/api/v4/admin/Sidekiq_queues` and administering the instance.
+### Scenario A — Full GitLab Instance Admin Takeover via Untrusted Developer CLI/IDE Device Code Despite `disable_admin_oauth_scopes=true`
+On any standard GitLab instance (`disable_admin_oauth_scopes=true` by default to prevent untrusted OAuth apps from ever receiving `api` or `admin_mode` privileges), a regular user or external contractor registers an untrusted OAuth app (`trusted: false, device_code_enabled: true, scopes: "api admin_mode sudo"`) disguised as an internal CLI or VS Code helper and shares a login `user_code`. The moment an administrator approves the code on `/oauth/device`, GitLab bypasses `disable_admin_oauth_scopes` and mints a full-privilege `admin_mode` + `api` token. The attacker immediately uses this token to clone every private repository in the company, dump all CI/CD production secrets (`AWS_SECRET_ACCESS_KEY`, database passwords), create new root administrator accounts, and take complete control of the GitLab server.
 
-### Scenario B — Unconfirmed Account (`confirmed_at: nil`) Mints Persistent API & Refresh Tokens
-An attacker registers an account with an unverified email address (`confirmed_at: nil`). While `/oauth/authorize` rejects the session with `403 Forbidden (unconfirmed_email)`, the attacker completes `/oauth/device/authorize` + `/oauth/token` (`grant_type=urn:ietf:params:oauth:grant-type:device_code`) and obtains persistent API tokens before email verification.
+### Scenario B — Persistent API Backdoor & CI/CD Abuse Using Unverified / Spoofed Corporate Email Accounts (`confirmed_at: nil`)
+An attacker signs up with an unverified or spoofed email address (`confirmed_at: nil`). While standard web OAuth (`/oauth/authorize`) blocks the account with `403 Forbidden (unconfirmed_email)`, the attacker completes `/oauth/device/authorize` + `/oauth/token` (`grant_type=urn:ietf:params:oauth:grant-type:device_code`) and mints persistent `access_token` and `refresh_token` credentials without ever verifying email ownership—retaining programmatic API access to internal/public repositories and CI pipelines even after the web session expires.
 
-### Scenario C — State-Changing Repository Writes During Organization Migration / Legal Maintenance Freeze
-While an enterprise organization is locked in `migration` (`503`) or `legal` (`403`) maintenance mode to prevent state mutations, a client exchanges a `device_code` at `/oauth/token` and commits changes (`POST /api/v4/projects/1/repository/commits` -> `201 Created`) during the freeze window.
+### Scenario C — Injecting Backdoored Code & Malicious `.gitlab-ci.yml` Pipelines During an Enterprise Incident Freeze or Legal Hold (`migration` / `legal` Maintenance Mode)
+During a live security incident investigation (`legal` hold -> `403`) or data-center migration (`migration` -> `503`), enterprise administrators lock the entire organization in maintenance mode so no code or state can be modified. Because `Oauth::TokensController` omits `device_code` from `organization_for_token_request`, an attacker exchanges a device code during the freeze window and pushes malicious commits (`POST /api/v4/projects/1/repository/commits` -> `201 Created`) or tampers with release branches while the organization is supposedly frozen.
 
 ---
 

@@ -2,25 +2,6 @@
 
 [English](../05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md) | [Türkçe](../tr/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md) | [日本語](../ja/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md) | **简体中文** | [한국어](../ko/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md)
 
-## GitHub GHSA 与 MITRE CNA 表单快速填写字段
-- **代码仓库:** `trycua/cua`
-- **GitHub 安全公告 URL:** `https://github.com/trycua/cua/security/advisories/GHSA-3x8g-6h2v-8qx9`
-- **现有 GHSA ID:** `GHSA-3x8g-6h2v-8qx9`
-- **生态系统:** `Cargo`
-- **软件包名称:** `cua-compat`
-- **受影响版本:** `<= 0.8.0 (cua-spacesd <= 0.8.0, commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **已修复版本:** `无（附修复补丁）`
-- **CWE:** `CWE-22 (受限目录路径名限制不当 — 路径遍历)`
-- **CVSS v3.1:** `8.1 High — CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:H`
-- **MITRE 厂商:** `TryCua`
-- **MITRE 漏洞类型:** `Directory Traversal Leading to Arbitrary Directory Deletion (CWE-22)`
-- **MITRE 受影响组件:** `libs/cua/crates/cua-compat/src/daytona/objectstore.rs (handle, lines 320-325, 360-422)`
-- **MITRE 建议漏洞描述:**
-  > 在 TryCua cua-compat 0.8.0 及更早版本（`trycua/cua`）中，Daytona 兼容 S3 对象存储（`libs/cua/crates/cua-compat/src/daytona/objectstore.rs`）虽然通过 `object_path(&key)` 校验了对象键以防止路径遍历，却未对 `uploadId` 查询参数进行任何校验。在 HTTP `DELETE`（`AbortMultipartUpload`）处理分支中，代码忽略了 `uploads.remove(&id)` 的返回值（不检查该 `uploadId` 是否存在），并无条件调用 `tokio::fs::remove_dir_all(root.join("uploads").join(&id))`，使拥有推送凭据的客户端能够递归删除整个对象存储或父级目录。
-- **报告者 / 致谢:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. 代码缺陷如何演变为可被利用的安全漏洞
 
 ### 分步技术机制剖析

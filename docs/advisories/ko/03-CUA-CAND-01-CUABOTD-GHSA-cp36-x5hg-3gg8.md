@@ -2,25 +2,6 @@
 
 [English](../03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md) | [Türkçe](../tr/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md) | [日本語](../ja/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md) | [简体中文](../zh-CN/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md) | **한국어**
 
-## GitHub GHSA 및 MITRE CNA 양식 필드 요약
-- **저장소:** `trycua/cua`
-- **GitHub 보안 권고 URL:** `https://github.com/trycua/cua/security/advisories/GHSA-cp36-x5hg-3gg8`
-- **기존 GHSA ID:** `GHSA-cp36-x5hg-3gg8`
-- **에코시스템:** `npm`
-- **패키지 이름:** `cuabot`
-- **영향받는 버전:** `>= 1.0.1, <= 1.0.16 (commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **패치된 버전:** `없음 (패치 첨부)`
-- **CWE:** `CWE-306 (중요 기능에 대한 인증 누락) / CWE-942 (과도하게 허용된 교차 도메인 화이트리스트)`
-- **CVSS v3.1:** `9.6 Critical — CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:H`
-- **MITRE 벤더:** `TryCua`
-- **MITRE 취약점 유형:** `Missing Authentication / Permissive CORS Leading to Remote Command Execution (CWE-306 / CWE-942)`
-- **MITRE 영향받는 컴포넌트:** `libs/cuabot/src/cuabotd.ts (lines 34-36, 259-260, 741-743, 969-1002, 1018-1063, 1120)`
-- **MITRE 권장 CVE 설명:**
-  > TryCua cuabot 1.0.1부터 1.0.16(`trycua/cua`)까지에서 `cuabotd` 데몬(`libs/cuabot/src/cuabotd.ts`)은 인증 없이 `0.0.0.0:7842`에 바인딩하며, `POST /bash` 및 `OPTIONS` 프리플라이트를 포함한 모든 HTTP 엔드포인트에 `Access-Control-Allow-Origin: *`을 설정하고, `Origin` 검사가 없는 WebSocket PTY 터미널을 노출하는 동시에 호스트의 `~/.cuabot/user/.claude` 디렉터리를 읽기/쓰기 가능하게 마운트합니다. 사용자가 브라우저로 방문한 임의의 웹사이트나 로컬 네트워크의 다른 기기에서 `POST /bash`를 통해 임의의 명령을 실행하고 마운트된 Claude OAuth 자격 증명을 탈취하거나 호스트 훅을 변조할 수 있습니다.
-- **제보자 / 크레딧:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. 코드 결함이 실제 악용 가능한 취약점으로 전환되는 메커니즘
 
 ### 단계별 기술적 메커니즘

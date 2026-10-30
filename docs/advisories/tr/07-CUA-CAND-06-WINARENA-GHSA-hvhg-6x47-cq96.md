@@ -2,25 +2,6 @@
 
 [English](../07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md) | **Türkçe** | [日本語](../ja/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md) | [简体中文](../zh-CN/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md) | [한국어](../ko/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md)
 
-## GitHub GHSA ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `trycua/cua`
-- **GitHub Danışma (Advisory) URL'si:** `https://github.com/trycua/cua/security/advisories/GHSA-hvhg-6x47-cq96`
-- **Mevcut GHSA Kimliği:** `GHSA-hvhg-6x47-cq96`
-- **Ekosistem:** `pip`
-- **Paket Adı:** `cua-bench`
-- **Etkilenen Sürümler:** `<= 0.3.1 (commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **Yamalı Sürümler:** `Yok (Savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-668 (Kaynağın Yanlış Etki Alanına Açılması) / CWE-732 (Kritik Kaynak İçin Hatalı İzin Ataması)`
-- **CVSS v3.1:** `8.6 Yüksek (High) — CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H`
-- **MITRE Üreticisi:** `TryCua`
-- **MITRE Zafiyet Türü:** `Kimlik Doğrulamasız Ağ İfşası ve Yazılabilir Ana Bilgisayar Dizin Bağlaması (CWE-668 / CWE-732)`
-- **MITRE Etkilenen Bileşen(ler):** `libs/cua-bench/tasks/winarena_adapter/cli.py (satır 262-265, 421-424, 646-649) ve infra/vm/setup/server/main.py (satır 180-248, 290-321)`
-- **MITRE Önerilen CVE Açıklaması (Türkçe Özeti):**
-  > TryCua `cua-bench` 0.3.1 ve önceki sürümlerinde (`trycua/cua`), WinArena konteyner orkestratörü (`libs/cua-bench/tasks/winarena_adapter/cli.py`), Windows misafir sanal makinesinin kimlik doğrulamasız noVNC web masaüstünü (`-p 8006:8006`) ve parolasız RDP servisini (`-p 3390:3389`) `127.0.0.1` yerine `0.0.0.0` (tüm ağ arayüzleri) üzerinde yayınlar ve aynı anda ana bilgisayarın `setup_path` dizinini okuma-yazma yetkisiyle (`-v {setup_path}:/shared`) bağlar. Yerel ağdaki diğer cihazlar misafir masaüstünü ele geçirebilir ve ana bilgisayarla paylaşılan kurulum dosyalarını değiştirebilir.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma

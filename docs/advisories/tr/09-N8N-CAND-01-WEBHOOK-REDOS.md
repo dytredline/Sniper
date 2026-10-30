@@ -2,26 +2,6 @@
 
 [English](../09-N8N-CAND-01-WEBHOOK-REDOS.md) | **Türkçe** | [日本語](../ja/09-N8N-CAND-01-WEBHOOK-REDOS.md) | [简体中文](../zh-CN/09-N8N-CAND-01-WEBHOOK-REDOS.md) | [한국어](../ko/09-N8N-CAND-01-WEBHOOK-REDOS.md)
 
-## GitHub GHSA ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `n8n-io/n8n`
-- **GitHub Danışma (Advisory) URL'si:** `https://github.com/n8n-io/n8n/security/advisories/new`
-- **Üst Akış (Upstream) Depo URL'si:** `https://github.com/n8n-io/n8n`
-- **Mevcut GHSA Kimliği:** `Sorumlu Bildirim (Responsible Disclosure) ile security@n8n.io adresine iletildi / CNA Adayı`
-- **Ekosistem:** `npm`
-- **Paket Adı:** `n8n-workflow`
-- **Etkilenen Sürümler:** `<= 2.45.0 (commit cfbd9a56cba2e73901dc1962e47727adbea0b23e)`
-- **Yamalı Sürümler:** `Yok (Savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-1333 (Verimsiz Düzenli İfade Karmaşıklığı — ReDoS)`
-- **CVSS v3.1:** `5.3 Orta (Medium) — CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L`
-- **MITRE Üreticisi:** `n8n`
-- **MITRE Zafiyet Türü:** `Verimsiz Düzenli İfade Karmaşıklığı / Olay Döngüsü Hizmet Reddi (CWE-1333)`
-- **MITRE Etkilenen Bileşen(ler):** `packages/workflow/src/extensions/string-extensions.ts (EMAIL_REGEXP, DOMAIN_EXTRACT_REGEXP, isEmail, extractEmail, extractDomain, satır 59, 94, 326, 375, 383)`
-- **MITRE Önerilen CVE Açıklaması (Türkçe Özeti):**
-  > n8n (`n8n-workflow`) 2.45.0 ve önceki sürümlerinde, `packages/workflow/src/extensions/string-extensions.ts` içindeki iş akışı ifade uzantı metotları `isEmail()`, `extractEmail()` ve `extractDomain()`, RFC-5321/RFC-1035 girdi uzunluğu sınırı olmaksızın iç içe tekrarlayıcılara sahip çapasız düzenli ifadeleri (`EMAIL_REGEXP` ve `DOMAIN_EXTRACT_REGEXP`) çalıştırır. Kimlik doğrulaması olmayan bir saldırgan, bu ifadeleri değerlendiren bir iş akışı webhook uç noktasına özel oluşturulmuş noktalı dizgeler göndererek tek iş parçacıklı Node.js olay döngüsünü kilitleyebilir ve eşzamanlı webhook çalışmalarını aç bırakabilir.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma

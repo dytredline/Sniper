@@ -2,25 +2,6 @@
 
 **English** | [Türkçe](tr/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md) | [日本語](ja/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md) | [简体中文](zh-CN/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md) | [한국어](ko/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md)
 
-## Quick-Fill GitHub GHSA & MITRE CNA Form Fields
-- **Repository:** `trycua/cua`
-- **GitHub Advisory URL:** `https://github.com/trycua/cua/security/advisories/GHSA-3x8g-6h2v-8qx9`
-- **Existing GHSA ID:** `GHSA-3x8g-6h2v-8qx9`
-- **Ecosystem:** `Cargo`
-- **Package Name:** `cua-compat`
-- **Affected Versions:** `<= 0.8.0 (cua-spacesd <= 0.8.0, commit e754cfec69c41400eb2aabde716c27d15607b2f0)`
-- **Patched Versions:** `None (Patch attached)`
-- **CWE:** `CWE-22 (Improper Limitation of a Pathname to a Restricted Directory — Path Traversal)`
-- **CVSS v3.1:** `8.1 High — CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:H`
-- **MITRE Vendor:** `TryCua`
-- **MITRE Vulnerability Type:** `Directory Traversal Leading to Arbitrary Directory Deletion (CWE-22)`
-- **MITRE Affected Component(s):** `libs/cua/crates/cua-compat/src/daytona/objectstore.rs (handle, lines 320-325, 360-422)`
-- **MITRE Suggested CVE Description:**
-  > In TryCua cua-compat through 0.8.0 (trycua/cua), the Daytona-compatible S3 object store (libs/cua/crates/cua-compat/src/daytona/objectstore.rs) validates the object key against path traversal via object_path(&key) but fails to validate the 'uploadId' query parameter. In the HTTP DELETE (AbortMultipartUpload) handler, uploads.remove(&id) ignores whether the uploadId existed and unconditionally calls tokio::fs::remove_dir_all(root.join("uploads").join(&id)), allowing a client with push-access credentials to recursively delete the object store or parent directories.
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism

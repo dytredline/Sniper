@@ -2,25 +2,6 @@
 
 [English](../08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md) | **Türkçe** | [日本語](../ja/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md) | [简体中文](../zh-CN/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md) | [한국어](../ko/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md)
 
-## GitHub GHSA ve MITRE CNA Hızlı Doldurma Alanları
-- **Depo (Repository):** `openziti/ziti`
-- **GitHub Danışma (Advisory) URL'si:** `https://github.com/openziti/security/security/advisories/GHSA-qwv8-hh9r-cqrf`
-- **Mevcut GHSA Kimliği:** `GHSA-qwv8-hh9r-cqrf`
-- **Ekosistem:** `Go`
-- **Paket Adı:** `github.com/openziti/ziti/v2`
-- **Etkilenen Sürümler:** `<= v2 (commit 236f351a5149fe68328fc8083bebe514f0307d0c)`
-- **Yamalı Sürümler:** `Yok (Savunma yaması aşağıda sunulmuştur)`
-- **CWE:** `CWE-295 (Hatalı Sertifika Doğrulaması — Improper Certificate Validation)`
-- **CVSS v3.1:** `7.4 Yüksek (High) — CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N`
-- **MITRE Üreticisi:** `NetFoundry / OpenZiti`
-- **MITRE Zafiyet Türü:** `Hatalı Sertifika Doğrulaması (CWE-295)`
-- **MITRE Etkilenen Bileşen(ler):** `ziti/util/certs.go (AreCertsTrusted & InsecureClient, satır 91-103, 199-208) ve ziti/cmd/edge/login.go (fetchTrustedServerCerts, satır 511, 535-549)`
-- **MITRE Önerilen CVE Açıklaması (Türkçe Özeti):**
-  > OpenZiti `ziti` (`github.com/openziti/ziti/v2`, commit `236f351a5149fe68328fc8083bebe514f0307d0c` ve öncesi) içerisinde, `ziti/util/certs.go` dosyasındaki `util.AreCertsTrusted` fonksiyonu `InsecureClient(&client, certs)` yardımcısını çağırır; bu yardımcı ise `len(certs) > 0` olduğunda bile koşulsuz olarak `tls.Config{InsecureSkipVerify: true}` ayarlar. Go'nun `crypto/tls` kütüphanesi `InsecureSkipVerify: true` olduğunda `RootCAs` havuzunu tamamen yok saydığı için `AreCertsTrusted` içindeki `x509.UnknownAuthorityError` kontrolü erişilemez ölü koda dönüşür ve `ziti edge login` sırasında her zaman `true` döndürerek güvenilmeyen bir TLS sertifikasına sahip ortadaki adam (MITM) saldırganının yönetici kimlik bilgilerini ele geçirmesine olanak tanır.
-- **Bildiren / Araştırmacı:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. Açığın Özeti ve Kodda Nasıl Zafiyete Dönüştüğü (`Herkesin Anlayabileceği Adım Adım Teknik Mekanizma`)
 
 ### Adım Adım Teknik Mekanizma

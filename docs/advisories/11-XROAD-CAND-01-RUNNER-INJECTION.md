@@ -2,25 +2,6 @@
 
 **English** | [Türkçe](tr/11-XROAD-CAND-01-RUNNER-INJECTION.md) | [日本語](ja/11-XROAD-CAND-01-RUNNER-INJECTION.md) | [简体中文](zh-CN/11-XROAD-CAND-01-RUNNER-INJECTION.md) | [한국어](ko/11-XROAD-CAND-01-RUNNER-INJECTION.md)
 
-## Quick-Fill GitHub GHSA & MITRE CNA Form Fields
-- **Repository:** `nordic-institute/X-Road`
-- **GitHub Advisory URL:** `https://github.com/nordic-institute/X-Road/security/advisories/GHSA-4fcw-7xqx-fjv5`
-- **Existing GHSA ID:** `GHSA-4fcw-7xqx-fjv5`
-- **Ecosystem:** `GitHub Actions`
-- **Package Name:** `nordic-institute/X-Road (.github/workflows/_build-and-package.yml)`
-- **Affected Versions:** `develop through commit 38cd99ec0ebbcc13ddbaaeb9187018d49bdd278b`
-- **Patched Versions:** `None (Patch attached)`
-- **CWE:** `CWE-78 (Improper Neutralization of Special Elements used in an OS Command)`
-- **CVSS v3.1:** `7.8 High — CVSS:3.1/AV:N/AC:H/PR:L/UI:N/S:C/C:H/I:H/A:N`
-- **MITRE Vendor:** `Nordic Institute for Interoperability Solutions (NIIS)`
-- **MITRE Vulnerability Type:** `OS Command Injection in CI Workflow on Self-Hosted Runner (CWE-78)`
-- **MITRE Affected Component(s):** `.github/workflows/build.yaml (lines 14-58) and .github/workflows/_build-and-package.yml (lines 27, 84-91)`
-- **MITRE Suggested CVE Description:**
-  > In Nordic Institute for Interoperability Solutions (NIIS) X-Road through commit 38cd99ec0ebbcc13ddbaaeb9187018d49bdd278b, .github/workflows/_build-and-package.yml (invoked by build.yaml with 'secrets: inherit' and 'packages: write' on the persistent self-hosted runner 'xrd-runner-8c') interpolates ${{ github.head_ref }} and ${{ github.ref_name }} directly into a bash 'run:' script block, allowing shell command injection via a crafted pull request branch name.
-- **Credit / Reporter:** `Gökçe Baran Karakamış (@dytredline)`
-
----
-
 ## 1. How the Code Defect Turns Into an Exploitable Vulnerability (Step-by-Step Technical Mechanism)
 
 ### Step-by-Step Technical Mechanism
