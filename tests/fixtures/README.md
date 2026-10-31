@@ -1,7 +1,7 @@
 # Security test fixtures
 
 The files under `opengrep_rules/` and `taint_bench/` deliberately contain
-vulnerable source snippets. They are data inputs for Sniper's static-analysis
+vulnerable source snippets. They are data inputs for VulKill's static-analysis
 tests; they are not imported by the application, exposed by the web server, or
 executed as services.
 

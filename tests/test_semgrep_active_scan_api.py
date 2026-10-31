@@ -90,7 +90,7 @@ class SemgrepActiveScanApiTests(unittest.TestCase):
         project_dir.mkdir()
         (project_dir / "test.py").write_text("x = 1")
 
-        # Sniper araç dizinindeki varsayılan Opengrep'i devre dışı bırakmak için
+        # VulKill araç dizinindeki varsayılan Opengrep'i devre dışı bırakmak için
         # var olmayan bir yol verilir; doğrulanamayan ikili çalıştırılmaz.
         with patch.dict(os.environ, {"SNIPER_OPENGREP_BINARY": "/nonexistent/opengrep"}):
             status, body = self.request_json(

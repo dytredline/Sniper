@@ -258,7 +258,7 @@ def _send_desktop(item: dict[str, Any]) -> str:
     urgency = "critical" if item["severity"] == "critical" else "normal"
     try:
         result = subprocess.run(
-            [shutil.which("notify-send") or "notify-send", "--app-name=Sniper", f"--urgency={urgency}", "--",
+            [shutil.which("notify-send") or "notify-send", "--app-name=VulKill", f"--urgency={urgency}", "--",
              item["title"][:200], item["message"][:600]],
             capture_output=True, timeout=5, check=False, stdin=subprocess.DEVNULL,
         )
@@ -270,11 +270,11 @@ def _send_desktop(item: dict[str, Any]) -> str:
 def _send_smtp(item: dict[str, Any], config: dict[str, Any], environ: dict[str, str] | None,
                smtp_factory: Callable[..., Any] | None = None) -> str:
     message = EmailMessage()
-    message["Subject"] = _clean_header("[Sniper] " + item["title"])[:200]
+    message["Subject"] = _clean_header("[VulKill] " + item["title"])[:200]
     message["From"] = config["from_addr"]
     message["To"] = ", ".join(config["to"])
     message.set_content(item["message"] + "\n\n" + "\n".join(item.get("details") or []) +
-                        "\n\nBu ileti yerel Sniper kurulumunuzdan gönderildi.")
+                        "\n\nBu ileti yerel VulKill kurulumunuzdan gönderildi.")
     password = _password(environ)
     try:
         if smtp_factory is not None:
@@ -308,7 +308,7 @@ def _send_webhook(item: dict[str, Any], url: str) -> str:
         else:
             conn = http.client.HTTPSConnection(host, port, timeout=5, context=ssl.create_default_context())
         conn.request("POST", path, body=body, headers={"Host": host if port in (80, 443) else f"{host}:{port}",
-                                                      "Content-Type": "application/json", "User-Agent": "Sniper-notify/1"})
+                                                      "Content-Type": "application/json", "User-Agent": "VulKill-notify/1"})
         status = conn.getresponse().status
         conn.close()
     except (OSError, http.client.HTTPException, ssl.SSLError) as exc:
@@ -553,7 +553,7 @@ def on_project_analysis_finished(job_id: str, label: str | None, result: Any, *,
 
 
 def send_test(environ: dict[str, str] | None = None, smtp_factory: Callable[..., Any] | None = None) -> dict[str, Any]:
-    item = emit("test", "low", "Sniper test bildirimi", "Bildirim kanalları bu iletiyle sınandı.", force=True,
+    item = emit("test", "low", "VulKill test bildirimi", "Bildirim kanalları bu iletiyle sınandı.", force=True,
                 environ=environ, smtp_factory=smtp_factory)
     assert item is not None
     return item

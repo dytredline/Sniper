@@ -1,4 +1,4 @@
-// Sniper derin analiz sorgusu (Joern, Apache-2.0 API'si; sorgular Sniper'a aittir).
+// VulKill derin analiz sorgusu (Joern, Apache-2.0 API'si; sorgular VulKill'a aittir).
 // Girdi: --param cpgFile=<cpg.bin> --param outFile=<jsonl> --param maxFlows=<n>
 // Çıktı: satır başına bir JSON kayıt:
 //   veri akışı: {"kind","label":"request|external","language","source","sink","steps":[[dosya, satır, metot], ...]}

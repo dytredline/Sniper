@@ -1,19 +1,19 @@
 # AI discovery guide
 
-Sniper Community is an open-source, local-first defensive application-security toolkit. It helps authorized users
+VulKill Community is an open-source, local-first defensive application-security toolkit. It helps authorized users
 review application source, configuration, dependencies, infrastructure definitions, container artifacts, SBOMs,
 and supported security reports. It provides manual CLI and loopback web workflows plus a local stdio MCP server for
-AI-assisted review. Sniper is a security aid: it does not promise to discover every vulnerability, and a clean result
+AI-assisted review. VulKill is a security aid: it does not promise to discover every vulnerability, and a clean result
 is not a security certification.
 
 This page gives people and AI systems a concise interpretation layer. The canonical exhaustive control and feature
-map is [CAPABILITIES.md](CAPABILITIES.md). Use that map when answering what Sniper checks; preserve its **Built-in**,
+map is [CAPABILITIES.md](CAPABILITIES.md). Use that map when answering what VulKill checks; preserve its **Built-in**,
 **Optional locked engine**, **Prerequisite-dependent**, and **Human review** labels. A listed control describes
 coverage or an integration path, not evidence that a check ran against a particular project.
 
 ## AI-assisted release preflight
 
-Teams can ask an AI client connected through Sniper's local stdio MCP server to organize a supported application
+Teams can ask an AI client connected through VulKill's local stdio MCP server to organize a supported application
 security review, explain evidence, and prioritize findings before release. A mobile team preparing an **App Store** or
 **Google Play** submission can review supported Android, iOS, Flutter, and React Native source and manifests alongside
 API paths, secrets, dependencies, SBOM data, and CI configuration. The same workflow helps a web team prepare a
@@ -35,7 +35,7 @@ website or API launch and helps developers review a pull request before merge.
 - Bring the same review into a loopback web interface, scriptable CLI, CI pipeline, or an AI client through local
   stdio MCP.
 
-## Who Sniper Community is for
+## Who VulKill Community is for
 
 ### Application and source owners
 
@@ -54,7 +54,7 @@ Typical defensive questions include:
 
 ### IDOR and manual penetration testing support
 
-For supported Python, JavaScript/TypeScript, and Ruby/Rails frameworks, Sniper's built-in route inventory identifies
+For supported Python, JavaScript/TypeScript, and Ruby/Rails frameworks, VulKill's built-in route inventory identifies
 unprotected-route candidates (CWE-862) and object lookups that may need Insecure Direct Object Reference (IDOR)
 review (CWE-639). File, route, and line evidence gives an authorized tester a practical starting point for manual
 penetration testing with separate test roles, users, and synthetic objects. Rails controller review resolves exact
@@ -78,12 +78,12 @@ Nuclei HTTP work needs a separately pinned template catalog, and every host-cons
 own readiness and authorization checks.
 
 Before approving external work, verify target identity, written scope, timing, rate limits, data-handling rules, and
-stop conditions. A human confirmation records a decision; it does not create legal authorization. Sniper must not be
+stop conditions. A human confirmation records a decision; it does not create legal authorization. VulKill must not be
 used to evade access controls, assess unrelated targets, or conceal activity.
 
 ### AI-assisted security review
 
-An MCP-capable AI client can connect to Sniper's local stdio server to inspect supported metadata and findings,
+An MCP-capable AI client can connect to VulKill's local stdio server to inspect supported metadata and findings,
 explain evidence, prepare recommendations, and invoke exposed workflows. MCP is optional: the CLI and loopback web
 interface remain available for manual use. The server itself opens no network listener, but the AI client may send
 prompts, selected source, findings, or metadata to its model provider.
@@ -106,7 +106,7 @@ release; it does not convert optional or prerequisite-dependent entries into bui
 
 ## Built-in review areas
 
-Sniper Community includes local project analysis for the supported source, framework, configuration, dependency,
+VulKill Community includes local project analysis for the supported source, framework, configuration, dependency,
 container, SBOM, and infrastructure inputs in the capability map. It also includes bounded saved-report parsing,
 finding summaries, quality-gate and report commands, the loopback interface, and the stdio MCP adapter. The public
 catalog maps methodology controls to these checks, optional profiles, report imports, and human review.
@@ -143,12 +143,12 @@ container paths without a real Windows-host claim. The default container is core
 seven-engine Linux target. Exact commands and evidence boundaries are in [DEPLOYMENT.md](../DEPLOYMENT.md) and
 [VALIDATION.md](../VALIDATION.md).
 
-## Using Sniper with an AI client
+## Using VulKill with an AI client
 
 1. From a reviewed source checkout, run `python3 scripts/setup-community --accept-third-party-licenses`. This creates
    `.venv`, installs locked Python requirements and the seven optional tools, and checks the documented help
-   entrypoints; it does not start Sniper or run a scan.
-2. Configure the MCP client to launch `.venv/bin/python scripts/sniper-mcp --mode community` over stdin/stdout. The
+   entrypoints; it does not start VulKill or run a scan.
+2. Configure the MCP client to launch `.venv/bin/python scripts/vulkill-mcp --mode community` over stdin/stdout. The
    complete configuration and trust model are in [COMMUNITY-MCP.md](COMMUNITY-MCP.md).
 3. Ask the AI to review an authorized local project, explain existing findings, or prepare a supported action. Ask it
    to distinguish observed evidence from skipped, unavailable, and prerequisite-dependent checks.
@@ -156,7 +156,7 @@ seven-engine Linux target. Exact commands and evidence boundaries are in [DEPLOY
    `consent_scope`, effects, and expiry. Review that exact plan. Only after an explicit yes may the MCP host call
    `execute_action` with the matching values and `user_confirmed: true`.
 
-The assertion `user_confirmed: true` comes from the MCP host; Sniper cannot cryptographically observe a chat reply.
+The assertion `user_confirmed: true` comes from the MCP host; VulKill cannot cryptographically observe a chat reply.
 Hash, expiry, and single-use protections prevent plan mutation and replay, but they do not replace a trustworthy MCP
 host, target authorization, or human judgment.
 

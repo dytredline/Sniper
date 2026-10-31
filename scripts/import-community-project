@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copy one explicitly selected Mac project into Sniper's persistent Docker volume."""
+"""Copy one explicitly selected Mac project into VulKill's persistent Docker volume."""
 
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ def main(argv: list[str] | None = None) -> int:
 
     active = run("ps", "-q", "sniper", capture=True)
     if active.returncode != 0 or not active.stdout.strip():
-        print("Önce beş motorlu Sniper Docker hizmetini başlatın.", file=sys.stderr)
+        print("Önce beş motorlu VulKill Docker hizmetini başlatın.", file=sys.stderr)
         return 1
     absent = run("exec", "-T", "sniper", "test", "!", "-e", target, capture=True)
     if absent.returncode != 0:

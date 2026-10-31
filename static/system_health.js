@@ -1,4 +1,4 @@
-// Sniper öz sağlık panosu (salt okunur): /api/system/health-report. Hiçbir şeyi silmez ya da düzeltmez;
+// VulKill öz sağlık panosu (salt okunur): /api/system/health-report. Hiçbir şeyi silmez ya da düzeltmez;
 // yalnız durum ve öneri gösterir. Pahalı denetimler sunucuda önbelleklidir; kart görünür olunca yüklenir.
 (() => {
   const scope = typeof window !== "undefined" ? window : globalThis;

@@ -48,7 +48,7 @@ CLASSES = ("sql", "nosql", "cmd", "code", "deser", "path", "ssrf", "xss", "redir
 IAC_CATEGORIES = frozenset({"container", "iac", "cloud", "kubernetes", "terraform", "dockerfile", "helm"})
 IAC_RULE_PREFIXES = ("iac.", "iac_", "IAC", "CKV", "CIS-K8S", "CIS-DOCKER")
 
-# Sniper bulgu referansı (CWE) → sınıf.
+# VulKill bulgu referansı (CWE) → sınıf.
 CWE_CLASSES: dict[str, frozenset[str]] = {
     "89": frozenset({"sql"}), "943": frozenset({"nosql"}), "78": frozenset({"cmd"}), "77": frozenset({"cmd"}),
     # Şablon motoruna verilen girdi (SSTI) motorda kod enjeksiyonu (CWE-94/95) olarak da raporlanır; CodeQL

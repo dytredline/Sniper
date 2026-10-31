@@ -1510,7 +1510,7 @@ def audit_supply_chain_slsa(
             "title": "Projede SBOM (CycloneDX/SPDX) dosyası yok",
             "summary": "Sürümle birlikte yayımlanan bir SBOM, bileşen envanterinin alıcı tarafından doğrulanmasını sağlar.",
             "evidence": "bom.json / *.cdx.json / *.spdx.json bulunamadı (2 düzey derinlik)",
-            "recommendation": "CI'da CycloneDX SBOM üretip sürüm artefaktına ekleyin (Sniper: SBOM dışa aktarma).",
+            "recommendation": "CI'da CycloneDX SBOM üretip sürüm artefaktına ekleyin (VulKill: SBOM dışa aktarma).",
             "reference": "CWE-1104",
             "control_id": "SNIPER-SUPP-02",
         })

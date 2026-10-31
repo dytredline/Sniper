@@ -1,19 +1,19 @@
-# Kendi Sniper Taramamızda Bulduğumuz Doğrulanmış Açıklar
+# Kendi VulKill Taramamızda Bulduğumuz Doğrulanmış Açıklar
 
 [English](README.md) | **Türkçe** | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [한국어](README.ko.md)
 
 **Araştırmacı / Güvenlik Sorumlusu:** **Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline))  
-**Keşif ve Doğrulama Motoru:** **Sniper Security Toolkit** (`https://github.com/dytredline/Sniper`)  
+**Keşif ve Doğrulama Motoru:** **VulKill Security Toolkit** (`https://github.com/dytredline/VulKill`)
 **Doğrulama Standardı:** 3 Katmanlı Gerçek Dünya Etkisi (`1. Kodda Zafiyete Dönüşüm Mekanizması -> 2. Üç Farklı Günlük Hayat Kritik Senaryosu (Senaryo A / B / C) -> 3. Örnek Çalıştırma Komutları ve Çalışma Zamanı Kanıtı (RED -> GREEN + BENIGN)`)
 
-Bu dizin, **Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen **46 doğrulanmış güvenlik kaydının** (9 açık kaynak proje/ekosistemde: 45 özgün güvenlik açığı + 1 üst akış `CVE-2026-40295` duplicate savunma derinliği kaydı) **herkesin anlayabileceği şekilde kodda nasıl zafiyete dönüştüğünü**, **günlük hayatta yol açabileceği 3 farklı kritik senaryoyu (`Senaryo A`, `Senaryo B`, `Senaryo C`)**, **örnek çalıştırma ve doğrulama komutlarını** ve **uçtan uca çalışma zamanı kanıtlarını (`RED -> GREEN + BENIGN`)** içermektedir.
+Bu dizin, **VulKill** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen **46 doğrulanmış güvenlik kaydının** (9 açık kaynak proje/ekosistemde: 45 özgün güvenlik açığı + 1 üst akış `CVE-2026-40295` duplicate savunma derinliği kaydı) **herkesin anlayabileceği şekilde kodda nasıl zafiyete dönüştüğünü**, **günlük hayatta yol açabileceği 3 farklı kritik senaryoyu (`Senaryo A`, `Senaryo B`, `Senaryo C`)**, **örnek çalıştırma ve doğrulama komutlarını** ve **uçtan uca çalışma zamanı kanıtlarını (`RED -> GREEN + BENIGN`)** içermektedir.
 
 - **Uçtan Uca Çalışma Zamanı Kanıt Kaydı (11/11 PASS):** [`other-repos-and-cua-real-world-impact-e2e-20261029.json`](other-repos-and-cua-real-world-impact-e2e-20261029.json)
-- **Ana Türkçe Katalog ve Önceki Taramalar (8 Depo + 46 Doğrulanmış Güvenlik Kaydı (45 Özgün Açık + 1 Üst Akış Duplicate)):** [`../SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md`](../SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md)
+- **Ana Türkçe Katalog ve Önceki Taramalar (8 Depo + 46 Doğrulanmış Güvenlik Kaydı (45 Özgün Açık + 1 Üst Akış Duplicate)):** [`../VULKILL-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md`](../VULKILL-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md)
 
 ---
 
-## 1. Özet Tablo: Kendi Sniper Taramamızda Bulduğumuz 46 Doğrulanmış Güvenlik Kaydı (45 Özgün Açık + 1 Üst Akış Duplicate) (`Senaryo A / B / C` ve Çalışma Zamanı Kanıtları)
+## 1. Özet Tablo: Kendi VulKill Taramamızda Bulduğumuz 46 Doğrulanmış Güvenlik Kaydı (45 Özgün Açık + 1 Üst Akış Duplicate) (`Senaryo A / B / C` ve Çalışma Zamanı Kanıtları)
 
 | # | Açık / Advisory Belgesi & Upstream GHSA | Hedef Proje & Bileşen | CWE & CVSS v3.1 | Açığın Kodda Nasıl Oluştuğu & Günlük Hayatta Yol Açtığı 3 Kritik Senaryo (`Senaryo A / B / C`) | Çalışma Zamanı Kanıtı (`RED -> GREEN`) & Örnek Komut |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -68,11 +68,11 @@ Bu dizin, **Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenl
 
 ## 2. Tüm 46 Kaydı Yerel Ortamda Doğrulama ve Çalıştırma Komutları
 
-Aşağıdaki komutlarla tüm 46 güvenlik kaydı (45 özgün açık + 1 üst akış duplicate)nın hem **Sniper statik analiz (SAST/IaC)** tespitlerini hem de **izole yerel çalışma zamanı kanıtlarını (`RED -> GREEN + BENIGN`)** tek komutla doğrulayabilirsiniz:
+Aşağıdaki komutlarla tüm 46 güvenlik kaydı (45 özgün açık + 1 üst akış duplicate)nın hem **VulKill statik analiz (SAST/IaC)** tespitlerini hem de **izole yerel çalışma zamanı kanıtlarını (`RED -> GREEN + BENIGN`)** tek komutla doğrulayabilirsiniz:
 
 ```bash
-# 1. Sniper yerel proje denetimini çalıştırma (SAST + IaC + SCA + Rota/Sınır Analizi)
-python3 scripts/sniper-project-audit /path/to/target-repo --format json --output audit-report.json
+# 1. VulKill yerel proje denetimini çalıştırma (SAST + IaC + SCA + Rota/Sınır Analizi)
+python3 scripts/vulkill-project-audit /path/to/target-repo --format json --output audit-report.json
 
 # 2. 11 doğrulanmış açığın uçtan uca çalışma zamanı kanıt özetini inceleme
 python3 -m json.tool docs/advisories/other-repos-and-cua-real-world-impact-e2e-20261029.json

@@ -1,4 +1,4 @@
-# Contributing to Sniper Community
+# Contributing to VulKill Community
 
 Thank you for helping improve defensive application security.
 
@@ -39,7 +39,7 @@ integration as passing.
 Describe the observable behavior, risk, tests actually run, and remaining limitations. Keep generated caches and
 runtime data out of the change. Reviews may request a smaller diff, a regression test, or independent reproduction.
 
-By submitting a contribution intentionally for inclusion in Sniper Community, you agree that it is licensed on an
+By submitting a contribution intentionally for inclusion in VulKill Community, you agree that it is licensed on an
 **Apache-2.0 inbound=outbound** basis, unless you explicitly state otherwise before it is accepted. You must have the
 right to submit the contribution and must preserve applicable third-party copyright and license notices.
 

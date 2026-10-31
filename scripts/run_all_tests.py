@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run every Sniper test suite with one command.
+"""Run every VulKill test suite with one command.
 
 * unittest modules run one process per module (the global HTTP rate limiter and
   module-level state are not shared between modules), in parallel;
@@ -83,7 +83,7 @@ def _summarize_node(output: str) -> dict[str, str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Sniper: tüm test paketlerini tek komutla çalıştırır.")
+    parser = argparse.ArgumentParser(description="VulKill: tüm test paketlerini tek komutla çalıştırır.")
     parser.add_argument("--jobs", type=int, default=max(2, (os.cpu_count() or 4) // 2))
     parser.add_argument("--skip-node", action="store_true")
     parser.add_argument("--verbose", action="store_true", help="Başarısız modüllerin çıktısını yazdır.")

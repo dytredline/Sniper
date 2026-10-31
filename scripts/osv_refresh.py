@@ -9,7 +9,7 @@ Kullanım:
   python3 scripts/osv_refresh.py --print-dropin        # systemd drop-in satırlarını yazdır
 
 Varsayılan hedef ``~/.local/state/sniper/osv-db`` (``--root`` ya da ``SNIPER_OSV_DB_ROOT``).
-Manifest yerel denetim anahtarıyla (scripts/audit_key.py init) imzalanırsa Sniper yeni veriyi yeniden
+Manifest yerel denetim anahtarıyla (scripts/audit_key.py init) imzalanırsa VulKill yeni veriyi yeniden
 başlatma gerekmeden kabul eder; anahtar yoksa çıktıdaki ``manifest_sha256`` systemd'deki
 ``SNIPER_OSV_DB_MANIFEST_SHA256`` değerine yazılıp servis yeniden başlatılmalıdır.
 OSV-Scanner profili 7 günden eski veriyi reddeder; haftalık çalıştırın.
@@ -31,7 +31,7 @@ import osv_db_refresh  # noqa: E402
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Sniper OSV çevrimdışı veritabanı güncellemesi")
+    parser = argparse.ArgumentParser(description="VulKill OSV çevrimdışı veritabanı güncellemesi")
     parser.add_argument("--ecosystem", action="append",
                         help="OSV ekosistemi; tekrarlanabilir (varsayılan: yapılandırılmış liste)")
     parser.add_argument("--root", type=Path, help="Hedef dizin (varsayılan ~/.local/state/sniper/osv-db)")
@@ -70,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
     print(json.dumps(results, ensure_ascii=False, indent=2))
     for result in results:
         if result.get("status") == "updated" and not result.get("manifest_signed"):
-            print("Uyarı: manifest imzasız (denetim anahtarı yok). Sniper'ın kabul etmesi için "
+            print("Uyarı: manifest imzasız (denetim anahtarı yok). VulKill'ın kabul etmesi için "
                   "SNIPER_OSV_DB_MANIFEST_SHA256 değerini güncelleyip servisi yeniden başlatın.", file=sys.stderr)
     return exit_code
 

@@ -59,9 +59,9 @@ func InsecureClient(client *http.Client, certs []byte) *http.Client {
 
 ## 3. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
 
-### 1. Sniper CLI ile Hedef Bileşenin Denetlenmesi
+### 1. VulKill CLI ile Hedef Bileşenin Denetlenmesi
 ```bash
-python3 scripts/sniper-project-audit \
+python3 scripts/vulkill-project-audit \
   --repo-path /home/community-user/targets/ziti \
   --include "ziti/util/certs.go"
 ```

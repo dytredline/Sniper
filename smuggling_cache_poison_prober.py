@@ -1,4 +1,4 @@
-"""Sniper HTTP Request Smuggling & Web Cache Poisoning Prober
+"""VulKill HTTP Request Smuggling & Web Cache Poisoning Prober
 (Burp HTTP Request Smuggler + Web Cache Poisoning eklentileri karşılığı).
 
 1. CL.TE, TE.CL, TE.TE (gizlenmiş Transfer-Encoding) ve H2.CL / H2.TE (HTTP/2 downgrade)

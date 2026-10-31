@@ -1,4 +1,4 @@
-"""Sniper HTTP Repeater & Comparer (Burp Repeater + Comparer karşılığı).
+"""VulKill HTTP Repeater & Comparer (Burp Repeater + Comparer karşılığı).
 
 Yerel loopback (127.0.0.1) veya deterministik işleyici üzerinde bir temel (baseline) HTTP
 isteğinin parametre, başlık, çerez veya JSON gövdesini değiştirerek yeniden gönderir ve

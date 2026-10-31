@@ -2812,7 +2812,7 @@ def cyclonedx_sbom(result: dict[str, Any]) -> dict[str, Any]:
         "version": 1,
         "metadata": {
             "timestamp": result.get("created_at"),
-            "tools": [{"vendor": "Sniper", "name": "container_scan", "version": FORMAT}],
+            "tools": [{"vendor": "VulKill", "name": "container_scan", "version": FORMAT}],
             "component": {"type": "container", "name": result.get("project_name"),
                           "properties": [{"name": "sniper:os", "value": str(os_info.get("pretty_name") or "")},
                                          {"name": "sniper:osv-ecosystem", "value": str(os_info.get("ecosystem") or "")}]},

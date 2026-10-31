@@ -1,4 +1,4 @@
-/* Sniper arayüz dil katmanı (Türkçe kaynak → seçilen dil).
+/* VulKill arayüz dil katmanı (Türkçe kaynak → seçilen dil).
  *
  * Yaklaşım: arayüz metinleri Türkçe yazılmaya devam eder; bu katman Türkçe kaynak metni anahtar alan
  * TSV dil paketleriyle (proje analizörü .json içeriğini kural metni olarak taradığından düz metin) görünür metin düğümlerini ve placeholder/title/aria-label/alt/value
@@ -495,7 +495,7 @@
         if (revision !== selectionRevision) return lang;
         lang = "tr";
         apply(doc);
-        if (global.console) global.console.warn("Sniper i18n:", err && err.message);
+        if (global.console) global.console.warn("VulKill i18n:", err && err.message);
         return lang;
       });
     }

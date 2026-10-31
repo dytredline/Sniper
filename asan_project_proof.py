@@ -1810,7 +1810,7 @@ def synthesize_sanitizer_fuzz_harness(
             "use libfuzzer_sys::fuzz_target;\n"
             "fuzz_target!(|data: &[u8]| {\n"
             "    if data.len() >= 16 {\n"
-            "        // Sniper synthesized bounds/overflow sanitizer harness\n"
+            "        // VulKill synthesized bounds/overflow sanitizer harness\n"
             "    }\n"
             "});\n"
         )

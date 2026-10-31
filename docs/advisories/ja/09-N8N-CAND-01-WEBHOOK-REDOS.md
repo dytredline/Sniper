@@ -54,9 +54,9 @@ function extractEmail(value: string) {
 
 ## 3. 実行・再現・検証コマンド例
 
-### 1. Sniper CLI による対象コンポーネントの監査
+### 1. VulKill CLI による対象コンポーネントの監査
 ```bash
-python3 scripts/sniper-project-audit \
+python3 scripts/vulkill-project-audit \
   --repo-path /home/community-user/targets/n8n \
   --include "packages/workflow/src/extensions/string-extensions.ts"
 ```

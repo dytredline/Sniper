@@ -1,4 +1,4 @@
-"""Sniper testleri.
+"""VulKill testleri.
 
 Denetim günlüğü anahtarı ve çapaları testlerde kullanıcının gerçek ``~/.config/sniper`` dizinine
 yazılmasın: bazı testler proje yolu kuralı gereği veritabanını ev dizini altında oluşturur.

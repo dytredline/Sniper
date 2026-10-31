@@ -208,7 +208,7 @@ class RealRenderTests(_DataDir):
         document = (
             "<!doctype html><html lang='tr'><head><meta charset='utf-8'><title>Deneme</title>"
             f"<link rel='stylesheet' href='http://127.0.0.1:{port}/a.css'></head><body>"
-            "<h1>Sniper raporu ğüşıöç İŞĞ</h1>"
+            "<h1>VulKill raporu ğüşıöç İŞĞ</h1>"
             f"<img src='http://127.0.0.1:{port}/b.png'><img src='file:///etc/passwd'>"
             "<iframe src='file:///etc/passwd'></iframe>"
             "<script>document.body.insertAdjacentText('beforeend','BETIKCALISTI')</script>"
@@ -218,7 +218,7 @@ class RealRenderTests(_DataDir):
         self.assertEqual(_Beacon.hits, 0, "sandbox dışına (yerel porta) istek gitmemeli")
         if PDFTOTEXT:
             text = _pdf_text(pdf)
-            self.assertIn("Sniper raporu ğüşıöç İŞĞ", text)
+            self.assertIn("VulKill raporu ğüşıöç İŞĞ", text)
             self.assertNotIn("BETIKCALISTI", text)
             self.assertNotIn("root:", text)
         # İş dizini temizlenir; kilit bırakılır (ikinci üretim de çalışır).

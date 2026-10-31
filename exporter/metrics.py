@@ -1,4 +1,4 @@
-"""Small dependency-free Prometheus exporter for the local Sniper service."""
+"""Small dependency-free Prometheus exporter for the local VulKill service."""
 
 from __future__ import annotations
 
@@ -140,7 +140,7 @@ class Metrics:
 
     def render(self, *, active_scans: int, loaded_plugins: int, posture: dict | None = None) -> str:
         lines = [
-            "# HELP sniper_uptime_seconds Sniper process uptime.",
+            "# HELP sniper_uptime_seconds VulKill process uptime.",
             "# TYPE sniper_uptime_seconds gauge",
             f"sniper_uptime_seconds {time.monotonic() - self.started:.3f}",
             "# HELP sniper_scans_active Currently active baseline scans.",

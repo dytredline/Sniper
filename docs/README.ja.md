@@ -1,4 +1,4 @@
-# Sniper Community
+# VulKill Community
 
 [![M8ven Verified](https://m8ven.ai/badge/mcp/dytredline-sniper-9er1v0?v=d16a3a51d05233973aecdea96d29b90c&variant=verified)](https://m8ven.ai/mcp/dytredline-sniper-9er1v0?s=readme)
 
@@ -6,7 +6,7 @@
 
 [ConverserAI のプロジェクト概要](https://converserai.com/#sniper) · [機能一覧](CAPABILITIES.md) · [ソースチェックアウトからのセットアップ](#ソースチェックアウトからのセットアップ) · [よくある質問](#よくある質問)
 
-Sniper Community は、アプリケーション、API、Web サイトの開発者・所有者・レビュー担当者向けの、
+VulKill Community は、アプリケーション、API、Web サイトの開発者・所有者・レビュー担当者向けの、
 オープンソースかつローカル優先の防御的アプリケーションセキュリティツールキットです。
 対応するソースコードの静的解析（SAST）、依存関係と SBOM の分析（SCA）、コンテナ成果物、
 Infrastructure as Code（IaC）、CI 設定、保存済みセキュリティレポートを、一つのレビュー経路にまとめます。
@@ -24,7 +24,7 @@ Infrastructure as Code（IaC）、CI 設定、保存済みセキュリティレ�
 `複数リポジトリ解析` · `信頼グラフ` · `成果物の来歴` · `プロトコルセキュリティ` ·
 `アーカイブ／シンボリックリンクセキュリティ` · `バイナリ強化` · `DevSecOps` · `ローカル優先`
 
-Sniper Community v1.1 では、次の領域により深くレビュー可能な機能が追加されました。
+VulKill Community v1.1 では、次の領域により深くレビュー可能な機能が追加されました。
 
 - **フレームワーク横断のアクセス制御:** 対応する Rails の継承、Spring／ASP.NET ルート、GraphQL
   リゾルバー、オブジェクト識別子、認可アノテーション、ポリシー、ロール、所有者、テナント制約付き検索を関連付けます。
@@ -46,13 +46,13 @@ Sniper Community v1.1 では、次の領域により深くレビュー可能な�
 
 **強力なオープンソースツールキットで Web サイトのセキュリティ弱点を発見しましょう。** 許可された Web サイトおよび API のスキャンとローカルのコード・依存関係レビューを組み合わせ、所見を優先順位付きの修正計画に変換します。外部スキャンには該当するエンジン、データ、準備確認、および明示的なスコープ承認が必要であり、無制限のスキャンサービスではありません。詳細は [Web サイトおよび API のレビュー経路](USE-CASES.md#plan-an-authorized-website-or-api-action)を参照してください。
 
-リリース前に AI アシスタントにアプリケーションのセキュリティレビューを依頼できます。Sniper のローカル stdio MCP ワークフローを通じて、AI は対応するセキュリティレビューを案内し、コードの根拠とともに所見を説明し、修正の優先順位付けを支援します。同じ結果は Web インターフェース、CLI、CI 成果物でもそのまま利用できます。
+リリース前に AI アシスタントにアプリケーションのセキュリティレビューを依頼できます。VulKill のローカル stdio MCP ワークフローを通じて、AI は対応するセキュリティレビューを案内し、コードの根拠とともに所見を説明し、修正の優先順位付けを支援します。同じ結果は Web インターフェース、CLI、CI 成果物でもそのまま利用できます。
 
-Android、iOS、Flutter、React Native プロジェクトでは、対応するソースコード、モバイルマニフェスト、API 経路、シークレット、依存関係、SBOM データ、CI 設定を一つのリリース前プリフライトビューに統合できます。**App Store や Google Play への申請準備**、**Web サイトや API の公開**、または **プルリクエストのレビュー** のいずれであっても、Sniper はユーザーにリリースが届く前に対処すべきセキュリティ作業を可視化します。
+Android、iOS、Flutter、React Native プロジェクトでは、対応するソースコード、モバイルマニフェスト、API 経路、シークレット、依存関係、SBOM データ、CI 設定を一つのリリース前プリフライトビューに統合できます。**App Store や Google Play への申請準備**、**Web サイトや API の公開**、または **プルリクエストのレビュー** のいずれであっても、VulKill はユーザーにリリースが届く前に対処すべきセキュリティ作業を可視化します。
 
-## Sniper で確認できる内容
+## VulKill で確認できる内容
 
-| 分野 | Sniper が解決を支援する問い |
+| 分野 | VulKill が解決を支援する問い |
 | --- | --- |
 | ソースコードと設定 | どの対応コードパス、セキュリティパターン、シークレット、設定選択に人のレビューが必要か？ |
 | 認可と IDOR のレビュー | 対応する Python または JavaScript/TypeScript のどのルートで認可チェックが欠落している可能性があるか（CWE-862）、またはユーザー／ロールの紐付けなしにオブジェクト識別子を読み込み IDOR レビューが必要か（CWE-639）？ |
@@ -78,11 +78,11 @@ Android、iOS、Flutter、React Native プロジェクトでは、対応する�
 
 ## IDOR と手動ペネトレーションテストの支援
 
-Sniper は、対応するソースコードを許可された手動ペネトレーションテストのための重点リストに変換します。組み込みのルートおよび認可インベントリが、未保護ルートの候補（CWE-862）と潜在的な Insecure Direct Object Reference（IDOR）経路（CWE-639）を特定し、該当するファイル、ルート、コード行を示します。これにより、テスターは無秩序なエンドポイント一覧から始めるのではなく、別々のテストユーザー、ロール、合成オブジェクトを用いた実地検証を優先順位付けできます。
+VulKill は、対応するソースコードを許可された手動ペネトレーションテストのための重点リストに変換します。組み込みのルートおよび認可インベントリが、未保護ルートの候補（CWE-862）と潜在的な Insecure Direct Object Reference（IDOR）経路（CWE-639）を特定し、該当するファイル、ルート、コード行を示します。これにより、テスターは無秩序なエンドポイント一覧から始めるのではなく、別々のテストユーザー、ロール、合成オブジェクトを用いた実地検証を優先順位付けできます。
 
 各候補はエビデンスに基づく手動検証向けに整理されます。許可されたテスト範囲内で、レビュアーはゲートウェイ、ミドルウェア、ポリシーサービス、ビジネスロジックの制御を考慮しながら、異なるユーザーとロール間でのランタイム動作を確認できます。
 
-Sniper はソースツリー内に組み込みアナライザーとレポートパーサーを含んでいます。さらに、ルート権限不要のローカルプロファイルでは、バージョン固定された 5 つの任意サードパーティ製エンジン（**Nuclei**、**Trivy**、**Gitleaks**、**TruffleHog**、**Opengrep**）を追加導入できます。内蔵分析はこれらとは独立して利用可能であり、任意エンジンやプロファイルはランタイム、データ、ライセンスの準備確認に合格した場合にのみ利用可能として表示されます。
+VulKill はソースツリー内に組み込みアナライザーとレポートパーサーを含んでいます。さらに、ルート権限不要のローカルプロファイルでは、バージョン固定された 5 つの任意サードパーティ製エンジン（**Nuclei**、**Trivy**、**Gitleaks**、**TruffleHog**、**Opengrep**）を追加導入できます。内蔵分析はこれらとは独立して利用可能であり、任意エンジンやプロファイルはランタイム、データ、ライセンスの準備確認に合格した場合にのみ利用可能として表示されます。
 
 ループバックインターフェースと HTML レポートはトルコ語をソース言語とし、英語ベースパックおよび拡張された日本語・簡体字中国語・韓国語パックを提供します。CJK の項目が未定義の場合は英語が存在すれば英語へ、なければ元のトルコ語へフォールバックします。CJK レイアウトはデスクトップおよびモバイルの Chromium ビューポートで検証されています。詳細は [ローカリゼーション範囲と言語パックの更新](LOCALIZATION.md) を参照してください。
 
@@ -90,7 +90,7 @@ Sniper はソースツリー内に組み込みアナライザーとレポート�
 
 ## リリース状況
 
-このリポジトリは Sniper Community v1.0.0 のソースリリースです。`COMMUNITY_VERSION` がソースバージョンのマーカーであり、公開タグは `v<バージョン>` として一致する必要があります。ソースコードは Apache License 2.0 の下でライセンスされています（[LICENSE](../LICENSE) を参照）。
+このリポジトリは VulKill Community v1.0.0 のソースリリースです。`COMMUNITY_VERSION` がソースバージョンのマーカーであり、公開タグは `v<バージョン>` として一致する必要があります。ソースコードは Apache License 2.0 の下でライセンスされています（[LICENSE](../LICENSE) を参照）。
 
 ## 含まれる内容
 
@@ -101,11 +101,11 @@ Sniper はソースツリー内に組み込みアナライザーとレポート�
 - AI クライアントを介さずに利用できる手動 CLI およびローカル Web オプション。
 - テスト、リポジトリ同梱のルール／データ資産、コントリビューター向けドキュメント。
 
-Sniper は防御的な補助ツールであり、システムが完全に安全であることの証明ではありません。所見、クリーンな結果、AI の提案にはすべて人間によるレビューが必要です。
+VulKill は防御的な補助ツールであり、システムが完全に安全であることの証明ではありません。所見、クリーンな結果、AI の提案にはすべて人間によるレビューが必要です。
 
 ## ソースチェックアウトからのセットアップ
 
-**macOS Apple Silicon** では、ネイティブのソースセットアップ（`python3 scripts/setup-community --core-only`）と 5 エンジンの Docker Desktop プロファイル（`./scripts/deploy-community-tools --accept-third-party-licenses`）の **両方が実機で検証・サポートされています**（実験的ではありません）。ソースチェックアウト利用でテスト済みのインタープリターは Python 3.12 です。Community v1 の完全なネイティブセットアップおよびロックされた 5 つの任意エンジンは Linux ARM64 と Linux x86-64 でサポートされます。**Windows** では、ネイティブの `--core-only` ソースセットアップ（`python3 scripts/setup-community --core-only`）、WSL2、および Docker Desktop の Linux コンテナをサポートします。このソースリリースは pip でインストールするパッケージではありません。リポジトリルートから同梱のエントリーポイントを実行してください。ルート権限不要のセットアップコマンドは `.venv` を作成し、厳密にバージョン固定されたランタイム依存関係とローカルツールプロファイルを導入した上で、Sniper やスキャナーを起動せずに実際の MCP およびプロジェクト監査のヘルプエントリーポイントを検証します：
+**macOS Apple Silicon** では、ネイティブのソースセットアップ（`python3 scripts/setup-community --core-only`）と 5 エンジンの Docker Desktop プロファイル（`./scripts/deploy-community-tools --accept-third-party-licenses`）の **両方が実機で検証・サポートされています**（実験的ではありません）。ソースチェックアウト利用でテスト済みのインタープリターは Python 3.12 です。Community v1 の完全なネイティブセットアップおよびロックされた 5 つの任意エンジンは Linux ARM64 と Linux x86-64 でサポートされます。**Windows** では、ネイティブの `--core-only` ソースセットアップ（`python3 scripts/setup-community --core-only`）、WSL2、および Docker Desktop の Linux コンテナをサポートします。このソースリリースは pip でインストールするパッケージではありません。リポジトリルートから同梱のエントリーポイントを実行してください。ルート権限不要のセットアップコマンドは `.venv` を作成し、厳密にバージョン固定されたランタイム依存関係とローカルツールプロファイルを導入した上で、VulKill やスキャナーを起動せずに実際の MCP およびプロジェクト監査のヘルプエントリーポイントを検証します：
 
 ```bash
 python3 scripts/setup-community --accept-third-party-licenses
@@ -131,7 +131,7 @@ python3 scripts/build-community-tools-image --accept-third-party-licenses
 セットアップ後、MCP ヘルプエントリーポイントは次のコマンドで直接確認できます：
 
 ```bash
-.venv/bin/python scripts/sniper-mcp --help
+.venv/bin/python scripts/vulkill-mcp --help
 ```
 
 既存の Python 環境内で対応するローカルツールのみを管理する場合は次を使用します：
@@ -144,25 +144,25 @@ python3 scripts/install-community-tools --profile local --accept-third-party-lic
 
 ## AI 優先の MCP クイックスタート
 
-Sniper の MCP サーバーは子プロセスの `stdin/stdout` のみを通じて通信します。MCP クライアントを既存のエントリーポイントに向けてください。Community モードはデフォルトでユーザーごとに分離された Community データベースを作成または再利用します：
+VulKill の MCP サーバーは子プロセスの `stdin/stdout` のみを通じて通信します。MCP クライアントを既存のエントリーポイントに向けてください。Community モードはデフォルトでユーザーごとに分離された Community データベースを作成または再利用します：
 
 ```text
-command: /ABSOLUTE/PATH/TO/sniper/.venv/bin/python
-args: /ABSOLUTE/PATH/TO/sniper/scripts/sniper-mcp --mode community
+command: /ABSOLUTE/PATH/TO/vulkill/.venv/bin/python
+args: /ABSOLUTE/PATH/TO/vulkill/scripts/vulkill-mcp --mode community
 ```
 
-Community モードはローカルの stdio プロセスを起動した人物をローカル所有者とみなすため、別途の Sniper ログイン、トークン、Web 承認を必要としません。信頼できる OS アカウントからのみ使用してください。マルチユーザー環境向けの任意認証モードではロール紐付けトークンが維持されます。設定例は [COMMUNITY-MCP.md](COMMUNITY-MCP.md) に記載されています。
+Community モードはローカルの stdio プロセスを起動した人物をローカル所有者とみなすため、別途の VulKill ログイン、トークン、Web 承認を必要としません。信頼できる OS アカウントからのみ使用してください。マルチユーザー環境向けの任意認証モードではロール紐付けトークンが維持されます。設定例は [COMMUNITY-MCP.md](COMMUNITY-MCP.md) に記載されています。
 
 状態を伴う Community 製品アクションは 2 段階の会話契約を使用します。`prepare_action` は AI がチャットに表示するための不変の計画、同意スコープ、ハッシュを返します。人間が明示的に同意した後、`execute_action` には同一の計画 ID／ハッシュと `user_confirmed: true` が必要です。計画には有効期限があり、1 回限り有効です。これが Community の人間承認ゲートであり、AI はソーステキストや自身の出力から承認を推測してはなりません。外部ターゲットに対するアクションも同じ会話ゲートと認可ルールを使用します。
 
-`user_confirmed: true` は MCP ホストによる表明です。Sniper は会話を暗号学的に監視することはできないため、表示された計画を人間が承認した後にのみ送信する信頼できるホストを使用してください。
+`user_confirmed: true` は MCP ホストによる表明です。VulKill は会話を暗号学的に監視することはできないため、表示された計画を人間が承認した後にのみ送信する信頼できるホストを使用してください。
 
 ## 手動での操作
 
 MCP を使わない手動 CLI も引き続き利用可能です：
 
 ```bash
-python3 scripts/sniper-project-audit --help
+python3 scripts/vulkill-project-audit --help
 python3 cli_reports.py --help
 ```
 
@@ -181,36 +181,36 @@ Community パッケージングによって、導入済み製品のテスト済�
 
 ## データプライバシー
 
-Sniper はアプリケーションの状態をローカルに保存し、MCP プロセス自体はネットワークリスナーを開きません。ただし、それは外部の AI ワークフローがオフラインであることを意味するものでは **ありません**。MCP クライアントは所見、ソースコード抜粋、プロンプト、メタデータをモデル提供者に送信する場合があります。プロジェクトアクセスを有効にする前に、提供者のデータ保持ポリシーと組織のソース共有ルールを確認してください。トークン、パスワード、秘密鍵、顧客データ、本番データベースファイルを issue に含めないでください。
+VulKill はアプリケーションの状態をローカルに保存し、MCP プロセス自体はネットワークリスナーを開きません。ただし、それは外部の AI ワークフローがオフラインであることを意味するものでは **ありません**。MCP クライアントは所見、ソースコード抜粋、プロンプト、メタデータをモデル提供者に送信する場合があります。プロジェクトアクセスを有効にする前に、提供者のデータ保持ポリシーと組織のソース共有ルールを確認してください。トークン、パスワード、秘密鍵、顧客データ、本番データベースファイルを issue に含めないでください。
 
 ## 責任あるセキュリティ利用
 
-Sniper は、自分が所有するシステム、または評価の明示的な許可を得たシステムにのみ使用してください。外部ターゲットへのアクションの前に、ターゲットの所有権、書面によるスコープ、時間帯、レート制限、データ取扱ルール、停止条件を確認してください。人間がこれらの事実を確認し、同じチャット経由の承認を与えるまで、AI が作成したリクエストを実行しないでください。
+VulKill は、自分が所有するシステム、または評価の明示的な許可を得たシステムにのみ使用してください。外部ターゲットへのアクションの前に、ターゲットの所有権、書面によるスコープ、時間帯、レート制限、データ取扱ルール、停止条件を確認してください。人間がこれらの事実を確認し、同じチャット経由の承認を与えるまで、AI が作成したリクエストを実行しないでください。
 
 セキュリティメンテナー（Security Maintainer）：**Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline))。非公開の脆弱性報告については [SECURITY.md](../SECURITY.md)、役割の契約については [SECURITY-MAINTAINERS.md](../SECURITY-MAINTAINERS.md)、開発ルールについては [CONTRIBUTING.md](../CONTRIBUTING.md) を参照してください。コミュニティサポートの範囲は [SUPPORT.md](../SUPPORT.md)、公開変更履歴は [CHANGELOG.md](../CHANGELOG.md)、研究引用情報は [CITATION.cff](../CITATION.cff) に記載されています。
 
-### Gökçe Baran Karakamış — macOS 実機検証および Sniper でスキャンしたリポジトリ監査レポート
+### Gökçe Baran Karakamış — macOS 実機検証および VulKill でスキャンしたリポジトリ監査レポート
 
-**Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline)) によって実施された **macOS（Apple Silicon）実機でのインストールおよび動作検証**（ネイティブソース導入 `python3 scripts/setup-community --core-only` と 5 エンジン Docker Desktop プロファイル `./scripts/deploy-community-tools --accept-third-party-licenses` の両方）と、**Sniper** でスキャンした **8 つのオープンソースリポジトリ** の詳細なエビデンス監査、誤検知（False Positive）の切り分け、コードパターンがどのように脆弱性へ変化するかの分析、および攻撃チェーン（*chaining*）分析を以下に要約します。完全なレポートは [SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md](SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md) および [VALIDATION.md](../VALIDATION.md) で公開されています。
+**Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline)) によって実施された **macOS（Apple Silicon）実機でのインストールおよび動作検証**（ネイティブソース導入 `python3 scripts/setup-community --core-only` と 5 エンジン Docker Desktop プロファイル `./scripts/deploy-community-tools --accept-third-party-licenses` の両方）と、**VulKill** でスキャンした **8 つのオープンソースリポジトリ** の詳細なエビデンス監査、誤検知（False Positive）の切り分け、コードパターンがどのように脆弱性へ変化するかの分析、および攻撃チェーン（*chaining*）分析を以下に要約します。完全なレポートは [VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md](VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md) および [VALIDATION.md](../VALIDATION.md) で公開されています。
 
 > **重要な方法論および責任ある開示に関する注記:** 静的解析において危険な関数（`exec`、`pickle.loads`、`subprocess.Popen`）や CI/CD パターンが存在すること自体は、それ単独で確認済みの製品 CVE を意味しません。所見が悪用可能な脆弱性とみなされるには、デフォルトまたはサポートされる導入形態において **到達可能性（reachability）**、**信頼境界（trust boundary）の突破**、および **現実的な攻撃者の前提条件** が同時に証明される必要があります。協調的脆弱性開示（Coordinated Vulnerability Disclosure / CVE-GHSA）プロセスが進行中のプロジェクトに関する所見は、責任ある開示の原則に従い、修正パッチが公開されるまでこの公開リストには含まれません。
 
-| リポジトリ | Sniper SAST / IaC / SCA 概要 | 検証済みソース根拠とコードがリスクに変わる仕組み | 日常的な実運用での 3 つの重大シナリオ（`シナリオ A / B / C`）と連鎖 | 総合深刻度と検証コマンド |
+| リポジトリ | VulKill SAST / IaC / SCA 概要 | 検証済みソース根拠とコードがリスクに変わる仕組み | 日常的な実運用での 3 つの重大シナリオ（`シナリオ A / B / C`）と連鎖 | 総合深刻度と検証コマンド |
 | :--- | :--- | :--- | :--- | :--- |
-| **1. `autogpt`** | 閾値超え `93` 件（`重大2 / 高39`）、トリアージ `142` 件 | **重大な SQLi 2 件（`obj.execute`）、JWT、FastAPI `Security()` は誤検知**。`jobstore_backfill.py:99` の `pickle.loads(row.job_state)` + Compose の固定パスワード（`RABBITMQ_DEFAULT_PASS`）+ root Dockerfile は実在 | **シナリオ A:** 内部ネットワークでデフォルトの Compose 認証情報を使って DB にアクセスした攻撃者が、`apscheduler_jobs.job_state` 列に悪意ある pickle ペイロードを書き込み、root コンテナ内で RCE を達成する。<br/>**シナリオ B:** バックアップやマイグレーション用 DB ファイルが改ざんされ、復元時に `jobstore_backfill.py` 経由で任意コードが実行される。<br/>**シナリオ C:** `:latest` イメージタグと root コンテナ実行の組み合わせにより侵害後の影響が拡大する。 | **中 / 高（条件付き — DB 書き込み権限がある場合）**<br/>`python3 scripts/sniper-project-audit ./autogpt` |
-| **2. `zitadel`** | 閾値超え `67` 件（`重大8 / 高42`）、トリアージ `286` 件 | **重大な SQLi/`exec` 8 件は誤検知**（パラメータ化された `pgx` ラッパー）。`deploy/compose/` 配下の 3 つの `docker.sock` マウント、リバースプロキシ文書例の `NODE_TLS_REJECT_UNAUTHORIZED=0`、および `WithInsecure()` は実在 | **シナリオ A:** 運用者が `deploy/compose/` のサンプルを `/var/run/docker.sock` マウントのまま本番適用した場合、コンテナ侵害からホストの root 権限へ昇格される。<br/>**シナリオ B:** リバースプロキシ例の `NODE_TLS_REJECT_UNAUTHORIZED=0` を本番へコピーすると、OIDC/OAuth セッション通信に対する MITM 攻撃が可能になる。<br/>**シナリオ C:** `cfg.Insecure = true` のまま有効化された OTLP テレメトリ経路から内部トレースデータが平文で流出する。 | **低 / 中（サンプル構成のハードニング）**<br/>`python3 scripts/sniper-project-audit ./zitadel` |
-| **3. `nextcloud-mcp`** | 閾値超え `59` 件（`SAST 重大1/高6`、`IaC 高7`、`SCA 重大5/高40`） | **`token_utils.py` の JWT と `login_flow.py:192` の `poll_endpoint` SSRF は 100% 誤検知**（`initiate()` の 130 行目で `_rewrite_to_nextcloud_host` によりオリジンを固定）。`pact.yml:93` の `--branch "${{ github.head_ref }}"` は `same-repo` 保護あり | **シナリオ A:** リポジトリ内でブランチ作成権限を持つアカウントが、細工したブランチ名を使って `pact.yml:93` 内でシェルコマンドを実行する（外部フォークからの PR はブロックされる）。<br/>**シナリオ B:** ローカル開発環境の固定 Keycloak/Greenmail シークレットが外部公開された場合、テストアカウントが乗っ取られる。<br/>**シナリオ C:** `uv.lock` 内の古い `pillow`/`cryptography`/`pyjwt` 依存関係を通じて既知の CVE が悪用される。 | **低 / 中（内部 CI & SCA）**<br/>`python3 scripts/sniper-project-audit ./nextcloud-mcp` |
-| **4. `mcpjam-inspector`** | 閾値超え `122` 件（`SAST 重大12/高8`、`SCA 重大6/高96`） | **重大/高 SAST 所見 20 件中 18 件（90%）は誤検知**（JSDoc コメント 14 件、`.d.ts` 2 件、UI ラベル 2 件）。`pr-preview.yml:116` の `echo "branch=${{ github.event.pull_request.head.ref }}"` は `same-repo` 保護あり | **シナリオ A:** リポジトリ内のブランチ作成権限を持つアカウントが `pr-preview.yml:116` を通じて `$GITHUB_OUTPUT` とシェル環境を操作する（外部フォーク PR は遮断）。<br/>**シナリオ B:** 評価（eval）ランナーの動的関数がサンドボックス分離されていない場合、ワーカー環境でコードが実行される。<br/>**シナリオ C:** `package-lock.json` 内の `handlebars` や `shell-quote` の脆弱性が連鎖する。 | **低 / 中（内部 CI & SCA）**<br/>`python3 scripts/sniper-project-audit ./mcpjam-inspector` |
-| **5. `codebase-memory-mcp`** | 閾値超え `32` 件（`SAST 重大17/高7`、`SCA 高8`） | **`store.c:2864` の SQLi、`c_lsp.h:54` のコメント、`kotlin_lsp.c`/`py_lsp.c` の固定長バッファは誤検知**。`http_server.c:668` の `GET /api/browse?path=...` は `localhost` 限定 CORS と `Host` ヘッダー検証（403）で保護 | **シナリオ A:** `--ui` モード有効時、同一マシン上の別プロセスが `http://127.0.0.1:<port>/api/browse?path=/` でディレクトリ構造を列挙できる（ブラウザーからのクロスオリジン要求は CORS/Host で遮断）。<br/>**シナリオ B:** SSH トンネルやリバースプロキシで `--ui` ポートを誤って外部公開すると、サーバーのディレクトリツリーが露出する。<br/>**シナリオ C:** `graph-ui/package-lock.json` 内のフロントエンドパッケージ未更新が開発環境リスクとなる。 | **低（ローカルサービス境界）**<br/>`python3 scripts/sniper-project-audit ./codebase-memory-mcp` |
-| **6. `gitlab-mcp-server`** | 閾値超え `5` 件（`重大0 / 高4`） | `recorder.go:84` と `make.go:35` は誤検知（シェルを介さない `exec.Command("git", args...)`）。`internal/gitlab/client.go:1416` の `GITLAB_MCP_SKIP_TLS_VERIFY=true` はユーザーの明示的な有効化時のみ動作 | **シナリオ A:** 開発者が自己署名証明書の社内 GitLab サーバー向けに `GITLAB_MCP_SKIP_TLS_VERIFY=true` を有効化した状態で共有 Wi-Fi/VPN を利用すると、MITM により GitLab PAT トークンが窃取される。<br/>**シナリオ B:** CI/CD 環境でこのフラグを常時有効にすると、偽装された GitLab API レスポンスにより MCP エージェントへ悪意あるデータが注入される。<br/>**シナリオ C:** PR ラベルワークフローの `pull_request_target` に将来 `checkout` が追加されると危険が生じる。 | **低（任意設定）**<br/>`python3 scripts/sniper-project-audit ./gitlab-mcp-server` |
-| **7. `apktool-mcp`** | 閾値超え `16` 件（`SAST 中1`、`SCA 重大4 / 高12`） | SAST のプライバシー警告は誤検知。**`uv.lock` 内に重大 4 件・高 12 件の SCA 依存関係アドバイザリが存在**（`starlette 0.46.2`、`h11 0.14.0`、`fastmcp 2.2.0`、`mcp 1.6.0`） | **シナリオ A:** 悪意ある、または破損した APK の解析時に、古い `starlette`/`h11` の HTTP パーサー脆弱性を突かれて MCP サーバーでサービス拒否（DoS）やリクエストスマグリングが発生する。<br/>**シナリオ B:** 古い `mcp`/`fastmcp` バージョンのセッション・検証不備がローカルエージェントブリッジに影響する。<br/>**シナリオ C:** 未更新の `certifi`/`anyio` パッケージがトランスポート層の信頼性を低下させる。 | **低 / 中（SCA 依存関係リスク）**<br/>`python3 scripts/sniper-project-audit ./apktool-mcp` |
-| **8. `jadx-mcp`** | 閾値超え `32` 件（`SAST 中3`、`SCA 重大6 / 高26`） | 確認済みの重大/高 SAST 脆弱性なし。**`uv.lock` 内に重大 6 件・高 26 件の SCA 依存関係アドバイザリが存在**（`authlib 1.6.8`、`cryptography 46.0.5`、`pyjwt 2.11.0`、`python-multipart 0.0.20`、`starlette 0.47.3`、`urllib3 2.5.0`） | **シナリオ A:** マルチパートのファイル／APK アップロードエンドポイントで、古い `python-multipart` と `starlette` によりメモリ／CPU 枯渇（DoS）が引き起こされる。<br/>**シナリオ B:** 古い `authlib` と `pyjwt` の検証不備により、認証付き MCP 導入環境でのトークン検証が弱体化する。<br/>**シナリオ C:** `urllib3` のリダイレクトヘッダー漏洩や `cryptography` の CVE が外部通信を危険にさらす。 | **低 / 中（SCA 依存関係リスク）**<br/>`python3 scripts/sniper-project-audit ./jadx-mcp` |
+| **1. `autogpt`** | 閾値超え `93` 件（`重大2 / 高39`）、トリアージ `142` 件 | **重大な SQLi 2 件（`obj.execute`）、JWT、FastAPI `Security()` は誤検知**。`jobstore_backfill.py:99` の `pickle.loads(row.job_state)` + Compose の固定パスワード（`RABBITMQ_DEFAULT_PASS`）+ root Dockerfile は実在 | **シナリオ A:** 内部ネットワークでデフォルトの Compose 認証情報を使って DB にアクセスした攻撃者が、`apscheduler_jobs.job_state` 列に悪意ある pickle ペイロードを書き込み、root コンテナ内で RCE を達成する。<br/>**シナリオ B:** バックアップやマイグレーション用 DB ファイルが改ざんされ、復元時に `jobstore_backfill.py` 経由で任意コードが実行される。<br/>**シナリオ C:** `:latest` イメージタグと root コンテナ実行の組み合わせにより侵害後の影響が拡大する。 | **中 / 高（条件付き — DB 書き込み権限がある場合）**<br/>`python3 scripts/vulkill-project-audit ./autogpt` |
+| **2. `zitadel`** | 閾値超え `67` 件（`重大8 / 高42`）、トリアージ `286` 件 | **重大な SQLi/`exec` 8 件は誤検知**（パラメータ化された `pgx` ラッパー）。`deploy/compose/` 配下の 3 つの `docker.sock` マウント、リバースプロキシ文書例の `NODE_TLS_REJECT_UNAUTHORIZED=0`、および `WithInsecure()` は実在 | **シナリオ A:** 運用者が `deploy/compose/` のサンプルを `/var/run/docker.sock` マウントのまま本番適用した場合、コンテナ侵害からホストの root 権限へ昇格される。<br/>**シナリオ B:** リバースプロキシ例の `NODE_TLS_REJECT_UNAUTHORIZED=0` を本番へコピーすると、OIDC/OAuth セッション通信に対する MITM 攻撃が可能になる。<br/>**シナリオ C:** `cfg.Insecure = true` のまま有効化された OTLP テレメトリ経路から内部トレースデータが平文で流出する。 | **低 / 中（サンプル構成のハードニング）**<br/>`python3 scripts/vulkill-project-audit ./zitadel` |
+| **3. `nextcloud-mcp`** | 閾値超え `59` 件（`SAST 重大1/高6`、`IaC 高7`、`SCA 重大5/高40`） | **`token_utils.py` の JWT と `login_flow.py:192` の `poll_endpoint` SSRF は 100% 誤検知**（`initiate()` の 130 行目で `_rewrite_to_nextcloud_host` によりオリジンを固定）。`pact.yml:93` の `--branch "${{ github.head_ref }}"` は `same-repo` 保護あり | **シナリオ A:** リポジトリ内でブランチ作成権限を持つアカウントが、細工したブランチ名を使って `pact.yml:93` 内でシェルコマンドを実行する（外部フォークからの PR はブロックされる）。<br/>**シナリオ B:** ローカル開発環境の固定 Keycloak/Greenmail シークレットが外部公開された場合、テストアカウントが乗っ取られる。<br/>**シナリオ C:** `uv.lock` 内の古い `pillow`/`cryptography`/`pyjwt` 依存関係を通じて既知の CVE が悪用される。 | **低 / 中（内部 CI & SCA）**<br/>`python3 scripts/vulkill-project-audit ./nextcloud-mcp` |
+| **4. `mcpjam-inspector`** | 閾値超え `122` 件（`SAST 重大12/高8`、`SCA 重大6/高96`） | **重大/高 SAST 所見 20 件中 18 件（90%）は誤検知**（JSDoc コメント 14 件、`.d.ts` 2 件、UI ラベル 2 件）。`pr-preview.yml:116` の `echo "branch=${{ github.event.pull_request.head.ref }}"` は `same-repo` 保護あり | **シナリオ A:** リポジトリ内のブランチ作成権限を持つアカウントが `pr-preview.yml:116` を通じて `$GITHUB_OUTPUT` とシェル環境を操作する（外部フォーク PR は遮断）。<br/>**シナリオ B:** 評価（eval）ランナーの動的関数がサンドボックス分離されていない場合、ワーカー環境でコードが実行される。<br/>**シナリオ C:** `package-lock.json` 内の `handlebars` や `shell-quote` の脆弱性が連鎖する。 | **低 / 中（内部 CI & SCA）**<br/>`python3 scripts/vulkill-project-audit ./mcpjam-inspector` |
+| **5. `codebase-memory-mcp`** | 閾値超え `32` 件（`SAST 重大17/高7`、`SCA 高8`） | **`store.c:2864` の SQLi、`c_lsp.h:54` のコメント、`kotlin_lsp.c`/`py_lsp.c` の固定長バッファは誤検知**。`http_server.c:668` の `GET /api/browse?path=...` は `localhost` 限定 CORS と `Host` ヘッダー検証（403）で保護 | **シナリオ A:** `--ui` モード有効時、同一マシン上の別プロセスが `http://127.0.0.1:<port>/api/browse?path=/` でディレクトリ構造を列挙できる（ブラウザーからのクロスオリジン要求は CORS/Host で遮断）。<br/>**シナリオ B:** SSH トンネルやリバースプロキシで `--ui` ポートを誤って外部公開すると、サーバーのディレクトリツリーが露出する。<br/>**シナリオ C:** `graph-ui/package-lock.json` 内のフロントエンドパッケージ未更新が開発環境リスクとなる。 | **低（ローカルサービス境界）**<br/>`python3 scripts/vulkill-project-audit ./codebase-memory-mcp` |
+| **6. `gitlab-mcp-server`** | 閾値超え `5` 件（`重大0 / 高4`） | `recorder.go:84` と `make.go:35` は誤検知（シェルを介さない `exec.Command("git", args...)`）。`internal/gitlab/client.go:1416` の `GITLAB_MCP_SKIP_TLS_VERIFY=true` はユーザーの明示的な有効化時のみ動作 | **シナリオ A:** 開発者が自己署名証明書の社内 GitLab サーバー向けに `GITLAB_MCP_SKIP_TLS_VERIFY=true` を有効化した状態で共有 Wi-Fi/VPN を利用すると、MITM により GitLab PAT トークンが窃取される。<br/>**シナリオ B:** CI/CD 環境でこのフラグを常時有効にすると、偽装された GitLab API レスポンスにより MCP エージェントへ悪意あるデータが注入される。<br/>**シナリオ C:** PR ラベルワークフローの `pull_request_target` に将来 `checkout` が追加されると危険が生じる。 | **低（任意設定）**<br/>`python3 scripts/vulkill-project-audit ./gitlab-mcp-server` |
+| **7. `apktool-mcp`** | 閾値超え `16` 件（`SAST 中1`、`SCA 重大4 / 高12`） | SAST のプライバシー警告は誤検知。**`uv.lock` 内に重大 4 件・高 12 件の SCA 依存関係アドバイザリが存在**（`starlette 0.46.2`、`h11 0.14.0`、`fastmcp 2.2.0`、`mcp 1.6.0`） | **シナリオ A:** 悪意ある、または破損した APK の解析時に、古い `starlette`/`h11` の HTTP パーサー脆弱性を突かれて MCP サーバーでサービス拒否（DoS）やリクエストスマグリングが発生する。<br/>**シナリオ B:** 古い `mcp`/`fastmcp` バージョンのセッション・検証不備がローカルエージェントブリッジに影響する。<br/>**シナリオ C:** 未更新の `certifi`/`anyio` パッケージがトランスポート層の信頼性を低下させる。 | **低 / 中（SCA 依存関係リスク）**<br/>`python3 scripts/vulkill-project-audit ./apktool-mcp` |
+| **8. `jadx-mcp`** | 閾値超え `32` 件（`SAST 中3`、`SCA 重大6 / 高26`） | 確認済みの重大/高 SAST 脆弱性なし。**`uv.lock` 内に重大 6 件・高 26 件の SCA 依存関係アドバイザリが存在**（`authlib 1.6.8`、`cryptography 46.0.5`、`pyjwt 2.11.0`、`python-multipart 0.0.20`、`starlette 0.47.3`、`urllib3 2.5.0`） | **シナリオ A:** マルチパートのファイル／APK アップロードエンドポイントで、古い `python-multipart` と `starlette` によりメモリ／CPU 枯渇（DoS）が引き起こされる。<br/>**シナリオ B:** 古い `authlib` と `pyjwt` の検証不備により、認証付き MCP 導入環境でのトークン検証が弱体化する。<br/>**シナリオ C:** `urllib3` のリダイレクトヘッダー漏洩や `cryptography` の CVE が外部通信を危険にさらす。 | **低 / 中（SCA 依存関係リスク）**<br/>`python3 scripts/vulkill-project-audit ./jadx-mcp` |
 
-全 8 リポジトリのファイル・行単位の完全なエビデンス審査、`シナリオ A / B / C` の詳細、実行コマンド例、および macOS 検証の詳細については、[SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md](SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md) を参照してください。
+全 8 リポジトリのファイル・行単位の完全なエビデンス審査、`シナリオ A / B / C` の詳細、実行コマンド例、および macOS 検証の詳細については、[VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md](VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md) を参照してください。
 
-#### Sniper スキャンで発見・検証された脆弱性一覧（11 件の確認済みアドバイザリ）
+#### VulKill スキャンで発見・検証された脆弱性一覧（11 件の確認済みアドバイザリ）
 
-当社の **Sniper** 静的／動的解析エンジンによるセキュリティ監査で発見され、**コードの不具合がどのように脆弱性へ変化するか**、**日常業務で起こり得る 3 つの重大なシナリオ（`シナリオ A / B / C`）**、**検証コマンド例**、および **エンドツーエンドのランタイム証明（`RED -> GREEN + BENIGN`）** によって実証された **11 件のセキュリティ脆弱性**（[advisories/README.ja.md](advisories/README.ja.md) および [SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md](SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md)）を以下に公開します：
+当社の **VulKill** 静的／動的解析エンジンによるセキュリティ監査で発見され、**コードの不具合がどのように脆弱性へ変化するか**、**日常業務で起こり得る 3 つの重大なシナリオ（`シナリオ A / B / C`）**、**検証コマンド例**、および **エンドツーエンドのランタイム証明（`RED -> GREEN + BENIGN`）** によって実証された **11 件のセキュリティ脆弱性**（[advisories/README.ja.md](advisories/README.ja.md) および [VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md](VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md)）を以下に公開します：
 
 | # | アドバイザリ文書 & Upstream GHSA | 対象プロジェクト & コンポーネント | CWE & CVSS v3.1 | コードで脆弱性が生じる仕組み & 日常業務での 3 つの重大シナリオ（`シナリオ A / B / C`） | ランタイム証明（`RED -> GREEN`） & 実行コマンド例 |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -274,9 +274,9 @@ python3 .github/scripts/validate-community-release.py
 レビュー可能なソース配布物をこのチェックアウト外の新しいディレクトリにビルドし、組み立てられたツリーを検証するには：
 
 ```bash
-python3 scripts/build-community-source.py --output /ABSOLUTE/PATH/TO/sniper-community-source
+python3 scripts/build-community-source.py --output /ABSOLUTE/PATH/TO/vulkill-community-source
 python3 .github/scripts/validate-community-release.py \
-  --root /ABSOLUTE/PATH/TO/sniper-community-source --scan-release-tree
+  --root /ABSOLUTE/PATH/TO/vulkill-community-source --scan-release-tree
 ```
 
 リポジトリの完全なローカルテストランチャーは次のとおりです：
@@ -290,13 +290,13 @@ python3 scripts/run_all_tests.py
 
 ## よくある質問
 
-### Sniper Community とは何ですか？
+### VulKill Community とは何ですか？
 
-Sniper Community は、許可されたソースコード、依存関係、SBOM、コンテナ、インフラ、Web サイト、API のレビュー向けの Apache-2.0 オープンソース・アプリケーションセキュリティツールキットです。ローカルアナライザーと保存済みレポートワークフローを、CLI、ループバック Web インターフェース、および Model Context Protocol（MCP）による任意の AI 支援レビューと統合します。[機能マップ](CAPABILITIES.md)で内蔵チェック、任意エンジン、手動レビューを区別しています。
+VulKill Community は、許可されたソースコード、依存関係、SBOM、コンテナ、インフラ、Web サイト、API のレビュー向けの Apache-2.0 オープンソース・アプリケーションセキュリティツールキットです。ローカルアナライザーと保存済みレポートワークフローを、CLI、ループバック Web インターフェース、および Model Context Protocol（MCP）による任意の AI 支援レビューと統合します。[機能マップ](CAPABILITIES.md)で内蔵チェック、任意エンジン、手動レビューを区別しています。
 
-### AI サブスクリプションなしで Sniper を使えますか？
+### AI サブスクリプションなしで VulKill を使えますか？
 
-はい。CLI とローカル Web インターフェースには AI クライアントは不要です。任意の MCP クライアントは独自のモデル提供者に接続できますが、その提供者の可用性、プライバシールール、料金は Sniper のソースライセンスとは別です。ローカルハードウェアや任意のサードパーティ製ツールにも独自の要件があります。
+はい。CLI とローカル Web インターフェースには AI クライアントは不要です。任意の MCP クライアントは独自のモデル提供者に接続できますが、その提供者の可用性、プライバシールール、料金は VulKill のソースライセンスとは別です。ローカルハードウェアや任意のサードパーティ製ツールにも独自の要件があります。
 
 ### Windows、macOS、Linux で使用できますか？
 
@@ -308,16 +308,16 @@ Sniper Community は、許可されたソースコード、依存関係、SBOM�
 
 ### モバイルアプリの脆弱性発見と修正に役立ちますか？
 
-Sniper は、対応する Android、iOS、Flutter、React Native のコード、マニフェスト、依存関係、API 経路、リリース設定のレビューを支援します。App Store や Google Play へのリリース前に、エビデンスを優先順位付きの修正作業へと変換します。カバー範囲は対応する入力に依存し、あらゆるモバイルバイナリの万能スキャン、すべての脆弱性の自動修復、またはアプリストア審査通過の保証ではありません。[公開前のセキュリティレビュー](#公開前に-ai-でセキュリティレビュー) と [機能マップ](CAPABILITIES.md) を参照してください。
+VulKill は、対応する Android、iOS、Flutter、React Native のコード、マニフェスト、依存関係、API 経路、リリース設定のレビューを支援します。App Store や Google Play へのリリース前に、エビデンスを優先順位付きの修正作業へと変換します。カバー範囲は対応する入力に依存し、あらゆるモバイルバイナリの万能スキャン、すべての脆弱性の自動修復、またはアプリストア審査通過の保証ではありません。[公開前のセキュリティレビュー](#公開前に-ai-でセキュリティレビュー) と [機能マップ](CAPABILITIES.md) を参照してください。
 
-### Sniper はペネトレーションテストの代わりや安全なリリースの保証になりますか？
+### VulKill はペネトレーションテストの代わりや安全なリリースの保証になりますか？
 
-いいえ。Sniper は潜在的な認可不備や IDOR の問題を含むエビデンスとレビュー候補を生成します。資格のあるレビュアーが重要な所見を検証し、許可された範囲内でランタイム制御をテストし、修正内容を決定する必要があります。スキャン結果がクリーンであることはセキュリティ認証ではありません。[検証エビデンス](../VALIDATION.md) を参照してください。
+いいえ。VulKill は潜在的な認可不備や IDOR の問題を含むエビデンスとレビュー候補を生成します。資格のあるレビュアーが重要な所見を検証し、許可された範囲内でランタイム制御をテストし、修正内容を決定する必要があります。スキャン結果がクリーンであることはセキュリティ認証ではありません。[検証エビデンス](../VALIDATION.md) を参照してください。
 
 ### 公式ソースとインストール手順はどこにありますか？
 
-公式ソースリポジトリは [dytredline/Sniper](https://github.com/dytredline/Sniper) です。お使いのプラットフォーム向けの [ソースチェックアウトからのセットアップ](#ソースチェックアウトからのセットアップ) と [導入ガイド](../DEPLOYMENT.md) から始めてください。プロジェクトは [ConverserAI](https://converserai.com/#sniper) で紹介されていますが、機能、プラットフォームサポート、ライセンス条項、リリースエビデンスの正式な情報源はこのリポジトリです。研究や公開物でソフトウェアを引用する際は [CITATION.cff](../CITATION.cff) を使用してください。
+公式ソースリポジトリは [dytredline/VulKill](https://github.com/dytredline/VulKill) です。お使いのプラットフォーム向けの [ソースチェックアウトからのセットアップ](#ソースチェックアウトからのセットアップ) と [導入ガイド](../DEPLOYMENT.md) から始めてください。プロジェクトは [ConverserAI](https://converserai.com/#sniper) で紹介されていますが、機能、プラットフォームサポート、ライセンス条項、リリースエビデンスの正式な情報源はこのリポジトリです。研究や公開物でソフトウェアを引用する際は [CITATION.cff](../CITATION.cff) を使用してください。
 
 ## ライセンス
 
-Sniper Community は Apache License 2.0（`Apache-2.0`）の下でライセンスされています。完全な条項については [LICENSE](../LICENSE) を参照してください。サードパーティ製コンポーネントおよび任意ツールは、それぞれのライセンスに従います。
+VulKill Community は Apache License 2.0（`Apache-2.0`）の下でライセンスされています。完全な条項については [LICENSE](../LICENSE) を参照してください。サードパーティ製コンポーネントおよび任意ツールは、それぞれのライセンスに従います。

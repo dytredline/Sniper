@@ -1,19 +1,19 @@
-# Sniper 扫描器审计发现的 11 项已验证安全漏洞
+# VulKill 扫描器审计发现的 11 项已验证安全漏洞
 
 [English](README.md) | [Türkçe](README.tr.md) | [日本語](README.ja.md) | **简体中文** | [한국어](README.ko.md)
 
 **安全研究员 / 维护者:** **Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline))  
-**发现与验证引擎:** **Sniper Security Toolkit** (`https://github.com/dytredline/Sniper`)  
+**发现与验证引擎:** **VulKill Security Toolkit** (`https://github.com/dytredline/VulKill`)
 **验证标准:** 三层真实世界影响验证（`1. 代码缺陷转化为安全漏洞的机制 -> 2. 日常生产环境中的三种关键风险场景（场景 A / B / C） -> 3. 示例执行与验证命令及运行时证明（RED -> GREEN + BENIGN）`）
 
-本目录收录了我们使用 **Sniper** 静态/动态分析引擎在安全审计中发现的 **11 项已验证安全漏洞**（涵盖 6 个开源项目）。每份报告均以通俗易懂的语言和源码级分析详细解释了 **代码中的缺陷如何一步步演变为可利用的安全漏洞**、**日常实际应用中可能引发的 3 种不同关键场景（`场景 A`、`场景 B`、`场景 C`）**、**示例执行与验证命令**，以及 **端到端运行时证明（`RED -> GREEN + BENIGN`）**。
+本目录收录了我们使用 **VulKill** 静态/动态分析引擎在安全审计中发现的 **11 项已验证安全漏洞**（涵盖 6 个开源项目）。每份报告均以通俗易懂的语言和源码级分析详细解释了 **代码中的缺陷如何一步步演变为可利用的安全漏洞**、**日常实际应用中可能引发的 3 种不同关键场景（`场景 A`、`场景 B`、`场景 C`）**、**示例执行与验证命令**，以及 **端到端运行时证明（`RED -> GREEN + BENIGN`）**。
 
 - **端到端运行时证明记录（11/11 PASS）:** [`other-repos-and-cua-real-world-impact-e2e-20261029.json`](other-repos-and-cua-real-world-impact-e2e-20261029.json)
-- **已扫描仓库与安全公告完整目录（8 个早期扫描仓库 + 11 项已验证漏洞）:** [`../SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.zh-CN.md`](../SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.zh-CN.md)
+- **已扫描仓库与安全公告完整目录（8 个早期扫描仓库 + 11 项已验证漏洞）:** [`../VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.zh-CN.md`](../VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.zh-CN.md)
 
 ---
 
-## 1. 汇总表：Sniper 扫描器发现的 11 项已验证漏洞（`场景 A / B / C` 与运行时证明）
+## 1. 汇总表：VulKill 扫描器发现的 11 项已验证漏洞（`场景 A / B / C` 与运行时证明）
 
 | # | 安全公告文档 & 上游 GHSA | 目标项目 & 组件 | CWE & CVSS v3.1 | 代码中漏洞形成机制 & 日常环境中的 3 种关键场景（`场景 A / B / C`） | 运行时证明（`RED -> GREEN`）& 示例命令 |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -68,11 +68,11 @@
 
 ## 2. 本地快速验证与执行全部 11 项安全公告的命令
 
-您可以通过以下命令同时验证全部 11 项安全漏洞的 **Sniper 静态分析（SAST/IaC）检测结果** 与 **本地隔离运行时证明（`RED -> GREEN + BENIGN`）**：
+您可以通过以下命令同时验证全部 11 项安全漏洞的 **VulKill 静态分析（SAST/IaC）检测结果** 与 **本地隔离运行时证明（`RED -> GREEN + BENIGN`）**：
 
 ```bash
-# 1. 运行 Sniper 本地项目安全审计（SAST + IaC + SCA + 路由/边界分析）
-python3 scripts/sniper-project-audit /path/to/target-repo --format json --output audit-report.json
+# 1. 运行 VulKill 本地项目安全审计（SAST + IaC + SCA + 路由/边界分析）
+python3 scripts/vulkill-project-audit /path/to/target-repo --format json --output audit-report.json
 
 # 2. 查看全部 11 项已验证安全公告的端到端运行时证明汇总记录
 python3 -m json.tool docs/advisories/other-repos-and-cua-real-world-impact-e2e-20261029.json

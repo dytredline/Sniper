@@ -300,7 +300,7 @@ def render_project_audit_sarif(audit: dict[str, Any]) -> dict[str, Any]:
             {
                 "tool": {
                     "driver": {
-                        "name": "Sniper Project Security Analyzer",
+                        "name": "VulKill Project Security Analyzer",
                         "version": "2.0.0",
                         "informationUri": "https://owasp.org/www-project-web-security-testing-guide/",
                         "rules": list(rules_by_id.values()),
@@ -519,7 +519,7 @@ def _project_page_html(audit: dict[str, Any], findings: list[dict[str, Any]], ch
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<title>Sniper Proje Güvenlik Raporu — {project_name}</title>
+<title>VulKill Proje Güvenlik Raporu — {project_name}</title>
 <style>
 body {{ font-family: system-ui, -apple-system, sans-serif; margin: 2rem; color: #0f172a; background: #f8fafc; }}
 header {{ background: #1e293b; color: #f8fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; }}
@@ -543,7 +543,7 @@ pre {{ background: #f1f5f9; padding: 0.6rem; border-radius: 4px; overflow-x: aut
 </head>
 <body>
 <header>
-  <h1>Sniper Proje Güvenlik Denetimi: {project_name}</h1>
+  <h1>VulKill Proje Güvenlik Denetimi: {project_name}</h1>
   <p>Denetim ID: {audit_id} · Tarih: {created_at}</p>
 </header>
 <section class="metrics">
@@ -850,7 +850,7 @@ def build_enterprise_enriched_sarif(
                 }
             ]
         if include_fixes:
-            rec_text = str(finding.get("recommendation") or "Sniper otomatik güvenlik yaması uygula")[:200]
+            rec_text = str(finding.get("recommendation") or "VulKill otomatik güvenlik yaması uygula")[:200]
             result["fixes"] = [
                 {
                     "description": {"text": rec_text},

@@ -46,9 +46,9 @@ In `trycua/cua` (`cua-bench` `<= 0.3.1`, `libs/cua-bench/tasks/winarena_adapter/
 
 ## 3. Example Execution & Verification Commands
 
-### 1. Auditing the Component with Sniper CLI
+### 1. Auditing the Component with VulKill CLI
 ```bash
-python3 scripts/sniper-project-audit \
+python3 scripts/vulkill-project-audit \
   --repo-path /home/community-user/targets/cua \
   --include "libs/cua-bench/tasks/winarena_adapter/cli.py"
 ```

@@ -1,4 +1,4 @@
-"""Sniper Autorize Matrix Tester (Burp Autorize eklentisi karşılığı).
+"""VulKill Autorize Matrix Tester (Burp Autorize eklentisi karşılığı).
 
 Aynı API uç noktasını 3 farklı oturum bağlamında (Sahip / Kullanıcı A, Farklı Kiracı / Kullanıcı B,
 Anonim / Oturumsuz) ve gizli alan enjeksiyonuyla (Mass Assignment / BOPLA) değerlendirerek

@@ -1,6 +1,6 @@
-# Sniper Community local deployment
+# VulKill Community local deployment
 
-Sniper Community is designed to run from a reviewed source checkout on a local
+VulKill Community is designed to run from a reviewed source checkout on a local
 machine. The web service binds to `127.0.0.1:8787` by default. Use a dedicated
 data directory and do not point a new checkout at an existing production
 database.
@@ -16,7 +16,7 @@ database.
 | Windows core-only | Supported by the portable setup contract (`python3 scripts/setup-community --core-only`); this release does not claim a real Windows-host run |
 | WSL2 / Docker Desktop | Linux core and explicit seven-engine container profiles are provided and contract-tested; the five-engine macOS Docker path has separate real-host evidence |
 
-The default container runs the Sniper web application and does not bundle the seven separately licensed optional
+The default container runs the VulKill web application and does not bundle the seven separately licensed optional
 engines. The distinct `community-tools` build target installs exactly the seven Linux artifacts in
 `COMMUNITY-TOOLS.lock.json` after an explicit license acknowledgement. Linux-specific isolation profiles such as
 bubblewrap/seccomp do not become native Windows or macOS capabilities merely because a Linux container is used.
@@ -123,7 +123,7 @@ five separate open-source licenses in `COMMUNITY-TOOLS.lock.json`:
 ./scripts/deploy-community-tools --accept-third-party-licenses
 ```
 
-This builds the digest-locked `community-tools` image, starts only Sniper on `127.0.0.1:8787`, and fails unless the
+This builds the digest-locked `community-tools` image, starts only VulKill on `127.0.0.1:8787`, and fails unless the
 Nuclei loopback, Trivy local secret, Gitleaks, TruffleHog filesystem, and Opengrep local-code profiles all pass their
 runtime prechecks. The helper creates a mode-`0600` `.env` with a random Grafana password only when that file is absent;
 it never replaces an existing `.env`. It does not start monitoring or run a scan. The five binaries do not supply
@@ -138,7 +138,7 @@ Instead of broadening Docker's filesystem access, explicitly copy one chosen pro
 ./scripts/import-community-project /absolute/path/to/project --name project-name
 ```
 
-Then enter `/app/projects/project-name` in Sniper's local-project forms. The copy can include sensitive source files,
+Then enter `/app/projects/project-name` in VulKill's local-project forms. The copy can include sensitive source files,
 so choose the directory deliberately. Import never changes the Mac original and refuses to overwrite an existing
 project name. The project copy persists across container restarts and `docker compose down`; include this volume in
 your data handling and backups. This is a source snapshot, not a live sync. Re-import under a new name after source
@@ -148,7 +148,7 @@ changes, or use a Docker Desktop file-sharing bind mount only after explicitly g
 Grafana password when one does not already exist. It does not print the
 password. The local endpoints are:
 
-- Sniper: `http://127.0.0.1:8787`
+- VulKill: `http://127.0.0.1:8787`
 - Grafana: `http://127.0.0.1:3000`
 - Prometheus: `http://127.0.0.1:9090`
 
@@ -164,7 +164,7 @@ intentionally being deleted.
 ## Remote access
 
 Do not publish port 8787 on all interfaces. For remote administration, enable
-Sniper authentication first and use an authenticated tunnel or a reviewed TLS
+VulKill authentication first and use an authenticated tunnel or a reviewed TLS
 reverse proxy. The Compose acknowledgement exists only because the container
 listens on its internal interface while the host publishes it on
 `127.0.0.1`; it is not transport encryption and must not be copied to a public
@@ -192,9 +192,9 @@ scanners or open a database:
 ```bash
 python3 .github/scripts/validate-community-release.py
 python3 scripts/build-community-source.py \
-  --output /ABSOLUTE/PATH/TO/sniper-community-source
+  --output /ABSOLUTE/PATH/TO/vulkill-community-source
 python3 .github/scripts/validate-community-release.py \
-  --root /ABSOLUTE/PATH/TO/sniper-community-source --scan-release-tree
+  --root /ABSOLUTE/PATH/TO/vulkill-community-source --scan-release-tree
 ```
 
 The final command checks the manifest, rejects runtime state and private build

@@ -59,9 +59,9 @@ func InsecureClient(client *http.Client, certs []byte) *http.Client {
 
 ## 3. 示例执行、复现与验证命令
 
-### 1. 使用 Sniper CLI 审计目标组件
+### 1. 使用 VulKill CLI 审计目标组件
 ```bash
-python3 scripts/sniper-project-audit \
+python3 scripts/vulkill-project-audit \
   --repo-path /home/community-user/targets/ziti \
   --include "ziti/util/certs.go"
 ```

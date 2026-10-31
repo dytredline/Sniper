@@ -39,7 +39,7 @@ class ResponseHeaderSafetyTests(unittest.TestCase):
                 handler.send_response(200)
 
                 with self.assertRaises(ValueError):
-                    handler.send_header("X-Sniper-Test", unsafe)
+                    handler.send_header("X-VulKill-Test", unsafe)
 
                 self.assertEqual(handler.wfile.getvalue(), b"")
                 buffered = b"".join(getattr(handler, "_headers_buffer", ()))

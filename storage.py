@@ -46,7 +46,7 @@ SCHEMA_MIGRATIONS = ((1, "network-finding-lifecycle"),)
 
 
 class LiveDataProtected(PermissionError):
-    """Aday kopyası, kurulu Sniper'ın canlı verisini açamaz (okuma dahil)."""
+    """Aday kopyası, kurulu VulKill'ın canlı verisini açamaz (okuma dahil)."""
 
 
 class DependencyExportTooLarge(ValueError):
@@ -62,7 +62,7 @@ def _guard_live_path(path: Path) -> None:
     resolved = Path(path).expanduser().resolve()
     if resolved == LIVE_SNIPER_ROOT or LIVE_SNIPER_ROOT in resolved.parents:
         raise LiveDataProtected(
-            f"Aday kopyası canlı Sniper verisini açamaz: {resolved}. Sentetik bir veritabanı yolu kullanın."
+            f"Aday kopyası canlı VulKill verisini açamaz: {resolved}. Sentetik bir veritabanı yolu kullanın."
         )
 
 
@@ -4320,7 +4320,7 @@ class Store:
         evidence_summary: str = "",
         engagement_id: str | None = None,
     ) -> dict:
-        # Enforce invariant: Sniper-generated traffic/request counts must be zero
+        # Enforce invariant: VulKill-generated traffic/request counts must be zero
         # Normalize results fields based on scenario_type to safe zero values
         normalized_results = dict(results)
         if scenario_type in ("capacity_plan", "lockout_plan"):

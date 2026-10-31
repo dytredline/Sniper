@@ -385,10 +385,10 @@ def summarize(rule: dict[str, Any]) -> dict[str, Any]:
 def rules_dir() -> Path:
     raw = os.environ.get("SNIPER_DATA_DIR", "")
     if not raw:
-        raise RuleError("Sniper veri dizini yapılandırılmamış; özel kurallar saklanamıyor.")
+        raise RuleError("VulKill veri dizini yapılandırılmamış; özel kurallar saklanamıyor.")
     data_dir = Path(raw)
     if not data_dir.is_absolute() or data_dir.is_symlink() or not data_dir.is_dir():
-        raise RuleError("Sniper veri dizini geçersiz.")
+        raise RuleError("VulKill veri dizini geçersiz.")
     directory = data_dir / "custom-rules"
     for path in (directory, directory / "compiled"):
         try:

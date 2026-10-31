@@ -261,7 +261,7 @@ def _build_cyclonedx_cbom(cbom_assets: list[dict[str, Any]]) -> dict[str, Any]:
             "timestamp": utc_now(),
             "tools": [
                 {
-                    "vendor": "Sniper",
+                    "vendor": "VulKill",
                     "name": "sniper-crypto-cbom-pqc-auditor",
                     "version": "1.0.0",
                 }

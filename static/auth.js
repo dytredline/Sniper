@@ -6,7 +6,7 @@
 // Tüm DOM metinleri textContent ile yazılır (sunucudan gelen değer HTML olarak yorumlanmaz).
 (function () {
   const CSRF_COOKIE = "sniper_csrf";
-  const CSRF_HEADER = "X-Sniper-CSRF";
+  const CSRF_HEADER = "X-VulKill-CSRF";
   const nativeFetch = window.fetch.bind(window);
 
   function cookie(name) {

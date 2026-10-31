@@ -10,7 +10,7 @@ Her bağımlılık bulgusu için bir "etkilenme" kararı üretilir:
                             (``component_not_present``).
 * ``under_investigation`` — geri kalan her şey (şüphede).
 
-Neden otomatik "not_affected" bu kadar dar: Sniper'ın sembol erişilebilirliği yalnız projenin kendi kaynağına bakar;
+Neden otomatik "not_affected" bu kadar dar: VulKill'ın sembol erişilebilirliği yalnız projenin kendi kaynağına bakar;
 başka bir bağımlılık açıklı fonksiyonu kendi içinden çağırabilir (bağımlılık kodu analiz edilmez). Bu yüzden "açıklı
 fonksiyon kaynakta çağrılmıyor" bilgisi yalnız ``impact_statement`` notu olur, karar "inceleniyor" kalır. Yanlış
 "not_affected" bir tedarikçi belgesinde müşteriyi açığı yamamamaya yönlendirir; hedef sıfır.
@@ -486,7 +486,7 @@ def cyclonedx_vex(statements: list[dict[str, Any]], *, project_name: str, timest
         "version": 1,
         "metadata": {
             "timestamp": timestamp,
-            "tools": {"components": [{"type": "application", "name": "Sniper", **({"version": tool_version} if tool_version else {})}]},
+            "tools": {"components": [{"type": "application", "name": "VulKill", **({"version": tool_version} if tool_version else {})}]},
             "component": {"type": "application", "bom-ref": "sniper-project", "name": project_name},
         },
         "components": list(components.values()),
@@ -494,7 +494,7 @@ def cyclonedx_vex(statements: list[dict[str, Any]], *, project_name: str, timest
     }
 
 
-def openvex(statements: list[dict[str, Any]], *, project_name: str, timestamp: str, author: str = "Sniper",
+def openvex(statements: list[dict[str, Any]], *, project_name: str, timestamp: str, author: str = "VulKill",
             tool_version: str = "") -> dict[str, Any]:
     out = []
     for st in statements:
@@ -519,11 +519,11 @@ def openvex(statements: list[dict[str, Any]], *, project_name: str, timestamp: s
     return {
         "@context": OPENVEX_CONTEXT,
         "@id": f"urn:uuid:{_doc_uuid('openvex', project_name, statements)}",
-        "author": author or "Sniper",
+        "author": author or "VulKill",
         "role": "Document Creator",
         "timestamp": timestamp,
         "version": 1,
-        "tooling": "Sniper" + (f" {tool_version}" if tool_version else ""),
+        "tooling": "VulKill" + (f" {tool_version}" if tool_version else ""),
         "statements": out,
     }
 
@@ -533,7 +533,7 @@ def render(statements: list[dict[str, Any]], fmt: str, *, project_name: str, tim
     if fmt == "cyclonedx":
         return cyclonedx_vex(statements, project_name=project_name, timestamp=timestamp, tool_version=tool_version)
     if fmt == "openvex":
-        return openvex(statements, project_name=project_name, timestamp=timestamp, author=author or "Sniper",
+        return openvex(statements, project_name=project_name, timestamp=timestamp, author=author or "VulKill",
                        tool_version=tool_version)
     raise VexError(f"Geçersiz VEX biçimi: {fmt!r} (izinli: {', '.join(FORMATS)}).")
 
@@ -711,7 +711,7 @@ def build_automated_reachability_openvex(
     reachability_report: Mapping[str, Any],
     *,
     product_id: str = "pkg:generic/sniper-audited-app@local",
-    author: str = "Sniper Enterprise Automated VEX Engine",
+    author: str = "VulKill Enterprise Automated VEX Engine",
 ) -> dict[str, Any]:
     """Erişilebilirlik raporundan sembol düzeyi kanıtlara dayalı otomatik OpenVEX v0.2.0 belgesi üretir."""
     from dependency_reachability import evaluate_symbol_level_vex

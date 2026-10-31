@@ -50,9 +50,9 @@
 
 ## 3. 예제 실행 및 검증 명령어
 
-### 1. Sniper CLI로 대상 컴포넌트 감사
+### 1. VulKill CLI로 대상 컴포넌트 감사
 ```bash
-python3 scripts/sniper-project-audit \
+python3 scripts/vulkill-project-audit \
   --repo-path /home/community-user/targets/cua \
   --include "libs/cua/crates/cua-compat/src/daytona/objectstore.rs"
 ```

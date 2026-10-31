@@ -1,19 +1,19 @@
-# Sniper 스캐너 보안 감사에서 발견된 검증된 취약점 (11건)
+# VulKill 스캐너 보안 감사에서 발견된 검증된 취약점 (11건)
 
 [English](README.md) | [Türkçe](README.tr.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | **한국어**
 
 **보안 연구원 / 메인테이너:** **Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline))  
-**탐지 및 검증 엔진:** **Sniper Security Toolkit** (`https://github.com/dytredline/Sniper`)  
+**탐지 및 검증 엔진:** **VulKill Security Toolkit** (`https://github.com/dytredline/VulKill`)
 **검증 표준:** 3단계 실제 환경 영향 검증 (`1. 코드 결함이 취약점으로 전환되는 메커니즘 -> 2. 일상 운영 환경에서 발생 가능한 3가지 핵심 시나리오 (시나리오 A / B / C) -> 3. 예제 실행 및 검증 명령어와 런타임 증명 (RED -> GREEN + BENIGN)`)
 
-이 디렉터리에는 **Sniper** 정적/동적 분석 엔진을 사용한 보안 감사 과정에서 발견된 **46건의 검증된 보안 권고(45건의 고유 취약점 + 1건의 업스트림 중복 심층 방어 기록)**(6개 오픈소스 프로젝트 대상)이 수록되어 있습니다. 각 보고서는 **코드 내 버그가 어떻게 실제 보안 취약점으로 이어지는지 누구나 이해할 수 있는 설명과 소스 코드 수준 분석**, **일상 업무 환경에서 발생할 수 있는 3가지 차별화된 핵심 시나리오(`시나리오 A`, `시나리오 B`, `시나리오 C`)**, **예제 실행 및 검증 명령어**, 그리고 **엔드투엔드 런타임 증명(`RED -> GREEN + BENIGN`)**을 포함합니다.
+이 디렉터리에는 **VulKill** 정적/동적 분석 엔진을 사용한 보안 감사 과정에서 발견된 **46건의 검증된 보안 권고(45건의 고유 취약점 + 1건의 업스트림 중복 심층 방어 기록)**(6개 오픈소스 프로젝트 대상)이 수록되어 있습니다. 각 보고서는 **코드 내 버그가 어떻게 실제 보안 취약점으로 이어지는지 누구나 이해할 수 있는 설명과 소스 코드 수준 분석**, **일상 업무 환경에서 발생할 수 있는 3가지 차별화된 핵심 시나리오(`시나리오 A`, `시나리오 B`, `시나리오 C`)**, **예제 실행 및 검증 명령어**, 그리고 **엔드투엔드 런타임 증명(`RED -> GREEN + BENIGN`)**을 포함합니다.
 
 - **엔드투엔드 런타임 증명 기록 (11/11 PASS):** [`other-repos-and-cua-real-world-impact-e2e-20261029.json`](other-repos-and-cua-real-world-impact-e2e-20261029.json)
-- **스캔된 저장소 및 보안 권고 전체 카탈로그 (8개 사전 스캔 저장소 + 11건의 검증된 취약점):** [`../SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ko.md`](../SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ko.md)
+- **스캔된 저장소 및 보안 권고 전체 카탈로그 (8개 사전 스캔 저장소 + 11건의 검증된 취약점):** [`../VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ko.md`](../VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ko.md)
 
 ---
 
-## 1. 요약 표: Sniper 스캐너로 발견한 11건의 검증된 취약점 (`시나리오 A / B / C` 및 런타임 증명)
+## 1. 요약 표: VulKill 스캐너로 발견한 11건의 검증된 취약점 (`시나리오 A / B / C` 및 런타임 증명)
 
 | # | 보안 권고 문서 & Upstream GHSA | 대상 프로젝트 & 컴포넌트 | CWE & CVSS v3.1 | 코드 내 취약점 발생 원리 & 일상 환경에서의 3가지 핵심 시나리오 (`시나리오 A / B / C`) | 런타임 증명 (`RED -> GREEN`) & 예제 명령어 |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -68,11 +68,11 @@
 
 ## 2. 11건의 모든 보안 권고를 로컬에서 빠르게 검증 및 실행하는 명령어
 
-아래 명령어를 사용하여 11건의 모든 취약점에 대한 **Sniper 정적 분석(SAST/IaC) 탐지 결과**와 **격리된 로컬 런타임 증명(`RED -> GREEN + BENIGN`)**을 검증할 수 있습니다:
+아래 명령어를 사용하여 11건의 모든 취약점에 대한 **VulKill 정적 분석(SAST/IaC) 탐지 결과**와 **격리된 로컬 런타임 증명(`RED -> GREEN + BENIGN`)**을 검증할 수 있습니다:
 
 ```bash
-# 1. Sniper 로컬 프로젝트 감사 실행 (SAST + IaC + SCA + 라우트/경계 분석)
-python3 scripts/sniper-project-audit /path/to/target-repo --format json --output audit-report.json
+# 1. VulKill 로컬 프로젝트 감사 실행 (SAST + IaC + SCA + 라우트/경계 분석)
+python3 scripts/vulkill-project-audit /path/to/target-repo --format json --output audit-report.json
 
 # 2. 11건의 검증된 보안 권고 전체에 대한 엔드투엔드 런타임 증명 요약 확인
 python3 -m json.tool docs/advisories/other-repos-and-cua-real-world-impact-e2e-20261029.json

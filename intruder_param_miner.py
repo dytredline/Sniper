@@ -1,4 +1,4 @@
-"""Sniper Intruder & Param Miner (Burp Intruder 4 Saldırı Modu + Param Miner karşılığı).
+"""VulKill Intruder & Param Miner (Burp Intruder 4 Saldırı Modu + Param Miner karşılığı).
 
 1. Burp Intruder'ın 4 çoklu yük (payload position §...§) modunu destekler:
    - sniper: Tek yük kümesini her konumda sırayla dener (diğer konumlar varsayılan değerinde kalır).

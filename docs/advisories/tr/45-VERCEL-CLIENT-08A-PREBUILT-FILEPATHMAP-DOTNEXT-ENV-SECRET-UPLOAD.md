@@ -33,7 +33,7 @@ export async function filesFromFilePathMap(
 `.vercelignore` içinde `.env*` bulunsa bile `filePathMap` üzerinden `.next/required-server-files.json` yüklendiği için yerel sırlar dağıtım paketine girer.
 
 ### Senaryo B — Ayrık CI/CD Hattında (`build` -> `deploy --prebuilt`) Konak Dosyası Sızıntısı
-PR derleme adımında üretilen `.vercel/output` içindeki `filePathMap`, ayrıcalıklı dağıtım adımında `/home/runner/.npmrc` gibi dosyaları Vercel'e yükler.
+PR derleme adımında üretilen `.vercel/output` içindeki `filePathMap`, ayrıcalıklı dağıtım adımında `${HOME}/.npmrc` gibi dosyaları Vercel'e yükler.
 
 ### Senaryo C — Paylaşılan Monorepo Derleme Önbelleği Zehirlemesi
 Önbellekten gelen `.vc-config.json` dağıtım sırasında konak dosyalarını sızdırır.

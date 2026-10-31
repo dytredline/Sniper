@@ -1,4 +1,4 @@
-"""Sniper Traffic Decoder & HAR/HTTP Inspector (Burp Decoder + Proxy Inspector karşılığı).
+"""VulKill Traffic Decoder & HAR/HTTP Inspector (Burp Decoder + Proxy Inspector karşılığı).
 
 Çok katmanlı kodlanmış (URL, Base64/Base64URL, Hex, HTML entity, JWT) verileri özyinelemeli
 olarak çözer; içindeki güvensiz JWT başlıklarını (alg:none, jku, x5u), serileştirilmiş

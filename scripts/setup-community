@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a Sniper Community environment; optionally install the Linux-only locked tool profile."""
+"""Create a VulKill Community environment; optionally install the Linux-only locked tool profile."""
 
 from __future__ import annotations
 

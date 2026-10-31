@@ -49,11 +49,11 @@ def _canonical(value: Any) -> str:
 def _data_dir(store: Any) -> Path:
     raw = getattr(store, "path", None)
     if raw is None:
-        raise CommunityRuntimeError("Kalıcı Sniper deposu bağlı değil.")
+        raise CommunityRuntimeError("Kalıcı VulKill deposu bağlı değil.")
     try:
         path = Path(raw).expanduser().resolve(strict=False)
     except (OSError, RuntimeError, ValueError) as exc:
-        raise CommunityRuntimeError("Sniper veri yolu çözümlenemedi.") from exc
+        raise CommunityRuntimeError("VulKill veri yolu çözümlenemedi.") from exc
     if path.name != "sniper.db" or not path.is_absolute() or path.parent.is_symlink() or not path.parent.is_dir():
         raise CommunityRuntimeError("Community iş kuyruğu güvenli bir sniper.db veri dizini gerektirir.")
     return path.parent

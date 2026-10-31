@@ -54,7 +54,7 @@ DEFAULT_POLICY: dict[str, Any] = {
 }
 _POLICY_KEYS = set(DEFAULT_POLICY) | {"baseline"}
 _ID_RE = re.compile(r"[A-Za-z0-9_.:/@+\-]{1,200}\Z")
-_TOOL_NAME = "Sniper"
+_TOOL_NAME = "VulKill"
 _INFO_URI = "https://owasp.org/www-project-web-security-testing-guide/"
 MAX_SARIF_RESULTS = 25_000  # GitHub code scanning sınırı
 
@@ -746,7 +746,7 @@ def _md(text: Any) -> str:
 
 def markdown_summary(report: dict[str, Any]) -> str:
     decision = report["decision"]
-    lines = [f"## Sniper güvenlik kapısı: {'✅ GEÇTİ' if decision['passed'] else '❌ BAŞARISIZ'}", ""]
+    lines = [f"## VulKill güvenlik kapısı: {'✅ GEÇTİ' if decision['passed'] else '❌ BAŞARISIZ'}", ""]
     lines.append(f"Proje: `{_md(report['project_name'])}` · Politika: {_md(report['policy_source'])} · "
                  f"Taban: {_md(report.get('baseline') or 'yok')}")
     lines += ["", "| Grup | Kritik | Yüksek | Orta | Düşük | Bilgi |", "|---|---|---|---|---|---|"]
@@ -995,7 +995,7 @@ def console_lines(code: int, report: dict[str, Any]) -> Iterable[str]:
         yield f"HATA: {report['error']}"
         return
     decision = report["decision"]
-    yield (f"Sniper CI: {report['project_name']} · {report['finding_count']} bulgu · bileşen {report['component_count']}"
+    yield (f"VulKill CI: {report['project_name']} · {report['finding_count']} bulgu · bileşen {report['component_count']}"
            f" · politika {report['policy_source']} · taban {report.get('baseline') or 'yok'}")
     for group, counts in report["counts"].items():
         if any(counts.values()):
@@ -1068,7 +1068,7 @@ def evaluate_enterprise_v2_ci_gate(
         "ssvc_act_count": ssvc_act_count,
         "critical_production_count": critical_count,
         "pr_comment_markdown": (
-            f"## Sniper Enterprise v2 CI Gate: **{verdict}**\n"
+            f"## VulKill Enterprise v2 CI Gate: **{verdict}**\n"
             f"- Attack Chains: {attack_chain_count}\n"
             f"- CISA SSVC Act: {ssvc_act_count}\n"
             f"- Critical Findings: {critical_count}\n"

@@ -30,7 +30,7 @@ test("aynı kökenli POST'a CSRF başlığı eklenir, GET'e eklenmez", async () 
   await fetch("/api/project-audits", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
   await fetch("/api/dashboard");
   await fetch("https://baska.example/api/x", { method: "POST" });
-  assert.equal(calls[0].init.headers.get("X-Sniper-CSRF"), "belirtec123");
+  assert.equal(calls[0].init.headers.get("X-VulKill-CSRF"), "belirtec123");
   assert.equal(calls[0].init.headers.get("Content-Type"), "application/json");
   assert.equal(calls[1].init.headers, undefined);
   assert.equal(calls[2].init.headers, undefined);

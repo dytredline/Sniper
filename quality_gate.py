@@ -1,4 +1,4 @@
-"""CI/CD Security Quality Gate Policy Evaluator for Sniper."""
+"""CI/CD Security Quality Gate Policy Evaluator for VulKill."""
 
 from __future__ import annotations
 

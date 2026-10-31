@@ -1,4 +1,4 @@
-"""Public contract for explicitly enabled, locally trusted Sniper plugins."""
+"""Public contract for explicitly enabled, locally trusted VulKill plugins."""
 
 from __future__ import annotations
 

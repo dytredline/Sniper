@@ -26,7 +26,7 @@ if (config?.bulkRedirectsPath) {
 ## 2. Günlük Hayatta Yol Açabileceği Kritik Senaryolar (`Senaryo A` / `Senaryo B` / `Senaryo C`)
 
 ### Senaryo A — `bulkRedirectsPath` İçindeki Sembolik Bağ İle SSH/Bulut Anahtarlarının Sızdırılması
-`.vercel/output/config.json` içinde tanımlanan `bulkRedirectsPath` dizinine `/home/runner/.ssh/id_rsa` yönlendiren bir sembolik bağ konulduğunda `buildFileTree()` bu bağı takip ederek özel anahtarı dağıtıma yükler.
+`.vercel/output/config.json` içinde tanımlanan `bulkRedirectsPath` dizinine `${HOME}/.ssh/id_rsa` yönlendiren bir sembolik bağ konulduğunda `buildFileTree()` bu bağı takip ederek özel anahtarı dağıtıma yükler.
 
 ### Senaryo B — `config.json` İçinde Üst Dizin Geçişi (`"bulkRedirectsPath": "../../secrets"`)
 Üst dizin yolu verilerek proje kökü dışındaki klasörün tamamı taranıp yüklenir.

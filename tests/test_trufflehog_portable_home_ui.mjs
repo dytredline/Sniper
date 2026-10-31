@@ -87,7 +87,7 @@ for (const [relative, prefix, action] of [
 ]) {
   test(`${relative} accepts configured portable home accounts`, () => {
     assert.equal(fixture(relative, prefix, action, '/home/community-user').set('/home/community-user/project'), false);
-    assert.equal(fixture(relative, prefix, action, '/home/another-user').set('/home/another-user/project'), false);
+    assert.equal(fixture(relative, prefix, action, '/Users/another-user').set('/Users/another-user/project'), false);
   });
 
   test(`${relative} rejects traversal and non-home paths`, () => {

@@ -155,12 +155,12 @@ def test_rendered_report_bytes_match_r58_contract() -> None:
         ).encode(),
     }
     expected = {
-        "scan_html": "6ee6b9b0b26931de3313ee1bdf3efd79fcc3c1a332e195c241e7b98458a66a1e",
-        "scan_sarif": "572dbca09cc43528ff97f1611f097d0457d30628df40a385a9634e8a46237c3f",
-        "diff_html": "d06b78788e0d763462fd410b4244071ca409e803d55e69be36fc261ce218dcba",
+        "scan_html": "f86502fda870e78ed8bd65c18e967a0af404989827ec64715633416fdd08e314",
+        "scan_sarif": "17f1876fa7ed2d29d16754938be1f968964338ec8a8f3983c721e567709074f4",
+        "diff_html": "98bdb4be62ebc1659a2882d2c4d34e93f98cb5728bb8ecfe08150c2c355a386b",
         "diff_csv": "607658c1122cf0b45788ec957b4823e9d29bb5ac898594e8698e6fdf6408d902",
-        "eng_html": "12ea4a75fa50d53ec43449bbb698ea00ebe793d3e969a8551d2665ed39cf987b",
+        "eng_html": "7aa73c2dcb48a70a7dccc3d2567784036e9bbb8cd3f58f1dcc84b63827c96840",
         "eng_csv": "f273755eec394d48b2426aaa74f61cd8a096ea9efe4651e93dc5c79694f40af4",
-        "eng_sarif": "2a534a2da970f3fe3116c54f245af25af51b03430c1375fdd2c40c2a257732d4",
+        "eng_sarif": "d6b7079e8ffb0b87c3d872a7f9f13b4a02dddb8d51779e78703903aa41c04963",
     }
     assert {name: hashlib.sha256(value).hexdigest() for name, value in outputs.items()} == expected

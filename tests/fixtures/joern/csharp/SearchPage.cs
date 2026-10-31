@@ -1,4 +1,4 @@
-// ASP.NET WebForms: süslü parantezsiz denetim yapısı gövdeleri (csharpsrc2cpg bunları düşürür; Sniper sarar).
+// ASP.NET WebForms: süslü parantezsiz denetim yapısı gövdeleri (csharpsrc2cpg bunları düşürür; VulKill sarar).
 using System;
 using System.Data.SqlClient;
 using System.IO;

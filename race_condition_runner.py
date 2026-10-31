@@ -1,4 +1,4 @@
-"""Sniper Parallel Race Condition Runner (Burp Repeater 'Send group in parallel' karşılığı).
+"""VulKill Parallel Race Condition Runner (Burp Repeater 'Send group in parallel' karşılığı).
 
 Tek kullanımlık kupon, bakiye çekimi, davet kabulü veya durum geçişi uç noktalarına
 bariyer-senkronize (threading.Barrier) paralel istek grubu göndererek TOCTOU / çift harcama

@@ -283,7 +283,7 @@ def save_default(scope: ScanScope, environ: dict[str, str] | None = None) -> Sca
     """Varsayılan kapsamı atomik olarak (0600) kaydet; varsayılana dönüşte dosya içeriği boş kapsam olur."""
     path = _settings_path(environ)
     if path is None:
-        raise ScopeError("Sniper veri dizini yapılandırılmamış.")
+        raise ScopeError("VulKill veri dizini yapılandırılmamış.")
     data = json.dumps({"format": 1, "scope": scope.public()}, ensure_ascii=False, sort_keys=True).encode("utf-8")
     tmp = path.with_name(f".{FILE_NAME}.{os.getpid()}.tmp")
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)

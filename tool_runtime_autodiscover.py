@@ -691,7 +691,7 @@ def portable_bundle_manifest() -> dict[str, Any]:
     components = [
         {
             "id": "sniper-core",
-            "name": "Sniper Çekirdek Motoru (Web/TLS/HTTP, Kaynak Denetimi, SBOM, 161 OWASP Kontrolü, 15+ Rapor Ayrıştırıcı)",
+            "name": "VulKill Çekirdek Motoru (Web/TLS/HTTP, Kaynak Denetimi, SBOM, 161 OWASP Kontrolü, 15+ Rapor Ayrıştırıcı)",
             "bundle_relpath": "app/",
             "packaging_type": "pure_python_builtin",
             "requires_separate_install": False,
@@ -702,7 +702,7 @@ def portable_bundle_manifest() -> dict[str, Any]:
         },
         {
             "id": "nuclei",
-            "name": "Nuclei 3.11.1 + Sniper'ın Yerleşik Sabitlenmiş Loopback Şablonu",
+            "name": "Nuclei 3.11.1 + VulKill'ın Yerleşik Sabitlenmiş Loopback Şablonu",
             "bundle_relpath": "runtimes/nuclei-3.11.1/nuclei + templates/nuclei/local-powered-by.yaml",
             "packaging_type": "single_static_binary_and_builtin_loopback_template",
             "requires_separate_install": False,
@@ -757,7 +757,7 @@ def portable_bundle_manifest() -> dict[str, Any]:
         },
         {
             "id": "semgrep",
-            "name": "Opengrep 1.30.1 + Sniper Yerel Güvenlik Kural Paketi",
+            "name": "Opengrep 1.30.1 + VulKill Yerel Güvenlik Kural Paketi",
             "bundle_relpath": "runtimes/opengrep-1.30.1/opengrep + rules/opengrep/sniper-core.yaml",
             "packaging_type": "single_static_binary_and_builtin_rulepack",
             "requires_separate_install": False,

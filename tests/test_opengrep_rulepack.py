@@ -1,6 +1,6 @@
-"""Sniper çekirdek Opengrep kural paketi: yapı denetimi ve kural başına olumlu/olumsuz örnek.
+"""VulKill çekirdek Opengrep kural paketi: yapı denetimi ve kural başına olumlu/olumsuz örnek.
 
-Kural paketi Sniper için yazıldı; Semgrep Registry kuralları lisans nedeniyle kullanılmaz.
+Kural paketi VulKill için yazıldı; Semgrep Registry kuralları lisans nedeniyle kullanılmaz.
 Opengrep ikilisi SHA-256 ile sabitli kurulu değilse çalıştırma testleri atlanır.
 """
 import json

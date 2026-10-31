@@ -1,4 +1,4 @@
-"""Sniper Token Sequencer (Burp Sequencer karşılığı).
+"""VulKill Token Sequencer (Burp Sequencer karşılığı).
 
 Oturum çerezleri, CSRF belirteçleri, parola sıfırlama kodları ve OAuth state/nonce
 değerleri üzerinde Shannon entropisi, bit dağılımı (FIPS monobit), ki-kare (chi-square)

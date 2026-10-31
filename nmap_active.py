@@ -47,7 +47,7 @@ def _find_nmap_binary() -> Path | None:
         if p.is_file() and os.access(p, os.X_OK):
             return p
 
-    # 2. Sibling tools/nmap-7.94/bin/nmap under Sniper root
+    # 2. Sibling tools/nmap-7.94/bin/nmap under VulKill root
     # Use Path(__file__).resolve().parent.parent to locate relative to this module
     candidate = Path(__file__).resolve().parent.parent / "tools" / "nmap-7.94" / "bin" / "nmap"
     if candidate.is_file() and os.access(candidate, os.X_OK):

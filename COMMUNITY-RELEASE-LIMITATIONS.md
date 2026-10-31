@@ -1,6 +1,6 @@
 # Community source distribution boundaries
 
-This assembled tree is the Sniper Community source distribution.
+This assembled tree is the VulKill Community source distribution.
 
 Commercial delivery, customer-bound licensing, private installer, and native
 binary-delivery implementation are intentionally absent. The web runtime uses

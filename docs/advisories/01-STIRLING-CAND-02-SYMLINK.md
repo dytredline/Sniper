@@ -53,9 +53,9 @@ private static List<Path> listFiles(
 
 ## 3. Example Execution & Verification Commands
 
-### 1. Auditing the Component with Sniper CLI
+### 1. Auditing the Component with VulKill CLI
 ```bash
-python3 scripts/sniper-project-audit \
+python3 scripts/vulkill-project-audit \
   --repo-path /home/community-user/targets/Stirling-PDF \
   --include "app/proprietary/src/main/java/stirling/software/proprietary/policy/input/FolderInputSource.java"
 ```

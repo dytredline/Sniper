@@ -33,7 +33,7 @@ jobs:
       - name: Verify source entrypoint
         run: |
           python scripts/setup-community --help
-          python scripts/sniper-mcp --help
+          python scripts/vulkill-mcp --help
       - name: Run Python and JavaScript tests
         run: python scripts/run_all_tests.py --verbose
       - name: Validate Compose configuration
@@ -41,14 +41,14 @@ jobs:
           GRAFANA_ADMIN_PASSWORD: ci-only-placeholder
         run: docker compose --profile monitoring config --quiet
       - name: Build local image
-        run: docker build --tag sniper-community:${{ github.sha }} .
+        run: docker build --tag vulkill-community:${{ github.sha }} .
       - name: Boot local image and verify health
         run: |
-          container_name="sniper-community-release-${{ github.run_id }}"
+          container_name="vulkill-community-release-${{ github.run_id }}"
           trap 'docker rm --force "$container_name" >/dev/null 2>&1 || true' EXIT
           docker run --detach --name "$container_name" \
             --env SNIPER_ALLOW_UNAUTHENTICATED_REMOTE=1 \
-            "sniper-community:${{ github.sha }}"
+            "vulkill-community:${{ github.sha }}"
           for attempt in $(seq 1 30); do
             health_status=$(docker inspect --format '{{.State.Health.Status}}' "$container_name")
             if [ "$health_status" = "healthy" ]; then
@@ -68,24 +68,24 @@ jobs:
             echo "tag must match COMMUNITY_VERSION (expected v${VERSION})" >&2
             exit 1
           fi
-          RELEASE_TREE="${RUNNER_TEMP}/sniper-community-${VERSION}"
-          RELEASE_ARCHIVE="${GITHUB_WORKSPACE}/sniper-community-${VERSION}.tar.gz"
+          RELEASE_TREE="${RUNNER_TEMP}/vulkill-community-${VERSION}"
+          RELEASE_ARCHIVE="${GITHUB_WORKSPACE}/vulkill-community-${VERSION}.tar.gz"
           python scripts/build-community-source.py --output "${RELEASE_TREE}"
           python .github/scripts/validate-community-release.py \
             --root "${RELEASE_TREE}" --scan-release-tree
           tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
-            -C "${RUNNER_TEMP}" -czf "${RELEASE_ARCHIVE}" "sniper-community-${VERSION}"
-          sha256sum "sniper-community-${VERSION}.tar.gz" > SHA256SUMS
+            -C "${RUNNER_TEMP}" -czf "${RELEASE_ARCHIVE}" "vulkill-community-${VERSION}"
+          sha256sum "vulkill-community-${VERSION}.tar.gz" > SHA256SUMS
       - name: Attest source archive provenance
         if: github.ref_type == 'tag'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-path: sniper-community-*.tar.gz
+          subject-path: vulkill-community-*.tar.gz
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: sniper-community-source
+          name: vulkill-community-source
           path: |
-            sniper-community-*.tar.gz
+            vulkill-community-*.tar.gz
             SHA256SUMS
           if-no-files-found: error
       - name: Publish GitHub release assets
@@ -95,8 +95,8 @@ jobs:
         run: |
           VERSION=$(tr -d '\n\r' < COMMUNITY_VERSION)
           gh release create "v${VERSION}" \
-            "sniper-community-${VERSION}.tar.gz" \
+            "vulkill-community-${VERSION}.tar.gz" \
             "SHA256SUMS" \
             --verify-tag \
-            --title "Sniper Community v${VERSION}" \
+            --title "VulKill Community v${VERSION}" \
             --generate-notes
