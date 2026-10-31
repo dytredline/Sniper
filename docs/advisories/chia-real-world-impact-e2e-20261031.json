@@ -1,0 +1,402 @@
+{
+  "suite": "chia-real-world-impact-e2e-20261031",
+  "verified_at": "2026-10-31T03:00:00Z",
+  "total_advisories": 19,
+  "all_passed": true,
+  "tracks": {
+    "CHIA-WLC-01": {
+      "num": "20",
+      "cand_id": "CHIA-WLC-01",
+      "repo": "Chia-Network/chia-blockchain",
+      "affected_versions": "<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)",
+      "cwe": "CWE-345 / CWE-347",
+      "cvss_score": "9.1 Critical",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H",
+      "RED": {
+        "attacker_initial_xch_capital_mojo": 0,
+        "accepted_swapped_foliage_transaction_block": true,
+        "fake_merchant_deposit_increase_mojo": 500000000000,
+        "reopened_sqlite_coin_present": true,
+        "subsequent_spend_mempool_error": "Err.UNKNOWN_UNSPENT"
+      },
+      "GREEN": {
+        "accepted_swapped_foliage_transaction_block": false,
+        "fake_merchant_deposit_increase_mojo": 0,
+        "reopened_sqlite_coin_present": false,
+        "rejection_error": "ValueError: Invalid foliage_transaction_block_hash"
+      }
+    },
+    "CHIA-WLC-02": {
+      "num": "21",
+      "cand_id": "CHIA-WLC-02",
+      "repo": "Chia-Network/chia-blockchain",
+      "affected_versions": "<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)",
+      "cwe": "CWE-345 / CWE-400",
+      "cvss_score": "7.5 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H",
+      "RED": {
+        "clawback_coin_id": "e088f25d50be49d29eb144248071f377d5f7bbdb5d7dd34078c9c72276a0b649",
+        "clawback_amount_mojo": 500000000000,
+        "t1_cold_reloaded_sqlite_spent": true,
+        "t2_sender_cancel_tx_count": 0,
+        "t3_poc10_matches_victim": false,
+        "t4_recipient_claim_spend_bundle_sha256": "33361e6b2d8ee0d9bdd37738c4b2e54ece03c1eb507de8e59b370a1bd100e1e1",
+        "t4_recipient_claim_bytes": 930
+      },
+      "GREEN": {
+        "t1_cold_reloaded_sqlite_spent": false,
+        "t2_sender_cancel_tx_count": 1,
+        "t3_poc10_matches_victim": true,
+        "sender_clawback_cancel_succeeded": true
+      }
+    },
+    "CHIA-GUI-WC-01": {
+      "num": "22",
+      "cand_id": "CHIA-GUI-WC-01",
+      "repo": "Chia-Network/chia-blockchain-gui",
+      "affected_versions": "<= 2.6.1-rc2.dev60 (verified on commit 2f6ee83a23ac8b0370b96111e02f8edfb81fa1f3)",
+      "cwe": "CWE-367 / CWE-285",
+      "cvss_score": "8.8 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+      "RED": {
+        "displayed_prompt_method": "chia_getCurrentAddress",
+        "concurrent_injected_method": "chia_sendTransaction",
+        "modal_overwritten_by_second_request": true,
+        "unauthorized_send_transaction_dispatched": true,
+        "drained_amount_mojo": 500000000000,
+        "signed_spend_bundle_sha256": "d2ce22645a9a23b165da6f3895d1139ed334a91aaef4e56d027f8b0c12754980"
+      },
+      "GREEN": {
+        "distinct_wss_packets_tested": 6,
+        "benign_get_current_address_succeeded": true,
+        "benign_send_transaction_succeeded": true,
+        "concurrent_modal_overwrite_rejected": true,
+        "fingerprint_network_pairing_switch_rejected": true,
+        "unknown_method_rejected": true
+      }
+    },
+    "CHIA-DL-01": {
+      "num": "23",
+      "cand_id": "CHIA-DL-01",
+      "repo": "Chia-Network/chia-blockchain",
+      "affected_versions": "<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)",
+      "cwe": "CWE-347 / CWE-345",
+      "cvss_score": "9.1 Critical",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:H/A:N",
+      "RED": {
+        "victim_store_id": "806a6c73c7344b24d23915a319f82da69e1129a70e3ef772da2be14de2b4a5d6",
+        "forged_non_singleton_coin_id": "86ec0dd71fbc7e415e06dc504e8e74436cf4f60d2f4ab942fc2104685b20dd17",
+        "dl_verify_proof_verified": true,
+        "dl_verify_proof_current_root": true,
+        "cat_asset_id": "73dc2527f5a75964c9b1b019def41d17aaa1f22d42235f479114c2e505f679f5",
+        "cat_issuance_spend_bundle_sha256": "6a635760183480c0c94ccf7786c1700fa5b7d7b0ae2532da49ff22edc3257c5e",
+        "cat_delivery_spend_bundle_sha256": "dc3f0bbaac81e982baa174241b3a69fba1b8a34e7033d8e1465ecd832ea18196",
+        "attacker_minted_cat_mojo": 100000000,
+        "attacker_minted_cat_tokens": 100000
+      },
+      "GREEN": {
+        "canonical_singleton_proof_verified": true,
+        "counterfeit_non_singleton_proof_verified": false,
+        "attacker_minted_cat_mojo": 0
+      }
+    },
+    "CHIA-CS-01": {
+      "num": "24",
+      "cand_id": "CHIA-CS-01 (POC-1 & POC-2)",
+      "repo": "Chia-Network/cni-wallet-sdk",
+      "affected_versions": "chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)",
+      "cwe": "CWE-451 / CWE-345",
+      "cvss_score": "8.6 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H",
+      "RED": {
+        "poc1_spend_bundle_sha256": "b9b614d01ee2b104325a7dde22c33c498ed9e2e6925f957411d9d9d162f06e5c",
+        "poc1_spend_bundle_bytes": 1105,
+        "poc1_clear_signing_displayed_fee_mojo": 0,
+        "poc1_consensus_drained_fee_mojo": 750000000000000,
+        "poc2_spend_bundle_sha256": "17d2796f8bd6b9bf9fc1f03cb0570be6ac6393215c27cf61718b2eb9924dd128",
+        "poc2_spend_bundle_bytes": 3274
+      },
+      "GREEN": {
+        "poc1_rejected_fail_closed": true,
+        "poc2_rejected_fail_closed": true,
+        "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+      }
+    },
+    "CHIA-CS-02": {
+      "num": "25",
+      "cand_id": "CHIA-CS-02 (POC-3)",
+      "repo": "Chia-Network/cni-wallet-sdk",
+      "affected_versions": "chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)",
+      "cwe": "CWE-451 / CWE-345",
+      "cvss_score": "8.1 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N",
+      "RED": {
+        "poc3_spend_bundle_sha256": "b314b6d7411bfb8a87bd4b091a117b861e5a171ed4a0a4712955c592962042e6",
+        "poc3_spend_bundle_bytes": 3300,
+        "clear_signing_displayed_fee_mojo": 0,
+        "consensus_drained_fee_mojo": 500000000000000
+      },
+      "GREEN": {
+        "poc3_rejected_fail_closed": true,
+        "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+      }
+    },
+    "CHIA-CS-03": {
+      "num": "26",
+      "cand_id": "CHIA-CS-03 (POC-4)",
+      "repo": "Chia-Network/cni-wallet-sdk",
+      "affected_versions": "chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)",
+      "cwe": "CWE-682 / CWE-451",
+      "cvss_score": "8.6 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N",
+      "RED": {
+        "poc4_vault_spend_bundle_sha256": "3c55638a605214afd4e6ca592d439b6e9b69e4550f40ce07f85daec8cef87fb8",
+        "poc4_settlement_spend_bundle_sha256": "7c05b725fb43d8fae280b3e1cd0417b752598e8ce9bd7ae45c1a2f7b63ccf525",
+        "omitted_outflow_mojo": 500000000000000
+      },
+      "GREEN": {
+        "poc4_rejected_or_fully_accounted": true,
+        "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+      }
+    },
+    "CHIA-CS-04": {
+      "num": "27",
+      "cand_id": "CHIA-CS-04 (POC-5)",
+      "repo": "Chia-Network/cni-wallet-sdk",
+      "affected_versions": "chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)",
+      "cwe": "CWE-345 / CWE-451",
+      "cvss_score": "8.6 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N",
+      "RED": {
+        "poc5_vault_spend_bundle_sha256": "a9eeda2c8526d95cb0a36ffcdf9a026b23e96c11e15ee419938e18dc342277eb",
+        "poc5_vault_spend_bundle_bytes": 1303,
+        "poc5_attached_settlement_spend_bundle_sha256": "e0b876fbb8e0f26400a38fb5e2e9963a5cb1dbff92b76d78b4403ed0cb2f7cbe",
+        "poc5_attached_settlement_bytes": 388,
+        "hidden_outflow_mojo": 600000000000000
+      },
+      "GREEN": {
+        "poc5_rejected_fail_closed": true,
+        "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+      }
+    },
+    "CHIA-CS-05": {
+      "num": "28",
+      "cand_id": "CHIA-CS-05 (POC-6)",
+      "repo": "Chia-Network/cni-wallet-sdk",
+      "affected_versions": "chia-sdk-bindings <= 0.38.0 / chia-sdk-driver <= 0.36.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)",
+      "cwe": "CWE-682 / CWE-451",
+      "cvss_score": "9.1 Critical",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H",
+      "RED": {
+        "poc6_spend_bundle_sha256": "aa6518229251559629861e9137f5cbd5186cb20b46c216a64dc209b86ed3004e",
+        "poc6_spend_bundle_bytes": 1477,
+        "vault_drain_amount_mojo": 1000000000000000,
+        "ffi_boundary_parse_vault_transaction_masked": true
+      },
+      "GREEN": {
+        "ffi_boundary_rejected_with": "Error::NonStandardInnerSpend",
+        "ffi_test_file_sha256": "73dbe05adb2538ceb88cca5b2ecf4c1678e4ed537d3accb17535d8666727fb52"
+      }
+    },
+    "CHIA-CS-06": {
+      "num": "29",
+      "cand_id": "CHIA-CS-06 (POC-7)",
+      "repo": "Chia-Network/cni-wallet-sdk",
+      "affected_versions": "chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)",
+      "cwe": "CWE-347 / CWE-451",
+      "cvss_score": "9.1 Critical",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H",
+      "RED": {
+        "poc7_pre_split_spend_bundle_sha256": "476b8e836e435eecb16fb924b8d8b8532fb6872fda3f9d50030d98231fff7833",
+        "poc7_pre_split_bytes": 1994,
+        "poc7_spliced_final_spend_bundle_sha256": "5b3a3b21376bfdfe06e7cc1ec334c43ffd3bb97b72133aeaa38f4de040ba0a93",
+        "poc7_spliced_final_bytes": 1701,
+        "redirected_amount_mojo": 1000000000000000,
+        "original_bls_signature_valid_on_spliced": true
+      },
+      "GREEN": {
+        "poc7_rejected_fail_closed": true,
+        "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+      }
+    },
+    "CHIA-CS-07": {
+      "num": "30",
+      "cand_id": "CHIA-CS-07 (POC-8)",
+      "repo": "Chia-Network/cni-wallet-sdk",
+      "affected_versions": "chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)",
+      "cwe": "CWE-345 / CWE-451",
+      "cvss_score": "8.6 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N",
+      "RED": {
+        "poc8_spend_bundle_sha256": "6897c10eb9cf718ffa9bbfff998e6a496d3532bf2d198c8df16bf92e2d5f9db1",
+        "poc8_spend_bundle_bytes": 1218,
+        "hijacked_clawback_amount_mojo": 1000000000000000,
+        "attacker_is_clawback_sender": true
+      },
+      "GREEN": {
+        "poc8_rejected_fail_closed": true,
+        "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+      }
+    },
+    "CHIA-CS-08": {
+      "num": "31",
+      "cand_id": "CHIA-CS-08 (POC-9)",
+      "repo": "Chia-Network/cni-wallet-sdk",
+      "affected_versions": "chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)",
+      "cwe": "CWE-682 / CWE-451",
+      "cvss_score": "8.6 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N",
+      "RED": {
+        "poc9_spend_bundle_sha256": "e48c3171dc9a9b4b5914597784e7b5039a9af340c66aa2158bac22f1fba295ff",
+        "poc9_spend_bundle_bytes": 2541,
+        "omitted_cat_ring_delta_mojo": 750000000000000
+      },
+      "GREEN": {
+        "poc9_rejected_fail_closed": true,
+        "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+      }
+    },
+    "CHIA-VR-01": {
+      "num": "32",
+      "cand_id": "CHIA-VR-01 (POC-10)",
+      "repo": "Chia-Network/chia-vault-recover",
+      "affected_versions": "<= 1.0.0-rc9 (verified on commit 75e3a8efe02a131adbf3059afc20852de183ca82)",
+      "cwe": "CWE-345 / CWE-400",
+      "cvss_score": "7.5 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "RED": {
+        "attacker_decoy_launcher_id": "2de44601e6fcf4bdfc88eb553ddca729751a06da78cec724519e741f1dfefacf",
+        "victim_true_launcher_id": "e53d0c41ce3a78de1426630d059958ef37a5d7f55551d47908f9a106024640eb",
+        "red_cli_selected_launcher_id": "2de44601e6fcf4bdfc88eb553ddca729751a06da78cec724519e741f1dfefacf",
+        "red_cli_exit_code": 1,
+        "red_cli_stderr": "clawback check: recovery phrase does not match"
+      },
+      "GREEN": {
+        "green_release_cli_sha256": "d6e6b0bb5e0d160d9a342274e2c1d384f67fa57c0c218267b27f46195c1370c3",
+        "green_cli_selected_launcher_id": "e53d0c41ce3a78de1426630d059958ef37a5d7f55551d47908f9a106024640eb",
+        "green_cli_matches_victim": true,
+        "cargo_unit_tests_passed": 45
+      }
+    },
+    "CHIA-CONS-SP-01": {
+      "num": "33",
+      "cand_id": "CHIA-CONS-SP-01",
+      "repo": "Chia-Network/chia-blockchain",
+      "affected_versions": "<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)",
+      "cwe": "CWE-400 / CWE-345",
+      "cvss_score": "7.5 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H",
+      "RED": {
+        "mtls_3node_victim_peak_after_5_rounds": null,
+        "fork_height": 5,
+        "split_coin_id": "006f4366cd3778cc13e11647a0f4dd43552088db526a289c65de3493fa01a411",
+        "branch_a_exchange_deposit_spend_bundle_sha256": "26afe149e702e4a622a5675aa77481e6b54074e3cfa98db93a47ef24c1793f8b",
+        "branch_b_attacker_vault_spend_bundle_sha256": "ad2eba4d67c52314303e62601ed42d89c2c4f488d67c9cc0554a3137c9214c33",
+        "exchange_pre_reorg_balance_mojo": 10000000000000000,
+        "exchange_post_reorg_balance_mojo": 0,
+        "attacker_post_reorg_balance_mojo": 10000000000000000
+      },
+      "GREEN": {
+        "mtls_3node_victim_synced_height": 5,
+        "exchange_status_at_1_conf": "PENDING_FINALITY",
+        "exchange_loss_mojo": 0
+      }
+    },
+    "CHIA-WLT-OFFER-01": {
+      "num": "34",
+      "cand_id": "CHIA-WLT-OFFER-01",
+      "repo": "Chia-Network/chia-blockchain",
+      "affected_versions": "<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)",
+      "cwe": "CWE-863",
+      "cvss_score": "8.1 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N",
+      "RED": {
+        "authorized_cap_mojo": 100000000000,
+        "offer_requested_mojo": 500000000000,
+        "unbounded_implicit_coin_spend_signed": true
+      },
+      "GREEN": {
+        "unbounded_implicit_coin_spend_signed": false,
+        "rejection_error": "ValueError: Offer requested amount exceeds max_authorized_amount"
+      }
+    },
+    "CHIA-POS-01": {
+      "num": "35",
+      "cand_id": "CHIA-POS-01",
+      "repo": "Chia-Network/chia-blockchain",
+      "affected_versions": "chia-blockchain <= 2.7.5 (commit bdb7be2a45fc459b0672656166701ac4f46e0cfc) / chiapos <= 2.0.11",
+      "cwe": "CWE-248 / CWE-20",
+      "cvss_score": "7.5 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "RED": {
+        "wire_packet_sha256": "30a0e918f96ff695b7c711b297d1ee9203fcb8ee0d8b72844a901d9de9012dfe",
+        "wire_packet_bytes": 445,
+        "farmers_spawned": 4,
+        "crashed_farmers": 4,
+        "alive_farmers_after": 0,
+        "exception": "pyo3_runtime.PanicException: Neither pool pk nor contract puzzle hash set"
+      },
+      "GREEN": {
+        "farmers_spawned": 4,
+        "crashed_farmers": 0,
+        "alive_farmers_after": 4
+      }
+    },
+    "CHIA-POS-02-04": {
+      "num": "36",
+      "cand_id": "CHIA-POS-02..04",
+      "repo": "Chia-Network/chiapos",
+      "affected_versions": "<= 2.0.11 (upstream main)",
+      "cwe": "CWE-190 / CWE-787 / CWE-125",
+      "cvss_score": "8.1 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H",
+      "RED": {
+        "k60_probe_exit_code": 1,
+        "k50_table4_probe_exit_code": 1,
+        "sanitizer_diagnostic": "src/bits.hpp:184:29: runtime error: load of address with insufficient space / AddressSanitizer: stack-buffer-overflow"
+      },
+      "GREEN": {
+        "k60_probe_exit_code": 0,
+        "k50_table4_probe_exit_code": 0,
+        "rejected_invalid_k_cleanly": true
+      }
+    },
+    "CHIA-VDF-02": {
+      "num": "37",
+      "cand_id": "CHIA-VDF-02",
+      "repo": "Chia-Network/chiavdf",
+      "affected_versions": "<= 1.1.11 (upstream main)",
+      "cwe": "CWE-125 / CWE-416",
+      "cvss_score": "7.5 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+      "RED": {
+        "malformed_proof_blob_len": 12,
+        "num_iterations": 0,
+        "native_crash_or_asan_oob": true
+      },
+      "GREEN": {
+        "native_crash_or_asan_oob": false,
+        "clean_boolean_false_returned": true
+      }
+    },
+    "CHIA-DL-02": {
+      "num": "38",
+      "cand_id": "CHIA-DL-02",
+      "repo": "Chia-Network/chia-blockchain",
+      "affected_versions": "<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)",
+      "cwe": "CWE-918",
+      "cvss_score": "7.5 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N",
+      "RED": {
+        "mirror_url": "https://mirror.example/store.dat",
+        "redirect_location": "http://127.0.0.1:18999/internal-secret",
+        "redirect_to_loopback_followed": true,
+        "internal_loopback_hit_count": 1
+      },
+      "GREEN": {
+        "redirect_to_loopback_followed": false,
+        "internal_loopback_hit_count": 0
+      }
+    }
+  }
+}
