@@ -63,7 +63,7 @@ In `trycua/cua` (`cuabot` npm package `<= 1.0.16`, commit `e754cfec69c41400eb2aa
 
 ## 3. Example Execution & Verification Commands
 
-### 1. Auditing the Component with Sniper CLI
+### 1. Auditing the Component with VulKill CLI
 ```bash
 python3 scripts/sniper-project-audit \
   --repo-path /home/community-user/targets/cua \

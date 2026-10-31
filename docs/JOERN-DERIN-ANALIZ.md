@@ -1,6 +1,6 @@
 # Joern derin analiz modu (C/C++, Java, Kotlin, PHP, Go, Ruby, C#)
 
-Python ve JS/TS projeleri için Sniper'ın kendi fonksiyonlar/dosyalar arası veri akışı motoru
+Python ve JS/TS projeleri için VulKill'ın kendi fonksiyonlar/dosyalar arası veri akışı motoru
 (`taint_flow.py`, `taint_js_ast.py`) kullanılır. C/C++, Java, Kotlin, PHP, Go, Ruby ve C# için isteğe bağlı olarak
 [Joern](https://joern.io/) (Apache-2.0) Code Property Graph'ı ve veri akışı motoru çalıştırılır.
 
@@ -11,14 +11,14 @@ Python ve JS/TS projeleri için Sniper'ın kendi fonksiyonlar/dosyalar arası ve
    - Joern v4.0.647 `joern-cli-linux-arm64.zip` ve `joern-cli-linux-arm64.zip.sha512`, GitHub.
 2. Kurun ve doğrulayın:
    ```bash
-   python3 /ABSOLUTE/PATH/TO/sniper/scripts/install_joern.py \
+   python3 /ABSOLUTE/PATH/TO/vulkill/scripts/install_joern.py \
      --jdk-archive OpenJDK25U-jdk_aarch64_linux_hotspot_25.0.4.1_1.tar.gz \
      --joern-archive joern-cli-linux-arm64.zip --joern-sha512 joern-cli-linux-arm64.zip.sha512
    ```
    Betik şunları yapar:
    - JDK arşivini Adoptium SHA-256 değeriyle, Joern arşivini GitHub varlık özeti (SHA-256) ve resmî SHA-512 dosyasıyla doğrular.
    - Arşivleri yol aşımı ve dışarıyı gösteren bağlara karşı güvenli biçimde açar.
-   - Kurulumu salt okunur yapar ve dosya başına SHA-256 içeren `SNIPER-INSTALL-MANIFEST.json` üretir.
+   - Kurulumu salt okunur yapar ve dosya başına SHA-256 içeren `VULKILL-INSTALL-MANIFEST.json` üretir.
 3. Çıktıdaki değerler kodda sabitlidir:
    - `java_sha256` → `tool_pins.PINS["joern-jdk"]`
    - `manifest_sha256` → `joern_active.JOERN_MANIFEST_SHA256`
@@ -63,7 +63,7 @@ Kurulum yolları:
   - **C:** Kaynaklar `main` argümanları, `getenv` ve stdin/ağ/dosya okumaları. Hedefler: komut (`system`, `popen`, `exec*`), SQL (sqlite/mysql/libpq), yol (`fopen`, `open`, `unlink` …), biçim dizgisi (`printf` ailesi; sabit biçim hariç), bellek kopyalama (`strcpy`, `strcat`, `memcpy` …).
   - **Java:** Kaynaklar Servlet istek yöntemleri, Spring/JAX-RS parametre işaretleri ve argv/ortam/stdin. Hedefler: `Runtime.exec`/`ProcessBuilder`, JDBC/JPA/JdbcTemplate, dosya ve NIO yolları, `ObjectInputStream`/`XMLDecoder`/SnakeYAML/XStream, URL/RestTemplate (SSRF), yanıt yazıcısı (XSS; yalnız HTTP girdisiyle), ScriptEngine/SpEL/OGNL, LDAP araması.
 - **Çıktı:**
-  - Bulgular Sniper biçiminde döner (`taint_flow` + adımlar).
+  - Bulgular VulKill biçiminde döner (`taint_flow` + adımlar).
   - Her adımı konumlu `codeFlows` içeren SARIF 2.1.0 üretilir.
   - Kaynak satır içeriği tutulmaz.
   - argv/ortam gibi yerel girdilerden gelen kritik akışlar "yüksek" olarak raporlanır.
@@ -265,12 +265,12 @@ kalıcı XSS (xss_s: `INSERT INTO guestbook` → `dvwaGuestbook()` `SELECT` → 
 - **Ruby:** Rails `scope :ad, ->(a) { … }` çağrıları lambda gövdesine bağlanır; çözülemeyen argümansız yardımcı
   (`user_params`, `custom_fields`) aynı sınıftaki yöntemin dönüşü kaynaktan geliyorsa kaynak sayılır.
 
-### Karşılaştırma: CodeQL 2.27.1 `java-security-extended` (yalnız ölçüm; Sniper'a eklenmedi)
+### Karşılaştırma: CodeQL 2.27.1 `java-security-extended` (yalnız ölçüm; VulKill'a eklenmedi)
 
 CodeQL `--build-mode=none` ile çalıştırıldı; sistemde Maven olmadığından bağımlılıklar çözülemedi (CodeQL
 türleri paket adlarından çıkardı). Aynı puanlayıcı:
 
-| Benchmark Java kategori | CodeQL puan (TPR/FPR) | Sniper/Joern puan |
+| Benchmark Java kategori | CodeQL puan (TPR/FPR) | VulKill/Joern puan |
 |---|---|---:|
 | cmdi | 48,8 (1,00/0,51) | 99,2 |
 | crypto | 76,7 (1,00/0,23) | 100 |
@@ -285,8 +285,8 @@ türleri paket adlarından çıkardı). Aynı puanlayıcı:
 | xss | 56,9 (1,00/0,43) | 100 |
 | **Ortalama** | **62,0** | **99,9** |
 
-java-sec-code: CodeQL TP 36 / FN 13 / FP 11 / TN 20 (TPR 0,73, FPR 0,35); Sniper TP 48 / FN 1 / FP 1 / TN 30.
-Sniper kuralları her iki set görülerek ayarlandı, CodeQL ayarlanmadı: fark büyük ölçüde bu ayardan ve
+java-sec-code: CodeQL TP 36 / FN 13 / FP 11 / TN 20 (TPR 0,73, FPR 0,35); VulKill TP 48 / FN 1 / FP 1 / TN 30.
+VulKill kuralları her iki set görülerek ayarlandı, CodeQL ayarlanmadı: fark büyük ölçüde bu ayardan ve
 CodeQL'in bağımlılıksız (buildless) çalışmasından kaynaklanır; genel bir üstünlük iddiası değildir.
 
 ### CPG önbelleği, C# `lock` ve PHP hazırlanmış ifadeler (11. tur)

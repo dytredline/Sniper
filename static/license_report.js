@@ -161,5 +161,5 @@
   }
 
   scope.renderLicenseSummary = renderLicenseSummary;
-  scope.SniperLicense = { renderLicenseSummary, summaryLine, rows, policyLines };
+  scope.VulKillLicense = { renderLicenseSummary, summaryLine, rows, policyLines };
 })();

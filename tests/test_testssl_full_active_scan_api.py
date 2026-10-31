@@ -43,7 +43,7 @@ class TestTestsslFullActiveScanApi(unittest.TestCase):
         self.binary.chmod(self.binary.stat().st_mode | stat.S_IXUSR)
         os.environ["SNIPER_TESTSSL_BINARY"] = str(self.binary)
         os.environ["SNIPER_TESTSSL_SHA256"] = hashlib.sha256(self.binary.read_bytes()).hexdigest()
-        self.http = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.http = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.http.daemon_threads = True
         self.thread = threading.Thread(target=self.http.serve_forever, daemon=True)
         self.thread.start()

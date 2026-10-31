@@ -1,17 +1,17 @@
 # Community MCP: AI-first, human-controlled operation
 
-Sniper exposes a real Model Context Protocol server at `scripts/sniper-mcp`. It uses newline-delimited JSON-RPC over
+VulKill exposes a real Model Context Protocol server at `scripts/vulkill-mcp`. It uses newline-delimited JSON-RPC over
 the child process's stdin/stdout and does not open an HTTP or TCP listener. Run the source-checkout preflight first:
 
 ```bash
-.venv/bin/python scripts/sniper-mcp --help
+.venv/bin/python scripts/vulkill-mcp --help
 ```
 
-The server uses a local Sniper database. With no database option, Community mode creates an isolated per-user
+The server uses a local VulKill database. With no database option, Community mode creates an isolated per-user
 Community database. Never aim an unreviewed checkout at production state:
 
 ```bash
-.venv/bin/python scripts/sniper-mcp --mode community
+.venv/bin/python scripts/vulkill-mcp --mode community
 ```
 
 If you pass `--db`, it must name an existing, separate Community/development database. Community mode rejects the
@@ -26,7 +26,7 @@ Copy `docs/examples/mcp/stdio-community.json` into the format and location requi
 the `/ABSOLUTE/PATH/TO/...` placeholder. The equivalent Codex-style TOML example is
 `docs/examples/mcp/codex-config.toml`.
 
-Community mode requires no Sniper login, token, or separate browser approval. It trusts the local OS user who starts
+Community mode requires no VulKill login, token, or separate browser approval. It trusts the local OS user who starts
 the stdio process, so that account can read local project context and prepare supported actions. Do not expose the
 stdio process to another user or run an untrusted MCP client under that account.
 
@@ -54,7 +54,7 @@ AI recommendations are not final findings decisions. State-changing Community to
 plan protocol:
 
 1. The AI calls `prepare_action` with the requested action and parameters.
-2. Sniper returns a normalized, immutable plan with `plan_id`, `plan_sha256`, `consent_scope`, effects, and expiry.
+2. VulKill returns a normalized, immutable plan with `plan_id`, `plan_sha256`, `consent_scope`, effects, and expiry.
    The AI shows that exact plan and scope to the person in the same conversation.
 3. Only after an explicit yes may the AI call `execute_action` with that exact ID/hash and
    `user_confirmed: true`.
@@ -104,7 +104,7 @@ create legal authorization.
 MCP is optional. People can inspect available CLI operations directly:
 
 ```bash
-.venv/bin/python scripts/sniper-project-audit --help
+.venv/bin/python scripts/vulkill-project-audit --help
 .venv/bin/python cli_reports.py --help
 ```
 

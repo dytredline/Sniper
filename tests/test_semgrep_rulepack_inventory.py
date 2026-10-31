@@ -281,7 +281,7 @@ class SemgrepRulepackInventoryTests(unittest.TestCase):
         )
         rules_file.write_text(rules_content, encoding="utf-8")
 
-        httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         httpd.daemon_threads = True
         thread = threading.Thread(target=httpd.serve_forever, daemon=True)
         thread.start()

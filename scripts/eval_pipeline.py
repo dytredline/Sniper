@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Sniper ölçüm hattı: açıklı/olgun proje setleri, zemin gerçeği, CodeQL karşılaştırması, kıyaslar ve regresyon.
+"""VulKill ölçüm hattı: açıklı/olgun proje setleri, zemin gerçeği, CodeQL karşılaştırması, kıyaslar ve regresyon.
 
-Yapılandırma (JSON; göreli yollar yapılandırma dosyasına göre, ``@app/`` ölçülen Sniper kopyasına göre;
+Yapılandırma (JSON; göreli yollar yapılandırma dosyasına göre, ``@app/`` ölçülen VulKill kopyasına göre;
 ``~`` ve ``$DEĞİŞKEN`` açılır)::
 
     {"name": "standart",
@@ -48,7 +48,7 @@ QUALITY_GATE_KEYS = frozenset({"min_projects", "min_labels", "min_recall", "min_
 def _resolve(value: str | None, base: Path) -> Path | None:
     if not value:
         return None
-    if str(value).startswith("@app/"):  # ölçülen Sniper kopyasına göre (ör. temel çizgi dosyası)
+    if str(value).startswith("@app/"):  # ölçülen VulKill kopyasına göre (ör. temel çizgi dosyası)
         return APP_ROOT / str(value)[5:]
     path = Path(os.path.expandvars(os.path.expanduser(str(value))))
     return path if path.is_absolute() else (base / path)
@@ -230,7 +230,7 @@ def run_set(spec: dict, log) -> dict:
             result["codeql"] = {k: scored[k] for k in ("findings", "tp", "total", "fn", "recall", "found", "missed_classes")}
             result["codeql"]["unmatched_non_noisy"] = sum(
                 1 for row in scored["unmatched"] if row["tag"] not in em.CODEQL_NOISY_RULES)
-            # Sniper'ın kaçırıp CodeQL'in bulduğu zemin gerçeği kayıtları (geliştirme önceliği için).
+            # VulKill'ın kaçırıp CodeQL'in bulduğu zemin gerçeği kayıtları (geliştirme önceliği için).
             sniper_found = result["verified"]["found"]
             result["codeql"]["only_codeql"] = sorted(
                 f"{project}#{index}" for project, indexes in scored["found"].items()
@@ -326,7 +326,7 @@ def format_report(record: dict) -> str:
                 lines.append(f"   CodeQL: TP {cq['tp']}/{cq['total']}, eşleşmeyen (gürültülü kurallar hariç) "
                              f"{cq['unmatched_non_noisy']}, yalnız CodeQL'in bulduğu {len(cq['only_codeql'])}")
             else:
-                lines.append(f"   CodeQL örtüşme: ikisi {cq['both']}, yalnız Sniper {cq['only_sniper']}, yalnız CodeQL {cq['only_codeql']}")
+                lines.append(f"   CodeQL örtüşme: ikisi {cq['both']}, yalnız VulKill {cq['only_sniper']}, yalnız CodeQL {cq['only_codeql']}")
     if record.get("benchmarks"):
         lines.append("## kıyaslar: " + json.dumps(record["benchmarks"], ensure_ascii=False))
     if record.get("class_precision"):
@@ -341,7 +341,7 @@ def format_report(record: dict) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Sniper ölçüm hattı")
+    parser = argparse.ArgumentParser(description="VulKill ölçüm hattı")
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--label", default="")
     parser.add_argument("--only", action="append", default=[], help="Yalnız bu set(ler)")

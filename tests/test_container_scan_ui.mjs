@@ -63,7 +63,7 @@ const AUDIT = {
 test('konteyner özeti textContent ile çizilir; imaj etiketi metin kalır, SBOM bağlantısı doğru', () => {
   const win = load();
   const host = node('div');
-  win.SniperContainerScan.renderContainerSummary(AUDIT, host);
+  win.VulKillContainerScan.renderContainerSummary(AUDIT, host);
   const box = host.children.find(c => c.attrs.id === 'container-scan-summary');
   assert.ok(box, 'özet eklenmeli');
   const all = texts(box);
@@ -78,11 +78,11 @@ test('konteyner olmayan analizde özet eklenmez; zincir önceki lisans çizicisi
   let calls = 0;
   const win = load({ renderLicenseSummary: () => { calls += 1; } });
   const host = node('div');
-  win.SniperContainerScan.chain();
+  win.VulKillContainerScan.chain();
   win.renderLicenseSummary({ id: 'prj_x', audit_kind: undefined }, host);
   assert.equal(calls, 1);
   assert.equal(host.children.length, 0);
-  win.SniperContainerScan.chain();  // ikinci zincirleme sarmalamaz
+  win.VulKillContainerScan.chain();  // ikinci zincirleme sarmalamaz
   win.renderLicenseSummary(AUDIT, host);
   assert.equal(calls, 2);
   assert.equal(host.children.length, 1);
@@ -90,7 +90,7 @@ test('konteyner olmayan analizde özet eklenmez; zincir önceki lisans çizicisi
 
 test('başlatıcı paneli form alanları ve durum satırıyla kurulur', () => {
   const win = load();
-  const panel = win.SniperContainerScan.buildPanel();
+  const panel = win.VulKillContainerScan.buildPanel();
   assert.equal(panel.attrs.id, 'container-scan-launcher');
   const icon = panel.children[0].children[0];
   assert.equal(icon.textContent, '');
@@ -116,7 +116,7 @@ test('başlatıcı API gövdesinde checkbox boolean kalır ve boş Dockerfile yo
       return { ok: true, json: async () => ({ id: 'prj_0123456789ab', project_name: 'yerel-imaj', findings: [], container: {} }) };
     },
   });
-  const panel = win.SniperContainerScan.buildPanel();
+  const panel = win.VulKillContainerScan.buildPanel();
   const form = panel.children.find(c => c.tag === 'form');
   const imagePath = findByAttr(form, 'input', 'name', 'image_path');
   const dockerfilePath = findByAttr(form, 'input', 'name', 'dockerfile_path');
@@ -138,7 +138,7 @@ test('boş imaj yolunda istek yapılmaz; Dockerfile yolu verilirse sözleşmeye 
       return { ok: true, json: async () => ({ id: 'prj_0123456789ab', project_name: 'rootfs', findings: [], container: {} }) };
     },
   });
-  const panel = win.SniperContainerScan.buildPanel();
+  const panel = win.VulKillContainerScan.buildPanel();
   const form = panel.children.find(c => c.tag === 'form');
   const imagePath = findByAttr(form, 'input', 'name', 'image_path');
   const dockerfilePath = findByAttr(form, 'input', 'name', 'dockerfile_path');

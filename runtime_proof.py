@@ -1,6 +1,6 @@
 """Statik web bulgularını kayıtlı loopback fikstürleriyle güvenle yeniden üretme.
 
-Profiller yalnız ``http://127.0.0.1:<ayrıcalıksız-port>`` hedeflerini kabul eder. SSRF profilleri Sniper'ın açtığı,
+Profiller yalnız ``http://127.0.0.1:<ayrıcalıksız-port>`` hedeflerini kabul eder. SSRF profilleri VulKill'ın açtığı,
 tek istek alan geçici loopback HTTP veya yerel DNS-benzeri canary kullanır; dış hedef oluşturmaz. Yalnız açıkça
 seçilen profil, aynı şema/host/port ve tam callback sorgusu doğrulandığında en çok bir yönlendirme izleyebilir.
 Sonuç bulguyu otomatik kapatmaz; uzman triyajı için yalnız sınırlı çalışma zamanı kanıtı ekler.
@@ -405,7 +405,7 @@ def verify_open_redirect(store, audit_id: object, finding_index: object, *, targ
     try:
         connection.request("GET", request_target, headers={
             "Host": f"127.0.0.1:{port}",
-            "User-Agent": "Sniper-Runtime-Proof/1",
+            "User-Agent": "VulKill-Runtime-Proof/1",
             "Accept": "*/*",
             "Connection": "close",
         })
@@ -448,7 +448,7 @@ def _ssrf_request(port: int, method: str, request_target: str, body: bytes | Non
     )
     headers = {
         "Host": f"127.0.0.1:{port}",
-        "User-Agent": "Sniper-Runtime-Proof/1",
+        "User-Agent": "VulKill-Runtime-Proof/1",
         "Accept": "*/*",
         "Connection": "close",
     }
@@ -612,7 +612,7 @@ def verify_reflected_html(store, audit_id: object, finding_index: object, *, tar
     try:
         connection.request("GET", request_target, headers={
             "Host": f"127.0.0.1:{port}",
-            "User-Agent": "Sniper-Runtime-Proof/1",
+            "User-Agent": "VulKill-Runtime-Proof/1",
             "Accept": "text/html",
             "Connection": "close",
         })
@@ -668,7 +668,7 @@ def verify_cors_credentials(store, audit_id: object, finding_index: object, *, t
     try:
         connection.request("GET", path, headers={
             "Host": f"127.0.0.1:{port}",
-            "User-Agent": "Sniper-Runtime-Proof/1",
+            "User-Agent": "VulKill-Runtime-Proof/1",
             "Origin": origin,
             "Accept": "*/*",
             "Connection": "close",
@@ -720,7 +720,7 @@ def verify_clickjacking_headers(store, audit_id: object, finding_index: object, 
     try:
         connection.request("GET", path, headers={
             "Host": f"127.0.0.1:{port}",
-            "User-Agent": "Sniper-Runtime-Proof/1",
+            "User-Agent": "VulKill-Runtime-Proof/1",
             "Accept": "text/html,*/*;q=0.1",
             "Connection": "close",
         })

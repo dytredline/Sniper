@@ -1,7 +1,7 @@
 // Arka plan iş kuyruğu istemcisi: uzun araç çalıştırmalarını /api/jobs üzerinden başlatır,
 // durumu geri çekilmeli yoklar, iptal eder ve sonucu yalnız textContent ile gösterir.
-// Kullanım: window.SniperJobs.run(route, payload, element) → Promise<iş>
-//           window.SniperJobs.cancel(jobId)
+// Kullanım: window.VulKillJobs.run(route, payload, element) → Promise<iş>
+//           window.VulKillJobs.cancel(jobId)
 (() => {
   const STATE_LABELS = Object.freeze({
     queued: 'Kuyrukta',
@@ -98,5 +98,5 @@
     return Array.isArray(data.jobs) ? data.jobs : [];
   }
 
-  scope.SniperJobs = Object.freeze({ run, cancel, list, poll, stateLabel });
+  scope.VulKillJobs = Object.freeze({ run, cancel, list, poll, stateLabel });
 })();

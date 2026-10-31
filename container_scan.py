@@ -10,9 +10,10 @@ veritabanları, dil paketi meta verileri) sınırlı boyutta tutulur. ``..``/mut
 yok sayılır; sembolik bağlar yalnız sanal kök içinde çözülür (kökten yukarı çıkılamaz). Whiteout'lar (``.wh.ad``,
 ``.wh..wh..opq``) OCI kurallarıyla uygulanır. Katman, girdi, bayt ve dosya sayısı bütçeleri vardır.
 
-Paket veritabanları: dpkg ``status`` (+ distroless ``status.d``), apk ``installed``, rpm ``rpmdb.sqlite``.
-Eski BerkeleyDB/NDB rpmdb ayrıştırılmaz; algılandığında envanter kontrolü fail-closed ``na`` olur ve
-yapılandırılmış neden/açık uyarı döner. OS sürümü ``/etc/os-release``'ten; açıklar resmi OSV
+Paket veritabanları: dpkg ``status`` (+ distroless ``status.d``), apk ``installed``, rpm ``rpmdb.sqlite`` ve
+mevcut sistem ``DB_File``/Berkeley DB 5 runtime'ı üzerinden eski ``Packages`` hash veritabanı. NDB ya da güvenli
+runtime ile açılamayan eski rpmdb girdisi envanter kontrolünü fail-closed ``na`` bırakır. OS sürümü
+``/etc/os-release``'ten; açıklar resmi OSV
 çevrimdışı veritabanından (``osv_db_refresh`` ile indirilen, sürüm uzantılı ekosistemler: ``Debian:12``,
 ``Ubuntu:24.04:LTS``, ``Alpine:v3.19`` …) eşlenir. Dil paketleri (PyPI/npm/Maven) bileşen olarak çıkarılır;
 eşleştirmeleri çok ekosistemli OSV eşleyicisine (``set_language_matcher``) bırakılır.
@@ -66,6 +67,9 @@ MAX_LANGUAGE_COMPONENTS = 20_000
 MAX_FINDINGS = 5_000
 MAX_RPM_ROWS = 100_000
 MAX_RPM_HEADER_BYTES = 16 * 1024 * 1024
+MAX_RPM_BERKELEY_RETAINED_BYTES = 32 * 1024 * 1024
+MAX_RPM_BERKELEY_OUTPUT_BYTES = 48 * 1024 * 1024
+RPM_BERKELEY_TIMEOUT_SECONDS = 20
 MAX_OCI_DESCRIPTORS = 4_096
 MAX_OCI_INDEX_DEPTH = 8
 MAX_OCI_ATTESTATIONS = 32
@@ -1452,6 +1456,106 @@ def parse_rpm_sqlite(data: bytes, db_path: str) -> list[dict[str, Any]]:
     return packages
 
 
+def _trusted_perl() -> str:
+    """Return a fixed, non-writable system Perl used by the DB_File helper."""
+    for raw in ("/usr/bin/perl", "/bin/perl"):
+        path = Path(raw)
+        try:
+            resolved = path.resolve(strict=True)
+            info = resolved.stat()
+        except OSError:
+            continue
+        if info.st_uid == 0 and stat.S_ISREG(info.st_mode) and info.st_mode & 0o111 and not info.st_mode & 0o022:
+            return str(resolved)
+    raise ContainerScanError("BerkeleyDB RPM runtime bulunamadı.")
+
+
+def parse_rpm_berkeley(data: bytes, db_path: str) -> list[dict[str, Any]]:
+    """Read a legacy RPM ``Packages`` hash through the real system Berkeley DB runtime.
+
+    The native parser runs in a bounded child process.  VulKill never interprets Berkeley pages itself and
+    treats a missing runtime, a crash, malformed records, or a resource-limit response as unsupported input.
+    """
+    if not isinstance(data, bytes) or len(data) < 512 or len(data) > MAX_INTERESTING_BYTES:
+        raise ContainerScanError("BerkeleyDB RPM veritabanı boyutu geçersiz.")
+    helper = Path(__file__).resolve().parent / "scripts" / "rpm_berkeley_dump.pl"
+    try:
+        helper_info = helper.stat()
+    except OSError as exc:
+        raise ContainerScanError("BerkeleyDB RPM runtime yardımcısı bulunamadı.") from exc
+    if not stat.S_ISREG(helper_info.st_mode) or helper_info.st_mode & 0o022:
+        raise ContainerScanError("BerkeleyDB RPM runtime yardımcısı güvenilir değil.")
+    perl = _trusted_perl()
+    with tempfile.TemporaryDirectory(prefix="sniper-rpm-bdb-") as tmp:
+        target = Path(tmp) / "Packages"
+        target.write_bytes(data)
+        os.chmod(target, 0o400)
+        try:
+            completed = subprocess.run(
+                [
+                    perl,
+                    str(helper),
+                    str(target),
+                    str(MAX_RPM_ROWS),
+                    str(MAX_RPM_BERKELEY_RETAINED_BYTES),
+                ],
+                cwd=tmp,
+                env={"LANG": "C", "LC_ALL": "C", "PATH": "/usr/bin:/bin"},
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=RPM_BERKELEY_TIMEOUT_SECONDS,
+                check=False,
+                start_new_session=True,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise ContainerScanError("BerkeleyDB RPM veritabanı güvenli runtime ile okunamadı.") from exc
+    if completed.returncode != 0 or not completed.stdout or \
+            len(completed.stdout) > MAX_RPM_BERKELEY_OUTPUT_BYTES:
+        raise ContainerScanError("BerkeleyDB RPM veritabanı güvenli runtime ile okunamadı.")
+    try:
+        document = json.loads(completed.stdout)
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise ContainerScanError("BerkeleyDB RPM runtime çıktısı geçersiz.") from exc
+    if not isinstance(document, dict) or document.get("format") != "sniper-rpm-berkeley-dump/1" or \
+            not isinstance(document.get("records"), list) or len(document["records"]) > MAX_RPM_ROWS:
+        raise ContainerScanError("BerkeleyDB RPM runtime çıktısı geçersiz.")
+    runtime = document.get("runtime")
+    if not isinstance(runtime, dict) or runtime.get("module") != "DB_File" or \
+            not re.fullmatch(r"5\.[0-9.]+", str(runtime.get("berkeley_db_version") or "")):
+        raise ContainerScanError("BerkeleyDB RPM runtime kimliği doğrulanamadı.")
+    packages: list[dict[str, Any]] = []
+    for position, record in enumerate(document["records"], 1):
+        if not isinstance(record, dict) or set(record) != {"key", "value"}:
+            continue
+        try:
+            key = base64.b64decode(str(record["key"]), validate=True)
+            blob = base64.b64decode(str(record["value"]), validate=True)
+        except (ValueError, binascii.Error):
+            continue
+        if len(key) > 1024 or len(blob) > MAX_RPM_HEADER_BYTES:
+            continue
+        try:
+            header = _rpm_header(blob)
+        except (ValueError, struct.error):
+            continue
+        name, version = header.get("name"), header.get("version")
+        if not name or not version or name == "gpg-pubkey":
+            continue
+        release = header.get("release", "")
+        epoch = header.get("epoch")
+        full = (f"{epoch}:" if epoch else "") + version + (f"-{release}" if release else "")
+        source = str(header.get("sourcerpm") or "")
+        source_name = re.sub(r"-[^-]+-[^-]+\.src\.rpm\Z", "", source) \
+            if source.endswith(".src.rpm") else name
+        line = int.from_bytes(key, "little") if 0 < len(key) <= 8 else position
+        packages.append({
+            "type": "rpm", "name": name, "version": full, "source": source_name or name,
+            "source_version": full, "arch": header.get("arch", ""), "db": db_path, "line": line,
+        })
+    return packages
+
+
 _BERKELEY_RPMDB_HASH_MAGIC = 0x00061561
 
 
@@ -2606,14 +2710,22 @@ def scan_image(path_value: str, *, osv_root: Path | None = None, ignore_unfixed:
             if data is None:
                 continue
             backend = detect_legacy_rpmdb(data, path)
-            unsupported_rpmdb.append({"path": path, "backend": backend})
             if backend == "berkeleydb":
-                warnings.append(f"Desteklenmeyen BerkeleyDB RPM paket veritabanı bulundu: {path}; "
-                                "RPM paketleri taranmadı.")
+                try:
+                    packages += parse_rpm_berkeley(data, path)
+                except ContainerScanError:
+                    unsupported_rpmdb.append({"path": path, "backend": backend})
+                    warnings.append(f"BerkeleyDB RPM paket veritabanı güvenli runtime ile okunamadı: {path}; "
+                                    "RPM paketleri taranmadı.")
+                else:
+                    covered.append(path)
+                    covered_by_type["rpm"].append(path)
             elif backend == "ndb_candidate":
+                unsupported_rpmdb.append({"path": path, "backend": backend})
                 warnings.append(f"Desteklenmeyen olası NDB RPM paket veritabanı bulundu: {path}; "
                                 "RPM paketleri taranmadı.")
             else:
+                unsupported_rpmdb.append({"path": path, "backend": backend})
                 warnings.append(f"Desteklenmeyen veya tanınmayan eski RPM paket veritabanı bulundu: {path}; "
                                 "RPM paketleri taranmadı.")
     build_context = None
@@ -2657,7 +2769,7 @@ def scan_image(path_value: str, *, osv_root: Path | None = None, ignore_unfixed:
                 "kriptografik doğrulama için tam SHA-256 ile sabitlenmiş yerel Ed25519 güven kökü sağlayın."
             ),
             "reference": "CWE-345",
-            "control_id": "SNIPER-OCI-PROVENANCE-01",
+            "control_id": "VULKILL-OCI-PROVENANCE-01",
             "file": "oci-provenance",
         })
     osv_info: dict[str, Any] | None = None
@@ -2812,7 +2924,7 @@ def cyclonedx_sbom(result: dict[str, Any]) -> dict[str, Any]:
         "version": 1,
         "metadata": {
             "timestamp": result.get("created_at"),
-            "tools": [{"vendor": "Sniper", "name": "container_scan", "version": FORMAT}],
+            "tools": [{"vendor": "VulKill", "name": "container_scan", "version": FORMAT}],
             "component": {"type": "container", "name": result.get("project_name"),
                           "properties": [{"name": "sniper:os", "value": str(os_info.get("pretty_name") or "")},
                                          {"name": "sniper:osv-ecosystem", "value": str(os_info.get("ecosystem") or "")}]},

@@ -23,20 +23,20 @@ MAX_WALKED_FILES = 50_000
 HOST_CONFIG_TYPES: tuple[str, ...] = ("sshd", "systemd", "sysctl", "sudoers", "crontab", "unknown")
 
 HOST_CONTROLS_BY_TYPE: dict[str, list[str]] = {
-    "sshd": ["SNIPER-CONF-09"],
-    "systemd": ["SNIPER-CONF-10"],
-    "sysctl": ["SNIPER-CONF-11"],
-    "sudoers": ["SNIPER-AUTHZ-05"],
-    "crontab": ["SNIPER-CONF-12"],
+    "sshd": ["VULKILL-CONF-09"],
+    "systemd": ["VULKILL-CONF-10"],
+    "sysctl": ["VULKILL-CONF-11"],
+    "sudoers": ["VULKILL-AUTHZ-05"],
+    "crontab": ["VULKILL-CONF-12"],
     "unknown": [],
 }
 
 HOST_CONTROL_ORDER: list[str] = [
-    "SNIPER-CONF-09",
-    "SNIPER-CONF-10",
-    "SNIPER-CONF-11",
-    "SNIPER-CONF-12",
-    "SNIPER-AUTHZ-05",
+    "VULKILL-CONF-09",
+    "VULKILL-CONF-10",
+    "VULKILL-CONF-11",
+    "VULKILL-CONF-12",
+    "VULKILL-AUTHZ-05",
 ]
 
 HOST_REFERENCES: dict[str, str] = {
@@ -283,7 +283,7 @@ _PIPE_TO_SHELL_RE = re.compile(
 
 
 # --------------------------------------------------------------------------------------
-# sshd_config (SNIPER-CONF-09)
+# sshd_config (VULKILL-CONF-09)
 # --------------------------------------------------------------------------------------
 
 _SSHD_WEAK_CIPHERS = {
@@ -358,7 +358,7 @@ def _sshd_algorithms(value: str) -> list[str]:
 
 
 def _check_sshd(raw: str, col: _CheckCollector) -> None:
-    control = "SNIPER-CONF-09"
+    control = "VULKILL-CONF-09"
     directives = _parse_sshd_global(raw)
 
     def get(key: str) -> tuple[str, int, str] | None:
@@ -621,7 +621,7 @@ def _check_sshd(raw: str, col: _CheckCollector) -> None:
 
 
 # --------------------------------------------------------------------------------------
-# systemd *.service (SNIPER-CONF-10)
+# systemd *.service (VULKILL-CONF-10)
 # --------------------------------------------------------------------------------------
 
 _TRUTHY = {"1", "yes", "true", "on"}
@@ -646,7 +646,7 @@ def _parse_systemd(raw: str) -> tuple[dict[str, dict[str, list[tuple[str, int, s
 
 
 def _check_systemd(raw: str, col: _CheckCollector) -> None:
-    control = "SNIPER-CONF-10"
+    control = "VULKILL-CONF-10"
     sections, header_lines = _parse_systemd(raw)
     service = sections.get("service")
     if service is None:
@@ -803,7 +803,7 @@ def _check_systemd(raw: str, col: _CheckCollector) -> None:
 
 
 # --------------------------------------------------------------------------------------
-# sysctl (SNIPER-CONF-11)
+# sysctl (VULKILL-CONF-11)
 # --------------------------------------------------------------------------------------
 
 _SYSCTL_RULES: list[tuple[str, str, Callable[[int], bool], str, str, str, str]] = [
@@ -907,7 +907,7 @@ def _sysctl_int(value: str) -> int | None:
 
 
 def _check_sysctl(raw: str, col: _CheckCollector) -> None:
-    control = "SNIPER-CONF-11"
+    control = "VULKILL-CONF-11"
     values = _parse_sysctl(raw)
     for check_id, key, is_bad, severity, title, description, recommendation in _SYSCTL_RULES:
         item = values.get(key)
@@ -932,7 +932,7 @@ def _check_sysctl(raw: str, col: _CheckCollector) -> None:
 
 
 # --------------------------------------------------------------------------------------
-# sudoers (SNIPER-AUTHZ-05)
+# sudoers (VULKILL-AUTHZ-05)
 # --------------------------------------------------------------------------------------
 
 _GTFO_EXACT = {
@@ -992,7 +992,7 @@ def _gtfo_binary(command: str) -> str | None:
 
 
 def _check_sudoers(raw: str, col: _CheckCollector) -> None:
-    control = "SNIPER-AUTHZ-05"
+    control = "VULKILL-AUTHZ-05"
     cwe = "CWE-269"
     has_defaults = False
     use_pty: bool | None = None
@@ -1164,7 +1164,7 @@ def _check_sudoers(raw: str, col: _CheckCollector) -> None:
 
 
 # --------------------------------------------------------------------------------------
-# crontab (SNIPER-CONF-12)
+# crontab (VULKILL-CONF-12)
 # --------------------------------------------------------------------------------------
 
 _CRON_ENV_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*\s*=")
@@ -1196,7 +1196,7 @@ def _redact_secrets(text: str) -> str:
 
 
 def _check_crontab(raw: str, col: _CheckCollector) -> None:
-    control = "SNIPER-CONF-12"
+    control = "VULKILL-CONF-12"
     for check_id in ("cron_world_writable_exec", "cron_remote_pipe_shell", "cron_plaintext_secret"):
         col.evaluate(check_id)
     for index, raw_line in enumerate(raw.splitlines(), start=1):

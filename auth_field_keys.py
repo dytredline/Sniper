@@ -31,7 +31,7 @@ APPLICATION_ROOT = Path(__file__).resolve().parent
 
 if cryptography.__version__ != CRYPTOGRAPHY_RUNTIME_VERSION:
     raise RuntimeError(
-        f"Sniper cryptography runtime must be {CRYPTOGRAPHY_RUNTIME_VERSION}; found {cryptography.__version__}."
+        f"VulKill cryptography runtime must be {CRYPTOGRAPHY_RUNTIME_VERSION}; found {cryptography.__version__}."
     )
 
 

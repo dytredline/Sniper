@@ -54,7 +54,7 @@ function extractEmail(value: string) {
 
 ## 3. 예제 실행 및 검증 명령어
 
-### 1. Sniper CLI로 대상 컴포넌트 감사
+### 1. VulKill CLI로 대상 컴포넌트 감사
 ```bash
 python3 scripts/sniper-project-audit \
   --repo-path /home/community-user/targets/n8n \

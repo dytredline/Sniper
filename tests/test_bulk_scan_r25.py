@@ -461,7 +461,7 @@ class ApiTests(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
         auth._MANAGERS.clear()
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
         self.port = self.httpd.server_address[1]
 
@@ -597,7 +597,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(len(sarifs), 2, done.stdout)
         self.assertTrue(all(json.loads((sarif_dir / name).read_text())["version"] == "2.1.0" for name in sarifs))
         text = summary.read_text()
-        self.assertIn("Sniper toplu CI", text)
+        self.assertIn("VulKill toplu CI", text)
         self.assertEqual(text.count("| alpha |") + text.count("| beta |"), 2)
         self.assertEqual(len(json.loads(state.read_text())), 2)
         again = self.cli("--no-sca", "--state", str(state))

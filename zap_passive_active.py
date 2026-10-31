@@ -1,4 +1,4 @@
-"""Run one ZAP passive request against Sniper's own loopback health endpoint.
+"""Run one ZAP passive request against VulKill's own loopback health endpoint.
 
 This is intentionally not a spider or an active scan. The HTTP API cannot
 choose a target, method, rule, image, or command line.
@@ -75,7 +75,7 @@ def _trusted_runtime() -> tuple[str, Path]:
 def _lock_scan() -> int:
     data_dir = os.environ.get("SNIPER_DATA_DIR")
     if not data_dir:
-        raise ZapUnavailable("Sniper veri dizini kullanılamıyor.")
+        raise ZapUnavailable("VulKill veri dizini kullanılamıyor.")
     path = Path(data_dir) / "zap-self-passive.lock"
     fd = None
     try:
@@ -151,11 +151,11 @@ def run_zap_self_passive(host: str, port: int) -> dict:
     try:
         address = ipaddress.ip_address(host)
     except ValueError as exc:
-        raise ValueError("Sniper ana makinesi loopback olmalı") from exc
+        raise ValueError("VulKill ana makinesi loopback olmalı") from exc
     if address.version != 4 or address != ipaddress.ip_address("127.0.0.1"):
-        raise ValueError("Sniper ana makinesi 127.0.0.1 olmalı")
+        raise ValueError("VulKill ana makinesi 127.0.0.1 olmalı")
     if type(port) is not int or not 1 <= port <= 65535:
-        raise ValueError("Sniper portu 1..65535 olmalı")
+        raise ValueError("VulKill portu 1..65535 olmalı")
 
     binary, runtime = _trusted_runtime()
     lock_fd = _lock_scan()
@@ -165,7 +165,7 @@ def run_zap_self_passive(host: str, port: int) -> dict:
         # the service's explicitly writable data directory instead.
         data_dir = Path(os.environ["SNIPER_DATA_DIR"])
         if data_dir.is_symlink() or not data_dir.is_dir() or data_dir.stat().st_uid != os.getuid():
-            raise ZapUnavailable("Sniper veri dizini kullanılamıyor.")
+            raise ZapUnavailable("VulKill veri dizini kullanılamıyor.")
         with tempfile.TemporaryDirectory(prefix="sniper_zap_", dir=data_dir) as temp:
             work = Path(temp)
             (work / "plan.yaml").write_text(_plan(port, str(work)), encoding="utf-8")

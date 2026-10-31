@@ -2,7 +2,7 @@
 Python; dosyalar arası veri akışı).
 
 Bu modül Joern'ün (Apache-2.0) Code Property Graph'ını ve veri akışı motorunu çalıştırır. Python ve JS/TS için
-birincil motor Sniper'ın kendi fonksiyonlar arası taint motorudur (:mod:`taint_flow`, proje analizinde çalışır);
+birincil motor VulKill'ın kendi fonksiyonlar arası taint motorudur (:mod:`taint_flow`, proje analizinde çalışır);
 Joern'ün jssrc2cpg/pysrc2cpg ön uçları yalnız ``scripting=True`` (ya da ``SNIPER_JOERN_SCRIPTING=1``) ile açılır
 ve hızlı motorun tamamlayıcısıdır: her JS/Python bulgusu hızlı motorla eşleştirilir (aynısı doğrulanmış mı,
 hızlı motor hedefi "belirsiz/olası" mı bıraktı, yoksa yalnız Joern mi buldu). Süre veya bellek sınırında
@@ -10,7 +10,7 @@ o ana kadar bulunan akışlar açık bir uyarıyla (``partial: true``) döndür�
 
 Güvenlik ve kaynak sınırları:
 
-* Joern ve JDK, Sniper'a ait araç dizinine resmî sürümlerden kurulur
+* Joern ve JDK, VulKill'a ait araç dizinine resmî sürümlerden kurulur
   (``scripts/install_joern.py``): JDK'nin ``bin/java`` ikilisi SHA-256 ve sıkı
   Temurin GA/LTS sürüm çıktısıyla sabitlenir (``tool_pins.PINS["joern-jdk"]``).
   Doğrudan kip aynı doğrulanmış tanıtıcıyı kullanır; systemd kipindeki sabit,
@@ -64,7 +64,7 @@ from verified_exec import VerificationError
 JOERN_VERSION = "4.0.647"
 JOERN_SOURCE_URL = "https://github.com/joernio/joern/releases/tag/v4.0.647"
 JOERN_HOME_DEFAULT = SNIPER_TOOLS_DIR / "joern" / JOERN_VERSION / "joern-cli"
-MANIFEST_NAME = "SNIPER-INSTALL-MANIFEST.json"
+MANIFEST_NAME = "VULKILL-INSTALL-MANIFEST.json"
 # Kurulum manifestinin sabit SHA-256 değerleri (scripts/install_joern.py çıktısı; resmî
 # zip'in GitHub varlık özeti ve .sha512 dosyasıyla doğrulandıktan sonra üretildi).
 JOERN_MANIFEST_SHA256: dict[str, str] = {
@@ -599,7 +599,7 @@ def flows_to_findings(flows: list[dict[str, Any]], limit: int = MAX_FINDINGS,
             ),
             "recommendation": recommendation,
             "reference": cwe,
-            "control_id": f"SNIPER-JOERN-{flow['kind'].upper()}",
+            "control_id": f"VULKILL-JOERN-{flow['kind'].upper()}",
             "taint_flow": {
                 "sink_kind": flow["kind"],
                 "sink": flow["sink"],
@@ -861,7 +861,7 @@ def _pattern_finding(flow: dict[str, Any], properties: dict[str, str]) -> dict[s
         "evidence": evidence,
         "recommendation": recommendation,
         "reference": cwe,
-        "control_id": f"SNIPER-JOERN-{flow['kind'].upper()}",
+        "control_id": f"VULKILL-JOERN-{flow['kind'].upper()}",
         "steps": flow["steps"],
     }
 
@@ -927,7 +927,7 @@ def render_sarif(findings: list[dict[str, Any]], *, engine: dict[str, Any] | Non
         "version": "2.1.0",
         "runs": [{
             "tool": {"driver": {
-                "name": "Sniper Joern Deep Analysis",
+                "name": "VulKill Joern Deep Analysis",
                 "version": (engine or {}).get("version", JOERN_VERSION),
                 "informationUri": "https://joern.io/",
                 "rules": list(rules.values()),
@@ -1292,7 +1292,7 @@ def _write_capture_shim(work: Path) -> tuple[Path, Path]:
 def _validated_fork_args(raw: bytes, home: Path, manifest: dict[str, Any], cpg: Path, out: Path,
                          max_flows: int = MAX_FINDINGS) -> list[str]:
     """Yakalanan alt JVM argümanlarını doğrula: yalnız manifestteki jar'lar, beklenen ana
-    sınıf, Sniper'ın sorgu betiği ve parametreleri."""
+    sınıf, VulKill'ın sorgu betiği ve parametreleri."""
     if len(raw) > 2_000_000:
         raise JoernExecutionError("Joern betik çalıştırıcısı argümanları beklenmedik boyutta.")
     args = raw.decode("utf-8", "strict").split("\0")
@@ -1324,7 +1324,7 @@ SCRIPT_MAIN = "io.joern.joerncli.console.ReplBridge"
 def _lock() -> int:
     data_dir = os.environ.get("SNIPER_DATA_DIR", "")
     if not data_dir:
-        raise JoernUnavailable("Sniper veri dizini yapılandırılmamış.")
+        raise JoernUnavailable("VulKill veri dizini yapılandırılmamış.")
     path = Path(data_dir) / "joern.lock"
     fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
     try:
@@ -1469,7 +1469,7 @@ def _work_parent() -> str | None:
     raw = os.environ.get("SNIPER_DATA_DIR", "")
     data_dir = Path(raw)
     if not raw or data_dir.is_symlink() or not data_dir.is_dir() or data_dir.stat().st_uid != os.getuid():
-        raise JoernUnavailable("Sniper veri dizini kullanılamıyor (Joern çalışma alanı).")
+        raise JoernUnavailable("VulKill veri dizini kullanılamıyor (Joern çalışma alanı).")
     return str(data_dir)
 
 

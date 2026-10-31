@@ -53,7 +53,7 @@ private static List<Path> listFiles(
 
 ## 3. Example Execution & Verification Commands
 
-### 1. Auditing the Component with Sniper CLI
+### 1. Auditing the Component with VulKill CLI
 ```bash
 python3 scripts/sniper-project-audit \
   --repo-path /home/community-user/targets/Stirling-PDF \

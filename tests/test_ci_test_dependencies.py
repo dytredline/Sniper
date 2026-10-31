@@ -74,7 +74,7 @@ class CiTestDependencyContractTests(unittest.TestCase):
         for path in (WORKFLOW, RELEASE_WORKFLOW):
             workflow = path.read_text(encoding="utf-8")
             for fragment in (
-                "docker build --tag sniper-community:${{ github.sha }} .",
+                "docker build --tag vulkill-community:${{ github.sha }} .",
                 "docker run --detach",
                 "SNIPER_ALLOW_UNAUTHENTICATED_REMOTE=1",
                 "State.Health.Status",
@@ -92,9 +92,13 @@ class CiTestDependencyContractTests(unittest.TestCase):
             self.assertEqual(runner._pytest_python(), "/test/python")
 
         probe = run.call_args.args[0]
-        self.assertEqual(probe[:2], ["/test/python", "-c"])
+        # The integration contract launches an isolated child (``python -I``).
+        # The runner must therefore prove that pytest and runtime dependencies
+        # belong to the candidate interpreter itself, not an ambient
+        # PYTHONPATH/user-site that the real test will ignore.
+        self.assertEqual(probe[:3], ["/test/python", "-I", "-c"])
         for module in ("pytest", "cryptography", "packaging", "yaml"):
-            self.assertIn(module, probe[2])
+            self.assertIn(module, probe[3])
 
     def test_node_24_summary_is_counted(self) -> None:
         runner = _load_runner()

@@ -54,7 +54,14 @@ negatif dosyaların %7,6'sında ilgili kural tetiklendi — negatif isabetlerin 
   statik map ve `toset(...)` kümeleri örnek anahtarı sayılır. Bu tür kanıtı `local` zincirinde ve açık
   `set(string)` değişken bildiriminde korunur; çıplak liste ile `tolist(...)` geçersiz olduğu için modül çıktı
   adresine kanıt oluşturmaz. Çıktı şekli en çok 64 örnekle sınırlıdır ve sınır aşılırsa analiz kısmi
-  işaretlenir. Uzak modüllerde yalnız bilinen `terraform-aws-modules` girdileri.
+  işaretlenir. Uzak modül kaynakları ağdan indirilmez. Bir uzak çağrı ancak çağrıdaki kaynak ile tam sürümü,
+  proje içindeki güvenli ayna dizinini ve bu dizinin kanonik ağaç SHA-256 değerini bağlayan
+  `.sniper/terraform-module-mirror.json` (`sniper-terraform-module-mirror/1`) girdisiyle çözümlenir. Manifest
+  yoksa, sürüm kayan bir ifade ise, yol proje dışına çıkıyorsa, aynı kimlik yineleniyorsa veya ağaç özeti
+  uyuşmuyorsa analiz `remote-module-unverified`, `remote-module-mirror-invalid` ya da
+  `remote-module-mirror-digest` sınırlamasıyla kısmi kalır; uzak modül güvenli/temiz varsayılmaz. Bilinen
+  `terraform-aws-modules` çağrı yüzeyi kuralları, ayna olmadan yalnız çağrı girdileri üzerinde çalışmaya devam
+  eder; modülün içeriğinin incelendiği anlamına gelmez.
 - **Varsayılanı güvensiz, hiç yazılmamış ayarlar** ("(varsayılan ayar)" başlıklı, düşük/orta): S3 sürümleme ve
   erişim günlüğü (modül genelinde ayrı `aws_s3_bucket_versioning`/`_logging` kaynakları ve günlük hedefi kovalar
   dikkate alınır; askıya alınmış sürümleme sayılmaz), EBS şifreleme (hesap düzeyi varsayılan şifreleme varsa

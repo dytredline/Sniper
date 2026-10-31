@@ -3,7 +3,6 @@ import json
 import os
 from pathlib import Path
 import subprocess
-import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -66,7 +65,7 @@ class ParseAndConvertTests(unittest.TestCase):
         locations = run["results"][0]["codeFlows"][0]["threadFlows"][0]["locations"]
         self.assertEqual([loc["location"]["physicalLocation"]["region"]["startLine"] for loc in locations], [5, 9, 12])
         self.assertEqual(locations[0]["location"]["message"]["text"], "Kaynak: getenv")
-        rule = next(r for r in run["tool"]["driver"]["rules"] if r["id"] == "SNIPER-JOERN-COMMAND")
+        rule = next(r for r in run["tool"]["driver"]["rules"] if r["id"] == "VULKILL-JOERN-COMMAND")
         self.assertIn("external/cwe/cwe-78", rule["properties"]["tags"])
         self.assertEqual(len(run["results"][0]["partialFingerprints"]["sniperJoern/v1"]), 32)
 
@@ -273,7 +272,7 @@ class JoernRouteTests(unittest.TestCase):
         self.old_store, self.old_limiter = server.STORE, server.LIMITER
         server.STORE = Store(Path(self.temp.name) / "fixture.db")
         server.LIMITER = server.RateLimiter()
-        self.httpd = server.SniperHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = server.VulKillHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.port = self.httpd.server_address[1]
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()
@@ -493,7 +492,7 @@ class PatternAndModelTests(unittest.TestCase):
         sarif = joern_active.render_sarif(findings)
         result = sarif["runs"][0]["results"][0]
         self.assertNotIn("codeFlows", result)
-        self.assertEqual(result["ruleId"], "SNIPER-JOERN-INSECURECOOKIE")
+        self.assertEqual(result["ruleId"], "VULKILL-JOERN-INSECURECOOKIE")
 
 
 class BenchmarkScoringTests(unittest.TestCase):
@@ -687,7 +686,7 @@ class JoernIntegrationTests(unittest.TestCase):
     def test_fixtures(self):
         with tempfile.TemporaryDirectory() as data, mock.patch.dict(os.environ, {"SNIPER_DATA_DIR": data}):
             result = joern_active.run_joern_deep(str(FIXTURES))
-        got = {(f["file"], f["line"], f["control_id"].split("SNIPER-JOERN-")[1].lower()) for f in result["findings"]}
+        got = {(f["file"], f["line"], f["control_id"].split("VULKILL-JOERN-")[1].lower()) for f in result["findings"]}
         expected = set()
         for path in FIXTURES.rglob("*"):
             if path.is_file():
@@ -701,24 +700,10 @@ if __name__ == "__main__":
     unittest.main()
 
 
-@unittest.skipUnless(sys.platform.startswith("linux"), "systemd launch payload is Linux-only")
 class JoernSystemdLaunchTests(unittest.TestCase):
-    def setUp(self):
-        # The systemd orchestration tests simulate the service and execute the
-        # payload locally.  Container Python lives outside /usr/bin; its exact
-        # package path is not part of the behavior under test here.
-        patcher = mock.patch.multiple(
-            joern_active,
-            SYSTEM_PYTHON=Path(sys.executable),
-            _trusted_system_python=lambda: sys.executable,
-        )
-        patcher.start()
-        self.addCleanup(patcher.stop)
-
     def test_launch_mode_detects_service(self):
         import joern_active
-        with mock.patch.object(joern_active, "SYSTEMD_RUN", Path(sys.executable)), \
-                mock.patch.dict(os.environ, {"INVOCATION_ID": "x", "SNIPER_JOERN_LAUNCH": "auto"}):
+        with mock.patch.dict(os.environ, {"INVOCATION_ID": "x", "SNIPER_JOERN_LAUNCH": "auto"}):
             self.assertEqual(joern_active.launch_mode(), "systemd-run")
         with mock.patch.dict(os.environ, {"SNIPER_JOERN_LAUNCH": "direct", "INVOCATION_ID": "x"}):
             self.assertEqual(joern_active.launch_mode(), "direct")

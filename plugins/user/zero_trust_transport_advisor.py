@@ -16,7 +16,7 @@ class ZeroTrustTransportAdvisorPlugin(BasePlugin):
         return PluginInfo(
             "zero-trust-transport-advisor",
             "1.0.0",
-            "Sniper Core",
+            "VulKill Core",
             "Sıfır güven taşıma katmanı ve alt alan adı izolasyon kontrolü",
         )
 

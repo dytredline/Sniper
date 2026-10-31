@@ -1,0 +1,7 @@
+#!/usr/bin/env python3
+"""VulKill project-audit entrypoint; preserves the legacy command as an alias."""
+
+from pathlib import Path
+import runpy
+
+runpy.run_path(str(Path(__file__).with_name("sniper-project-audit")), run_name="__main__")

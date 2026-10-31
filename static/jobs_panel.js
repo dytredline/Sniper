@@ -24,7 +24,7 @@
       const row = document.createElement("tr");
       cell(row, job.id);
       cell(row, job.route);
-      cell(row, scope.SniperJobs ? scope.SniperJobs.stateLabel(job.state) : job.state);
+      cell(row, scope.VulKillJobs ? scope.VulKillJobs.stateLabel(job.state) : job.state);
       cell(row, job.created_at || "");
       cell(row, job.http_status || job.error || "");
       const action = cell(row, "");
@@ -36,7 +36,7 @@
         button.disabled = Boolean(job.cancel_requested);
         button.addEventListener("click", async () => {
           button.disabled = true;
-          try { await scope.SniperJobs.cancel(job.id); } catch (_error) { /* liste yenilenince görünür */ }
+          try { await scope.VulKillJobs.cancel(job.id); } catch (_error) { /* liste yenilenince görünür */ }
           refresh();
         });
         action.append(button);
@@ -46,10 +46,10 @@
   }
 
   async function refresh() {
-    if (!scope.SniperJobs) return [];
+    if (!scope.VulKillJobs) return [];
     const error = byId("jobs-panel-error");
     try {
-      const jobs = await scope.SniperJobs.list();
+      const jobs = await scope.VulKillJobs.list();
       if (error) { error.textContent = ""; error.classList.add("hidden"); }
       render(jobs);
       return jobs;
@@ -70,7 +70,7 @@
     }, REFRESH_MS);
   }
 
-  scope.SniperJobsPanel = Object.freeze({ refresh, render, init, stop: () => scope.clearInterval(timer) });
+  scope.VulKillJobsPanel = Object.freeze({ refresh, render, init, stop: () => scope.clearInterval(timer) });
   if (typeof document !== "undefined" && document.readyState !== "loading") init();
   else if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", init);
 })();

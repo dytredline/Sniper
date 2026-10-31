@@ -111,7 +111,7 @@ class ExportTests(unittest.TestCase):
         doc = dependency_security.generate_cyclonedx_sbom(str(self.root), allowed_roots=(self.root.parent,))
         self.assertEqual(doc, dependency_security.generate_cyclonedx_sbom(str(self.root), allowed_roots=(self.root.parent,)))
         self.assertEqual(sbom_formats.validate_cyclonedx(doc), [])
-        self.assertEqual(doc["metadata"]["tools"][0]["vendor"], "Sniper")
+        self.assertEqual(doc["metadata"]["tools"][0]["vendor"], "VulKill")
         root_entry = doc["dependencies"][0]
         self.assertEqual(root_entry["ref"], "sniper-root")
         express = self.purl = dependency_security._package_url("npm", "express", "4.17.1")
@@ -395,7 +395,7 @@ class ApiTests(unittest.TestCase):
         _write(self.project / "requirements.txt", "flask==2.0.0\n")
         self.previous_store = server.STORE
         server.STORE = Store(self.base / "data" / "sniper.db")
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.httpd.daemon_threads = True
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
         self.base_url = f"http://127.0.0.1:{self.httpd.server_address[1]}"

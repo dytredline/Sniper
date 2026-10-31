@@ -1,4 +1,4 @@
-"""Sniper editör tanılama sunucusu (Language Server Protocol, stdio; saf Python, yalnız standart kitaplık).
+"""VulKill editör tanılama sunucusu (Language Server Protocol, stdio; saf Python, yalnız standart kitaplık).
 
 Editör bir dosyayı açınca ya da kaydedince o dosya, proje analiziyle aynı motorla (``project_analyzer``,
 ``scan_scope.only_paths`` ile yalnız bu dosya raporlanır; dosyalar arası taint bağlamı tüm projeden gelir)
@@ -8,7 +8,7 @@ mevcut ``taint_autofix`` dönüşümlerini hızlı düzeltme olarak önerir (dü
 Güvenlik ve sınırlar:
 
 * Ağ yok. Sunucu hiçbir proje dosyasına yazmaz; yalnız kendi önbellek dizinine (0700) taint önbelleği
-  yazılır (``$XDG_CACHE_HOME/sniper-lsp`` ya da ``~/.cache/sniper-lsp``).
+  yazılır (``$XDG_CACHE_HOME/vulkill-lsp`` ya da ``~/.cache/vulkill-lsp``).
 * Her analiz ayrı bir alt süreçte (kendi süreç grubunda) dosya başına süre sınırıyla çalışır; süre
   aşılırsa grup sonlandırılır, sunucu yanıt vermeye devam eder.
 * Kalıcı tarama kapsamı (``$SNIPER_DATA_DIR/scan-scope.json``) yalnız okunur: atlanan dizinler
@@ -40,7 +40,7 @@ APP_DIR = Path(__file__).resolve().parent
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-SERVER_NAME = "sniper-lsp"
+SERVER_NAME = "vulkill-lsp"
 SERVER_VERSION = "1"
 MAX_HEADER_BYTES = 8_192
 MAX_MESSAGE_BYTES = 64 * 1024 * 1024
@@ -158,7 +158,7 @@ def text_edit_for(old: str, new: str) -> dict[str, Any] | None:
 
 def default_cache_dir() -> Path:
     base = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
-    return Path(base) / "sniper-lsp"
+    return Path(base) / "vulkill-lsp"
 
 
 def prepare_cache_dir(path: Path | None) -> Path | None:
@@ -268,7 +268,7 @@ def finding_to_diagnostic(finding: dict[str, Any], lines: list[str], root: Path)
     end_char = max(start_char, utf16_len(text))
     severity = str(finding.get("severity") or "info")
     reference = _finding_reference(finding)
-    message = str(finding.get("title") or "Sniper bulgusu")
+    message = str(finding.get("title") or "VulKill bulgusu")
     evidence = str(finding.get("evidence") or "").strip()
     recommendation = str(finding.get("recommendation") or "").strip()
     if evidence:
@@ -364,7 +364,7 @@ class Document:
     version: int | None = None
 
 
-class SniperLanguageServer:
+class VulKillLanguageServer:
     """Tek istemcili LSP sunucusu. ``synchronous=True`` (testler) analizi istek iş parçacığında yapar."""
 
     def __init__(self, reader: BinaryIO, writer: BinaryIO, *, data_dir: Path | None = None,
@@ -419,7 +419,7 @@ class SniperLanguageServer:
     # -- döngü -----------------------------------------------------------
     def serve(self) -> int:
         if not self.synchronous:
-            self._thread = threading.Thread(target=self._worker_loop, name="sniper-lsp-analysis", daemon=True)
+            self._thread = threading.Thread(target=self._worker_loop, name="vulkill-lsp-analysis", daemon=True)
             self._thread.start()
         try:
             while self.exit_code is None:
@@ -761,7 +761,7 @@ class SniperLanguageServer:
             if edit is None:
                 continue
             actions.append({
-                "title": f"Sniper: {suggestion['strategy']['title']} (güven: {suggestion.get('confidence', 'düşük')})",
+                "title": f"VulKill: {suggestion['strategy']['title']} (güven: {suggestion.get('confidence', 'düşük')})",
                 "kind": "quickfix",
                 "diagnostics": [diagnostic],
                 "isPreferred": True,
@@ -850,21 +850,21 @@ def _apply_line_quickfixes(line_text: str) -> list[tuple[str, str]]:
     if re.search(r"\bshell\s*=\s*True\b", line_text):
         updated = re.sub(r"\bshell\s*=\s*True\b", "shell=False", line_text)
         if updated != line_text:
-            candidates.append(("Sniper: Kabuksuz alt süreç çalıştırma (shell=False)", updated))
+            candidates.append(("VulKill: Kabuksuz alt süreç çalıştırma (shell=False)", updated))
     if "yaml.load(" in line_text and "SafeLoader" not in line_text and "CSafeLoader" not in line_text:
         updated = re.sub(r"\byaml\.load\s*\(([^,()\n]+?)\s*,\s*Loader\s*=\s*[^)\n]+\)", r"yaml.safe_load(\1)", line_text)
         if "yaml.load(" in updated:
             updated = updated.replace("yaml.load(", "yaml.safe_load(")
         if updated != line_text:
-            candidates.append(("Sniper: Güvenli YAML ayrıştırma (yaml.safe_load)", updated))
+            candidates.append(("VulKill: Güvenli YAML ayrıştırma (yaml.safe_load)", updated))
     if re.search(r"\bverify\s*=\s*False\b", line_text):
         updated = re.sub(r"\bverify\s*=\s*False\b", "verify=True", line_text)
         if updated != line_text:
-            candidates.append(("Sniper: Sertifika/imza doğrulamasını etkinleştir (verify=True)", updated))
+            candidates.append(("VulKill: Sertifika/imza doğrulamasını etkinleştir (verify=True)", updated))
     if re.search(r"\bInsecureSkipVerify\s*:\s*true\b", line_text):
         updated = re.sub(r"\bInsecureSkipVerify\s*:\s*true\b", "InsecureSkipVerify: false", line_text)
         if updated != line_text:
-            candidates.append(("Sniper: TLS sertifika doğrulamasını etkinleştir (InsecureSkipVerify: false)", updated))
+            candidates.append(("VulKill: TLS sertifika doğrulamasını etkinleştir (InsecureSkipVerify: false)", updated))
     if re.search(r'allow_origins\s*=\s*\[\s*["\']\*["\']\s*\]', line_text):
         updated = re.sub(
             r'allow_origins\s*=\s*\[\s*["\']\*["\']\s*\]',
@@ -872,11 +872,11 @@ def _apply_line_quickfixes(line_text: str) -> list[tuple[str, str]]:
             line_text,
         )
         if updated != line_text:
-            candidates.append(("Sniper: Wildcard CORS kaynağını kısıtla (allow_origins)", updated))
+            candidates.append(("VulKill: Wildcard CORS kaynağını kısıtla (allow_origins)", updated))
     if re.search(r'(["\']verify_signature["\']\s*:\s*)False\b', line_text):
         updated = re.sub(r'(["\']verify_signature["\']\s*:\s*)False\b', r"\1True", line_text)
         if updated != line_text:
-            candidates.append(("Sniper: JWT imza doğrulamasını etkinleştir (verify_signature: True)", updated))
+            candidates.append(("VulKill: JWT imza doğrulamasını etkinleştir (verify_signature: True)", updated))
     if re.search(r"""\bpostMessage\s*\([^,\n]+,\s*['"]\*['"]\s*\)""", line_text):
         updated = re.sub(
             r"""(\bpostMessage\s*\([^,\n]+,\s*)['"]\*['"](\s*\))""",
@@ -884,7 +884,7 @@ def _apply_line_quickfixes(line_text: str) -> list[tuple[str, str]]:
             line_text,
         )
         if updated != line_text:
-            candidates.append(("Sniper: postMessage wildcard hedef kökenini kısıtla (window.location.origin)", updated))
+            candidates.append(("VulKill: postMessage wildcard hedef kökenini kısıtla (window.location.origin)", updated))
     if re.search(r"\bDISABLE\s+ROW\s+LEVEL\s+SECURITY\b", line_text, re.IGNORECASE):
         updated = re.sub(
             r"\bDISABLE\s+ROW\s+LEVEL\s+SECURITY\b",
@@ -893,7 +893,7 @@ def _apply_line_quickfixes(line_text: str) -> list[tuple[str, str]]:
             flags=re.IGNORECASE,
         )
         if updated != line_text:
-            candidates.append(("Sniper: Satır Düzeyi Güvenliği (RLS) etkinleştir (ENABLE ROW LEVEL SECURITY)", updated))
+            candidates.append(("VulKill: Satır Düzeyi Güvenliği (RLS) etkinleştir (ENABLE ROW LEVEL SECURITY)", updated))
     return candidates
 
 
@@ -954,7 +954,7 @@ def build_verified_quickfix_actions(
             continue
         seen_edits.add(edit_key)
         actions.append({
-            "title": f"Sniper: {suggestion['strategy']['title']} (güven: {suggestion.get('confidence', 'düşük')})",
+            "title": f"VulKill: {suggestion['strategy']['title']} (güven: {suggestion.get('confidence', 'düşük')})",
             "kind": "quickfix",
             "diagnostics": [diagnostic],
             "isPreferred": True,
@@ -1023,7 +1023,7 @@ def build_verified_quickfix_actions(
             edit = text_edit_for(source_text, combined_patched)
             if edit is not None:
                 actions.append({
-                    "title": combined_titles[0] if len(combined_titles) == 1 else "Sniper: Doğrulanmış güvenlik hızlı düzeltmeleri",
+                    "title": combined_titles[0] if len(combined_titles) == 1 else "VulKill: Doğrulanmış güvenlik hızlı düzeltmeleri",
                     "kind": "quickfix",
                     "diagnostics": valid_diagnostics,
                     "isPreferred": True,
@@ -1040,16 +1040,16 @@ def build_verified_quickfix_actions(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="sniper-lsp", description="Sniper editör tanılama sunucusu (LSP, stdio).")
+    parser = argparse.ArgumentParser(prog="vulkill-lsp", description="VulKill editör tanılama sunucusu (LSP, stdio).")
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--stdio", action="store_true", help="stdio üzerinden konuş (varsayılan; istemci uyumu için)")
-    parser.add_argument("--data-dir", help="Sniper veri dizini (yalnız kalıcı tarama kapsamı okunur)")
-    parser.add_argument("--cache-dir", help="Önbellek dizini (varsayılan ~/.cache/sniper-lsp)")
+    parser.add_argument("--data-dir", help="VulKill veri dizini (yalnız kalıcı tarama kapsamı okunur)")
+    parser.add_argument("--cache-dir", help="Önbellek dizini (varsayılan ~/.cache/vulkill-lsp)")
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT_SECONDS, help="Dosya başına süre sınırı (sn)")
     args = parser.parse_args(argv)
     if args.worker:
         return worker_main()
-    server = SniperLanguageServer(
+    server = VulKillLanguageServer(
         sys.stdin.buffer, sys.stdout.buffer,
         data_dir=Path(os.path.expanduser(args.data_dir)) if args.data_dir else None,
         cache_dir=Path(os.path.expanduser(args.cache_dir)) if args.cache_dir else None,

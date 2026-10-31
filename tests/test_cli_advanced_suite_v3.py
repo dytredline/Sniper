@@ -126,7 +126,7 @@ class AdvancedSuiteV3CliTests(unittest.TestCase):
         saved = self._read_json(out)
         self.assertEqual(saved["format"], "sniper-zero-trust-mesh-inline-v1")
         self.assertEqual(saved["filename"], "peer.yaml")
-        self.assertIn("SNIPER-ZT-03", [f["control_id"] for f in saved["findings"]])
+        self.assertIn("VULKILL-ZT-03", [f["control_id"] for f in saved["findings"]])
 
     def test_zero_trust_via_main_with_filename_override(self):
         manifest = self.base / "input.txt"

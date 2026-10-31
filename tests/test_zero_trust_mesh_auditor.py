@@ -90,8 +90,8 @@ class ZeroTrustInlineTests(unittest.TestCase):
             filename="peer.yaml",
         )
         self.assertEqual(report["format"], "sniper-zero-trust-mesh-inline-v1")
-        self.assertIn(("SNIPER-ZT-03", "high"), _controls(report))
-        finding = next(f for f in report["findings"] if f["control_id"] == "SNIPER-ZT-03")
+        self.assertIn(("VULKILL-ZT-03", "high"), _controls(report))
+        finding = next(f for f in report["findings"] if f["control_id"] == "VULKILL-ZT-03")
         self.assertEqual(finding["cwe"], "CWE-319")
         self.assertEqual(finding["line"], 8)
         self.assertIn("mesh genelinde", finding["evidence"])
@@ -101,7 +101,7 @@ class ZeroTrustInlineTests(unittest.TestCase):
         report = audit_zero_trust_inline(
             "kind: PeerAuthentication\nmetadata:\n  name: x\n  namespace: shop\nspec:\n  mtls:\n    mode: DISABLE\n"
         )
-        self.assertIn(("SNIPER-ZT-03", "critical"), _controls(report))
+        self.assertIn(("VULKILL-ZT-03", "critical"), _controls(report))
 
     def test_authorization_policy_wildcard_principal_is_high(self):
         report = audit_zero_trust_inline(
@@ -118,8 +118,8 @@ class ZeroTrustInlineTests(unittest.TestCase):
             "        principals: [\"*\"]\n",
             filename="authz.yaml",
         )
-        self.assertIn(("SNIPER-ZT-04", "high"), _controls(report))
-        finding = next(f for f in report["findings"] if f["control_id"] == "SNIPER-ZT-04")
+        self.assertIn(("VULKILL-ZT-04", "high"), _controls(report))
+        finding = next(f for f in report["findings"] if f["control_id"] == "VULKILL-ZT-04")
         self.assertEqual(finding["cwe"], "CWE-863")
 
     def test_authorization_policy_empty_spec_is_deny_all(self):
@@ -143,7 +143,7 @@ class ZeroTrustInlineTests(unittest.TestCase):
             "        image: ledger:1\n",
             filename="deploy.yaml",
         )
-        zt01 = [f for f in report["findings"] if f["control_id"] == "SNIPER-ZT-01"]
+        zt01 = [f for f in report["findings"] if f["control_id"] == "VULKILL-ZT-01"]
         self.assertEqual({f["severity"] for f in zt01}, {"medium", "low"})
         self.assertTrue(all(f["cwe"] == "CWE-923" for f in zt01))
         self.assertTrue(any("payments" in f["evidence"] for f in zt01))
@@ -183,8 +183,8 @@ class ZeroTrustInlineTests(unittest.TestCase):
             "    - port: 443\n"
         )
         pairs = _controls(report)
-        self.assertIn(("SNIPER-ZT-02", "high"), pairs)
-        self.assertGreaterEqual(pairs.count(("SNIPER-ZT-02", "medium")), 1)
+        self.assertIn(("VULKILL-ZT-02", "high"), pairs)
+        self.assertGreaterEqual(pairs.count(("VULKILL-ZT-02", "medium")), 1)
 
     def test_gateway_service_and_destination_rule(self):
         report = audit_zero_trust_inline(
@@ -221,9 +221,9 @@ class ZeroTrustInlineTests(unittest.TestCase):
             "      mode: DISABLE\n"
         )
         pairs = _controls(report)
-        self.assertIn(("SNIPER-ZT-05", "medium"), pairs)
-        self.assertIn(("SNIPER-ZT-06", "medium"), pairs)
-        self.assertIn(("SNIPER-ZT-03", "high"), pairs)
+        self.assertIn(("VULKILL-ZT-05", "medium"), pairs)
+        self.assertIn(("VULKILL-ZT-06", "medium"), pairs)
+        self.assertIn(("VULKILL-ZT-03", "high"), pairs)
 
     def test_linkerd_injection_disabled_in_enabled_namespace(self):
         report = audit_zero_trust_inline(
@@ -253,9 +253,9 @@ class ZeroTrustInlineTests(unittest.TestCase):
             "        config.linkerd.io/skip-inbound-ports: \"25\"\n"
         )
         pairs = _controls(report)
-        self.assertIn(("SNIPER-ZT-03", "medium"), pairs)
-        self.assertIn(("SNIPER-ZT-03", "low"), pairs)
-        self.assertNotIn("SNIPER-ZT-01", [c for c, _s in pairs])
+        self.assertIn(("VULKILL-ZT-03", "medium"), pairs)
+        self.assertIn(("VULKILL-ZT-03", "low"), pairs)
+        self.assertNotIn("VULKILL-ZT-01", [c for c, _s in pairs])
 
     def test_envoy_plaintext_cluster_and_missing_rbac(self):
         envoy = {
@@ -305,8 +305,8 @@ class ZeroTrustInlineTests(unittest.TestCase):
         }
         report = audit_zero_trust_inline(json.dumps(envoy), filename="envoy.json")
         pairs = _controls(report)
-        self.assertEqual(pairs.count(("SNIPER-ZT-03", "medium")), 1)
-        self.assertIn(("SNIPER-ZT-04", "low"), pairs)
+        self.assertEqual(pairs.count(("VULKILL-ZT-03", "medium")), 1)
+        self.assertIn(("VULKILL-ZT-04", "low"), pairs)
         self.assertIn("EnvoyBootstrap", report["kinds_detected"])
 
     def test_json_manifest_accepted(self):
@@ -317,7 +317,7 @@ class ZeroTrustInlineTests(unittest.TestCase):
             "spec": {"mtls": {"mode": "PERMISSIVE"}},
         }
         report = audit_zero_trust_inline(json.dumps(manifest, indent=2), filename="peer.json")
-        self.assertIn(("SNIPER-ZT-03", "high"), _controls(report))
+        self.assertIn(("VULKILL-ZT-03", "high"), _controls(report))
         self.assertIn("shop", report["namespaces_detected"])
 
     def test_malformed_yaml_does_not_raise_and_uses_heuristics(self):
@@ -334,7 +334,7 @@ class ZeroTrustInlineTests(unittest.TestCase):
         )
         report = audit_zero_trust_inline(broken, filename="broken.yaml")
         self.assertGreaterEqual(report["heuristic_documents"], 1)
-        self.assertIn(("SNIPER-ZT-03", "high"), _controls(report))
+        self.assertIn(("VULKILL-ZT-03", "high"), _controls(report))
 
     def test_invalid_input_raises(self):
         with self.assertRaises(ValueError):
@@ -363,10 +363,10 @@ class ZeroTrustProjectTests(unittest.TestCase):
             report = audit_zero_trust_project(str(root), allowed_roots=(Path(tmp).resolve(),))
         self.assertEqual(report["format"], "sniper-zero-trust-mesh-audit-v1")
         self.assertEqual(report["scanned_files"], 2)
-        zt01 = [f for f in report["findings"] if f["control_id"] == "SNIPER-ZT-01"]
+        zt01 = [f for f in report["findings"] if f["control_id"] == "VULKILL-ZT-01"]
         # Ingress default-deny başka dosyada var → yalnızca egress (low) bulgusu kalır.
         self.assertEqual([f["severity"] for f in zt01], ["low"])
-        self.assertEqual(report["controls_evaluated"][0], "SNIPER-ZT-01")
+        self.assertEqual(report["controls_evaluated"][0], "VULKILL-ZT-01")
 
 
 class YamlSubsetCoverageTests(unittest.TestCase):
@@ -396,7 +396,7 @@ class YamlSubsetCoverageTests(unittest.TestCase):
         report = audit_zero_trust_inline(manifest, filename="mesh.yaml")
         self.assertEqual(report["heuristic_documents"], 0)
         controls = _controls(report)
-        self.assertIn(("SNIPER-ZT-03", "high"), controls)
+        self.assertIn(("VULKILL-ZT-03", "high"), controls)
         titles = [f["title"] for f in report["findings"]]
         self.assertTrue(any("PERMISSIVE" in t for t in titles))
         self.assertTrue(any("DestinationRule" in t and "DISABLE" in t for t in titles))
@@ -410,7 +410,7 @@ class YamlSubsetCoverageTests(unittest.TestCase):
         )
         report = audit_zero_trust_inline(manifest)
         self.assertEqual(report["heuristic_documents"], 1)
-        self.assertIn(("SNIPER-ZT-03", "critical"), _controls(report))
+        self.assertIn(("VULKILL-ZT-03", "critical"), _controls(report))
 
     def test_multiline_flow_collections(self):
         manifest = (
@@ -442,7 +442,7 @@ class YamlSubsetCoverageTests(unittest.TestCase):
         report = audit_zero_trust_inline(manifest)
         self.assertEqual(report["heuristic_documents"], 0)
         self.assertIn("shop", report["namespaces_detected"])
-        self.assertIn(("SNIPER-ZT-03", "critical"), _controls(report))
+        self.assertIn(("VULKILL-ZT-03", "critical"), _controls(report))
 
 
 GATEWAY_API = """\
@@ -514,7 +514,7 @@ class GatewayApiTests(unittest.TestCase):
             "spec:\n  listeners:\n  - name: web\n    protocol: HTTP\n    port: 80\n"
         )
         report = audit_zero_trust_inline(manifest)
-        self.assertEqual(_controls(report), [("SNIPER-ZT-05", "medium")])
+        self.assertEqual(_controls(report), [("VULKILL-ZT-05", "medium")])
 
     def test_https_redirect_route_suppresses_plain_http_finding(self):
         report = audit_zero_trust_inline(GATEWAY_API + HTTPS_REDIRECT_ROUTE, filename="gateway.yaml")

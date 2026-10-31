@@ -72,7 +72,7 @@
     const model = data.threat_model || {};
     const findings = Array.isArray(audit.findings) ? audit.findings : [];
     const routes = routeRows(model);
-    panel.innerHTML = /* sniper-reviewed: html-safe (metinler esc ile; SVG sunucuda html.escape ile üretildi) */ `
+    panel.innerHTML = /* vulkill-reviewed: html-safe (metinler esc ile; SVG sunucuda html.escape ile üretildi) */ `
       <details open><summary><b>Tehdit modeli (STRIDE)</b> <small>${Number(model.route_count || 0)} rota · ${(model.threats || []).length} tehdit${model.partial ? " · kısmi tarama" : ""}${data.rebuilt_from_disk ? " · klasörden yeniden çıkarıldı" : ""}</small></summary>
         <div class="threat-chips">${strideSummary(model)}</div>
         <div class="threat-dfd-wrap">${data.svg || ""}</div>
@@ -116,7 +116,7 @@
     const chips = Object.keys(labels).map(k => `<span class="threat-chip">${esc(labels[k])}: ${Number(counts[k] || 0)}</span>`).join("");
     const box = document.createElement("div");
     box.className = "reachability-summary";
-    box.innerHTML = /* sniper-reviewed: html-safe (tüm hücreler esc ile) */ `<div class="threat-chips">${chips}</div>`
+    box.innerHTML = /* vulkill-reviewed: html-safe (tüm hücreler esc ile) */ `<div class="threat-chips">${chips}</div>`
       + `<table class="threat-table"><thead><tr><th>Paket</th><th>Danışma</th><th>Öncelik</th><th>Erişilebilirlik</th><th>Semboller</th><th>Konum</th></tr></thead><tbody>${rows}</tbody></table>`;
     el.appendChild(box);
   }

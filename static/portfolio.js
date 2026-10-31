@@ -30,7 +30,7 @@
     section.className = "view";
     section.dataset.view = "portfolio";
     section.id = "portfolio-view";
-    section.innerHTML = /* sniper-reviewed: html-safe (sabit iskelet; dinamik veri yok) */ `<section class="panel"><div class="panel-head"><div><p class="eyebrow">PROJELER ARASI</p><h2>Portföy ve SLA</h2></div>` +
+    section.innerHTML = /* vulkill-reviewed: html-safe (sabit iskelet; dinamik veri yok) */ `<section class="panel"><div class="panel-head"><div><p class="eyebrow">PROJELER ARASI</p><h2>Portföy ve SLA</h2></div>` +
       `<button class="button" type="button" data-portfolio-refresh>Yenile</button></div>` +
       `<p class="muted">Bulgu takibindeki tüm projelerin özeti: etkin bulgular, SLA ihlalleri, ortalama düzeltme süresi (MTTR) ve haftalık eğilim. Risk puanı etkin bulguların önem ağırlıklarından ve SLA ihlallerinden hesaplanır.</p>` +
       `<div id="portfolio-body"><p class="muted">Yükleniyor…</p></div></section>` +
@@ -200,7 +200,7 @@
       `<label>Proje<select name="project_path">${projectOptions}</select></label>` +
       `<label>Durum<select name="status">${Object.entries(STATUS_FILTERS).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("")}</select></label>` +
       `<button class="button primary" type="submit"${disabled}>İndir</button></form>` +
-      `<p class="muted">Dosya yerelde üretilir; Sniper hiçbir dış sisteme bağlanmaz. CSV hücreleri formül enjeksiyonuna karşı kaçışlanır. Her dışa aktarım işlem geçmişine yazılır.${canExport() ? "" : " Dışa aktarım için analist ya da yönetici rolü gerekir."}</p>`;
+      `<p class="muted">Dosya yerelde üretilir; VulKill hiçbir dış sisteme bağlanmaz. CSV hücreleri formül enjeksiyonuna karşı kaçışlanır. Her dışa aktarım işlem geçmişine yazılır.${canExport() ? "" : " Dışa aktarım için analist ya da yönetici rolü gerekir."}</p>`;
   }
 
   function exportUrl(values) {
@@ -224,7 +224,7 @@
       const blob = await response.blob();
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = match ? match[1] : "sniper-bulgular";
+      link.download = match ? match[1] : "vulkill-bulgular";
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -253,12 +253,12 @@
     const body = document.getElementById("portfolio-body");
     if (!body || !state.data) return;
     const data = state.data;
-    body.innerHTML = /* sniper-reviewed: html-safe (filterBar/cards/trendChart/projectTable/dependencyTable/mttrTable tüm sunucu metnini esc ile, sayıları Number ile yazar) */ filterBar(data) + cards(data) + severityLine((data.totals || {}).active_by_severity) + trendChart(data.trend) +
+    body.innerHTML = /* vulkill-reviewed: html-safe (filterBar/cards/trendChart/projectTable/dependencyTable/mttrTable tüm sunucu metnini esc ile, sayıları Number ile yazar) */ filterBar(data) + cards(data) + severityLine((data.totals || {}).active_by_severity) + trendChart(data.trend) +
       projectTable(data.projects) + sectionTable(data.projects) + dependencyTable(data.dependency_projects) + mttrTable(data.mttr, data.sla);
     const policy = document.getElementById("portfolio-policy");
-    if (policy) policy.innerHTML = policyForm(state.policy); // sniper-reviewed: html-safe (politika değerleri Number; etiketler sabit)
+    if (policy) policy.innerHTML = policyForm(state.policy); // vulkill-reviewed: html-safe (politika değerleri Number; etiketler sabit)
     const exp = document.getElementById("portfolio-export");
-    if (exp) exp.innerHTML = exportForm(data.projects); // sniper-reviewed: html-safe (proje adı/yolu esc ile)
+    if (exp) exp.innerHTML = exportForm(data.projects); // vulkill-reviewed: html-safe (proje adı/yolu esc ile)
   }
 
   async function load() {
@@ -273,7 +273,7 @@
       state.policy = policy;
       render();
     } catch (error) {
-      if (body) body.innerHTML = `<p class="muted">${esc(error.message)}</p>`; // sniper-reviewed: html-safe (esc)
+      if (body) body.innerHTML = `<p class="muted">${esc(error.message)}</p>`; // vulkill-reviewed: html-safe (esc)
     } finally {
       state.loading = false;
     }

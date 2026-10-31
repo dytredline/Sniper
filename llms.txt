@@ -1,6 +1,6 @@
-# Sniper Community
+# VulKill Community
 
-> Sniper Community is a local-first defensive application-security toolkit for people who own or are explicitly authorized to assess source code, application artifacts, websites, and APIs.
+> VulKill Community is a local-first defensive application-security toolkit for people who own or are explicitly authorized to assess source code, application artifacts, websites, and APIs.
 
 ## Built-in capabilities
 
@@ -52,10 +52,8 @@ python3 scripts/setup-community --accept-third-party-licenses
 ```
 
 - Runtime baseline: Python 3.12; locked optional-tool artifacts cover Linux ARM64 and x86-64.
-- On macOS (Apple Silicon), both the native `--core-only` source setup (`python3 scripts/setup-community --core-only`)
-  and the five-engine Docker Desktop profile (`./scripts/deploy-community-tools --accept-third-party-licenses`) are
-  supported and real-host verified. Windows core-only is supported by the portable setup contract; WSL2 and Docker
-  Desktop provide the Linux container paths, without a real Windows-host claim in this release.
+- Native Windows is not supported; use WSL2 or Docker Desktop's Linux containers. macOS source setup is experimental
+  and core-only (`python3 scripts/setup-community --core-only`).
 - The default container is core-only. The separate seven-engine target is built with
   `python3 scripts/build-community-tools-image --accept-third-party-licenses`; it is license-gated and does not run scanners during the build.
 - [README](README.md): setup, MCP quick start, manual operation, and responsible-use boundaries.
@@ -65,7 +63,6 @@ python3 scripts/setup-community --accept-third-party-licenses
 
 ## Localized introductions
 
-- [Türkçe](docs/README.tr.md): Turkish introduction, use cases, frequently asked questions, and source links.
 - [日本語](docs/README.ja.md): Japanese introduction and responsible-use summary.
 - [简体中文](docs/README.zh-CN.md): Simplified Chinese introduction and responsible-use summary.
 - [한국어](docs/README.ko.md): Korean introduction and responsible-use summary.
@@ -73,13 +70,9 @@ python3 scripts/setup-community --accept-third-party-licenses
 
 ## Evidence, safety, and governance
 
-- [Canonical source repository](https://github.com/dytredline/Sniper): authoritative source, release documentation, and license.
-- [Project overview at ConverserAI](https://converserai.com/#sniper): public introduction and repository link.
-- [Frequently asked questions](README.md#frequently-asked-questions): cost, AI requirements, validation limits, and installation sources.
-- [Software citation](CITATION.cff): author, license, source repository, and version metadata for attribution.
 - [Validation evidence](VALIDATION.md): reproducible test snapshot and evidence limits.
 - [Security policy](SECURITY.md): private vulnerability reporting and authorized research rules.
-- [Deployment](DEPLOYMENT.md): Linux, macOS (native core-only and Docker Desktop five-engine setup), Windows (native core-only, WSL2, and Docker Desktop), loopback binding, and source-manifest verification.
-- [License](LICENSE): Apache License 2.0 for Sniper Community; third-party licenses remain applicable.
+- [Deployment](DEPLOYMENT.md): Linux, experimental macOS core-only, Docker Desktop/WSL2, loopback binding, and source-manifest verification.
+- [License](LICENSE): Apache License 2.0 for VulKill Community; third-party licenses remain applicable.
 
-Sniper findings and clean results are advisory, not proof that a system is secure. Use external-target features only with explicit authorization, review AI suggestions, and independently reproduce material findings before remediation decisions.
+VulKill findings and clean results are advisory, not proof that a system is secure. Use external-target features only with explicit authorization, review AI suggestions, and independently reproduce material findings before remediation decisions.

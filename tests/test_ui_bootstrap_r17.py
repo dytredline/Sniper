@@ -168,7 +168,7 @@ class _ServerBase(unittest.TestCase):
             self.addCleanup(patch.stop)
         auth._MANAGERS.clear()
         ui_assets._CACHE.clear()
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
         self.port = self.httpd.server_address[1]
 

@@ -1,7 +1,7 @@
 """Yalnız değişenler: git tabanlı artımlı proje analizi ve "bu değişiklik yeni açık getirdi mi" karşılaştırması.
 
 Güvenlik: taranan depo güvenilmezdir. git yalnız nesne veritabanını okuyan komutlarla çalıştırılır
-(``rev-parse``, ``ls-tree``, ``cat-file``, ``ls-files``); çalışma ağacı ile taban sürüm Sniper tarafından ham
+(``rev-parse``, ``ls-tree``, ``cat-file``, ``ls-files``); çalışma ağacı ile taban sürüm VulKill tarafından ham
 blob özetleriyle karşılaştırılır. Böylece deponun ``.git/config``/``.gitattributes`` ile tanımlayabileceği
 clean/smudge süzgeçleri, textconv/harici diff ya da fsmonitor komutları hiç çalışmaz. Kabuk kullanılmaz,
 genel/sistem git yapılandırması okunmaz, ağ protokolleri kapalıdır.

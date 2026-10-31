@@ -73,7 +73,7 @@ class LoopbackApiTests(unittest.TestCase):
         self.fixture_thread.start()
         self.port = self.fixture.server_address[1]
         os.environ["SNIPER_SCHEMATHESIS_ALLOWED_PORTS"] = str(self.port)
-        self.api = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.api = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.api.daemon_threads = True
         self.api_thread = threading.Thread(target=self.api.serve_forever, daemon=True)
         self.api_thread.start()

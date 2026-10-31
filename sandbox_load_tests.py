@@ -1,7 +1,7 @@
 """Yalıtılmış k6 ve Schemathesis çalıştırmaları (bkz. tool_sandbox.py, sandbox_targets.py).
 
 Kullanıcıdan betik alınmaz: k6 sabit şablonla ve seçilen yük profiliyle (Hafif/Orta/Yoğun/Özel), Schemathesis yalnız
-JSON OpenAPI şemasıyla çalışır. Hedef, Sniper içinden yönetilen listedeki tek hedeftir (127.0.0.1:port ya da
+JSON OpenAPI şemasıyla çalışır. Hedef, VulKill içinden yönetilen listedeki tek hedeftir (127.0.0.1:port ya da
 sahipliği doğrulanmış uzak alan:port); araç ağ ad alanında yalnız aktarıcıya ulaşır, yönlendirmeler izlenmez.
 Sonuçlar mevcut rapor ayrıştırıcılarıyla özetlenir; ham çıktı ya da yanıt gövdesi döndürülmez.
 """

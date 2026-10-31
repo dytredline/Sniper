@@ -37,7 +37,7 @@ class SsllabsTargetPreviewOnlyApiTests(unittest.TestCase):
         server.LIMITER = server.RateLimiter()
         self.store = server.STORE
         self.create_engagement("https://example.com")
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.httpd.daemon_threads = True
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()

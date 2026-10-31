@@ -1,4 +1,4 @@
-"""Sniper Autorize Matrix Tester (Burp Autorize eklentisi karşılığı).
+"""VulKill Autorize Matrix Tester (Burp Autorize eklentisi karşılığı).
 
 Aynı API uç noktasını 3 farklı oturum bağlamında (Sahip / Kullanıcı A, Farklı Kiracı / Kullanıcı B,
 Anonim / Oturumsuz) ve gizli alan enjeksiyonuyla (Mass Assignment / BOPLA) değerlendirerek
@@ -66,7 +66,7 @@ def evaluate_autorize_access_matrix(probes: list[dict[str, Any]]) -> dict[str, A
                 idor_status = " bypassed_idor"
                 idor_status = idor_status.strip()
                 findings.append({
-                    "control_id": "SNIPER-AUTORIZE-IDOR-01",
+                    "control_id": "VULKILL-AUTORIZE-IDOR-01",
                     "cwe": "CWE-639",
                     "reference": "CWE-639",
                     "severity": "critical",
@@ -88,7 +88,7 @@ def evaluate_autorize_access_matrix(probes: list[dict[str, Any]]) -> dict[str, A
             if 200 <= unauth_code < 300 and not _is_error_stub(unauth_resp) and (sim_u >= 0.55 or len(unauth_text) > 16):
                 unauth_status = "bypassed_unauthenticated"
                 findings.append({
-                    "control_id": "SNIPER-AUTORIZE-UNAUTH-02",
+                    "control_id": "VULKILL-AUTORIZE-UNAUTH-02",
                     "cwe": "CWE-306",
                     "reference": "CWE-306",
                     "severity": "critical",
@@ -111,7 +111,7 @@ def evaluate_autorize_access_matrix(probes: list[dict[str, Any]]) -> dict[str, A
             if 200 <= mass_code < 300 and accepted_fields:
                 mass_status = "bypassed_mass_assignment"
                 findings.append({
-                    "control_id": "SNIPER-AUTORIZE-MASS-03",
+                    "control_id": "VULKILL-AUTORIZE-MASS-03",
                     "cwe": "CWE-915",
                     "reference": "CWE-915",
                     "severity": "high",

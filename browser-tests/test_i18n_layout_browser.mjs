@@ -112,10 +112,10 @@ for (const [locale, report] of locales) {
       const page = await browser.newPage({ viewport });
       try {
         await page.goto(origin, { waitUntil: "load" });
-        await page.waitForFunction(() => typeof SniperI18n === "object");
-        await page.evaluate(async selected => { await SniperI18n.setLang(selected); }, locale);
+        await page.waitForFunction(() => typeof VulKillI18n === "object");
+        await page.evaluate(async selected => { await VulKillI18n.setLang(selected); }, locale);
         assert.equal(await page.locator("html").getAttribute("lang"), locale);
-        assert.equal(await page.evaluate(text => SniperI18n.t("Tarama raporu") === text, report), true);
+        assert.equal(await page.evaluate(text => VulKillI18n.t("Tarama raporu") === text, report), true);
         assert.equal(await page.locator('[data-i18n-lang-select]').first().inputValue(), locale);
         const closedProblems = await layoutProblems(page);
         let openProblems = [];

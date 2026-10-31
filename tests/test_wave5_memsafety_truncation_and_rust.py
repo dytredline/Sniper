@@ -1,5 +1,5 @@
-"""Wave-5 Agent 1 — C/C++ Integer Truncation (`SNIPER-MEM-TRUNC-01`) ve
-Rust Stride / Uzaktan Panic-DoS (`SNIPER-RUST-STRIDE-01` & `SNIPER-RUST-PANIC-02`) Test Paketi.
+"""Wave-5 Agent 1 — C/C++ Integer Truncation (`VULKILL-MEM-TRUNC-01`) ve
+Rust Stride / Uzaktan Panic-DoS (`VULKILL-RUST-STRIDE-01` & `VULKILL-RUST-PANIC-02`) Test Paketi.
 """
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ int load_chiapos_table_vuln(const uint8_t *src, uint64_t total_size) {
 """
         findings = memsafety_c.analyze_c_memory(vuln_c, "chiapos_table.c")
         trunc_findings = [f for f in findings if f.kind == "integer_truncation_alloc"]
-        self.assertEqual(len(trunc_findings), 1, f"SNIPER-MEM-TRUNC-01 bekleniyordu, bulunan: {findings}")
+        self.assertEqual(len(trunc_findings), 1, f"VULKILL-MEM-TRUNC-01 bekleniyordu, bulunan: {findings}")
         tf = trunc_findings[0]
         self.assertEqual(tf.cwe, "CWE-190")
         self.assertEqual(tf.severity, "critical")
@@ -43,7 +43,7 @@ int load_chiapos_table_vuln(const uint8_t *src, uint64_t total_size) {
             tf.title,
             "64-bit uzunluk değerinin 32-bit tamsayıya daraltılması (Integer Truncation) sonrası yığın taşması",
         )
-        self.assertIn("SNIPER-MEM-TRUNC-01", tf.evidence)
+        self.assertIn("VULKILL-MEM-TRUNC-01", tf.evidence)
 
         vuln_cpp = """
 #include <cstdint>
@@ -137,8 +137,8 @@ pub fn copy_nv12_planes_vuln(
             filename="videotoolbox.rs",
         )
         self.assertEqual(audit_red["format"], "sniper-rust-parser-stride-audit/1")
-        stride_hits = [f for f in audit_red["findings"] if f["rule_id"] == "SNIPER-RUST-STRIDE-01"]
-        self.assertEqual(len(stride_hits), 2, f"İki SNIPER-RUST-STRIDE-01 bulgusu bekleniyordu: {audit_red}")
+        stride_hits = [f for f in audit_red["findings"] if f["rule_id"] == "VULKILL-RUST-STRIDE-01"]
+        self.assertEqual(len(stride_hits), 2, f"İki VULKILL-RUST-STRIDE-01 bulgusu bekleniyordu: {audit_red}")
         for hit in stride_hits:
             self.assertEqual(hit["cwe"], "CWE-190")
             self.assertEqual(hit["severity"], "high")
@@ -211,8 +211,8 @@ pub fn parse_packet(data: &[u8]) -> Result<&[u8], &'static str> {
             vuln_parser_rs,
             filename="parser.rs",
         )
-        panic_hits = [f for f in audit_red["findings"] if f["rule_id"] == "SNIPER-RUST-PANIC-02"]
-        self.assertEqual(len(panic_hits), 1, f"SNIPER-RUST-PANIC-02 bekleniyordu: {audit_red}")
+        panic_hits = [f for f in audit_red["findings"] if f["rule_id"] == "VULKILL-RUST-PANIC-02"]
+        self.assertEqual(len(panic_hits), 1, f"VULKILL-RUST-PANIC-02 bekleniyordu: {audit_red}")
         self.assertEqual(panic_hits[0]["cwe"], "CWE-248")
         self.assertEqual(panic_hits[0]["severity"], "high")
         self.assertEqual(panic_hits[0]["category"], "dos")

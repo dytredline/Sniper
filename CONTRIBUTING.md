@@ -1,4 +1,4 @@
-# Contributing to Sniper Community
+# Contributing to VulKill Community
 
 Thank you for helping improve defensive application security.
 
@@ -10,9 +10,6 @@ Thank you for helping improve defensive application security.
 3. Add a test that fails on the old behavior and passes on the new behavior. Include a safe control and an edge case.
 4. Never run tests against an external target unless you own it or have explicit written authorization. Repository
    tests must use local fixtures, temporary directories, or loopback-only services.
-5. When adding or changing a public feature group, capability tag, or release-preflight description, update the
-   English, Turkish, Japanese, Simplified Chinese, and Korean README files in the same change. Follow
-   [the README feature-parity contract](docs/LOCALIZATION.md#readme-özellik-eşitliği-sözleşmesi) and run its test.
 
 Do not commit credentials, tokens, private keys, production data, customer identifiers, local databases, generated
 evidence, or machine-specific absolute paths.
@@ -39,7 +36,7 @@ integration as passing.
 Describe the observable behavior, risk, tests actually run, and remaining limitations. Keep generated caches and
 runtime data out of the change. Reviews may request a smaller diff, a regression test, or independent reproduction.
 
-By submitting a contribution intentionally for inclusion in Sniper Community, you agree that it is licensed on an
+By submitting a contribution intentionally for inclusion in VulKill Community, you agree that it is licensed on an
 **Apache-2.0 inbound=outbound** basis, unless you explicitly state otherwise before it is accepted. You must have the
 right to submit the contribution and must preserve applicable third-party copyright and license notices.
 

@@ -204,7 +204,7 @@
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
         const anchor = el("a");
         anchor.href = URL.createObjectURL(blob);
-        anchor.download = filenameFrom(response, `sniper-${format.value}-vex.json`);
+        anchor.download = filenameFrom(response, `vulkill-${format.value}-vex.json`);
         document.body.append(anchor);
         anchor.click();
         anchor.remove();
@@ -227,7 +227,7 @@
     });
   }
 
-  scope.SniperVex = { mount, renderResult, decisionForm, summaryText, STATUS_LABELS, JUSTIFICATIONS };
+  scope.VulKillVex = { mount, renderResult, decisionForm, summaryText, STATUS_LABELS, JUSTIFICATIONS };
   if (typeof document !== "undefined" && document.addEventListener) {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount);
     else mount();

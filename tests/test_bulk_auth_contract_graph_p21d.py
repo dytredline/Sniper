@@ -82,7 +82,7 @@ def test_bulk_execute_reports_cross_repo_scope_and_tenant_mismatch_without_secre
     assert graph["link_count"] == 1
     assert graph["finding_count"] == 1
     assert graph["findings"] == [{
-        "rule_id": "SNIPER-BULK-AUTH-01",
+        "rule_id": "VULKILL-BULK-AUTH-01",
         "severity": "high",
         "category": "authorization",
         "title": "Depolar arası kimlik doğrulama sözleşmesi uyumsuz",

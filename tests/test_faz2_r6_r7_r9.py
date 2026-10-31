@@ -146,8 +146,8 @@ class Faz2R6R7R9Tests(unittest.TestCase):
         )
         self.assertFalse(res["sigstore_verified"])
         control_ids = {f["control_id"] for f in res["findings"]}
-        self.assertIn("SNIPER-SLSA-MIRROR-01", control_ids)
-        self.assertIn("SNIPER-SLSA-COSIGN-02", control_ids)
+        self.assertIn("VULKILL-SLSA-MIRROR-01", control_ids)
+        self.assertIn("VULKILL-SLSA-COSIGN-02", control_ids)
 
         stmt_b64 = base64.b64encode(
             json.dumps({"subject": [{"name": "pkg.tar.gz", "digest": {"sha256": "abcd" * 16}}]}).encode("utf-8")

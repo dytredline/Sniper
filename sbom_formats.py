@@ -24,7 +24,7 @@ MAX_SBOM_BYTES = 32 * 1024 * 1024
 MAX_COMPONENTS = 50_000
 MAX_EDGES = 250_000
 MAX_LOCK_BYTES = 64 * 1024 * 1024
-TOOL_NAME = "Sniper"
+TOOL_NAME = "VulKill"
 ROOT_REF = "sniper-root"
 
 _SPDX_ID_RE = re.compile(r"SPDXRef-[A-Za-z0-9.-]+\Z")
@@ -494,7 +494,7 @@ def cyclonedx_to_spdx(cdx: dict[str, Any], *, created: str | None = None, namesp
         "name": f"{name}-sbom",
         "documentNamespace": f"https://sniper.invalid/spdx/{urllib.parse.quote(name, safe='')}-{namespace_hash[:32]}",
         "creationInfo": {"created": created, "creators": [f"Tool: {TOOL_NAME}" + (f"-{tool_version}" if tool_version else ""),
-                                                          "Organization: Sniper (yerel)"]},
+                                                          "Organization: VulKill (yerel)"]},
         "documentDescribes": [root_id],
         "packages": packages,
         "relationships": relationships,

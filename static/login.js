@@ -24,11 +24,12 @@
       const response = await fetch("/api/auth/status", { credentials: "same-origin" });
       const status = await response.json();
       if (!status.enabled) {
-        say("Giriş etkin değil; Sniper yerel erişimle açık. Ana sayfaya yönlendiriliyorsunuz.", "info");
+        say("Giriş etkin değil; VulKill yerel erişimle açık. Ana sayfaya yönlendiriliyorsunuz.", "info");
         setTimeout(() => { location.href = "/"; }, 1200);
         return;
       }
       if (status.authenticated) { location.href = "/"; return; }
+      if (status.oidc_enabled) { $("#auth-oidc-login").classList.remove("hidden"); }
     } catch (error) { say("Sunucuya ulaşılamadı.", "error"); }
     $("#auth-username").focus();
   }

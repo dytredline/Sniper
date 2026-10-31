@@ -122,7 +122,7 @@ def _data_dir(store_or_path: Any) -> Path:
     if hasattr(store_or_path, "path") or path.name == "sniper.db":
         path = path.parent
     if not path.is_absolute() or path.is_symlink() or not path.is_dir():
-        raise ScanRequestError("Sniper veri dizini geçersiz.")
+        raise ScanRequestError("VulKill veri dizini geçersiz.")
     return path
 
 
@@ -949,7 +949,7 @@ def _open_schema_spool(data_dir: Path, *, create: bool) -> int:
         data_fd = os.open(data_dir, flags)
         data_info = os.fstat(data_fd)
         if not stat.S_ISDIR(data_info.st_mode) or data_info.st_uid != os.getuid():
-            raise ScanRequestError("Sniper veri dizini güvenli değil.")
+            raise ScanRequestError("VulKill veri dizini güvenli değil.")
         if create:
             try:
                 os.mkdir(SCHEMA_SPOOL_DIR, 0o700, dir_fd=data_fd)

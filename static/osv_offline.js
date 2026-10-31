@@ -174,7 +174,7 @@
     mountStatus();
   }
 
-  scope.SniperOsvOffline = { renderStatus, coverageText, sizeText, renderPriority, mount };
+  scope.VulKillOsvOffline = { renderStatus, coverageText, sizeText, renderPriority, mount };
   if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount);
     else mount();

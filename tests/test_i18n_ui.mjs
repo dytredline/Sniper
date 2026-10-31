@@ -78,9 +78,9 @@ function load({ storage, lang, fetchImpl } = {}) {
     alert: (m) => { dialogs.push(m); },
   };
   vm.runInNewContext(source, { window, setTimeout });
-  dictionary = window.SniperI18n.parseDictionary(dictionaryText);
+  dictionary = window.VulKillI18n.parseDictionary(dictionaryText);
   const notify = (records) => observers.filter((o) => o.active).forEach((o) => o.cb(records));
-  return { window, document, i18n: window.SniperI18n, notify, dialogs };
+  return { window, document, i18n: window.VulKillI18n, notify, dialogs };
 }
 
 test('varsayılan dil Türkçe; sözlük yüklenmeden hiçbir metin değişmez', () => {

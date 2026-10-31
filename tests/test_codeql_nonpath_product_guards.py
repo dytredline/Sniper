@@ -26,8 +26,8 @@ import trivy_image_archive_active
 
 class CodeQLNonPathProductGuardTests(unittest.TestCase):
     @staticmethod
-    def _handler() -> server.SniperHandler:
-        handler = server.SniperHandler.__new__(server.SniperHandler)
+    def _handler() -> server.VulKillHandler:
+        handler = server.VulKillHandler.__new__(server.VulKillHandler)
         handler.command = "GET"
         handler.request_version = "HTTP/1.1"
         handler.requestline = "GET /codeql-product-guard HTTP/1.1"

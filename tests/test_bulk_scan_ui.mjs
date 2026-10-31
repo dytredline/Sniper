@@ -57,15 +57,15 @@ const FOUND = {
 
 test('önizleme textContent ile çizilir; seçim ve uyarılar doğru', () => {
   const { win } = load();
-  const panel = win.SniperBulkScan.buildPanel();
+  const panel = win.VulKillBulkScan.buildPanel();
   assert.equal(panel.attrs.id, 'bulk-scan-launcher');
   const icon = panel.children[0].children[0];
   assert.equal(icon.textContent, '');
   assert.equal(icon.children[0]?.tag, 'svg');
   assert.equal(icon.children[0]?.children[0]?.attrs.href, '/static/ui-icons.svg#repositories');
-  const ui = win.SniperBulkScan.state.ui;
+  const ui = win.VulKillBulkScan.state.ui;
   assert.equal(ui.start.disabled, true);
-  win.SniperBulkScan.renderPreview(FOUND);
+  win.VulKillBulkScan.renderPreview(FOUND);
   assert.equal(ui.start.disabled, false);
   const all = texts(ui.list);
   assert.ok(all.includes('<img src=x onerror=alert(1)>'), 'ad metin olarak kalır');
@@ -73,10 +73,10 @@ test('önizleme textContent ile çizilir; seçim ve uyarılar doğru', () => {
   assert.ok(all.includes('son taramadan beri commit değişmedi'));
   assert.ok(all.includes('boyut sınırını aşıyor'));
   assert.ok(ui.summary.textContent.includes('2 depo bulundu') && ui.summary.textContent.includes('sınıra ulaşıldı: count'));
-  assert.deepEqual([...win.SniperBulkScan.selectedPaths()], ['/home/community-user/projeler/alpha']);
-  win.SniperBulkScan.state.rows[1].box.checked = true;
-  assert.equal(win.SniperBulkScan.selectedPaths().length, 2);
-  assert.deepEqual({ ...win.SniperBulkScan.collectOptions() },
+  assert.deepEqual([...win.VulKillBulkScan.selectedPaths()], ['/home/community-user/projeler/alpha']);
+  win.VulKillBulkScan.state.rows[1].box.checked = true;
+  assert.equal(win.VulKillBulkScan.selectedPaths().length, 2);
+  assert.deepEqual({ ...win.VulKillBulkScan.collectOptions() },
     { sca: true, container: false, skip_unchanged: true, changed_files: false, parallel: 1 });
 });
 
@@ -86,10 +86,10 @@ test('keşif ve başlatma istekleri confirm: true taşır; ilerleme ve iptal dü
   const { win, calls } = load({ responses: [
     { status: 200, body: FOUND }, { status: 202, body: { bulk: run, job: { id: 'job_1' } } }, { status: 200, body: run },
   ] });
-  win.SniperBulkScan.buildPanel();
-  const ui = win.SniperBulkScan.state.ui;
+  win.VulKillBulkScan.buildPanel();
+  const ui = win.VulKillBulkScan.state.ui;
   ui.root.value = ' /home/community-user/projeler ';
-  const form = win.SniperBulkScan.state.ui.section.children.find(c => c.tag === 'form');
+  const form = win.VulKillBulkScan.state.ui.section.children.find(c => c.tag === 'form');
   await form.listeners.submit({ preventDefault() {} });
   assert.deepEqual(calls[0], { path: '/api/bulk-scans/discover', method: 'POST', body: { confirm: true, root: '/home/community-user/projeler', max_depth: 4 } });
   ui.group.value = 'ekip';
@@ -101,7 +101,7 @@ test('keşif ve başlatma istekleri confirm: true taşır; ilerleme ve iptal dü
   await new Promise(resolve => setImmediate(resolve));
   assert.ok(ui.runStatus.textContent.includes('şu an: alpha'));
   assert.equal(ui.cancel.hidden, false);
-  win.SniperBulkScan.renderRun({ ...run, status: 'succeeded', totals: { total: 1, succeeded: 1 },
+  win.VulKillBulkScan.renderRun({ ...run, status: 'succeeded', totals: { total: 1, succeeded: 1 },
     items: [{ name: 'alpha', rel: 'alpha', status: 'succeeded', finding_count: 3, severity_counts: { high: 2 }, sca: { status: 'succeeded', finding_count: 1 } }] });
   assert.equal(ui.cancel.hidden, true);
   assert.ok(texts(ui.runList).some(t => t.includes('3 bulgu (high 2)') && t.includes('SCA 1 açık')));
@@ -109,9 +109,9 @@ test('keşif ve başlatma istekleri confirm: true taşır; ilerleme ve iptal dü
 
 test('onay verilmezse tarama başlatılmaz; hata iletisi durum satırına yazılır', async () => {
   const { win, calls } = load({ confirmAnswer: false, responses: [{ status: 400, body: { error: 'Seçilen depo kök dizinin altında değil.' } }] });
-  win.SniperBulkScan.buildPanel();
-  win.SniperBulkScan.renderPreview(FOUND);
-  const ui = win.SniperBulkScan.state.ui;
+  win.VulKillBulkScan.buildPanel();
+  win.VulKillBulkScan.renderPreview(FOUND);
+  const ui = win.VulKillBulkScan.state.ui;
   await ui.start.listeners.click();
   assert.equal(calls.length, 0);
   win.confirm = () => true;

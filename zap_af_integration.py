@@ -1,4 +1,4 @@
-"""Create an offline AF plan from a registered Sniper target and engagement.
+"""Create an offline AF plan from a registered VulKill target and engagement.
 
 This module never resolves DNS, starts ZAP, writes files, or contacts a target.
 It requires a machine-readable scope inside the existing engagement scope_notes

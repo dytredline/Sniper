@@ -10,8 +10,8 @@ import server
 
 class ResponseHeaderSafetyTests(unittest.TestCase):
     @staticmethod
-    def handler() -> server.SniperHandler:
-        handler = server.SniperHandler.__new__(server.SniperHandler)
+    def handler() -> server.VulKillHandler:
+        handler = server.VulKillHandler.__new__(server.VulKillHandler)
         handler.command = "GET"
         handler.request_version = "HTTP/1.1"
         handler.requestline = "GET /response-header-proof HTTP/1.1"
@@ -39,7 +39,7 @@ class ResponseHeaderSafetyTests(unittest.TestCase):
                 handler.send_response(200)
 
                 with self.assertRaises(ValueError):
-                    handler.send_header("X-Sniper-Test", unsafe)
+                    handler.send_header("X-VulKill-Test", unsafe)
 
                 self.assertEqual(handler.wfile.getvalue(), b"")
                 buffered = b"".join(getattr(handler, "_headers_buffer", ()))

@@ -24,7 +24,7 @@ class ReportTests(unittest.TestCase):
         run = report["runs"][0]
         self.assertEqual(run["results"][0]["level"], "error")
         self.assertEqual(run["results"][0]["fingerprints"]["sniper/v1"], "abc123")
-        self.assertEqual(run["tool"]["driver"]["rules"][0]["id"], "SNIPER-abc123")
+        self.assertEqual(run["tool"]["driver"]["rules"][0]["id"], "VULKILL-abc123")
 
     def test_engagement_exports_combine_manual_and_automatic_findings(self):
         engagement = {

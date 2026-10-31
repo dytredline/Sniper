@@ -1,4 +1,4 @@
-"""Opt-in loader and result boundary for locally trusted Sniper plugins.
+"""Opt-in loader and result boundary for locally trusted VulKill plugins.
 
 Güvenlik modeli:
 * Dosya izinleri asla "düzeltilmez" (chmod yok). Eklenti dizini ve dosyaları
@@ -69,15 +69,15 @@ def _call_with_timeout(label: str, func: Any, timeout: float) -> Any:
 USER_PLUGINS_ENV = "SNIPER_ENABLE_USER_PLUGINS"
 USER_PLUGIN_ALLOWLIST_ENV = "SNIPER_USER_PLUGIN_ALLOWLIST"
 
-# Sniper ile gelen yerleşik eklentilerin (plugins/user/) sabit SHA-256 özetleri.
+# VulKill ile gelen yerleşik eklentilerin (plugins/user/) sabit SHA-256 özetleri.
 # Bir yerleşik eklenti değiştirilirse bu liste de bilinçli olarak güncellenmelidir;
 # uyuşmayan içerik yüklenmez.
 BUILTIN_PLUGIN_SHA256: MappingProxyType = MappingProxyType(
     {
-        "api_surface_target_advisor.py": "3aa73f92b9a03fcd178a5f21000a3fd21440f5e3ac10eb5ecc0e37b61d2d4ab7",
-        "cross_origin_isolation_advisor.py": "bf68c18fb9493b3e5a32b1c4336ebe588e388c14fb2c7b05cbaf9cb95f0b62eb",
-        "ip_literal_target_advisor.py": "3cb852f9940a2396af4ee4fa624fbb9345104185580ccaadda4a21f502c2372e",
-        "zero_trust_transport_advisor.py": "631196095f3978bea318076e87016a21dea034347f88074fa9b3276ad53bf984",
+        "api_surface_target_advisor.py": "58f07337b3907ee405e695abe633fd8c0f7b64e2f3cc7ba0d368d2646c305258",
+        "cross_origin_isolation_advisor.py": "4865c72c58ea1bf1f3ef8c74632cacc7d8d3d78ea8f80191a056bcb527d17668",
+        "ip_literal_target_advisor.py": "c42d6d193e7678fa01eb17ad97746148b57c91095122d7f70fc5bc6e2a18990f",
+        "zero_trust_transport_advisor.py": "260f6652a6f283e90ecd498f98b26dbd3e3907a0ab2d46d566bd58921b4b4766",
     }
 )
 
@@ -194,7 +194,7 @@ class PluginManager:
             if details.st_mode & _WRITABLE_BY_OTHERS:
                 raise PermissionError(
                     "Eklenti dizini grup veya diğer kullanıcılarca yazılabilir; eklentiler yüklenmedi. "
-                    "İzni elle 0700 yapın (Sniper izinleri kendisi değiştirmez)."
+                    "İzni elle 0700 yapın (VulKill izinleri kendisi değiştirmez)."
                 )
         except BaseException:
             os.close(dir_fd)

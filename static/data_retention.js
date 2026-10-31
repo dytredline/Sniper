@@ -263,7 +263,7 @@
     return ui;
   }
 
-  scope.SniperDataRetention = { start, readPolicy, renderPlan, renderBackups, mb, FIELDS };
+  scope.VulKillDataRetention = { start, readPolicy, renderPlan, renderBackups, mb, FIELDS };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
     else start();

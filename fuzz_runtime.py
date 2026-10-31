@@ -1,8 +1,8 @@
-"""Bounded, offline execution for Sniper-generated optional fuzz harnesses.
+"""Bounded, offline execution for VulKill-generated optional fuzz harnesses.
 
 The optional engines are never downloaded or inferred from ``PATH``.  An operator
 must supply exact local runtime/support paths and SHA-256 pins.  Target and support
-bytes are copied into a private snapshot, while the process runs in Sniper's
+bytes are copied into a private snapshot, while the process runs in VulKill's
 networkless bubblewrap/seccomp sandbox with wall-clock, CPU, input, run and output
 limits.  Missing configuration is a first-class ``runtime_missing/not_run`` result.
 """

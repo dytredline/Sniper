@@ -32,7 +32,7 @@ const flat = node => [node.textContent, ...node.children.flatMap(flat)].join('')
 test('öneri isteği gönderilir ve fark textContent ile satır sınıflarıyla çizilir', async () => {
   const diff = "--- a/app.py\n+++ b/app.py\n@@ -1,2 +1,2 @@\n-os.system('<img src=x>' + q)\n+subprocess.run(['ls', q])";
   const { window, button, result, calls } = load(() => ({ mode: 'diff', diff, confidence: 'orta', notes: ['<b>not</b>'], strategy: { title: 'Kabuksuz', cwe: 'CWE-78', explanation: 'Açıklama' } }));
-  const data = await window.SniperAutofix.suggest(button);
+  const data = await window.VulKillAutofix.suggest(button);
   assert.equal(data.mode, 'diff');
   assert.equal(calls[0].path, '/api/project-audits/prj_1/findings/2/autofix');
   assert.equal(calls[0].options.method, 'POST');
@@ -50,10 +50,10 @@ test('öneri isteği gönderilir ve fark textContent ile satır sınıflarıyla 
 test('metin kipinde örnek gösterilir, hata mesajı textContent ile yazılır', async () => {
   let fail = false;
   const { window, button, result } = load(() => { if (fail) throw new Error('Bulgu bulunamadı.'); return { mode: 'text', snippet: 'html.escape(x)', strategy: {} }; });
-  await window.SniperAutofix.suggest(button);
+  await window.VulKillAutofix.suggest(button);
   assert.equal(result.children.at(-1).textContent, 'html.escape(x)');
   fail = true;
-  assert.equal(await window.SniperAutofix.suggest(button), null);
+  assert.equal(await window.VulKillAutofix.suggest(button), null);
   assert.match(result.children[0].textContent, /Öneri üretilemedi: Bulgu bulunamadı/);
   assert.equal(button.disabled, false);
 });
@@ -61,7 +61,7 @@ test('metin kipinde örnek gösterilir, hata mesajı textContent ile yazılır',
 test('geçersiz sıra numarasıyla istek yapılmaz; tıklama olay devri çalışır', async () => {
   const { window, button, calls, listeners } = load(() => ({ mode: 'text', snippet: 'x', strategy: {} }));
   button.dataset.autofixIndex = '1;x';
-  assert.equal(await window.SniperAutofix.suggest(button), null);
+  assert.equal(await window.VulKillAutofix.suggest(button), null);
   assert.equal(calls.length, 0);
   button.dataset.autofixIndex = '2';
   let prevented = false;

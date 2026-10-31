@@ -71,7 +71,7 @@
         consent("confirm_local", "Yalnız onaylı loopback hedefe sınırlı yük testi")] },
     { id: "sandbox-targets-list", group: "Yalıtılmış test", label: "Test hedefleri, kapsam seçenekleri ve yük profilleri", method: "GET", route: "/api/sandbox-targets", fields: [] },
     { id: "sandbox-scope", group: "Yalıtılmış test", label: "Kapsam seçeneğini aç/kapat", method: "POST", route: "/api/sandbox-targets",
-      fields: [{ name: "scope", label: "Kapsam", type: "select", options: [["local", "Yerel portlar (127.0.0.1)"], ["critical", "Kritik yerel servisler (Sniper, LLM, SSH tüneli, ssh, VNC)"], ["remote_verified", "Sahipliği doğrulanmış uzak hedefler"]] },
+      fields: [{ name: "scope", label: "Kapsam", type: "select", options: [["local", "Yerel portlar (127.0.0.1)"], ["critical", "Kritik yerel servisler (VulKill, LLM, SSH tüneli, ssh, VNC)"], ["remote_verified", "Sahipliği doğrulanmış uzak hedefler"]] },
         { name: "enabled", label: "Durum", type: "select", options: [["on", "Açık"], ["off", "Kapalı"]] },
         consent("confirm", "Onaylıyorum")],
       build: v => ({ confirm: true, action: "scope", scope: v.scope, enabled: v.enabled === "on" }) },
@@ -247,7 +247,7 @@
       } },
     { id: "asan-selftest", group: "Yalıtılmış test", label: "ASan araç zinciri öz sınaması (sabit fikstürler)", method: "POST",
       route: "/api/runtime-proofs/asan-selftest",
-      fields: [consent("confirm_local", "Yalnız Sniper'ın sabit temiz ve use-after-free fikstürlerini yerelde derleyip çalıştırmayı onaylıyorum")],
+      fields: [consent("confirm_local", "Yalnız VulKill'ın sabit temiz ve use-after-free fikstürlerini yerelde derleyip çalıştırmayı onaylıyorum")],
       build: () => ({ confirm_local: true }) },
     { id: "asan-project-proof", group: "Yalıtılmış test", label: "Bellek güvenliği bulgusunu önceden derlenmiş ASan ikilisiyle doğrula", method: "POST",
       route: "/api/project-audits/{audit_id}/findings/{finding_index}/runtime-proof/asan-binary",
@@ -584,13 +584,13 @@
   function renderResult(flow, data) {
     const summary = byId("advanced-tool-summary");
     const output = byId("advanced-tool-output");
-    const renderer = flow.renderer && globalThis.SniperToolBoundary?.[flow.renderer];
+    const renderer = flow.renderer && globalThis.VulKillToolBoundary?.[flow.renderer];
     if (summary) {
       summary.replaceChildren();
       let rendered = false;
       if (typeof renderer === "function") {
         try {
-          summary.innerHTML = renderer(data, globalThis.esc); // sniper-reviewed: html-safe (tool_boundary_summaries tüm alanları kaçışlar)
+          summary.innerHTML = renderer(data, globalThis.esc); // vulkill-reviewed: html-safe (tool_boundary_summaries tüm alanları kaçışlar)
           rendered = true;
         } catch { rendered = false; }
       }
@@ -645,13 +645,13 @@
     try {
       const values = await readValues(flow);
       const { path, options } = buildRequest(flow, values);
-      const background = byId("advanced-tool-background")?.checked && options.method === "POST" && globalThis.SniperJobs;
+      const background = byId("advanced-tool-background")?.checked && options.method === "POST" && globalThis.VulKillJobs;
       if (background) {
         // Uzun akış: /api/jobs üzerinden arka planda (sunucu izinli rotaları ayrıca denetler).
-        const job = await globalThis.SniperJobs.run(path, JSON.parse(options.body || "{}"), byId("advanced-tool-job-status"));
-        globalThis.SniperJobsPanel?.refresh?.();
+        const job = await globalThis.VulKillJobs.run(path, JSON.parse(options.body || "{}"), byId("advanced-tool-job-status"));
+        globalThis.VulKillJobsPanel?.refresh?.();
         if (current !== generation) return null;
-        if (job.state !== "succeeded") throw new Error(job.error || globalThis.SniperJobs.stateLabel(job.state));
+        if (job.state !== "succeeded") throw new Error(job.error || globalThis.VulKillJobs.stateLabel(job.state));
         renderResult(flow, job.result);
         return job.result;
       }
@@ -697,7 +697,7 @@
     }
   }
 
-  globalThis.SniperAdvancedTools = Object.freeze({ FLOWS, EVIDENCE_SLUGS, coerceEvidence, buildRequest, readValues, openFlow, selectFlow, submit, init, lists });
+  globalThis.VulKillAdvancedTools = Object.freeze({ FLOWS, EVIDENCE_SLUGS, coerceEvidence, buildRequest, readValues, openFlow, selectFlow, submit, init, lists });
   globalThis.openAdvancedToolFlow = openFlow;
   if (typeof document !== "undefined" && document.readyState !== "loading") init();
   else if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", init);

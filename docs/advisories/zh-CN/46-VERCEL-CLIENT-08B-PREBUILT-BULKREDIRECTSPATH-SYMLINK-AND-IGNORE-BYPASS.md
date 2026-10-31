@@ -26,7 +26,7 @@ if (config?.bulkRedirectsPath) {
 ## 2. Concrete Everyday Real-World Production Scenarios (`Scenario A` / `Scenario B` / `Scenario C`)
 
 ### Scenario A — Symlink inside `bulkRedirectsPath` Exfiltrating Host SSH/Cloud Credentials During `vercel deploy --prebuilt`
-A prebuilt output directory sets `"bulkRedirectsPath": ".vercel/output/redirects"` containing a symlink `leak.json -> /home/runner/.ssh/id_rsa`. `buildFileTree()` follows the symlink via `fs.stat()` and uploads the private key to the deployment.
+A prebuilt output directory sets `"bulkRedirectsPath": ".vercel/output/redirects"` containing a symlink `leak.json -> ${HOME}/.ssh/id_rsa`. `buildFileTree()` follows the symlink via `fs.stat()` and uploads the private key to the deployment.
 
 ### Scenario B — Relative Path Traversal in `.vercel/output/config.json` (`"bulkRedirectsPath": "../../secrets"`)
 Setting `bulkRedirectsPath` to a parent directory walks and uploads all files in that host directory.

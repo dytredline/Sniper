@@ -1,6 +1,6 @@
-# Sniper editör tanılama sunucusu (LSP)
+# VulKill editör tanılama sunucusu (LSP)
 
-`scripts/sniper-lsp`, stdio üzerinden konuşan bir Language Server Protocol sunucusudur (saf Python, yalnız standart
+`scripts/vulkill-lsp`, stdio üzerinden konuşan bir Language Server Protocol sunucusudur (saf Python, yalnız standart
 kitaplık). Editörde bir dosya **açıldığında ya da kaydedildiğinde** o dosya, arayüzdeki proje analiziyle aynı motorla
 incelenir ve bulgular editörde tanılama (altı çizili uyarı) olarak görünür. Desteklenen dosyalar için hızlı düzeltme
 (Quick Fix) önerilir.
@@ -13,7 +13,7 @@ incelenir ve bulgular editörde tanılama (altı çizili uyarı) olarak görün�
 | `textDocument/didOpen`, `didSave` | Dosya proje bağlamıyla analiz edilir, `publishDiagnostics` gönderilir. |
 | `textDocument/didChange` | Yalnız bellekteki metin güncellenir (tam eşitleme). Analiz kayıtta yapılır. |
 | `textDocument/didClose` | Dosyanın tanılamaları temizlenir. |
-| `textDocument/codeAction` | Sniper tanılaması için `taint_autofix` dönüşümü (parametreli sorgu, kabuksuz komut, kaçış …) **quickfix** düzenlemesi olarak önerilir; editörün kaydedilmemiş metni üzerinde hesaplanır. Düzenlemeyi editör uygular, sunucu dosyaya yazmaz. |
+| `textDocument/codeAction` | VulKill tanılaması için `taint_autofix` dönüşümü (parametreli sorgu, kabuksuz komut, kaçış …) **quickfix** düzenlemesi olarak önerilir; editörün kaydedilmemiş metni üzerinde hesaplanır. Düzenlemeyi editör uygular, sunucu dosyaya yazmaz. |
 | `shutdown` / `exit` | Standart yaşam döngüsü. |
 
 Tanılama içeriği:
@@ -35,7 +35,7 @@ Tanılama içeriği:
   aşılırsa süreç grubu sonlandırılır, önceki tanılamalar korunur, editöre bir günlük iletisi düşer.
 * **Önbellek:**
   * Yeniden açılan, değişmemiş dosya bellekteki sonuçtan anında döner.
-  * Python projelerinde dosyalar arası taint sonucu `~/.cache/sniper-lsp/taint-cache` altında diskte tutulur
+  * Python projelerinde dosyalar arası taint sonucu `~/.cache/vulkill-lsp/taint-cache` altında diskte tutulur
     (dizin 0700); proje değişmediyse yeniden hesaplanmaz.
   * Kaydedilen dosya değiştiyse proje bağlamı yeniden kurulur.
   * Ölçüm (bu makinede):
@@ -46,21 +46,21 @@ Tanılama içeriği:
     | juice-shop (TS) | 7,5 sn | 0 sn | 7,5 sn | JS için disk önbelleği yok |
     | pygoat | 0,3 sn | 0 sn | 0,2 sn | |
 
-* **Ağ ve yazma:** Ağ erişimi yoktur. Proje dosyalarına ve Sniper'ın canlı veri dizinine hiçbir şey yazılmaz.
+* **Ağ ve yazma:** Ağ erişimi yoktur. Proje dosyalarına ve VulKill'ın canlı veri dizinine hiçbir şey yazılmaz.
 
 ## Kurulum
 
-Sunucu Sniper uygulama dizinindedir:
+Sunucu VulKill uygulama dizinindedir:
 
 ```
-/ABSOLUTE/PATH/TO/sniper/scripts/sniper-lsp [--data-dir DİZİN] [--cache-dir DİZİN] [--timeout SN]
+/ABSOLUTE/PATH/TO/vulkill/scripts/vulkill-lsp [--data-dir DİZİN] [--cache-dir DİZİN] [--timeout SN]
 ```
 
 Seçenekler:
 
-* `--data-dir`: Sniper veri dizini; yalnız kalıcı tarama kapsamı okunur. Varsayılan `$SNIPER_DATA_DIR` ya da
+* `--data-dir`: VulKill veri dizini; yalnız kalıcı tarama kapsamı okunur. Varsayılan `$SNIPER_DATA_DIR` ya da
   `~/.local/share/sniper/data`.
-* `--cache-dir`: varsayılan `~/.cache/sniper-lsp`.
+* `--cache-dir`: varsayılan `~/.cache/vulkill-lsp`.
 * `--timeout`: dosya başına süre sınırı, 2–300 sn.
 
 İstemci `initializationOptions` ile de ayar verebilir:
@@ -77,7 +77,7 @@ Proje klasörü, arayüzdeki analizle aynı kurala uyar: kullanıcı dizini ya d
 
 ```lua
 vim.lsp.config('sniper', {
-  cmd = { '/ABSOLUTE/PATH/TO/sniper/scripts/sniper-lsp' },
+  cmd = { '/ABSOLUTE/PATH/TO/vulkill/scripts/vulkill-lsp' },
   filetypes = { 'python', 'javascript', 'typescript', 'javascriptreact', 'typescriptreact',
                 'go', 'ruby', 'java', 'kotlin', 'cs', 'php', 'rust', 'c', 'cpp',
                 'terraform', 'yaml', 'dockerfile' },
@@ -97,7 +97,7 @@ local util = require('lspconfig.util')
 if not configs.sniper then
   configs.sniper = {
     default_config = {
-      cmd = { '/ABSOLUTE/PATH/TO/sniper/scripts/sniper-lsp' },
+      cmd = { '/ABSOLUTE/PATH/TO/vulkill/scripts/vulkill-lsp' },
       filetypes = { 'python', 'javascript', 'typescript', 'go', 'java', 'kotlin', 'cs', 'php', 'ruby', 'rust', 'c', 'cpp' },
       root_dir = util.root_pattern('.git'),
       init_options = { minSeverity = 'low' },
@@ -112,7 +112,7 @@ require('lspconfig').sniper.setup({})
 VS Code'da yerleşik "herhangi bir LSP sunucusunu çalıştır" ayarı yoktur. İki yol var:
 
 1. **Genel LSP istemci uzantısı:** Pazar yerinde "generic LSP client" türü uzantılar komut + argüman + dil
-   listesiyle bir sunucu başlatabilir. Komut olarak `/ABSOLUTE/PATH/TO/sniper/scripts/sniper-lsp` verin. Ayar
+   listesiyle bir sunucu başlatabilir. Komut olarak `/ABSOLUTE/PATH/TO/vulkill/scripts/vulkill-lsp` verin. Ayar
    adları uzantıya göre değişir; uzantının belgesine bakın.
 2. **Birkaç satırlık yerel uzantı** (`vscode-languageclient` ile; kendi makinenizde `code --install-extension`
    ile paketleyip kurabilirsiniz):
@@ -123,8 +123,8 @@ const { LanguageClient } = require('vscode-languageclient/node');
 const os = require('os');
 let client;
 exports.activate = () => {
-  client = new LanguageClient('sniper', 'Sniper',
-    { command: `${os.homedir()}/.local/share/sniper/app/scripts/sniper-lsp`, args: [] },
+  client = new LanguageClient('sniper', 'VulKill',
+    { command: `${os.homedir()}/.local/share/sniper/app/scripts/vulkill-lsp`, args: [] },
     { documentSelector: [{ scheme: 'file' }], initializationOptions: { minSeverity: 'low' } });
   client.start();
 };

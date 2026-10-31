@@ -132,7 +132,7 @@ MAX_UNCOMPRESSED_BYTES = 250 * 1024 * 1024
 SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, str], ...] = (
     # A. MASVS-STORAGE & M9
     (
-        "SNIPER-MOB-STOR-01",
+        "VULKILL-MOB-STOR-01",
         "high",
         "MASVS-STORAGE",
         "M9",
@@ -143,7 +143,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"(?:getSharedPreferences|PreferenceManager\.getDefaultSharedPreferences|UserDefaults\.standard|AsyncStorage\.setItem|SharedPreferences\.getInstance)[^\n]{0,120}(?:token|password|secret|pin|jwt|apikey|card|cvv|iban)",
     ),
     (
-        "SNIPER-MOB-STOR-02",
+        "VULKILL-MOB-STOR-02",
         "medium",
         "MASVS-STORAGE",
         "M9",
@@ -154,7 +154,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"\b(?:getExternalStorageDirectory|getExternalStoragePublicDirectory|getExternalFilesDir|MODE_WORLD_READABLE|MODE_WORLD_WRITEABLE)\b",
     ),
     (
-        "SNIPER-MOB-STOR-03",
+        "VULKILL-MOB-STOR-03",
         "low",
         "MASVS-STORAGE",
         "M9",
@@ -165,7 +165,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"\b(?:Log\.[dveiw]|NSLog|debugPrint|console\.log)\s*\([^\n]{0,120}(?:token|password|secret|otp|pin|iban|cvv|ssn|tc_kimlik)",
     ),
     (
-        "SNIPER-MOB-STOR-04",
+        "VULKILL-MOB-STOR-04",
         "medium",
         "MASVS-STORAGE",
         "M9",
@@ -177,7 +177,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
     ),
     # B. MASVS-CRYPTO & M1 / M10
     (
-        "SNIPER-MOB-CRYP-01",
+        "VULKILL-MOB-CRYP-01",
         "critical",
         "MASVS-CRYPTO",
         "M1",
@@ -188,7 +188,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"(?:AIza[0-9A-Za-z\-_]{35}|AKIA[0-9A-Z]{16}|sk_live_[0-9a-zA-Z]{16,}|rk_live_[0-9a-zA-Z]{16,}|ghp_[0-9A-Za-z]{30,})",
     ),
     (
-        "SNIPER-MOB-CRYP-02",
+        "VULKILL-MOB-CRYP-02",
         "high",
         "MASVS-CRYPTO",
         "M10",
@@ -199,7 +199,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"(?:AES/ECB/|Cipher\.getInstance\(\s*[\"'](?:AES|DES|DESede|RC4)[\"']\s*\)|MessageDigest\.getInstance\(\s*[\"'](?:MD5|SHA-1|SHA1)[\"']\s*\)|kCCOptionECBMode|CC_MD5|CC_SHA1)",
     ),
     (
-        "SNIPER-MOB-CRYP-03",
+        "VULKILL-MOB-CRYP-03",
         "high",
         "MASVS-CRYPTO",
         "M10",
@@ -210,7 +210,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"IvParameterSpec\s*\(\s*(?:[\"'][^\"']+[\"']\.getBytes|new\s+byte\s*\[\s*\]\s*\{)",
     ),
     (
-        "SNIPER-MOB-CRYP-04",
+        "VULKILL-MOB-CRYP-04",
         "medium",
         "MASVS-CRYPTO",
         "M10",
@@ -222,7 +222,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
     ),
     # C. MASVS-NETWORK & M5
     (
-        "SNIPER-MOB-NET-01",
+        "VULKILL-MOB-NET-01",
         "critical",
         "MASVS-NETWORK",
         "M5",
@@ -234,7 +234,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
     ),
     # D. MASVS-PLATFORM & M4 / M8
     (
-        "SNIPER-MOB-PLAT-01",
+        "VULKILL-MOB-PLAT-01",
         "critical",
         "MASVS-PLATFORM",
         "M4",
@@ -245,7 +245,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"(?:addJavascriptInterface\s*\(|setAllowUniversalAccessFromFileURLs\s*\(\s*true\s*\)|setAllowFileAccessFromFileURLs\s*\(\s*true\s*\)|originWhitelist\s*=\s*\{\s*\[\s*['\"]\*['\"]\s*\]\s*\}|\bUIWebView\b)",
     ),
     (
-        "SNIPER-MOB-PLAT-02",
+        "VULKILL-MOB-PLAT-02",
         "high",
         "MASVS-PLATFORM",
         "M4",
@@ -256,7 +256,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"PendingIntent\.get(?:Activity|Broadcast|Service|ForegroundService)\s*\((?![^\)]{0,200}FLAG_IMMUTABLE)",
     ),
     (
-        "SNIPER-MOB-PLAT-03",
+        "VULKILL-MOB-PLAT-03",
         "high",
         "MASVS-PLATFORM",
         "M4",
@@ -267,7 +267,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"startActivity\s*\(\s*(?:\(Intent\)\s*)?getIntent\(\)\.(?:getParcelableExtra|getExtras)",
     ),
     (
-        "SNIPER-MOB-PLAT-04",
+        "VULKILL-MOB-PLAT-04",
         "medium",
         "MASVS-PLATFORM",
         "M6",
@@ -279,7 +279,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
     ),
     # E. MASVS-AUTH & M3 (Biometric, OAuth, Client-side Authz)
     (
-        "SNIPER-MOB-AUTH-01",
+        "VULKILL-MOB-AUTH-01",
         "high",
         "MASVS-AUTH",
         "M3",
@@ -290,7 +290,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"(?:biometricPrompt\.authenticate\s*\(\s*promptInfo\s*\)|evaluatePolicy\s*\(\s*\.deviceOwnerAuthenticationWithBiometrics)",
     ),
     (
-        "SNIPER-MOB-AUTH-02",
+        "VULKILL-MOB-AUTH-02",
         "high",
         "MASVS-AUTH",
         "M3",
@@ -302,7 +302,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
     ),
     # F. Uygulama Tipine Özel Kontroller (Finans, E-Ticaret, Sağlık/BLE, Sosyal, Kurumsal, Oyun/IAP)
     (
-        "SNIPER-MOB-DOM-FIN-01",
+        "VULKILL-MOB-DOM-FIN-01",
         "medium",
         "MASVS-STORAGE",
         "M9",
@@ -313,7 +313,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"setContentView\s*\([^\n]{0,80}(?:payment|card|wallet|transfer|health|patient)",
     ),
     (
-        "SNIPER-MOB-DOM-HLT-01",
+        "VULKILL-MOB-DOM-HLT-01",
         "high",
         "MASVS-PRIVACY",
         "M6",
@@ -324,7 +324,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"\b(?:listenUsingInsecureRfcommWithServiceRecord|createInsecureRfcommSocketToServiceRecord|CBAttributePermissionsReadable\b(?![^\n]{0,80}EncryptionRequired))",
     ),
     (
-        "SNIPER-MOB-DOM-SOC-01",
+        "VULKILL-MOB-DOM-SOC-01",
         "medium",
         "MASVS-PRIVACY",
         "M6",
@@ -335,7 +335,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"\b(?:ImagePicker\.pickImage|launchImageLibrary|MediaStore\.Images\.Media\.getBitmap)\b(?![\s\S]{0,240}Exif)",
     ),
     (
-        "SNIPER-MOB-DOM-GAM-01",
+        "VULKILL-MOB-DOM-GAM-01",
         "high",
         "MASVS-RESILIENCE",
         "M7",
@@ -346,7 +346,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"(?:Purchase\.PurchaseState\.PURCHASED|SKPaymentTransactionStatePurchased|\.purchased\b)(?![\s\S]{0,220}(?:verifyReceipt|serverVerify|validatePurchase))",
     ),
     (
-        "SNIPER-MOB-DOM-GAM-02",
+        "VULKILL-MOB-DOM-GAM-02",
         "medium",
         "MASVS-RESILIENCE",
         "M9",
@@ -357,7 +357,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"PlayerPrefs\.Set(?:Int|Float|String)\s*\(\s*[\"'](?:coins?|gems?|gold|score|diamonds?|balance|lives)[\"']",
     ),
     (
-        "SNIPER-MOB-AUTH-03",
+        "VULKILL-MOB-AUTH-03",
         "high",
         "MASVS-AUTH",
         "M3",
@@ -368,7 +368,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"code_challenge_method\s*[=:]\s*[\"']?plain[\"']?\b",
     ),
     (
-        "SNIPER-MOB-RES-01",
+        "VULKILL-MOB-RES-01",
         "high",
         "MASVS-RESILIENCE",
         "M8",
@@ -379,7 +379,7 @@ SOURCE_RULES: tuple[tuple[str, str, str, str, tuple[str, ...], str, str, str, st
         r"setWebContentsDebuggingEnabled\s*\(\s*true\s*\)",
     ),
     (
-        "SNIPER-MOB-PLAT-05",
+        "VULKILL-MOB-PLAT-05",
         "high",
         "MASVS-CODE",
         "M2",
@@ -566,7 +566,7 @@ def _audit_manifest_or_config_text(
         if re.search(r"android:debuggable\s*=\s*[\"']true[\"']", content, re.IGNORECASE):
             findings.append(
                 _mobile_finding(
-                    rule_id="SNIPER-MOB-MAN-01",
+                    rule_id="VULKILL-MOB-MAN-01",
                     severity="critical",
                     masvs="MASVS-RESILIENCE",
                     m_top10="M8",
@@ -580,7 +580,7 @@ def _audit_manifest_or_config_text(
         if re.search(r"android:allowBackup\s*=\s*[\"']true[\"']", content, re.IGNORECASE):
             findings.append(
                 _mobile_finding(
-                    rule_id="SNIPER-MOB-MAN-02",
+                    rule_id="VULKILL-MOB-MAN-02",
                     severity="medium",
                     masvs="MASVS-STORAGE",
                     m_top10="M9",
@@ -594,7 +594,7 @@ def _audit_manifest_or_config_text(
         if re.search(r"android:usesCleartextTraffic\s*=\s*[\"']true[\"']", content, re.IGNORECASE):
             findings.append(
                 _mobile_finding(
-                    rule_id="SNIPER-MOB-MAN-03",
+                    rule_id="VULKILL-MOB-MAN-03",
                     severity="high",
                     masvs="MASVS-NETWORK",
                     m_top10="M5",
@@ -609,7 +609,7 @@ def _audit_manifest_or_config_text(
             if perm in content:
                 findings.append(
                     _mobile_finding(
-                        rule_id="SNIPER-MOB-MAN-04",
+                        rule_id="VULKILL-MOB-MAN-04",
                         severity=sev,
                         masvs="MASVS-CODE",
                         m_top10="M6",
@@ -635,7 +635,7 @@ def _audit_manifest_or_config_text(
             if is_exported and not has_perm and not is_MainLauncher:
                 findings.append(
                     _mobile_finding(
-                        rule_id="SNIPER-MOB-MAN-05",
+                        rule_id="VULKILL-MOB-MAN-05",
                         severity="high" if comp_type in {"provider", "service", "receiver"} else "medium",
                         masvs="MASVS-PLATFORM",
                         m_top10="M4",
@@ -649,7 +649,7 @@ def _audit_manifest_or_config_text(
             if comp_type == "provider" and re.search(r"android:grantUriPermissions\s*=\s*[\"']true[\"']", attrs, re.IGNORECASE):
                 findings.append(
                     _mobile_finding(
-                        rule_id="SNIPER-MOB-MAN-06",
+                        rule_id="VULKILL-MOB-MAN-06",
                         severity="high",
                         masvs="MASVS-PLATFORM",
                         m_top10="M4",
@@ -668,7 +668,7 @@ def _audit_manifest_or_config_text(
             if scheme_val not in {"http", "https"}:
                 findings.append(
                     _mobile_finding(
-                        rule_id="SNIPER-MOB-MAN-07",
+                        rule_id="VULKILL-MOB-MAN-07",
                         severity="medium",
                         masvs="MASVS-PLATFORM",
                         m_top10="M4",
@@ -684,7 +684,7 @@ def _audit_manifest_or_config_text(
                 if "BROWSABLE" in surrounding and "autoVerify=\"true\"" not in surrounding and "autoVerify='true'" not in surrounding:
                     findings.append(
                         _mobile_finding(
-                            rule_id="SNIPER-MOB-MAN-08",
+                            rule_id="VULKILL-MOB-MAN-08",
                             severity="low",
                             masvs="MASVS-PLATFORM",
                             m_top10="M4",
@@ -701,7 +701,7 @@ def _audit_manifest_or_config_text(
         if re.search(r"cleartextTrafficPermitted\s*=\s*[\"']true[\"']", content, re.IGNORECASE):
             findings.append(
                 _mobile_finding(
-                    rule_id="SNIPER-MOB-NSC-01",
+                    rule_id="VULKILL-MOB-NSC-01",
                     severity="high",
                     masvs="MASVS-NETWORK",
                     m_top10="M5",
@@ -721,7 +721,7 @@ def _audit_manifest_or_config_text(
         if trusts_user_certificates:
             findings.append(
                 _mobile_finding(
-                    rule_id="SNIPER-MOB-NSC-02",
+                    rule_id="VULKILL-MOB-NSC-02",
                     severity="high",
                     masvs="MASVS-NETWORK",
                     m_top10="M5",
@@ -735,7 +735,7 @@ def _audit_manifest_or_config_text(
         if "<pin-set" not in content and app_profile in {"finance", "enterprise", "health"}:
             findings.append(
                 _mobile_finding(
-                    rule_id="SNIPER-MOB-NSC-03",
+                    rule_id="VULKILL-MOB-NSC-03",
                     severity="medium",
                     masvs="MASVS-NETWORK",
                     m_top10="M5",
@@ -752,7 +752,7 @@ def _audit_manifest_or_config_text(
         if re.search(r"<key>\s*NSAllowsArbitraryLoads\s*</key>\s*<true\s*/>", content, re.IGNORECASE):
             findings.append(
                 _mobile_finding(
-                    rule_id="SNIPER-MOB-IOS-01",
+                    rule_id="VULKILL-MOB-IOS-01",
                     severity="high",
                     masvs="MASVS-NETWORK",
                     m_top10="M5",
@@ -766,7 +766,7 @@ def _audit_manifest_or_config_text(
         if re.search(r"<key>\s*get-task-allow\s*</key>\s*<true\s*/>", content, re.IGNORECASE):
             findings.append(
                 _mobile_finding(
-                    rule_id="SNIPER-MOB-IOS-02",
+                    rule_id="VULKILL-MOB-IOS-02",
                     severity="critical",
                     masvs="MASVS-RESILIENCE",
                     m_top10="M7",
@@ -780,7 +780,7 @@ def _audit_manifest_or_config_text(
         if re.search(r"<key>\s*UIFileSharingEnabled\s*</key>\s*<true\s*/>", content, re.IGNORECASE):
             findings.append(
                 _mobile_finding(
-                    rule_id="SNIPER-MOB-IOS-03",
+                    rule_id="VULKILL-MOB-IOS-03",
                     severity="medium",
                     masvs="MASVS-STORAGE",
                     m_top10="M9",
@@ -794,7 +794,7 @@ def _audit_manifest_or_config_text(
         if "CFBundleURLSchemes" in content:
             findings.append(
                 _mobile_finding(
-                    rule_id="SNIPER-MOB-IOS-04",
+                    rule_id="VULKILL-MOB-IOS-04",
                     severity="medium",
                     masvs="MASVS-PLATFORM",
                     m_top10="M4",
@@ -811,7 +811,7 @@ def _audit_manifest_or_config_text(
         if _gradle_false_setting(content, "minifyEnabled"):
             findings.append(
                 _mobile_finding(
-                    rule_id="SNIPER-MOB-GRD-01",
+                    rule_id="VULKILL-MOB-GRD-01",
                     severity="medium",
                     masvs="MASVS-RESILIENCE",
                     m_top10="M7",
@@ -825,7 +825,7 @@ def _audit_manifest_or_config_text(
         if re.search(r"['\"][^'\"]+:\+['\"]", content):
             findings.append(
                 _mobile_finding(
-                    rule_id="SNIPER-MOB-GRD-02",
+                    rule_id="VULKILL-MOB-GRD-02",
                     severity="medium",
                     masvs="MASVS-CODE",
                     m_top10="M2",
@@ -842,7 +842,7 @@ def _audit_manifest_or_config_text(
         if re.search(r"\"current_key\"\s*:\s*\"AIza[0-9A-Za-z\-_]{35}\"", content):
             findings.append(
                 _mobile_finding(
-                    rule_id="SNIPER-MOB-CFG-01",
+                    rule_id="VULKILL-MOB-CFG-01",
                     severity="low",
                     masvs="MASVS-CRYPTO",
                     m_top10="M1",
@@ -908,7 +908,7 @@ def _scan_mobile_source_file(
         if match:
             line_no = content.count("\n", 0, match.start()) + 1
             snippet = match.group(0)
-            if rule_id == "SNIPER-MOB-CRYP-01":
+            if rule_id == "VULKILL-MOB-CRYP-01":
                 snippet = "<gömülü sır deseni tespit edildi · değer kaydedilmedi>"
             findings.append(
                 _mobile_finding(
@@ -1014,7 +1014,7 @@ def audit_mobile_project(
     if "ios" in detected_platforms and not has_privacy_manifest:
         findings.append(
             _mobile_finding(
-                rule_id="SNIPER-MOB-PRIV-01",
+                rule_id="VULKILL-MOB-PRIV-01",
                 severity="low",
                 masvs="MASVS-PRIVACY",
                 m_top10="M6",
@@ -1030,7 +1030,7 @@ def audit_mobile_project(
         if not has_ssl_pinning_signal:
             findings.append(
                 _mobile_finding(
-                    rule_id="SNIPER-MOB-NET-02",
+                    rule_id="VULKILL-MOB-NET-02",
                     severity="medium",
                     masvs="MASVS-NETWORK",
                     m_top10="M5",
@@ -1043,7 +1043,7 @@ def audit_mobile_project(
         if not has_root_jailbreak_signal:
             findings.append(
                 _mobile_finding(
-                    rule_id="SNIPER-MOB-RES-01",
+                    rule_id="VULKILL-MOB-RES-01",
                     severity="medium",
                     masvs="MASVS-RESILIENCE",
                     m_top10="M7",
@@ -1154,7 +1154,7 @@ def audit_mobile_package_archive(
                     sev = "critical" if lower_name.endswith((".key", ".p12", ".pfx", ".keystore", ".jks", ".pem", ".env")) else "low"
                     findings.append(
                         _mobile_finding(
-                            rule_id="SNIPER-MOB-PKG-01",
+                            rule_id="VULKILL-MOB-PKG-01",
                             severity=sev,
                             masvs="MASVS-CRYPTO",
                             m_top10="M1",
@@ -1183,7 +1183,7 @@ def audit_mobile_package_archive(
                             if perm in text:
                                 findings.append(
                                     _mobile_finding(
-                                        rule_id="SNIPER-MOB-MAN-04",
+                                        rule_id="VULKILL-MOB-MAN-04",
                                         severity=sev,
                                         masvs="MASVS-CODE",
                                         m_top10="M6",
@@ -1200,7 +1200,7 @@ def audit_mobile_package_archive(
     if not signature_files:
         findings.append(
             _mobile_finding(
-                rule_id="SNIPER-MOB-PKG-02",
+                rule_id="VULKILL-MOB-PKG-02",
                 severity="medium",
                 masvs="MASVS-RESILIENCE",
                 m_top10="M7",
@@ -1238,7 +1238,7 @@ def audit_mobile_package_archive(
 
 
 _BIOMETRIC_WEAK_ANDROID_RE = re.compile(r"\.authenticate\s*\(\s*promptInfo\s*\)")
-_BIOMETRIC_IOS_POLICY_START_RE = re.compile(r"evaluatePolicy\s*+\(")
+_BIOMETRIC_IOS_POLICY_RE = re.compile(r"evaluatePolicy\s*\([^)]*deviceOwnerAuthentication")
 _BIOMETRIC_IOS_KEYCHAIN_RE = re.compile(r"(?:SecItemCopyMatching|Keychain)", re.IGNORECASE)
 
 _DEEPLINK_INTENT_SOURCE_RE = re.compile(
@@ -1246,14 +1246,6 @@ _DEEPLINK_INTENT_SOURCE_RE = re.compile(
 )
 _DEEPLINK_SINK_RE = re.compile(r"(?:loadUrl\s*\(|startActivity\s*\(|evaluateJavascript\s*\()")
 _DEEPLINK_HOST_GUARD_RE = re.compile(r"(?:allowedHosts|host\s*==)")
-
-
-def _find_ios_biometric_policy(content: str) -> re.Match[str] | None:
-    for candidate in _BIOMETRIC_IOS_POLICY_START_RE.finditer(content):
-        close = content.find(")", candidate.end(), candidate.end() + 4096)
-        if close >= 0 and "deviceOwnerAuthentication" in content[candidate.end():close]:
-            return candidate
-    return None
 
 
 def audit_mobile_biometric_and_deeplink_chains(
@@ -1275,7 +1267,7 @@ def audit_mobile_biometric_and_deeplink_chains(
 
     bio_match = _BIOMETRIC_WEAK_ANDROID_RE.search(raw_content)
     if bio_match is None:
-        ios_match = _find_ios_biometric_policy(raw_content)
+        ios_match = _BIOMETRIC_IOS_POLICY_RE.search(raw_content)
         if ios_match is not None and not _BIOMETRIC_IOS_KEYCHAIN_RE.search(raw_content):
             bio_match = ios_match
 
@@ -1283,7 +1275,7 @@ def audit_mobile_biometric_and_deeplink_chains(
         line_no = raw_content[: bio_match.start()].count("\n") + 1
         evidence_line = raw_content.splitlines()[line_no - 1].strip() if raw_content.splitlines() else bio_match.group(0)
         finding = _mobile_finding(
-            rule_id="SNIPER-MOB-BIO-01",
+            rule_id="VULKILL-MOB-BIO-01",
             severity="high",
             masvs="MASVS-AUTH",
             m_top10="M3",
@@ -1302,8 +1294,8 @@ def audit_mobile_biometric_and_deeplink_chains(
             file_path=clean_filename,
             line=line_no,
         )
-        finding["rule_id"] = "SNIPER-MOB-BIO-01"
-        finding["control_id"] = "SNIPER-MOB-BIO-01"
+        finding["rule_id"] = "VULKILL-MOB-BIO-01"
+        finding["control_id"] = "VULKILL-MOB-BIO-01"
         finding["cwe"] = "CWE-287"
         finding["reference"] = "CWE-287"
         finding["category"] = "authentication"
@@ -1316,7 +1308,7 @@ def audit_mobile_biometric_and_deeplink_chains(
         lines = raw_content.splitlines()
         evidence_line = lines[line_no - 1].strip() if lines and line_no - 1 < len(lines) else intent_sink.group(0)
         finding = _mobile_finding(
-            rule_id="SNIPER-MOB-INTENT-02",
+            rule_id="VULKILL-MOB-INTENT-02",
             severity="critical",
             masvs="MASVS-PLATFORM",
             m_top10="M4",
@@ -1334,8 +1326,8 @@ def audit_mobile_biometric_and_deeplink_chains(
             file_path=clean_filename,
             line=line_no,
         )
-        finding["rule_id"] = "SNIPER-MOB-INTENT-02"
-        finding["control_id"] = "SNIPER-MOB-INTENT-02"
+        finding["rule_id"] = "VULKILL-MOB-INTENT-02"
+        finding["control_id"] = "VULKILL-MOB-INTENT-02"
         finding["cwe"] = "CWE-939"
         finding["reference"] = "CWE-939"
         finding["category"] = "mobile"

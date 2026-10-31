@@ -24,7 +24,7 @@ class ZapSelfPassiveApiTests(unittest.TestCase):
         self.previous_port = server.PORT
         self.previous_host = server.HOST
         server.HOST = "127.0.0.1"
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.httpd.daemon_threads = True
         server.PORT = self.httpd.server_address[1]
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)

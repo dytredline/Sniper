@@ -65,17 +65,17 @@ def _regular_bytes(path: Path, *, limit: int, executable: bool = False) -> bytes
 def _pinned_runtime() -> tuple[Path, bytes, Path]:
     data_text = os.environ.get("SNIPER_DATA_DIR")
     if not data_text:
-        raise OpenSSLUnavailable("Sniper veri dizini yapılandırılmamış")
+        raise OpenSSLUnavailable("VulKill veri dizini yapılandırılmamış")
     data_dir = Path(data_text)
     try:
         data_metadata = data_dir.stat(follow_symlinks=False)
     except (FileNotFoundError, NotADirectoryError, PermissionError, OSError) as exc:
-        raise OpenSSLUnavailable("Sniper veri dizini geçersiz") from exc
+        raise OpenSSLUnavailable("VulKill veri dizini geçersiz") from exc
     if (not data_dir.is_absolute()
             or not stat.S_ISDIR(data_metadata.st_mode)
             or data_metadata.st_uid not in {0, os.getuid()}
             or data_metadata.st_mode & (stat.S_IWGRP | stat.S_IWOTH)):
-        raise OpenSSLUnavailable("Sniper veri dizini geçersiz")
+        raise OpenSSLUnavailable("VulKill veri dizini geçersiz")
     ca_path = data_dir / "openssl-trust-ca.pem"
     ca_sha = os.environ.get("SNIPER_OPENSSL_CA_SHA256", "")
     binary_sha = os.environ.get("SNIPER_OPENSSL_BINARY_SHA256", "")

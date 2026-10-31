@@ -1,6 +1,6 @@
 """Defensive Blue-Team Rule Synthesizer (ModSecurity WAF, Sigma SIEM, Suricata IDS).
 
-Synthesizes actionable virtual-patching and detection rules from Sniper security
+Synthesizes actionable virtual-patching and detection rules from VulKill security
 findings across scan reports, source code audits, and mobile security assessments.
 All generated rules are defensive detection and WAF virtual-patch configurations.
 """
@@ -36,18 +36,18 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
             'ARGS_NAMES|ARGS|XML:/* "@rx (?i:(?:union\\s+all\\s+select|select\\s+.*\\s+from|'
             '\\b(?:sleep|benchmark|waitfor\\s+delay)\\b|\\$(?:where|ne|gt|lt|regex|nin)\\b))" '
             '"id:990101,phase:2,deny,status:403,log,t:none,t:urlDecodeUni,t:lowercase,'
-            'msg:\'Sniper Virtual Patch: SQL/NoSQL Injection Attempt\','
+            'msg:\'VulKill Virtual Patch: SQL/NoSQL Injection Attempt\','
             'tag:\'application-multi\',tag:\'attack-sqli\',tag:\'CWE-89\',severity:\'CRITICAL\'"'
         ),
         "sigma_id": "sniper-sigma-sqli-001",
         "sigma_level": "critical",
         "mitre_attack": ["T1190", "T1059"],
         "sigma_yaml": (
-            "title: Sniper Detection - SQL and NoSQL Injection Payloads in HTTP Request\n"
+            "title: VulKill Detection - SQL and NoSQL Injection Payloads in HTTP Request\n"
             "id: 8b41c920-9001-4a7a-b101-000000990101\n"
             "status: stable\n"
-            "description: Detects SQLi and NoSQL operator injection attempts synthesized by Sniper.\n"
-            "author: Sniper Blue-Team Rule Synthesizer\n"
+            "description: Detects SQLi and NoSQL operator injection attempts synthesized by VulKill.\n"
+            "author: VulKill Blue-Team Rule Synthesizer\n"
             "logsource:\n"
             "  category: webserver\n"
             "detection:\n"
@@ -67,7 +67,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901001,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE SQL/NoSQL Injection Attempt"; flow:established,to_server; '
+            '(msg:"VULKILL-BLUE SQL/NoSQL Injection Attempt"; flow:established,to_server; '
             'http.uri; pcre:"/(?:union\\s+(?:all\\s+)?select|\\$(?:where|ne|gt|regex))/i"; '
             'classtype:web-application-attack; sid:9901001; rev:1;)'
         ),
@@ -93,18 +93,18 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
             '"@rx (?i:(?:<script[^>]*>|javascript\\s*:|on(?:error|load|mouseover|focus)\\s*=|'
             'document\\.(?:cookie|domain|write)|window\\.location))" '
             '"id:990102,phase:2,deny,status:403,log,t:none,t:urlDecodeUni,t:htmlEntityDecode,'
-            'msg:\'Sniper Virtual Patch: Cross-Site Scripting (XSS) Payload\','
+            'msg:\'VulKill Virtual Patch: Cross-Site Scripting (XSS) Payload\','
             'tag:\'application-multi\',tag:\'attack-xss\',tag:\'CWE-79\',severity:\'HIGH\'"'
         ),
         "sigma_id": "sniper-sigma-xss-002",
         "sigma_level": "high",
         "mitre_attack": ["T1189", "T1059.007"],
         "sigma_yaml": (
-            "title: Sniper Detection - Cross-Site Scripting (XSS) Probe in Web Request\n"
+            "title: VulKill Detection - Cross-Site Scripting (XSS) Probe in Web Request\n"
             "id: 8b41c920-9002-4a7a-b102-000000990102\n"
             "status: stable\n"
             "description: Detects reflected, stored, and DOM XSS vectors in HTTP parameters.\n"
-            "author: Sniper Blue-Team Rule Synthesizer\n"
+            "author: VulKill Blue-Team Rule Synthesizer\n"
             "logsource:\n"
             "  category: webserver\n"
             "detection:\n"
@@ -124,7 +124,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901002,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE Cross-Site Scripting (XSS) Vector"; flow:established,to_server; '
+            '(msg:"VULKILL-BLUE Cross-Site Scripting (XSS) Vector"; flow:established,to_server; '
             'http.uri; pcre:"/(?:<script[^>]*>|javascript\\s*:|on(?:error|load)\\s*=)/i"; '
             'classtype:web-application-attack; sid:9901002; rev:1;)'
         ),
@@ -149,18 +149,18 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
             '\\[::ffff:169\\.254\\.169\\.254\\]|(?:file|gopher|dict|ftp|ldap)://|'
             'https?://(?:127\\.0\\.0\\.1|localhost|0\\.0\\.0\\.0)))" '
             '"id:990103,phase:2,deny,status:403,log,t:none,t:urlDecodeUni,'
-            'msg:\'Sniper Virtual Patch: SSRF & Cloud Metadata Probe\','
+            'msg:\'VulKill Virtual Patch: SSRF & Cloud Metadata Probe\','
             'tag:\'application-multi\',tag:\'attack-ssrf\',tag:\'CWE-918\',severity:\'CRITICAL\'"'
         ),
         "sigma_id": "sniper-sigma-ssrf-003",
         "sigma_level": "critical",
         "mitre_attack": ["T1552.005", "T1190"],
         "sigma_yaml": (
-            "title: Sniper Detection - SSRF Cloud Instance Metadata Service (IMDS) Access\n"
+            "title: VulKill Detection - SSRF Cloud Instance Metadata Service (IMDS) Access\n"
             "id: 8b41c920-9003-4a7a-b103-000000990103\n"
             "status: stable\n"
             "description: Detects attempts to reach cloud metadata endpoints or internal loopback via SSRF.\n"
-            "author: Sniper Blue-Team Rule Synthesizer\n"
+            "author: VulKill Blue-Team Rule Synthesizer\n"
             "logsource:\n"
             "  category: webserver\n"
             "detection:\n"
@@ -180,7 +180,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901003,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE SSRF Cloud Metadata Probe (169.254.169.254)"; '
+            '(msg:"VULKILL-BLUE SSRF Cloud Metadata Probe (169.254.169.254)"; '
             'flow:established,to_server; content:"169.254.169.254"; nocase; '
             'classtype:web-application-attack; sid:9901003; rev:1;)'
         ),
@@ -207,18 +207,18 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
             '"@rx (?i:(?:\\.\\./\\.\\./|/etc/(?:passwd|shadow)|c:\\\\windows\\\\system32|'
             '(?:;|\\|\\||&&|`\\s*|\\$\\()(?:cat|ls|id|whoami|uname|curl|wget|nc|bash|sh)\\b))" '
             '"id:990104,phase:2,deny,status:403,log,t:none,t:urlDecodeUni,t:normalizePath,'
-            'msg:\'Sniper Virtual Patch: Command Injection or Path Traversal Attempt\','
+            'msg:\'VulKill Virtual Patch: Command Injection or Path Traversal Attempt\','
             'tag:\'application-multi\',tag:\'attack-rce\',tag:\'CWE-78\',tag:\'CWE-22\',severity:\'CRITICAL\'"'
         ),
         "sigma_id": "sniper-sigma-cmdi-004",
         "sigma_level": "critical",
         "mitre_attack": ["T1059.004", "T1083"],
         "sigma_yaml": (
-            "title: Sniper Detection - OS Command Injection and Directory Traversal\n"
+            "title: VulKill Detection - OS Command Injection and Directory Traversal\n"
             "id: 8b41c920-9004-4a7a-b104-000000990104\n"
             "status: stable\n"
             "description: Detects shell metacharacter command chaining and path traversal sequences.\n"
-            "author: Sniper Blue-Team Rule Synthesizer\n"
+            "author: VulKill Blue-Team Rule Synthesizer\n"
             "logsource:\n"
             "  category: webserver\n"
             "detection:\n"
@@ -239,7 +239,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901004,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE Command Injection or Path Traversal"; flow:established,to_server; '
+            '(msg:"VULKILL-BLUE Command Injection or Path Traversal"; flow:established,to_server; '
             'http.uri; pcre:"/(?:(?:\\.\\.|%2e%2e)(?:\\/|%2f)|\\/etc\\/passwd|(?:;|\\||&&)\\s*(?:id|whoami|cat|sh)\\b)/i"; '
             'classtype:web-application-attack; sid:9901004; rev:1;)'
         ),
@@ -267,7 +267,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
             'SecRule REQUEST_HEADERS:Authorization|ARGS:token|REQUEST_COOKIES '
             '"@rx (?i:eyJ[A-Za-z0-9_-]*\\.(?:eyJ[A-Za-z0-9_-]*\\.)?)" '
             '"id:990105,phase:1,chain,deny,status:401,log,t:none,'
-            'msg:\'Sniper Virtual Patch: JWT alg=none or Unsigned Token Tampering\','
+            'msg:\'VulKill Virtual Patch: JWT alg=none or Unsigned Token Tampering\','
             'tag:\'application-multi\',tag:\'attack-auth\',tag:\'CWE-347\',severity:\'CRITICAL\'"\n'
             'SecRule MATCHED_VARS "@rx (?:eyJhbGciOiJub25l|eyJhbGciOiJOT05F|\\.[\\s]*$)" "t:none"'
         ),
@@ -275,11 +275,11 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "sigma_level": "high",
         "mitre_attack": ["T1078", "T1110", "T1550.001"],
         "sigma_yaml": (
-            "title: Sniper Detection - JWT Algorithm None Tampering and BOLA Enumeration\n"
+            "title: VulKill Detection - JWT Algorithm None Tampering and BOLA Enumeration\n"
             "id: 8b41c920-9005-4a7a-b105-000000990105\n"
             "status: stable\n"
             "description: Detects unsigned JWT tokens (alg:none) and rapid sequential object ID enumeration.\n"
-            "author: Sniper Blue-Team Rule Synthesizer\n"
+            "author: VulKill Blue-Team Rule Synthesizer\n"
             "logsource:\n"
             "  category: webserver\n"
             "detection:\n"
@@ -296,7 +296,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901005,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE JWT alg=none Authentication Bypass Attempt"; '
+            '(msg:"VULKILL-BLUE JWT alg=none Authentication Bypass Attempt"; '
             'flow:established,to_server; http.header; content:"eyJhbGciOiJub25l"; '
             'classtype:attempted-admin; sid:9901005; rev:1;)'
         ),
@@ -322,18 +322,18 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
             '"@rx (?i:(?:<!DOCTYPE[^>]*\\[\\s*<!ENTITY|<!ENTITY\\s+%?\\s*\\w+\\s+SYSTEM|'
             'rO0ABX|aced0005|gASV|__reduce__|!!python/object))" '
             '"id:990106,phase:2,deny,status:403,log,t:none,t:urlDecodeUni,'
-            'msg:\'Sniper Virtual Patch: Insecure Deserialization or XXE Payload\','
+            'msg:\'VulKill Virtual Patch: Insecure Deserialization or XXE Payload\','
             'tag:\'application-multi\',tag:\'attack-rce\',tag:\'CWE-502\',tag:\'CWE-611\',severity:\'CRITICAL\'"'
         ),
         "sigma_id": "sniper-sigma-deser-006",
         "sigma_level": "critical",
         "mitre_attack": ["T1190", "T1059"],
         "sigma_yaml": (
-            "title: Sniper Detection - XXE SYSTEM Entity or Unsafe Object Deserialization\n"
+            "title: VulKill Detection - XXE SYSTEM Entity or Unsafe Object Deserialization\n"
             "id: 8b41c920-9006-4a7a-b106-000000990106\n"
             "status: stable\n"
             "description: Detects Java/Python/YAML deserialization gadgets and XML external entities.\n"
-            "author: Sniper Blue-Team Rule Synthesizer\n"
+            "author: VulKill Blue-Team Rule Synthesizer\n"
             "logsource:\n"
             "  category: webserver\n"
             "detection:\n"
@@ -353,7 +353,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901006,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE XXE or Object Deserialization Payload"; '
+            '(msg:"VULKILL-BLUE XXE or Object Deserialization Payload"; '
             'flow:established,to_server; http.request_body; '
             'pcre:"/(?:<!ENTITY\\s+[^>]*SYSTEM|rO0ABX|!!python\\/object)/i"; '
             'classtype:web-application-attack; sid:9901006; rev:1;)'
@@ -382,18 +382,18 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
             'reveal\\s+(?:your\\s+)?system\\s+prompt|developer\\s+mode\\s+enabled|'
             '<\\|im_start\\|>\\s*system|\\[SYSTEM\\s*OVERRIDE\\]))" '
             '"id:990107,phase:2,deny,status:403,log,t:none,t:urlDecodeUni,'
-            'msg:\'Sniper Virtual Patch: AI/LLM Prompt Injection Attempt\','
+            'msg:\'VulKill Virtual Patch: AI/LLM Prompt Injection Attempt\','
             'tag:\'application-multi\',tag:\'OWASP-LLM01\',tag:\'CWE-77\',severity:\'HIGH\'"'
         ),
         "sigma_id": "sniper-sigma-llm-007",
         "sigma_level": "high",
         "mitre_attack": ["T1059", "T1190"],
         "sigma_yaml": (
-            "title: Sniper Detection - AI/LLM Prompt Injection and System Prompt Extraction\n"
+            "title: VulKill Detection - AI/LLM Prompt Injection and System Prompt Extraction\n"
             "id: 8b41c920-9007-4a7a-b107-000000990107\n"
             "status: stable\n"
             "description: Detects adversarial prompt override and delimiter injection targeting LLM APIs.\n"
-            "author: Sniper Blue-Team Rule Synthesizer\n"
+            "author: VulKill Blue-Team Rule Synthesizer\n"
             "logsource:\n"
             "  category: application\n"
             "detection:\n"
@@ -412,7 +412,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901007,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE AI/LLM Prompt Injection Payload"; '
+            '(msg:"VULKILL-BLUE AI/LLM Prompt Injection Payload"; '
             'flow:established,to_server; http.request_body; '
             'pcre:"/(?:ignore\\s+(?:all\\s+)?(?:previous|prior)\\s+instructions|<\\|im_start\\|>\\s*system)/i"; '
             'classtype:web-application-attack; sid:9901007; rev:1;)'
@@ -442,7 +442,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "secrule": (
             'SecRule REQUEST_URI "@rx (?i:/(?:checkout|withdraw|transfer|redeem|coupon|payment|refund))" '
             '"id:990108,phase:2,chain,deny,status:429,log,t:none,'
-            'msg:\'Sniper Virtual Patch: Negative Quantity/Amount or Missing Idempotency on Financial Endpoint\','
+            'msg:\'VulKill Virtual Patch: Negative Quantity/Amount or Missing Idempotency on Financial Endpoint\','
             'tag:\'application-multi\',tag:\'attack-business-logic\',tag:\'CWE-362\',severity:\'HIGH\'"\n'
             'SecRule REQUEST_BODY|ARGS "@rx (?i:\"(?:amount|quantity|price|transfer_amount)\"\\s*:\\s*-[0-9]+)" "t:none"'
         ),
@@ -450,11 +450,11 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "sigma_level": "high",
         "mitre_attack": ["T1190", "T1499.004"],
         "sigma_yaml": (
-            "title: Sniper Detection - Financial Race Condition Burst and Negative Value Tampering\n"
+            "title: VulKill Detection - Financial Race Condition Burst and Negative Value Tampering\n"
             "id: 8b41c920-9008-4a7a-b108-000000990108\n"
             "status: stable\n"
             "description: Detects concurrent burst requests or negative amount manipulation on state-changing routes.\n"
-            "author: Sniper Blue-Team Rule Synthesizer\n"
+            "author: VulKill Blue-Team Rule Synthesizer\n"
             "logsource:\n"
             "  category: webserver\n"
             "detection:\n"
@@ -477,7 +477,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901008,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE Business Logic Concurrent Burst on Financial Endpoint"; '
+            '(msg:"VULKILL-BLUE Business Logic Concurrent Burst on Financial Endpoint"; '
             'flow:established,to_server; http.method; content:"POST"; '
             'http.uri; pcre:"/\\/(?:withdraw|transfer|checkout|redeem)/i"; '
             'threshold:type both,track by_src,count 10,seconds 2; '
@@ -502,7 +502,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "secrule": (
             'SecRule REQUEST_URI "@rx (?i:/(?:api/v[0-9]+/webhooks|github-webhook|gitlab-webhook))" '
             '"id:990109,phase:2,chain,deny,status:403,log,t:none,'
-            'msg:\'Sniper Virtual Patch: CI/CD Webhook Shell Metacharacter Injection Attempt\','
+            'msg:\'VulKill Virtual Patch: CI/CD Webhook Shell Metacharacter Injection Attempt\','
             'tag:\'application-multi\',tag:\'attack-supplychain\',tag:\'CWE-78\',severity:\'CRITICAL\'"\n'
             'SecRule REQUEST_BODY "@rx (?i:(?:\\$\\([^)]+\\)|`[^`]+`|;\\s*(?:curl|wget|bash|sh|nc)\\b))" "t:none"'
         ),
@@ -510,11 +510,11 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "sigma_level": "critical",
         "mitre_attack": ["T1195.002", "T1059.004"],
         "sigma_yaml": (
-            "title: Sniper Detection - CI/CD Runner Expression Injection and Untrusted PR Checkout\n"
+            "title: VulKill Detection - CI/CD Runner Expression Injection and Untrusted PR Checkout\n"
             "id: 8b41c920-9009-4a7a-b109-000000990109\n"
             "status: stable\n"
             "description: Detects shell command injection via untrusted PR title/body in CI/CD runners.\n"
-            "author: Sniper Blue-Team Rule Synthesizer\n"
+            "author: VulKill Blue-Team Rule Synthesizer\n"
             "logsource:\n"
             "  category: process_creation\n"
             "  product: linux\n"
@@ -535,7 +535,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901009,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE CI/CD Webhook Command Injection Payload"; '
+            '(msg:"VULKILL-BLUE CI/CD Webhook Command Injection Payload"; '
             'flow:established,to_server; http.request_body; '
             'pcre:"/(?:\\$\\(\\s*(?:curl|wget|sh|bash)|`\\s*(?:curl|wget|sh|bash))/i"; '
             'classtype:web-application-attack; sid:9901009; rev:1;)'
@@ -562,18 +562,18 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
             '"@rx (?i:(?:/var/run/(?:docker|containerd|crio)\\.sock|hostPID\\s*:\\s*true|'
             'privileged\\s*:\\s*true|latest/meta-data/iam/security-credentials))" '
             '"id:990110,phase:2,deny,status:403,log,t:none,t:urlDecodeUni,'
-            'msg:\'Sniper Virtual Patch: Container Runtime Socket or IMDSv1 Credential Probe\','
+            'msg:\'VulKill Virtual Patch: Container Runtime Socket or IMDSv1 Credential Probe\','
             'tag:\'application-multi\',tag:\'attack-cloud\',tag:\'CWE-250\',severity:\'CRITICAL\'"'
         ),
         "sigma_id": "sniper-sigma-k8s-010",
         "sigma_level": "critical",
         "mitre_attack": ["T1611", "T1552.005"],
         "sigma_yaml": (
-            "title: Sniper Detection - Kubernetes Privileged Pod Creation or Runtime Socket Mount\n"
+            "title: VulKill Detection - Kubernetes Privileged Pod Creation or Runtime Socket Mount\n"
             "id: 8b41c920-9010-4a7a-b110-000000990110\n"
             "status: stable\n"
             "description: Detects Kubernetes API requests mounting docker.sock/containerd.sock or enabling hostPID/privileged.\n"
-            "author: Sniper Blue-Team Rule Synthesizer\n"
+            "author: VulKill Blue-Team Rule Synthesizer\n"
             "logsource:\n"
             "  product: kubernetes\n"
             "  service: audit\n"
@@ -594,7 +594,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901010,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE Container Socket or K8s Escape Probe"; '
+            '(msg:"VULKILL-BLUE Container Socket or K8s Escape Probe"; '
             'flow:established,to_server; http.request_body; '
             'pcre:"/(?:\\/var\\/run\\/(?:docker|containerd)\\.sock|\"privileged\"\\s*:\\s*true)/i"; '
             'classtype:attempted-admin; sid:9901010; rev:1;)'
@@ -676,7 +676,7 @@ def synthesize_blue_team_rules(
     target_domain: str = "app.example.com",
     include_baseline: bool = False,
 ) -> dict[str, Any]:
-    """Synthesize ModSecurity, Sigma, Suricata, and Nginx WAF rules from Sniper findings.
+    """Synthesize ModSecurity, Sigma, Suricata, and Nginx WAF rules from VulKill findings.
 
     23. tur: kurallar yalnız gerçek bulgularla eşleşen tehdit aileleri için üretilir. Bulgu yoksa ya da eşleşme yoksa
     tüm aileler için "temel" (BASELINE) kural seti yalnız ``include_baseline`` ile ve şablon etiketiyle döner."""
@@ -756,7 +756,7 @@ def synthesize_blue_team_rules(
         )
 
     combined_modsecurity_conf = (
-        f"# Sniper Synthesized ModSecurity Virtual Patches for {clean_domain}\n"
+        f"# VulKill Synthesized ModSecurity Virtual Patches for {clean_domain}\n"
         "SecRuleEngine On\n"
         "SecRequestBodyAccess On\n\n"
         + "\n\n".join(rule["secrule"] for rule in modsecurity_rules)
@@ -768,7 +768,7 @@ def synthesize_blue_team_rules(
     ) + "\n"
 
     nginx_waf_snippet = (
-        f"# Sniper Blue-Team Hardening & Rate-Limit Snippet for {clean_domain}\n"
+        f"# VulKill Blue-Team Hardening & Rate-Limit Snippet for {clean_domain}\n"
         "limit_req_zone $binary_remote_addr zone=sniper_api_burst:10m rate=10r/s;\n\n"
         "server {\n"
         f"    server_name {clean_domain};\n"
@@ -808,7 +808,7 @@ def synthesize_blue_team_rules(
 
 
 _ROUTE_PATH_RE = re.compile(r"/(?:api|ws)/[A-Za-z0-9_/{}:.-]+")
-_VPATCH_CWE_RE = re.compile(r"\b(CWE-\d+|LLM\d+|SNIPER-[A-Z0-9-]+)\b", re.IGNORECASE)
+_VPATCH_CWE_RE = re.compile(r"\b(CWE-\d+|LLM\d+|VULKILL-[A-Z0-9-]+)\b", re.IGNORECASE)
 _DANGEROUS_PARAMS: tuple[str, ...] = (
     "upload_id",
     "redirect_uri",
@@ -939,7 +939,7 @@ def synthesize_precision_virtual_patches(findings: list[dict[str, Any]]) -> dict
 
         sig = f"{cwe}|{route_path}|{param_name}"
         digest = hashlib.sha256(sig.encode("utf-8")).hexdigest()[:8]
-        patch_id = f"SNIPER-VPATCH-{digest}"
+        patch_id = f"VULKILL-VPATCH-{digest}"
         modsec_id = 995000 + (int(digest[:4], 16) % 4900)
 
         if route_path == "/*":
@@ -951,7 +951,7 @@ def synthesize_precision_virtual_patches(findings: list[dict[str, Any]]) -> dict
             modsecurity_secrule = (
                 f'SecRule REQUEST_URI "@beginsWith {route_prefix}" '
                 f'"id:{modsec_id},phase:2,chain,deny,status:403,log,t:none,t:urlDecodeUni,t:normalizePath,'
-                f"msg:'Sniper Precision Virtual Patch ({cwe}) Path Traversal on {route_path} [{param_name}]',"
+                f"msg:'VulKill Precision Virtual Patch ({cwe}) Path Traversal on {route_path} [{param_name}]',"
                 f"tag:'{cwe}',severity:'CRITICAL'\"\n"
                 f'SecRule ARGS:{param_name}|ARGS|REQUEST_URI "@rx (?:\\.\\./|\\.\\.\\\\|%2e%2e|/etc/passwd|/proc/self)" '
                 f'"t:none,t:urlDecodeUni"'
@@ -966,7 +966,7 @@ def synthesize_precision_virtual_patches(findings: list[dict[str, Any]]) -> dict
             modsecurity_secrule = (
                 f'SecRule REQUEST_URI "@beginsWith {route_prefix}" '
                 f'"id:{modsec_id},phase:2,chain,deny,status:403,log,t:none,t:urlDecodeUni,'
-                f"msg:'Sniper Precision Virtual Patch ({cwe}) SSRF Metadata Guard on {route_path} [{param_name}]',"
+                f"msg:'VulKill Precision Virtual Patch ({cwe}) SSRF Metadata Guard on {route_path} [{param_name}]',"
                 f"tag:'{cwe}',severity:'CRITICAL'\"\n"
                 f'SecRule ARGS:{param_name}|ARGS|REQUEST_BODY '
                 f'"@rx (?i:169\\.254\\.169\\.254|metadata\\.google\\.internal|100\\.100\\.100\\.200|(?:file|gopher|dict)://|127\\.0\\.0\\.1|localhost)" '
@@ -983,7 +983,7 @@ def synthesize_precision_virtual_patches(findings: list[dict[str, Any]]) -> dict
             modsecurity_secrule = (
                 f'SecRule REQUEST_URI "@beginsWith {route_prefix}" '
                 f'"id:{modsec_id},phase:1,chain,deny,status:403,log,t:none,'
-                f"msg:'Sniper Precision Virtual Patch ({cwe}) Strict Origin/CSWSH Guard on {route_path}',"
+                f"msg:'VulKill Precision Virtual Patch ({cwe}) Strict Origin/CSWSH Guard on {route_path}',"
                 f"tag:'{cwe}',severity:'HIGH'\"\n"
                 f'SecRule REQUEST_HEADERS:Origin "@rx (?i:^null$|^https?://(?:evil\\.|attacker\\.|untrusted\\.|\\*))" "t:none"'
             )
@@ -997,7 +997,7 @@ def synthesize_precision_virtual_patches(findings: list[dict[str, Any]]) -> dict
             modsecurity_secrule = (
                 f'SecRule REQUEST_URI "@beginsWith {route_prefix}" '
                 f'"id:{modsec_id},phase:1,chain,deny,status:401,log,t:none,t:urlDecodeUni,'
-                f"msg:'Sniper Precision Virtual Patch ({cwe}) AuthZ/JWT Guard on {route_path} [{param_name}]',"
+                f"msg:'VulKill Precision Virtual Patch ({cwe}) AuthZ/JWT Guard on {route_path} [{param_name}]',"
                 f"tag:'{cwe}',severity:'CRITICAL'\"\n"
                 f'SecRule REQUEST_HEADERS:Authorization|ARGS:{param_name}|ARGS '
                 f'"@rx (?i:eyJhbGciOiJub25l|\\"(?:jku|x5u)\\"\\s*:\\s*\\"https?://|\\.\\./)" "t:none"'
@@ -1011,7 +1011,7 @@ def synthesize_precision_virtual_patches(findings: list[dict[str, Any]]) -> dict
             modsecurity_secrule = (
                 f'SecRule REQUEST_URI "@beginsWith {route_prefix}" '
                 f'"id:{modsec_id},phase:2,chain,deny,status:403,log,t:none,t:urlDecodeUni,'
-                f"msg:'Sniper Precision Virtual Patch ({cwe}) Injection Guard on {route_path} [{param_name}]',"
+                f"msg:'VulKill Precision Virtual Patch ({cwe}) Injection Guard on {route_path} [{param_name}]',"
                 f"tag:'{cwe}',severity:'CRITICAL'\"\n"
                 f'SecRule ARGS:{param_name}|ARGS|REQUEST_BODY '
                 f'"@rx (?i:\\.\\./|169\\.254\\.169\\.254|https?://|union\\s+select|;\\s*(?:sh|bash|curl|wget)|ignore\\s+previous\\s+instructions)" '
@@ -1047,11 +1047,11 @@ def synthesize_precision_virtual_patches(findings: list[dict[str, Any]]) -> dict
 
         sigma_contains_lines = "\n".join(f"      - {p}" for p in sigma_payloads)
         sigma_rule_yaml = (
-            f"title: Sniper Precision Detection - {cwe} on {route_path} ({param_name})\n"
+            f"title: VulKill Precision Detection - {cwe} on {route_path} ({param_name})\n"
             f"id: 8b41c920-9999-4a7a-b999-0000{digest}\n"
             "status: stable\n"
-            f"description: Endpoint-specific Sigma rule synthesized by Sniper for {cwe} on {route_path} parameter {param_name}.\n"
-            "author: Sniper Blue-Team Rule Synthesizer\n"
+            f"description: Endpoint-specific Sigma rule synthesized by VulKill for {cwe} on {route_path} parameter {param_name}.\n"
+            "author: VulKill Blue-Team Rule Synthesizer\n"
             "logsource:\n"
             "  category: webserver\n"
             "detection:\n"

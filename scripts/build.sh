@@ -10,12 +10,12 @@ if ! docker info >/dev/null 2>&1; then
 fi
 
 VERSION=$(tr -d '\n\r' < COMMUNITY_VERSION)
-echo "Building Sniper Community $VERSION..."
+echo "Building VulKill Community $VERSION..."
 
 python3 .github/scripts/validate-community-release.py
 python3 -m compileall -q core exporter plugins tests ./*.py
 python3 -m unittest discover -s tests -v
 GRAFANA_ADMIN_PASSWORD=validation-only docker compose --profile monitoring config --quiet
-docker build --tag "sniper-community:${VERSION}" --build-arg VERSION="$VERSION" .
+docker build --tag "vulkill-community:${VERSION}" --build-arg VERSION="$VERSION" .
 
-echo "Sniper Community $VERSION built and validated."
+echo "VulKill Community $VERSION built and validated."

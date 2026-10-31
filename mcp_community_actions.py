@@ -1,6 +1,6 @@
 """Community sürümü için MCP ürün eylemi adaptörleri.
 
-Bu modül tarayıcı ya da yeni bir analiz motoru değildir. Yerel Sniper ürün
+Bu modül tarayıcı ya da yeni bir analiz motoru değildir. Yerel VulKill ürün
 sözleşmelerini küçük, makine-okunur sonuçlara bağlar. Durum okuma dışındaki
 eylemler önce süreli bir plan üretir; plan yalnız ``user_confirmed is True`` ve
 aynı planın tam SHA-256 özetiyle bir kez yürütülebilir.
@@ -44,15 +44,11 @@ COMMUNITY_TOOLS: list[dict[str, Any]] = [
     {
         "name": "list_community_capabilities",
         "description": "Community MCP ürün eylemlerinin gerçek readiness durumunu listeler; eylem çalıştırmaz.",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False,
-                        "idempotentHint": True, "openWorldHint": False},
         "inputSchema": {"type": "object", "additionalProperties": False, "properties": {}},
     },
     {
         "name": "community_job_status",
-        "description": "Bağlı Sniper iş kuyruğundaki bir işin güvenli durum özetini döndürür.",
-        "annotations": {"readOnlyHint": True, "destructiveHint": False,
-                        "idempotentHint": True, "openWorldHint": False},
+        "description": "Bağlı VulKill iş kuyruğundaki bir işin güvenli durum özetini döndürür.",
         "inputSchema": {
             "type": "object",
             "additionalProperties": False,
@@ -66,8 +62,6 @@ COMMUNITY_TOOLS: list[dict[str, Any]] = [
             "Community ürün eylemini çalıştırmadan süreli, tek kullanımlık ve tam normalize parametrelere "
             "SHA-256 bağlı bir plan hazırlar."
         ),
-        "annotations": {"readOnlyHint": False, "destructiveHint": False,
-                        "idempotentHint": False, "openWorldHint": False},
         "inputSchema": {
             "type": "object",
             "additionalProperties": False,
@@ -97,8 +91,6 @@ COMMUNITY_TOOLS: list[dict[str, Any]] = [
             "Önceden hazırlanan planı yalnız kullanıcı sohbet onayı tam true ve plan SHA-256 eşleşiyorsa bir kez "
             "yürütür."
         ),
-        "annotations": {"readOnlyHint": False, "destructiveHint": True,
-                        "idempotentHint": False, "openWorldHint": True},
         "inputSchema": {
             "type": "object",
             "additionalProperties": False,
@@ -111,6 +103,18 @@ COMMUNITY_TOOLS: list[dict[str, Any]] = [
         },
     },
 ]
+
+_COMMUNITY_TOOL_ANNOTATIONS: dict[str, tuple[bool, bool, bool, bool]] = {
+    "list_community_capabilities": (True, False, True, False),
+    "community_job_status": (True, False, True, False),
+    "prepare_action": (False, False, False, False),
+    "execute_action": (False, True, False, True),
+}
+_ANNOTATION_KEYS = ("readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint")
+for _tool in COMMUNITY_TOOLS:
+    _tool["annotations"] = dict(
+        zip(_ANNOTATION_KEYS, _COMMUNITY_TOOL_ANNOTATIONS[_tool["name"]], strict=True)
+    )
 
 
 class CommunityActionError(ValueError):
@@ -189,7 +193,7 @@ def _only(parameters: dict[str, Any], allowed: set[str]) -> None:
 
 
 class CommunityActions:
-    """Mevcut Sniper işlevlerini onay kapılı MCP eylemlerine uyarlar.
+    """Mevcut VulKill işlevlerini onay kapılı MCP eylemlerine uyarlar.
 
     ``store`` ve ``queue`` bilerek enjekte edilir. Eksik bağımlılık için geçici
     başarı üretilmez; ``list_capabilities`` o eylemi ``unavailable`` bildirir ve
@@ -325,7 +329,7 @@ class CommunityActions:
     def list_capabilities(self) -> dict[str, Any]:
         readiness = self._readiness()
         descriptions = {
-            "analyze_local_project": "İzinli yerel proje klasörünü Sniper ile analiz eder.",
+            "analyze_local_project": "İzinli yerel proje klasörünü VulKill ile analiz eder.",
             "generate_sbom": "İzinli yerel proje için CycloneDX 1.5 veya SPDX 2.3 SBOM üretir.",
             "compare_saved_scans": "İki kayıtlı proje denetimini veya iki kayıtlı ağ taramasını karşılaştırır.",
             "export_saved_audit": "Kayıtlı proje denetimini JSON, SARIF, HTML veya CSV olarak dışa aktarır.",

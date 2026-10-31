@@ -1,5 +1,5 @@
 #!/bin/sh
-# Sniper pre-commit kancası ÖRNEĞİ (yalnız yerel; ağ kullanmaz).
+# VulKill pre-commit kancası ÖRNEĞİ (yalnız yerel; ağ kullanmaz).
 # Kurulum: bu dosyayı projenizde .git/hooks/pre-commit olarak kopyalayıp çalıştırılabilir yapın.
 # Kaydedilmemiş (sahnelenmiş + çalışma ağacı) değişiklikleri HEAD ile karşılaştırır; yüksek ve üstü
 # YENİ bulgu varsa commit'i durdurur. Atlamak için: git commit --no-verify

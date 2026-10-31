@@ -1,6 +1,6 @@
 """Wave 6 — Bulut-Yerli (Cloud-Native) Kubernetes Admission, NetworkPolicy ve Tetragon eBPF Sentezleyici.
 
-Projenin gerçek servis güven grafiğini (service_trust_graph) ve Sniper güvenlik
+Projenin gerçek servis güven grafiğini (service_trust_graph) ve VulKill güvenlik
 bulgularını kullanarak en az ayrıcalıklı Kubernetes NetworkPolicy, CEL tabanlı
 ValidatingAdmissionPolicy ve Cilium Tetragon eBPF TracingPolicy manifestolarını üretir.
 """
@@ -173,7 +173,7 @@ def synthesize_zero_trust_k8s_and_ebpf_policies(
     cel_rules: list[dict[str, str]] = [
         {
             "expression": "!object.spec.template.spec.containers.exists(c, c.?securityContext.?privileged.orValue(false) == true)",
-            "message": "SNIPER-K8S-CEL-01: Privileged containers are strictly prohibited in zero-trust namespaces.",
+            "message": "VULKILL-K8S-CEL-01: Privileged containers are strictly prohibited in zero-trust namespaces.",
             "reason": "Forbidden",
         },
         {
@@ -182,7 +182,7 @@ def synthesize_zero_trust_k8s_and_ebpf_policies(
                 "c.?securityContext.?capabilities.?add.orValue([]).exists(cap, "
                 "cap in ['NET_ADMIN', 'SYS_ADMIN', 'SYS_PTRACE', 'SYS_MODULE', 'DAC_OVERRIDE']))"
             ),
-            "message": "SNIPER-K8S-CEL-02: Dangerous Linux capabilities (NET_ADMIN, SYS_ADMIN, SYS_PTRACE) are prohibited.",
+            "message": "VULKILL-K8S-CEL-02: Dangerous Linux capabilities (NET_ADMIN, SYS_ADMIN, SYS_PTRACE) are prohibited.",
             "reason": "Forbidden",
         },
         {
@@ -190,7 +190,7 @@ def synthesize_zero_trust_k8s_and_ebpf_policies(
                 "!object.spec.template.spec.?volumes.orValue([]).exists(v, "
                 "v.?hostPath.?path.orValue('') in ['/var/run/docker.sock', '/run/containerd/containerd.sock', '/dev/kvm', '/'])"
             ),
-            "message": "SNIPER-K8S-CEL-03: HostPath mounts exposing container runtime sockets (/var/run/docker.sock) or /dev/kvm are prohibited.",
+            "message": "VULKILL-K8S-CEL-03: HostPath mounts exposing container runtime sockets (/var/run/docker.sock) or /dev/kvm are prohibited.",
             "reason": "Forbidden",
         },
         {
@@ -199,7 +199,7 @@ def synthesize_zero_trust_k8s_and_ebpf_policies(
                 "c.?securityContext.?runAsNonRoot.orValue(false) == true && "
                 "c.?securityContext.?runAsUser.orValue(1000) != 0)"
             ),
-            "message": "SNIPER-K8S-CEL-04: All containers must enforce runAsNonRoot == true and non-zero UID.",
+            "message": "VULKILL-K8S-CEL-04: All containers must enforce runAsNonRoot == true and non-zero UID.",
             "reason": "Forbidden",
         },
     ]

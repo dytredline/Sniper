@@ -290,7 +290,7 @@ class JobsHttpTests(unittest.TestCase):
         server.STORE = Store(Path(self.temp.name) / "fixture.db")
         server.LIMITER = server.RateLimiter()
         server.JOBS = JobQueue(workers=1, on_finish=server._job_finished)
-        self.httpd = server.SniperHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = server.VulKillHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.port = self.httpd.server_address[1]
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()

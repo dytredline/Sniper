@@ -22,7 +22,7 @@ class SemgrepActiveScanApiTests(unittest.TestCase):
         self.base = Path(self.temp.name)
         self.previous_store = server.STORE
         server.STORE = Store(self.base / "data" / "sniper.db")
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.httpd.daemon_threads = True
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()
@@ -90,7 +90,7 @@ class SemgrepActiveScanApiTests(unittest.TestCase):
         project_dir.mkdir()
         (project_dir / "test.py").write_text("x = 1")
 
-        # Sniper araç dizinindeki varsayılan Opengrep'i devre dışı bırakmak için
+        # VulKill araç dizinindeki varsayılan Opengrep'i devre dışı bırakmak için
         # var olmayan bir yol verilir; doğrulanamayan ikili çalıştırılmaz.
         with patch.dict(os.environ, {"SNIPER_OPENGREP_BINARY": "/nonexistent/opengrep"}):
             status, body = self.request_json(

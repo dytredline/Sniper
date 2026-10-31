@@ -2,7 +2,7 @@ id: sniper-local-powered-by-v1
 
 info:
   name: Local X-Powered-By response header
-  author: sniper-community
+  author: vulkill-community
   severity: info
   description: Reports an X-Powered-By header from an explicitly selected loopback HTTP service.
 

@@ -44,7 +44,7 @@ def test_go_native_fuzz_harness_compiles_with_real_go_toolchain() -> None:
         "cwe": "CWE-20",
         "compile_command": "go test -run=^$ ./...",
         "fuzz_command": "go test -run=^$ -fuzz=^FuzzParseFrame$ -fuzztime=60s ./...",
-        "harness_filename": "frame_sniper_fuzz_test.go",
+        "harness_filename": "frame_vulkill_fuzz_test.go",
         "harness_code": harness["harness_code"],
         "network_required": False,
     }

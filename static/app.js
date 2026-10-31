@@ -344,7 +344,7 @@ function navigate(view) {
   if (view === "audit") loadAudit();
   if (view === "tracking" && typeof globalThis.sniperLoadTracking === "function") globalThis.sniperLoadTracking();
   if (view === "portfolio" && typeof globalThis.sniperLoadPortfolio === "function") globalThis.sniperLoadPortfolio();
-  if ((view === "schedules" || view === "notifications") && globalThis.SniperOps) globalThis.SniperOps.show(view);
+  if ((view === "schedules" || view === "notifications") && globalThis.VulKillOps) globalThis.VulKillOps.show(view);
 }
 
 async function loadAll() {
@@ -547,8 +547,8 @@ function renderDependencySecurity() {
     ["ETKİN BULGU", summary.active || 0], ["KRİTİK", summary.critical || 0],
     ["YÜKSEK", summary.high || 0], ["ESKİ VERİ KAYNAĞI", summary.stale_sources || 0],
   ].map(([label, value]) => `<article><small>${label}</small><b>${Number(value)}</b></article>`).join("");
-  $("#dependency-summary").innerHTML = summaryHtml; // sniper-reviewed: html-safe
-  $("#dependency-report-summary").innerHTML = summaryHtml; // sniper-reviewed: html-safe
+  $("#dependency-summary").innerHTML = summaryHtml; // vulkill-reviewed: html-safe
+  $("#dependency-report-summary").innerHTML = summaryHtml; // vulkill-reviewed: html-safe
   const countEl = $("#dependency-filter-count");
   const total = Number(summary.total ?? findings.length);
   const page = data.page || { offset: 0, limit: findings.length, filtered_total: findings.length, has_more: false };
@@ -656,8 +656,8 @@ function renderDependencySbomDeltaChoices(sboms) {
   }
   const comparable = sboms.filter(item => item && projectCounts.get(item.project_path) >= 2);
   const options = comparable.map(item => `<option value="${esc(item.id)}">${esc(item.project_name || item.project_path)} · ${formatDate(item.created_at)}</option>`).join("");
-  $("#sbom-delta-before").innerHTML = `<option value="">Önceki kaydı seçin</option>${options}`; // sniper-reviewed: html-safe
-  $("#sbom-delta-after").innerHTML = `<option value="">Sonraki kaydı seçin</option>${options}`; // sniper-reviewed: html-safe
+  $("#sbom-delta-before").innerHTML = `<option value="">Önceki kaydı seçin</option>${options}`; // vulkill-reviewed: html-safe
+  $("#sbom-delta-after").innerHTML = `<option value="">Sonraki kaydı seçin</option>${options}`; // vulkill-reviewed: html-safe
   $("#sbom-delta-before").value = "";
   $("#sbom-delta-after").value = "";
   $("#sbom-delta-submit").disabled = comparable.length < 2;
@@ -3860,7 +3860,7 @@ function labScenarioIcon(type) {
 
 function labMetric(run) {
   if (run.scenario_type === "capacity_plan") return `<strong>${Number(run.results?.projected_requests || 0).toLocaleString("tr-TR")}</strong>tahmini istek`;
-  if (run.scenario_type === "lockout_plan") return `<strong>${Number(run.results?.requests_generated || 0)}</strong>Sniper isteği`;
+  if (run.scenario_type === "lockout_plan") return `<strong>${Number(run.results?.requests_generated || 0)}</strong>VulKill isteği`;
   return `<strong>MASKELİ</strong>sonuç kaydı`;
 }
 
@@ -3879,7 +3879,7 @@ function openLabCreator(type) {
   $("#lab-scenario-type").value = type;
   $("#lab-engagement").innerHTML = `<option value="">Bağımsız kayıt</option>${state.engagements.map(item => `<option value="${esc(item.id)}">${esc(item.name)} · ${esc(item.authorization_ref)}</option>`).join("")}`;
   const environment = $("#lab-environment");
-  environment.innerHTML = type === "external_result" ? `<option value="staging">Staging</option><option value="lab">Laboratuvar</option><option value="production">Üretim — yalnız sonuç kaydı</option>` : `<option value="staging">Staging</option><option value="lab">Laboratuvar</option>`; // sniper-reviewed: html-safe
+  environment.innerHTML = type === "external_result" ? `<option value="staging">Staging</option><option value="lab">Laboratuvar</option><option value="production">Üretim — yalnız sonuç kaydı</option>` : `<option value="staging">Staging</option><option value="lab">Laboratuvar</option>`; // vulkill-reviewed: html-safe
   const details = {
     capacity_plan: ["KAPASİTE PLANLAMASI", "Staging kapasite planı", "Hedef yük ve durdurma eşikleri yalnızca projeksiyon üretir; hiçbir hedef adresi alınmaz."],
     lockout_plan: ["SENTETİK HESAP PLANI", "Kilitlenme doğrulama planı", "Gerçek kullanıcı veya parola almadan kontrollü gözlem adımlarını hesaplar."],
@@ -3893,7 +3893,7 @@ function openLabCreator(type) {
     lockout_plan: `<p class="field-help">Bu formda kullanıcı adı, e-posta veya parola alanı yoktur. Takma ad yalnızca önceden oluşturulmuş sentetik test hesabını işaret eder.</p><label class="full">Sentetik hesap takma adı<input name="synthetic_account_alias" maxlength="100" placeholder="sentetik-test-01" required></label><label>Azami kontrollü adım<input name="max_attempts" type="number" min="1" max="10" value="5" required></label><label>Adımlar arası süre (sn)<input name="interval_seconds" type="number" min="5" max="3600" value="10" required></label><label>Beklenen kilit süresi (sn)<input name="expected_lockout_seconds" type="number" min="1" max="86400" value="300" required></label><label>İzleme sinyali<input name="monitoring_signal" maxlength="240" placeholder="auth_lockout_total veya SIEM alarm adı" required></label>`,
     external_result: `<p class="field-help">Ham HTTP günlüğü, parola, erişim anahtarı veya çıkarılmış veri yapıştırmayın. Yalnız kimliksizleştirilmiş özet ve bütünlük hash’i kaydedilir.</p><label>Yetkili harici araç<input name="tool_name" maxlength="120" placeholder="Örn. OWASP ZAP" required></label><label>Test zaman penceresi<input name="test_window" maxlength="240" placeholder="01 Eylül 22:00–22:15" required></label><label class="full">161 kontrolden biri (isteğe bağlı)<select name="control_id" id="lab-control"><option value="">Önce manuel denetim seçin</option></select></label><label class="full">Maskeli kanıt hash’i<input name="evidence_hash" maxlength="128" placeholder="sha256:…" required></label><label class="full">Sonuç özeti<textarea name="outcome_summary" rows="4" maxlength="4000" placeholder="Eşikler, gözlenen sonuç ve toparlanma; ham günlük olmadan." required></textarea></label>`,
   }[type];
-  $("#lab-specific-fields").innerHTML = fields; // sniper-reviewed: html-safe
+  $("#lab-specific-fields").innerHTML = fields; // vulkill-reviewed: html-safe
   if (type === "external_result") renderLabControlOptions("");
   showModal("lab-modal");
 }
@@ -3977,9 +3977,9 @@ async function openLabDetail(runId) {
     const calculation = run.scenario_type === "capacity_plan"
       ? `<div><small>TAHMİNİ İSTEK</small><strong>${Number(results.projected_requests || 0).toLocaleString("tr-TR")}</strong></div><div><small>TAHMİNİ EŞZAMANLILIK</small><strong>${Number(results.estimated_concurrency || 0)}</strong></div>`
       : run.scenario_type === "lockout_plan"
-        ? `<div><small>MİNİMUM GÖZLEM</small><strong>${Number(results.minimum_observation_seconds || 0)} sn</strong></div><div><small>SNIPER İSTEĞİ</small><strong>0</strong></div>`
-        : `<div><small>KANIT TÜRÜ</small><strong>Maskeli</strong></div><div><small>SNIPER İSTEĞİ</small><strong>0</strong></div>`;
-    $("#lab-detail-content").innerHTML = `<div class="lab-detail-summary"><div><small>SENARYO</small><b>${esc(labScenarioLabel(run.scenario_type))}</b></div><div><small>ORTAM</small><b>${esc(String(run.environment || "").toUpperCase())}</b></div><div><small>YETKİ REFERANSI</small><b>${esc(run.authorization_ref)}</b></div>${engagementHtml}</div><div class="lab-calculation">${calculation}</div>${labScenarioDetails(run)}<div class="lab-safety-result"><b>Güvenlik doğrulaması:</b> Sniper tarafından üretilen trafik/istek sayısı 0. Bu kayıt yalnızca planlama veya maskeli harici sonuç içerir.</div>`;
+        ? `<div><small>MİNİMUM GÖZLEM</small><strong>${Number(results.minimum_observation_seconds || 0)} sn</strong></div><div><small>VULKILL İSTEĞİ</small><strong>0</strong></div>`
+        : `<div><small>KANIT TÜRÜ</small><strong>Maskeli</strong></div><div><small>VULKILL İSTEĞİ</small><strong>0</strong></div>`;
+    $("#lab-detail-content").innerHTML = `<div class="lab-detail-summary"><div><small>SENARYO</small><b>${esc(labScenarioLabel(run.scenario_type))}</b></div><div><small>ORTAM</small><b>${esc(String(run.environment || "").toUpperCase())}</b></div><div><small>YETKİ REFERANSI</small><b>${esc(run.authorization_ref)}</b></div>${engagementHtml}</div><div class="lab-calculation">${calculation}</div>${labScenarioDetails(run)}<div class="lab-safety-result"><b>Güvenlik doğrulaması:</b> VulKill tarafından üretilen trafik/istek sayısı 0. Bu kayıt yalnızca planlama veya maskeli harici sonuç içerir.</div>`;
     form.elements.status.value = run.status;
     form.elements.evidence_summary.value = run.evidence_summary || "";
     showModal("lab-detail-modal");
@@ -4115,7 +4115,7 @@ function specialApprovalSummary(engagement) {
   const enabled = [
     ["controlled_lockout", "Kontrollü hesap kilitlenmesi"], ["staging_capacity", "Staging kapasite gözlemi"], ["redacted_data_proof", "Maskeli veri kanıtı"],
   ].filter(([key]) => approvals[key]).map(([, label]) => label);
-  return `<div class="special-approval-note"><b>Özel onaylı protokoller</b><br>${enabled.length ? enabled.map(esc).join(" · ") : "Bu denetimde özel onaylı doğrulama yok."}<br><br>Sniper bu kontroller için saldırı trafiği veya ham veri üretmez; yalnız uzman kanıtını kaydeder.</div>`;
+  return `<div class="special-approval-note"><b>Özel onaylı protokoller</b><br>${enabled.length ? enabled.map(esc).join(" · ") : "Bu denetimde özel onaylı doğrulama yok."}<br><br>VulKill bu kontroller için saldırı trafiği veya ham veri üretmez; yalnız uzman kanıtını kaydeder.</div>`;
 }
 
 function renderMethodology(engagement) {
@@ -4475,8 +4475,8 @@ $("#project-audit-form").addEventListener("submit", async event => {
     if (mode === "skipped" && baseId) body.base_audit_id = baseId;
     delete event.currentTarget.dataset.baseAuditId;
     // Arka plan iş kuyruğu (ilerleme, iptal, sayfa kapansa da sürer; static/project_jobs.js); yoksa eşzamanlı API.
-    const audit = globalThis.SniperProjectJobs
-      ? await globalThis.SniperProjectJobs.start(body, event.currentTarget)
+    const audit = globalThis.VulKillProjectJobs
+      ? await globalThis.VulKillProjectJobs.start(body, event.currentTarget)
       : await api("/api/project-audits", { method: "POST", body: JSON.stringify(body) });
     await loadAll();
     navigate("projects");
@@ -4584,7 +4584,7 @@ $("#lab-form").addEventListener("submit", async event => {
     const payload = Object.fromEntries(form.entries());
     delete payload.plan_ack;
     await api("/api/lab-runs", { method: "POST", body: JSON.stringify(payload) });
-    showModal("lab-modal", false); await loadAll(); navigate("lab"); toast("Laboratuvar kaydı oluşturuldu; Sniper ağ isteği üretmedi.");
+    showModal("lab-modal", false); await loadAll(); navigate("lab"); toast("Laboratuvar kaydı oluşturuldu; VulKill ağ isteği üretmedi.");
   } catch (error) { toast(error.message, "error"); }
   finally { button.disabled = false; button.innerHTML = `Kaydı oluştur <span>→</span>`; }
 });
@@ -5017,14 +5017,14 @@ function renderScanDiffResult(result) {
   container.classList.remove("hidden");
   const download = $("#scan-diff-download");
   download.href = `/api/scans/diff/${encodeURIComponent(summary.scan_1_id)}/${encodeURIComponent(summary.scan_2_id)}/report.json?download=1`;
-  download.setAttribute("download", `sniper-diff-${summary.scan_1_id}-${summary.scan_2_id}.json`);
+  download.setAttribute("download", `vulkill-diff-${summary.scan_1_id}-${summary.scan_2_id}.json`);
   const downloadHtml = $("#scan-diff-download-html");
   downloadHtml.href = `/api/scans/diff/${encodeURIComponent(summary.scan_1_id)}/${encodeURIComponent(summary.scan_2_id)}/report.html?download=1`;
-  downloadHtml.setAttribute("download", `sniper-diff-${summary.scan_1_id}-${summary.scan_2_id}.html`);
+  downloadHtml.setAttribute("download", `vulkill-diff-${summary.scan_1_id}-${summary.scan_2_id}.html`);
   const downloadCsv = $("#scan-diff-download-csv");
   if (downloadCsv) {
     downloadCsv.href = `/api/scans/diff/${encodeURIComponent(summary.scan_1_id)}/${encodeURIComponent(summary.scan_2_id)}/report.csv?download=1`;
-    downloadCsv.setAttribute("download", `sniper-diff-${summary.scan_1_id}-${summary.scan_2_id}.csv`);
+    downloadCsv.setAttribute("download", `vulkill-diff-${summary.scan_1_id}-${summary.scan_2_id}.csv`);
   }
 
   // İlk tab: NEW. Sekmeleri sırayla çizmek son sekmenin (devam eden) görünmesine
@@ -6311,7 +6311,7 @@ function renderCompletedSummary(res) {
   const basisHtml = basisKind && basisKind !== "real"
     ? `<p class="notice"><small>${esc(basisKind === "template" ? "Bu çıktı örnek/simülasyondur: hiçbir bulguya bağlı değildir." : "Bu çıktıda bulguya bağlı olmayan şablon öğeler de var (basis: template).")}</small>${res.data_basis.note ? ` <small>${esc(res.data_basis.note)}</small>` : ""}</p>`
     : "";
-  el.innerHTML = `<div class="button-row">${factHtml}</div>${basisHtml}${tableHtml}`; // sniper-reviewed: html-safe (tüm değerler esc() ile)
+  el.innerHTML = `<div class="button-row">${factHtml}</div>${basisHtml}${tableHtml}`; // vulkill-reviewed: html-safe (tüm değerler esc() ile)
   globalThis.renderReachabilitySummary?.(res, el);
   el.classList.toggle("hidden", !factHtml && !tableHtml);
 }

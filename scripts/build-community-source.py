@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Assemble a deterministic, offline Sniper Community source tree."""
+"""Assemble a deterministic, offline VulKill Community source tree."""
 
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import os
 from pathlib import Path
@@ -12,6 +13,7 @@ import secrets
 import shutil
 import stat
 import sys
+import zlib
 from typing import NamedTuple
 
 
@@ -22,6 +24,13 @@ VERSION_FILE = "COMMUNITY_VERSION"
 MAX_REGULAR_FILE_BYTES = 64 * 1024 * 1024
 MAX_SNAPSHOT_BYTES = 512 * 1024 * 1024
 READ_CHUNK_BYTES = 1024 * 1024
+
+# SHA-pinned public overlays remove private-edition hardening integrations only
+# from the assembled Community copy.  The payloads are the public baseline
+# sources compressed with zlib and encoded as base85.  Any private source drift
+# is rejected rather than partially transformed.
+_PUBLIC_HARDENING_OVERLAYS: dict[str, dict[str, object]] = {
+}
 
 EXCLUDED_DIRS = frozenset({
     ".git", ".codebase-memory", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".tox", ".venv",
@@ -37,12 +46,13 @@ EXCLUDED_NAMES_CASEFOLD = frozenset(name.casefold() for name in EXCLUDED_NAMES)
 # These files are maintainer evaluation fixtures, not the runtime measurement
 # modules used by the product. Keep this list narrow and review additions.
 INTERNAL_EVALUATION_PATHS = frozenset({
+    "isolated_tests",
     "docs/advisories",
-    "docs/SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md",
-    "docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md",
-    "docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md",
-    "docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.zh-CN.md",
-    "docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ko.md",
+    "docs/VULKILL-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md",
+    "docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md",
+    "docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md",
+    "docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.zh-CN.md",
+    "docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ko.md",
     "docs/sniper-2-evaluation.md",
     "docs/olcum",
     "scripts/ai_triage_eval.py",
@@ -71,6 +81,8 @@ _INSTALL_SCRIPT = "scripts/" + "install.py"
 _UPDATE_SCRIPT = "scripts/" + "update.py"
 _ROLLBACK_SCRIPT = "scripts/" + "rollback.py"
 
+PRIVATE_HARDENING_PATHS = frozenset()
+
 CLOSED_DELIVERY_PATHS = frozenset({
     _DELIVERY_MODULE,
     _DELIVERY_PROFILE,
@@ -96,7 +108,7 @@ CLOSED_DELIVERY_PATHS = frozenset({
     "tests/test_release_lifecycle.py",
     "tests/test_runtime_" + "entitlement_enforcement.py",
     "tests/test_runtime_" + "entitlement_ui.mjs",
-})
+}) | PRIVATE_HARDENING_PATHS
 
 PRIVATE_HOME = re.compile(r"/home/(?!community-user(?=/|[^A-Za-z0-9_.-]|$))[A-Za-z0-9_.-]+")
 PRIVATE_KEY_BLOCK = re.compile(
@@ -122,7 +134,7 @@ INTERNAL_PATTERNS = (
 
 LIMITATIONS = """# Community source distribution boundaries
 
-This assembled tree is the Sniper Community source distribution.
+This assembled tree is the VulKill Community source distribution.
 
 Commercial delivery, customer-bound licensing, private installer, and native
 binary-delivery implementation are intentionally absent. The web runtime uses
@@ -182,6 +194,70 @@ def _sanitize(text: str) -> str:
     for pattern in INTERNAL_PATTERNS:
         text = pattern.sub("community-build", text)
     return text
+
+
+def _apply_public_brand(relative: Path, text: str) -> str:
+    """Apply the public VulKill name without rewriting versioned compatibility IDs."""
+
+    text = re.sub(r"\bSNIPER\b", "VULKILL", text.replace("Sniper", "VulKill"))
+    # This is a versioned integrity filename, not display branding. Existing
+    # offline catalogs and their signed manifests must remain interoperable.
+    text = text.replace(
+        "VULKILL-HTTP-CATALOG-PIN-v2.json",
+        "SNIPER-HTTP-CATALOG-PIN-v2.json",
+    )
+    if relative.as_posix() == "server.py":
+        text = text.replace('"sniper-audit"', '"vulkill-audit"')
+        text = text.replace('filename="sniper-', 'filename="vulkill-')
+        text = text.replace('f"sniper-', 'f"vulkill-')
+        text = text.replace('"sniper-project"', '"vulkill-project"')
+        text = text.replace('"sniper-app"', '"vulkill-app"')
+    elif relative.as_posix() == "data_retention.py":
+        text = text.replace("sniper-lsp", "vulkill-lsp")
+    return text
+
+
+def _project_legacy_brand(relative: Path, text: str) -> str:
+    """Reverse only the public-name rewrite so legacy SHA pins remain meaningful."""
+
+    if relative.as_posix() == "server.py":
+        text = text.replace('"vulkill-audit"', '"sniper-audit"')
+        text = text.replace('filename="vulkill-', 'filename="sniper-')
+        text = text.replace('f"vulkill-', 'f"sniper-')
+        text = text.replace('"vulkill-project"', '"sniper-project"')
+        text = text.replace('"vulkill-app"', '"sniper-app"')
+    elif relative.as_posix() == "data_retention.py":
+        text = text.replace("vulkill-lsp", "sniper-lsp")
+    return re.sub(r"\bVULKILL\b", "SNIPER", text.replace("VulKill", "Sniper"))
+
+
+def _restore_public_hardening_overlay(relative: Path, text: str) -> str:
+    """Restore a SHA-pinned public source when the private overlay is exact."""
+    key = relative.as_posix()
+    spec = _PUBLIC_HARDENING_OVERLAYS.get(key)
+    if spec is None:
+        return text
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    accepted_public = tuple(str(value) for value in spec["accepted_public_sha256"])
+    if digest in accepted_public:
+        return _apply_public_brand(relative, text)
+    legacy_projection = _project_legacy_brand(relative, text)
+    legacy_digest = hashlib.sha256(legacy_projection.encode("utf-8")).hexdigest()
+    if legacy_digest in accepted_public:
+        return text
+    if digest != spec["private_sha256"] and legacy_digest != spec["private_sha256"]:
+        markers = tuple(str(value) for value in spec["private_markers"])
+        present = [marker for marker in markers if marker in text]
+        detail = f" ({len(present)}/{len(markers)} private anchors remain)" if present else ""
+        raise ValueError(f"{key}: private hardening overlay anchor drift{detail}")
+    try:
+        payload = zlib.decompress(base64.b85decode(str(spec["payload_b85"]))).decode("utf-8")
+    except (ValueError, UnicodeDecodeError, zlib.error) as exc:
+        raise ValueError(f"{key}: public hardening overlay is invalid") from exc
+    restored_sha = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    if not accepted_public or restored_sha != accepted_public[0]:
+        raise ValueError(f"{key}: public hardening overlay digest mismatch")
+    return _apply_public_brand(relative, payload)
 
 
 class SourceFile(NamedTuple):
@@ -342,7 +418,9 @@ def _community_version_module(text: str, version: str) -> str:
     )
     if count != 1:
         raise ValueError("version.py does not contain one replaceable __version__ assignment")
-    return updated.replace("Sniper Enterprise", "Sniper Community")
+    updated = updated.replace("from product_identity import ENTERPRISE_NAME\n\n", "")
+    updated = updated.replace("{ENTERPRISE_NAME}", "VulKill Community")
+    return updated.replace("VulKill Enterprise", "VulKill Community")
 
 
 def _write_text(destination: Path, text: str, mode: int) -> None:
@@ -766,7 +844,7 @@ def _transform_mcp_community_wording(text: str) -> str:
     relative = "mcp_triage_server.py"
     private_label = "TRUE" + " LIVE"
     old = (
-        f"    # Community verisi kurulu Sniper'ın {private_label} veri kökünden ayrıdır. "
+        f"    # Community verisi kurulu VulKill'ın {private_label} veri kökünden ayrıdır. "
         "Bu varsayılan APP_DIR'ye de bağlı değildir;\n"
         "    # aynı yayın paketi nereden çalıştırılırsa çalıştırılsın kurulu uygulamanın "
         "veritabanına sessizce düşemez."
@@ -824,8 +902,47 @@ def _transform_project_audit_i18n_wording(text: str) -> str:
     return _replace_exact(text, old, new, expected=1, relative=relative)
 
 
+def _already_public_readme(
+    text: str,
+    *,
+    relative: str,
+    required_fragments: tuple[str, ...],
+    independent_heading: str,
+    validation_heading: str,
+) -> bool:
+    """Recognize one complete public README shape without masking anchor drift."""
+    if not text.startswith("# VulKill Community\n") or text.count("# VulKill Community\n") != 1:
+        return False
+    if re.search(r"(?mi)^###\s+Gökçe Baran Karakamış\s+—\s+macOS\b", text):
+        return False
+    current_shape = all(text.count(fragment) == 1 for fragment in required_fragments)
+    transformed_legacy_shape = (
+        text.count(independent_heading) == 1
+        and text.count(validation_heading) == 1
+        and text.count("VALIDATION.md") >= 1
+    )
+    if current_shape or transformed_legacy_shape:
+        return True
+    if independent_heading in text or validation_heading in text:
+        raise ValueError(f"{relative}: public README structural anchors are incomplete")
+    return False
+
+
 def _transform_public_readme(text: str) -> str:
     """Remove maintainer disclosure work from the assembled product README."""
+    if _already_public_readme(
+        text,
+        relative="README.md",
+        required_fragments=(
+            "## Release status\n",
+            "## Responsible security use\n",
+            "## Validation and tests\n",
+            "python3 scripts/build-community-source.py --output /ABSOLUTE/PATH/TO/vulkill-community-source",
+        ),
+        independent_heading="### Independent validation\n",
+        validation_heading="## Validation and tests\n",
+    ):
+        return text
     return _replace_pattern(
         text,
         r"^### Gökçe Baran Karakamış — (?:macOS Kurulum Doğrulaması|macOS Hardware Validation).*?(?=^## Validation and tests)",
@@ -842,6 +959,14 @@ def _transform_public_readme(text: str) -> str:
 
 def _transform_public_readme_tr(text: str) -> str:
     """Remove maintainer disclosure work from the assembled Turkish README."""
+    if _already_public_readme(
+        text,
+        relative="docs/README.tr.md",
+        required_fragments=("## Güvenlik ve yetkilendirme sınırı\n", "## Resmî özellik bilgisi\n"),
+        independent_heading="### Bağımsız doğrulama\n",
+        validation_heading="## Doğrulama ve testler\n",
+    ):
+        return text
     return _replace_pattern(
         text,
         r"^### Gökçe Baran Karakamış — macOS Kurulum Doğrulaması.*?(?=^## Doğrulama ve testler)",
@@ -858,6 +983,14 @@ def _transform_public_readme_tr(text: str) -> str:
 
 def _transform_public_readme_ja(text: str) -> str:
     """Remove maintainer disclosure work from the assembled Japanese README."""
+    if _already_public_readme(
+        text,
+        relative="docs/README.ja.md",
+        required_fragments=("## 安全性と許可の境界\n", "## 正式な機能情報\n"),
+        independent_heading="### 独立した検証\n",
+        validation_heading="## 検証とテスト\n",
+    ):
+        return text
     return _replace_pattern(
         text,
         r"^### Gökçe Baran Karakamış — macOS 実機検証.*?(?=^## 検証とテスト)",
@@ -873,6 +1006,14 @@ def _transform_public_readme_ja(text: str) -> str:
 
 def _transform_public_readme_zh_cn(text: str) -> str:
     """Remove maintainer disclosure work from the assembled Simplified Chinese README."""
+    if _already_public_readme(
+        text,
+        relative="docs/README.zh-CN.md",
+        required_fragments=("## 安全与授权边界\n", "## 权威功能资料\n"),
+        independent_heading="### 独立验证\n",
+        validation_heading="## 验证与测试\n",
+    ):
+        return text
     return _replace_pattern(
         text,
         r"^### Gökçe Baran Karakamış — macOS 真机安装验证.*?(?=^## 验证与测试)",
@@ -888,6 +1029,14 @@ def _transform_public_readme_zh_cn(text: str) -> str:
 
 def _transform_public_readme_ko(text: str) -> str:
     """Remove maintainer disclosure work from the assembled Korean README."""
+    if _already_public_readme(
+        text,
+        relative="docs/README.ko.md",
+        required_fragments=("## 안전 및 승인 경계\n", "## 공식 기능 정보\n"),
+        independent_heading="### 독립 검증\n",
+        validation_heading="## 검증 및 테스트\n",
+    ):
+        return text
     return _replace_pattern(
         text,
         r"^### Gökçe Baran Karakamış — macOS 실장비 설치 검증.*?(?=^## 검증 및 테스트)",
@@ -901,7 +1050,48 @@ def _transform_public_readme_ko(text: str) -> str:
     )
 
 
+def _transform_community_builder(text: str) -> str:
+    """Do not publish the private-to-public overlay payload or private inventory."""
+    relative = "scripts/build-community-source.py"
+    overlay_pattern = (
+        r"^_PUBLIC_HARDENING_OVERLAYS: dict\[str, dict\[str, object\]\] = \{\n"
+        r".*?^\}\n\n(?=EXCLUDED_DIRS = )"
+    )
+    private_inventory_pattern = (
+        r"^PRIVATE_HARDENING_PATHS = frozenset\(\{\n"
+        r".*?^\}\)\n\n(?=CLOSED_DELIVERY_PATHS = )"
+    )
+    public_overlay = "_PUBLIC_HARDENING_OVERLAYS: dict[str, dict[str, object]] = {\n}\n\n"
+    public_inventory = "PRIVATE_HARDENING_PATHS = frozenset()\n\n"
+    if text.count(public_overlay) == 1 and text.count(public_inventory) == 1:
+        return text
+    text = _replace_pattern(
+        text, overlay_pattern, public_overlay, expected=1, relative=relative
+    )
+    return _replace_pattern(
+        text, private_inventory_pattern, public_inventory, expected=1, relative=relative
+    )
+
+
+def _transform_community_separation_test(text: str) -> str:
+    relative = "tests/test_community_source_separation.py"
+    inventory = (
+        r"^    # PRIVATE-HARDENING-INVENTORY-BEGIN\n.*?"
+        r"^    # PRIVATE-HARDENING-INVENTORY-END\n"
+    )
+    drift_test = (
+        r"^    # PRIVATE-HARDENING-DRIFT-TEST-BEGIN\n.*?"
+        r"^    # PRIVATE-HARDENING-DRIFT-TEST-END\n"
+    )
+    if "PRIVATE-HARDENING-INVENTORY-BEGIN" not in text \
+            and "PRIVATE-HARDENING-DRIFT-TEST-BEGIN" not in text:
+        return text
+    text = _replace_pattern(text, inventory, "", expected=1, relative=relative)
+    return _replace_pattern(text, drift_test, "", expected=1, relative=relative)
+
+
 def _apply_artifact_transform(relative: Path, text: str) -> str:
+    text = _restore_public_hardening_overlay(relative, text)
     transforms = {
         "Dockerfile": _transform_dockerfile,
         "README.md": _transform_public_readme,
@@ -914,11 +1104,13 @@ def _apply_artifact_transform(relative: Path, text: str) -> str:
         "mcp_triage_server.py": _transform_mcp_community_wording,
         "report_renderers.py": _transform_report_renderers,
         "server.py": _transform_server,
+        "scripts/build-community-source.py": _transform_community_builder,
         "static/i18n-en.tsv": _transform_project_audit_i18n_wording,
         "static/index.html": _transform_project_audit_ui_wording,
         "static/system_version.js": _transform_system_version_ui,
         "system_health.py": _transform_system_health,
         "tests/test_data_retention_r17.py": _transform_data_retention_test,
+        "tests/test_community_source_separation.py": _transform_community_separation_test,
         "tests/test_system_version_ui.mjs": _transform_system_version_test,
     }
     transform = transforms.get(relative.as_posix())

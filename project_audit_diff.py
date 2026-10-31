@@ -178,21 +178,6 @@ def _sarif_location(uri: str, line: int, message: str | None = None) -> dict[str
     return location
 
 
-def _sarif_partial_fingerprint(rule_id: str, uri: str, line: int) -> str:
-    """Build a fixed-width SARIF identity from already-published location metadata."""
-    def slot(value: str, width: int) -> str:
-        normalized = "".join(
-            character if character.isascii() and character.isalnum() else "_"
-            for character in value
-        )
-        if len(normalized) <= width:
-            return normalized.ljust(width, "_")
-        left = width // 2
-        return normalized[:left] + normalized[-(width - left):]
-
-    return f"{max(1, line) & 0xFFFFFFFF:08x}{slot(rule_id, 8)}{slot(uri, 16)}"
-
-
 def _sarif_code_flow(flow: dict[str, Any], sink_uri: str, sink_line: int) -> dict[str, Any]:
     """Kaynak → (ara adımlar) → hedef yolunu SARIF threadFlow olarak ver (CodeQL biçimi)."""
     source_uri = str(flow.get("source_file") or sink_uri)
@@ -232,8 +217,8 @@ def render_project_audit_sarif(audit: dict[str, Any]) -> dict[str, Any]:
         cwe = str(finding.get("cwe") or "").strip()
         reference = str(finding.get("reference") or "").strip()
         severity = str(finding.get("severity") or "low").strip().lower()
-        rule_id = str(finding.get("control_id") or cwe or reference or f"SNIPER-PROJ-{category.upper()}").strip()
-        rule_id = "_".join(rule_id.split())[:64] or f"SNIPER-PROJ-{index}"
+        rule_id = str(finding.get("control_id") or cwe or reference or f"VULKILL-PROJ-{category.upper()}").strip()
+        rule_id = "_".join(rule_id.split())[:64] or f"VULKILL-PROJ-{index}"
 
         if rule_id not in rules_by_id:
             rules_by_id[rule_id] = {
@@ -270,9 +255,9 @@ def render_project_audit_sarif(audit: dict[str, Any]) -> dict[str, Any]:
             },
             "locations": [_sarif_location(uri, start_line)],
             "partialFingerprints": {
-                # SARIF permits a stable arbitrary string. Finding titles,
-                # evidence, secrets, and passwords are deliberately excluded.
-                "sniperFinding/v1": _sarif_partial_fingerprint(rule_id, uri, start_line),
+                "sniperFinding/v1": hashlib.sha256(
+                    f"{rule_id}|{uri}|{start_line}|{title}".encode("utf-8")
+                ).hexdigest()[:32],
             },
             "properties": {
                 "id": str(finding.get("id") or ""),
@@ -300,7 +285,7 @@ def render_project_audit_sarif(audit: dict[str, Any]) -> dict[str, Any]:
             {
                 "tool": {
                     "driver": {
-                        "name": "Sniper Project Security Analyzer",
+                        "name": "VulKill Project Security Analyzer",
                         "version": "2.0.0",
                         "informationUri": "https://owasp.org/www-project-web-security-testing-guide/",
                         "rules": list(rules_by_id.values()),
@@ -519,7 +504,7 @@ def _project_page_html(audit: dict[str, Any], findings: list[dict[str, Any]], ch
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<title>Sniper Proje Güvenlik Raporu — {project_name}</title>
+<title>VulKill Proje Güvenlik Raporu — {project_name}</title>
 <style>
 body {{ font-family: system-ui, -apple-system, sans-serif; margin: 2rem; color: #0f172a; background: #f8fafc; }}
 header {{ background: #1e293b; color: #f8fafc; padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem; }}
@@ -543,7 +528,7 @@ pre {{ background: #f1f5f9; padding: 0.6rem; border-radius: 4px; overflow-x: aut
 </head>
 <body>
 <header>
-  <h1>Sniper Proje Güvenlik Denetimi: {project_name}</h1>
+  <h1>VulKill Proje Güvenlik Denetimi: {project_name}</h1>
   <p>Denetim ID: {audit_id} · Tarih: {created_at}</p>
 </header>
 <section class="metrics">
@@ -850,7 +835,7 @@ def build_enterprise_enriched_sarif(
                 }
             ]
         if include_fixes:
-            rec_text = str(finding.get("recommendation") or "Sniper otomatik güvenlik yaması uygula")[:200]
+            rec_text = str(finding.get("recommendation") or "VulKill otomatik güvenlik yaması uygula")[:200]
             result["fixes"] = [
                 {
                     "description": {"text": rec_text},

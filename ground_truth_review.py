@@ -1,6 +1,6 @@
 """Motor çıktısı görülmeden hazırlanmış ground-truth paketleri için kaynak manifesti ve doğrulama.
 
-Hazırlama yalnız kaynak yollarını, satır sayılarını ve SHA-256 değerlerini okur; Sniper analiz motorunu içe aktarmaz
+Hazırlama yalnız kaynak yollarını, satır sayılarını ve SHA-256 değerlerini okur; VulKill analiz motorunu içe aktarmaz
 ve çalıştırmaz. Etiketleme ayrı bir insan adımıdır. Değerlendirme hattı, açıkça istendiğinde kaynakların etiketleme
 sonrasında değişmediğini ve insan körleme beyanını bu modülle doğrular.
 """

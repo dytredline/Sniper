@@ -239,7 +239,7 @@ class RetentionCacheTests(unittest.TestCase):
         self.osv = base / "osv"
         self.xdg = base / "xdg"
         for path in (self.data / "cache", self.data / "sandbox-runs", self.osv / "index-cache",
-                     self.xdg / "sniper-lsp"):
+                     self.xdg / "vulkill-lsp"):
             path.mkdir(parents=True)
         self.env = {"SNIPER_DATA_DIR": str(self.data), "SNIPER_OSV_DB_ROOT": str(self.osv),
                     "XDG_CACHE_HOME": str(self.xdg)}
@@ -248,7 +248,7 @@ class RetentionCacheTests(unittest.TestCase):
             "malware_stale": self.data / "cache" / f"osv-malware-{'d' * 32}.json",
             "malware_current": self.data / "cache" / f"osv-malware-{'e' * 32}.json",
             "index_stale": self.osv / "index-cache" / f"debian-12-{'d' * 16}.json.gz",
-            "lsp_old": self.xdg / "sniper-lsp" / "x.json",
+            "lsp_old": self.xdg / "vulkill-lsp" / "x.json",
         }
         for path in self.files.values():
             path.write_text("{}")

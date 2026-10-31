@@ -83,7 +83,7 @@ def _audit(*, uses: str = REMOTE, entries: list[dict[str, str]] | None = None,
 def _workflow_findings(report: dict) -> list[dict]:
     return [
         item for item in report["findings"]
-        if item.get("control_id") == "SNIPER-SLSA-WORKFLOW-CALL-04"
+        if item.get("control_id") == "VULKILL-SLSA-WORKFLOW-CALL-04"
     ]
 
 
@@ -200,7 +200,7 @@ jobs:
     assert report["has_provenance"] is False
     assert report["declared_provenance_tools"] == ["cosign"]
     assert any(
-        item.get("control_id") == "SNIPER-SLSA-ARTIFACT-GRAPH-04"
+        item.get("control_id") == "VULKILL-SLSA-ARTIFACT-GRAPH-04"
         for item in report["findings"]
     )
 

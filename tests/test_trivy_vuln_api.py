@@ -56,7 +56,7 @@ class TrivyVulnerabilityApiTests(unittest.TestCase):
         # Setup server
         self.previous_store = server.STORE
         server.STORE = Store(self.base / "sniper.db")
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.httpd.daemon_threads = True
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()

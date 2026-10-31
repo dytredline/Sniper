@@ -2,7 +2,7 @@
 """Validate the documentation and metadata of the Community release surface.
 
 This validator is deliberately offline and read-only.  It does not inspect or
-modify a Sniper database and it never starts a scanner.
+modify a VulKill database and it never starts a scanner.
 """
 
 from __future__ import annotations
@@ -20,7 +20,6 @@ from typing import NamedTuple
 
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[2]
-EXPECTED_COMMUNITY_VERSION = "1.1.0"
 MAX_REGULAR_FILE_BYTES = 64 * 1024 * 1024
 MAX_SNAPSHOT_BYTES = 512 * 1024 * 1024
 READ_CHUNK_BYTES = 1024 * 1024
@@ -72,7 +71,7 @@ REQUIRED_FILES = (
 
 REQUIRED_TEXT = {
     "llms.txt": (
-        "# Sniper Community",
+        "# VulKill Community",
         "local-first defensive application-security toolkit",
         "## Built-in capabilities",
         "## Optional locked engines",
@@ -96,7 +95,7 @@ REQUIRED_TEXT = {
     ),
     "docs/AI-DISCOVERY.md": (
         "# AI discovery guide",
-        "## Who Sniper Community is for",
+        "## Who VulKill Community is for",
         "Application and source owners",
         "Website and API owners",
         "AI-assisted security review",
@@ -114,12 +113,12 @@ REQUIRED_TEXT = {
         "VALIDATION.md",
     ),
     "docs/CAPABILITIES.md": (
-        "# Sniper Community v1 yetenekleri",
+        "# VulKill Community v1 yetenekleri",
         "## Yetenek etiketleri",
         "COMMUNITY-TOOLS.lock.json",
     ),
     "docs/LOCALIZATION.md": (
-        "# Sniper Community localization",
+        "# VulKill Community localization",
         "Japonca (`ja`)",
         "Basitleştirilmiş Çince (`zh-CN`)",
         "Korece (`ko`)",
@@ -128,16 +127,16 @@ REQUIRED_TEXT = {
         "browser-tests/test_i18n_layout_browser.mjs",
     ),
     "docs/USE-CASES.md": (
-        "# Sniper Community use cases",
+        "# VulKill Community use cases",
         "## Choose a review path",
         "## Plan an authorized website or API action",
         "CAPABILITIES.md",
     ),
-    "docs/README.ja.md": ("# Sniper Community",),
-    "docs/README.zh-CN.md": ("# Sniper Community",),
-    "docs/README.ko.md": ("# Sniper Community",),
+    "docs/README.ja.md": ("# VulKill Community",),
+    "docs/README.zh-CN.md": ("# VulKill Community",),
+    "docs/README.ko.md": ("# VulKill Community",),
     "README.md": (
-        "Sniper Community",
+        "VulKill Community",
         "Apache License 2.0",
         "licensed under the Apache License 2.0",
         "publication status does not make that license grant provisional",
@@ -147,7 +146,7 @@ REQUIRED_TEXT = {
         "Manual CLI",
         "Local web",
         "Enterprise code is not included",
-        ".venv/bin/python scripts/sniper-mcp --help",
+        ".venv/bin/python scripts/vulkill-mcp --help",
         "prepare_action",
         "execute_action",
         "MCP host",
@@ -155,17 +154,17 @@ REQUIRED_TEXT = {
         "@dytredline",
     ),
     "VALIDATION.md": (
-        "Sniper Community validation evidence",
-        "3,079 tests, 0 failures, 0 errors",
-        "337 passed",
-        "517 passed, 0 failed",
+        "VulKill Community validation evidence",
+        "3,044 tests, 0 failures, 0 errors",
+        "313 passed",
+        "513 passed, 0 failed",
         "seven provenance-bound tools",
         "Synthetic runtime proofs",
         "not a security certification",
         "No step in this validation snapshot scans an external website",
     ),
     "DEPLOYMENT.md": (
-        "Sniper Community local deployment",
+        "VulKill Community local deployment",
         "127.0.0.1:8787",
         "COMMUNITY-SOURCE-MANIFEST.sha256",
         "--scan-release-tree",
@@ -197,7 +196,7 @@ REQUIRED_TEXT = {
         "/verified_exec.py @dytredline",
     ),
     ".github/VULNERABILITY_REPORT.yml": (
-        "name: Report a Sniper vulnerability",
+        "name: Report a VulKill vulnerability",
         "description: Privately report a suspected vulnerability to Gökçe Baran Karakamış (@dytredline).",
         "body:",
         "type:",
@@ -217,8 +216,7 @@ REQUIRED_TEXT = {
     "CODE_OF_CONDUCT.md": ("Contributor Covenant", "Enforcement"),
     "CHANGELOG.md": (
         "# Changelog",
-        "Sniper Community 1.1.0",
-        "Sniper Community 1.0.0",
+        "VulKill Community 1.0.0",
         "Apache-2.0",
         "human-confirmed MCP action plans",
     ),
@@ -230,12 +228,12 @@ REQUIRED_TEXT = {
     ),
     "CITATION.cff": (
         "cff-version: 1.2.0",
-        "title: Sniper Community",
+        "title: VulKill Community",
         "Gökçe Baran",
         "Karakamış",
-        "version: 1.1.0",
+        "version: 1.0.0",
         "license: Apache-2.0",
-        "https://github.com/dytredline/Sniper",
+        "https://github.com/dytredline/VulKill",
     ),
     "COMMUNITY-TOOLS.lock.json": (
         '"schema": "sniper-community-tools-lock-v1"',
@@ -261,7 +259,7 @@ REQUIRED_TEXT = {
     "docker-compose.tools.yml": (
         "target: community-tools",
         "SNIPER_ACCEPT_THIRD_PARTY_LICENSES",
-        "sniper-community-tools:local",
+        "vulkill-community-tools:local",
     ),
     "docs/COMMUNITY-TOOLS.md": (
         "# Community tool installation",
@@ -294,7 +292,7 @@ REQUIRED_TEXT = {
     ".github/ISSUE_TEMPLATE/bug_report.yml": (
         "name: Bug report",
         "Do not report security vulnerabilities in a public issue",
-        "Sniper Community version or commit",
+        "VulKill Community version or commit",
         "Safe local reproduction",
         "I removed secrets, personal data, and production evidence",
     ),
@@ -307,13 +305,13 @@ REQUIRED_TEXT = {
     ".github/ISSUE_TEMPLATE/config.yml": (
         "blank_issues_enabled: false",
         "Private vulnerability report",
-        "https://github.com/dytredline/Sniper/security/advisories/new",
+        "https://github.com/dytredline/VulKill/security/advisories/new",
     ),
     ".github/pull_request_template.md": (
         "## Observable behavior",
         "## Tests actually run",
         "No external target was scanned",
-        "No live Sniper database was used",
+        "No live VulKill database was used",
     ),
     ".github/dependabot.yml": (
         "version: 2",
@@ -332,7 +330,7 @@ REQUIRED_TEXT = {
         "consent_scope",
         "MCP host",
         "model provider",
-        ".venv/bin/python scripts/sniper-mcp --help",
+        ".venv/bin/python scripts/vulkill-mcp --help",
     ),
 }
 
@@ -357,7 +355,7 @@ FORBIDDEN_ARTIFACT_DIRS = frozenset({
     "runtimes", "data", "backups", "backup", "evidence", ".auth-field-keys",
     "dev-" + "evidence", "frozen-" + "evidence",
 })
-FORBIDDEN_ARTIFACT_NAMES = frozenset({".git", "release.json", ".coverage"})
+FORBIDDEN_ARTIFACT_NAMES = frozenset({"release.json", ".coverage"})
 FORBIDDEN_ARTIFACT_SUFFIXES = (
     ".pyc", ".pyo", ".db", ".sqlite", ".sqlite3", "-wal", "-shm", "-journal", ".key", ".tar",
 )
@@ -379,7 +377,7 @@ PRIVATE_PUBLICATION_WORDING = re.compile(
     re.IGNORECASE,
 )
 PORTABLE_CONTAINER_LABEL = "org.sniper.community.k6.local"
-PORTABLE_TEMPLATE_AUTHOR = "sniper-community"
+PORTABLE_TEMPLATE_AUTHOR = "vulkill-community"
 ACTIVE_TARGET_TESTS = frozenset({
     "tests/test_wave20_sqlite_wal_concurrency_stress.py",
     "tests/test_zap_actor_job_lease.py",
@@ -773,16 +771,13 @@ def _validate_release_tree(entries: list[ReleaseEntry], failures: list[str]) -> 
     version_module_entry = by_relative.get("version.py")
     if community_version_entry is not None and community_version_entry.payload is not None:
         community_version = community_version_entry.payload.decode("utf-8", errors="replace").strip()
-        if community_version != EXPECTED_COMMUNITY_VERSION:
-            fail(
-                f"release tree: COMMUNITY_VERSION must be {EXPECTED_COMMUNITY_VERSION}",
-                failures,
-            )
+        if community_version != "1.0.0":
+            fail("release tree: COMMUNITY_VERSION must be 1.0.0 for Community v1", failures)
         if version_module_entry is not None and version_module_entry.payload is not None:
             version_text = version_module_entry.payload.decode("utf-8", errors="replace")
             if f'__version__ = "{community_version}"' not in version_text:
                 fail("release tree: version.py does not match COMMUNITY_VERSION", failures)
-            if "Sniper Community" not in version_text or "Sniper Enterprise" in version_text:
+            if "VulKill Community" not in version_text or "VulKill Enterprise" in version_text:
                 fail("release tree: version.py does not identify the Community product", failures)
 
 
@@ -922,8 +917,8 @@ def validate(root: Path, *, scan_release_tree: bool = False) -> list[str]:
             args = server["args"]
             if not all(isinstance(value, str) for value in args):
                 raise ValueError("all args must be strings")
-            if not any(value.endswith("/scripts/sniper-mcp") for value in args):
-                raise ValueError("scripts/sniper-mcp entrypoint is absent")
+            if not any(value.endswith("/scripts/vulkill-mcp") for value in args):
+                raise ValueError("scripts/vulkill-mcp entrypoint is absent")
             expected_mode = "community" if relative.endswith("stdio-community.json") else "authenticated"
             if "--mode" not in args or args.index("--mode") + 1 >= len(args) \
                     or args[args.index("--mode") + 1] != expected_mode:

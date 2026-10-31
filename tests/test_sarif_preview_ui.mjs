@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-// External test harness: execute the real Sniper browser script with a small fake DOM.
-async function loadSniperApp(appJsPath, reportResponse = null) {
+// External test harness: execute the real VulKill browser script with a small fake DOM.
+async function loadVulKillApp(appJsPath, reportResponse = null) {
   const elements = new Map();
   const documentListeners = new Map();
   const requests = [];
@@ -123,7 +123,7 @@ describe('SARIF Browser Preview UI', () => {
 
   it('renders valid SARIF and shows allowlisted summary', async () => {
     const validSarif = makeValidSarif();
-    const app = await loadSniperApp(appJsPath, {
+    const app = await loadVulKillApp(appJsPath, {
       format: 'sarif',
       run_count: 1,
       result_count: 1,
@@ -166,7 +166,7 @@ assert.strictEqual(app.document.getElementById('sarif-levels').textContent, 'err
   });
 
   it('rejects invalid JSON with fixed error and no POST', async () => {
-    const app = await loadSniperApp(appJsPath);
+    const app = await loadVulKillApp(appJsPath);
 
     const pasteInput = app.document.getElementById('sarif-paste');
     const errorEl = app.document.getElementById('sarif-preview-error');
@@ -187,7 +187,7 @@ assert.strictEqual(app.document.getElementById('sarif-levels').textContent, 'err
   });
 
   it('rejects oversized input (>64KB) with fixed error and no POST', async () => {
-    const app = await loadSniperApp(appJsPath);
+    const app = await loadVulKillApp(appJsPath);
 
     const pasteInput = app.document.getElementById('sarif-paste');
     const errorEl = app.document.getElementById('sarif-preview-error');
@@ -208,7 +208,7 @@ assert.strictEqual(app.document.getElementById('sarif-levels').textContent, 'err
   });
 
   it('rejects non-object SARIF (e.g., array) with fixed error and no POST', async () => {
-    const app = await loadSniperApp(appJsPath);
+    const app = await loadVulKillApp(appJsPath);
 
     const pasteInput = app.document.getElementById('sarif-paste');
     const errorEl = app.document.getElementById('sarif-preview-error');
@@ -230,7 +230,7 @@ assert.strictEqual(app.document.getElementById('sarif-levels').textContent, 'err
 
   it('clears inputs and result when modal is closed', async () => {
     const validSarif = makeValidSarif();
-    const app = await loadSniperApp(appJsPath, {
+    const app = await loadVulKillApp(appJsPath, {
       format: 'sarif',
       run_count: 1,
       result_count: 1,
@@ -279,7 +279,7 @@ assert.strictEqual(app.document.getElementById('sarif-levels').textContent, 'err
   });
 
   it('handles empty paste and file input with fixed error', async () => {
-    const app = await loadSniperApp(appJsPath);
+    const app = await loadVulKillApp(appJsPath);
 
     const pasteInput = app.document.getElementById('sarif-paste');
     const fileInput = app.document.getElementById('sarif-file');

@@ -16,7 +16,7 @@ class CrossOriginIsolationAdvisorPlugin(BasePlugin):
         return PluginInfo(
             "cross-origin-isolation-advisor",
             "1.0.0",
-            "Sniper Core",
+            "VulKill Core",
             "Hedef URL şeması ve çapraz köken izolasyon (COOP/COEP/CORP) mimari denetim danışmanı",
         )
 

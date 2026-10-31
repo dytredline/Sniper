@@ -1,9 +1,9 @@
 """Wave 4 — CSPT (Client-Side Path Traversal) ve Yetkili SDK URL Şablonu Denetleyicisi.
 
 İki yüksek etkili SDK/istemci URL oluşturma zafiyetini tespit eder:
-- SNIPER-CSPT-SDK-01: Yetkili SDK/İstemci API çağrısında encode edilmemiş kaynak
+- VULKILL-CSPT-SDK-01: Yetkili SDK/İstemci API çağrısında encode edilmemiş kaynak
   kimliği üzerinden İstemci Tarafı Yol Geçişi (CSPT).
-- SNIPER-URL-TMPL-02: Yetkili giden istekte doğrulanmamış alt-alan adı (region)
+- VULKILL-URL-TMPL-02: Yetkili giden istekte doğrulanmamış alt-alan adı (region)
   veya Host başlığı şablonu üzerinden SSRF ve kimlik bilgisi sızıntısı.
 """
 
@@ -15,7 +15,7 @@ from typing import Any
 FORMAT_VERSION = "sniper-cspt-sdk-url-template-audit/1"
 
 _SDK_REQUEST_CALL_RE = re.compile(
-    r"\b(makeRequest|getRequest|putRequest|postRequest|deleteRequest|fetch|axios(?:\.(?:get|post|put|delete|patch|request))?)\s*+(?:<[^>]*+>)?\s*+\("
+    r"\b(makeRequest|getRequest|putRequest|postRequest|deleteRequest|fetch|axios(?:\.(?:get|post|put|delete|patch|request))?)\s*(?:<[^>]*>)?\s*\("
 )
 
 _CSPT_RAW_PATH_TEMPLATE_RE = re.compile(
@@ -48,14 +48,14 @@ def audit_cspt_and_authenticated_url_templates(
     content = str(raw_content or "")
     findings: list[dict[str, Any]] = []
 
-    # (a) SNIPER-CSPT-SDK-01
+    # (a) VULKILL-CSPT-SDK-01
     sdk_call_match = _SDK_REQUEST_CALL_RE.search(content)
     cspt_path_match = _CSPT_RAW_PATH_TEMPLATE_RE.search(content)
     if sdk_call_match and cspt_path_match and not _CSPT_SAFE_PATH_GUARD_RE.search(content):
         line_no = _line_number(content, cspt_path_match.start())
         findings.append(
             {
-                "rule_id": "SNIPER-CSPT-SDK-01",
+                "rule_id": "VULKILL-CSPT-SDK-01",
                 "cwe": "CWE-22",
                 "reference": "CWE-22",
                 "severity": "high",
@@ -77,13 +77,13 @@ def audit_cspt_and_authenticated_url_templates(
             }
         )
 
-    # (b) SNIPER-URL-TMPL-02
+    # (b) VULKILL-URL-TMPL-02
     url_tmpl_match = _URL_AUTHORITY_TEMPLATE_RE.search(content)
     if url_tmpl_match and not _URL_AUTHORITY_SAFE_GUARD_RE.search(content):
         line_no = _line_number(content, url_tmpl_match.start())
         findings.append(
             {
-                "rule_id": "SNIPER-URL-TMPL-02",
+                "rule_id": "VULKILL-URL-TMPL-02",
                 "cwe": "CWE-918",
                 "reference": "CWE-918",
                 "severity": "high",

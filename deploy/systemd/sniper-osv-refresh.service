@@ -1,7 +1,7 @@
-# Sniper çevrimdışı OSV veritabanı güncellemesi (resmî OSV deposu, HTTPS, imzalı manifest).
+# VulKill çevrimdışı OSV veritabanı güncellemesi (resmî OSV deposu, HTTPS, imzalı manifest).
 # Kurulum: ~/.config/systemd/user/ altına kopyalayın; zamanlayıcı: sniper-osv-refresh.timer.
 [Unit]
-Description=Sniper OSV çevrimdışı veritabanı güncellemesi
+Description=VulKill OSV çevrimdışı veritabanı güncellemesi
 Wants=network-online.target
 After=network-online.target
 

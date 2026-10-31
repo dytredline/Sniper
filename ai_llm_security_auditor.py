@@ -27,11 +27,11 @@ OWASP_LLM_TOP_10_2025: dict[str, str] = {
 }
 
 DEFAULT_CONTROLS_EVALUATED: set[str] = {
-    "SNIPER-INPV-07",
-    "SNIPER-CRYP-04",
-    "SNIPER-SRVR-06",
-    "SNIPER-AUTHZ-02",
-    "SNIPER-APIT-05",
+    "VULKILL-INPV-07",
+    "VULKILL-CRYP-04",
+    "VULKILL-SRVR-06",
+    "VULKILL-AUTHZ-02",
+    "VULKILL-APIT-05",
 }
 
 AI_SCAN_EXTENSIONS: set[str] = {
@@ -96,7 +96,6 @@ _SECRET_REDACT_RE = re.compile(
 )
 
 _ASCII_LOWER = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
-_WHITESPACE_RUN = re.compile(r"\s*")
 _SYSTEM_PROMPT_NAMES = ("system_prompt", "systemprompt")
 _LLM_OUTPUT_ASSIGNMENT_MARKERS = (
     "response.choices",
@@ -104,16 +103,6 @@ _LLM_OUTPUT_ASSIGNMENT_MARKERS = (
     "messages.create",
     "generate_content",
     ".invoke(",
-)
-_AI_SIGNAL_MARKERS = (
-    "prompt", "messages", "user_input", "user_query", "req.body", "req.query", "request.args",
-    "request.form", "request.json", "sk-", "aizasy", "hf_", "r8_", "gsk_", "xai-", "_api_key",
-    "replicate_api_token", "torch.load", "pickle.", "joblib.", "dill.", "cloudpickle.",
-    "trust_remote_code", "load_dataset", "trainer", "response.choices", "chat.completions",
-    "messages.create", "generate_content", ".invoke(", "llm_", "ai_reply", "completion", "model_output",
-    "agent_output", "assistant_reply", "generated_", "@tool", ".tool(", "mcp", "structuredtool",
-    "function_declarations", "tools", "pyautogui", "xdotool", "pynput", "computer_use",
-    "similarity_search", "vector", "qdrant", "pinecone", "chromadb", "weaviate", "temperature",
 )
 
 
@@ -236,10 +225,12 @@ def _system_prompt_exposure_offset(source_line: str) -> int | None:
             break
         offset = start + len("export")
         if offset < len(lowered) and lowered[offset].isspace():
-            offset = _WHITESPACE_RUN.match(lowered, offset).end()
+            while offset < len(lowered) and lowered[offset].isspace():
+                offset += 1
             if lowered.startswith("const", offset):
                 offset += len("const")
-                offset = _WHITESPACE_RUN.match(lowered, offset).end()
+                while offset < len(lowered) and lowered[offset].isspace():
+                    offset += 1
                 if _prompt_name_at(offset):
                     candidates.append(start)
                     break
@@ -251,7 +242,8 @@ def _system_prompt_exposure_offset(source_line: str) -> int | None:
         if start < 0:
             break
         offset = start + len("window.")
-        offset = _WHITESPACE_RUN.match(lowered, offset).end()
+        while offset < len(lowered) and lowered[offset].isspace():
+            offset += 1
         if _prompt_name_at(offset):
             candidates.append(start)
             break
@@ -284,11 +276,13 @@ def _system_prompt_exposure_offset(source_line: str) -> int | None:
             break
         previous = source_line[start - 1] if start else ""
         offset = start + len(assignment_name)
-        offset = _WHITESPACE_RUN.match(source_line, offset).end()
+        while offset < len(source_line) and source_line[offset].isspace():
+            offset += 1
         if (not previous or not (previous == "_" or previous.isalnum())) \
                 and offset < len(source_line) and source_line[offset] in ":=":
             offset += 1
-            offset = _WHITESPACE_RUN.match(source_line, offset).end()
+            while offset < len(source_line) and source_line[offset].isspace():
+                offset += 1
             if offset < len(source_line) and source_line[offset] in "\"'":
                 value_start = offset + 1
                 value_end = value_start
@@ -373,22 +367,6 @@ def _build_llm_top10_summary(findings: list[dict[str, Any]]) -> dict[str, dict[s
     return summary
 
 
-def _empty_inline_report(filename: str) -> dict[str, Any]:
-    score, grade = calculate_score([])
-    return {
-        "format": "sniper-ai-llm-inline-audit-v1",
-        "filename": filename,
-        "score": score,
-        "grade": grade,
-        "finding_count": 0,
-        "findings_truncated": False,
-        "finding_groups": summarize_finding_groups([]),
-        "findings": [],
-        "llm_top10_summary": _build_llm_top10_summary([]),
-        "controls_evaluated": sorted(DEFAULT_CONTROLS_EVALUATED),
-    }
-
-
 def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict[str, Any]:
     if not isinstance(raw_content, str) or not raw_content.strip():
         raise ValueError("Denetlenecek yapay zeka / LLM kaynak içeriği boş olamaz.")
@@ -400,12 +378,6 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
     clean_filename = filename.strip()
     ext = Path(clean_filename).suffix.lower()
     lines = raw_content.splitlines()
-
-    lowered_content = raw_content.casefold()
-    if "mcp" not in clean_filename.casefold() and not any(
-        marker in lowered_content for marker in _AI_SIGNAL_MARKERS
-    ):
-        return _empty_inline_report(clean_filename)
 
     findings: list[dict[str, Any]] = []
     seen_fingerprints: set[tuple[str, int, str]] = set()
@@ -451,7 +423,7 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                         "yapılandırılmış mesaj katmanında sınırlandırıcı etiketler ve girdi doğrulaması ile iletin."
                     ),
                     cwe="CWE-77",
-                    control_id="SNIPER-INPV-07",
+                    control_id="VULKILL-INPV-07",
                     llm_risk="LLM01",
                     filename=clean_filename,
                     line=line_no,
@@ -478,7 +450,7 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                         "güvenli sır yöneticisi (Vault/KMS) veya sunucu ortam değişkenlerinden yükleyin."
                     ),
                     cwe="CWE-798",
-                    control_id="SNIPER-CRYP-04",
+                    control_id="VULKILL-CRYP-04",
                     llm_risk="LLM02",
                     filename=clean_filename,
                     line=line_no,
@@ -507,7 +479,7 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                         "veya NEXT_PUBLIC_/VITE_ değişkenlerine gizli iş kurallarını yerleştirmeyin."
                     ),
                     cwe="CWE-798",
-                    control_id="SNIPER-CRYP-04",
+                    control_id="VULKILL-CRYP-04",
                     llm_risk="LLM07",
                     filename=clean_filename,
                     line=line_no,
@@ -535,7 +507,7 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                         "biçiminde doğrulamalı olarak yükleyin."
                     ),
                     cwe="CWE-502",
-                    control_id="SNIPER-SRVR-06",
+                    control_id="VULKILL-SRVR-06",
                     llm_risk="LLM03",
                     filename=clean_filename,
                     line=line_no,
@@ -564,7 +536,7 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                     "model özetlerini (SHA-256) sabitleyin."
                 ),
                 cwe="CWE-502",
-                control_id="SNIPER-SRVR-06",
+                control_id="VULKILL-SRVR-06",
                 llm_risk="LLM03",
                 filename=clean_filename,
                 line=line_no,
@@ -602,7 +574,7 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                         "ve eğitim/RAG öncesi SHA-256 özeti ile veri kümesi bütünlüğünü doğrulayın."
                     ),
                     cwe="CWE-494",
-                    control_id="SNIPER-SRVR-06",
+                    control_id="VULKILL-SRVR-06",
                     llm_risk="LLM04",
                     filename=clean_filename,
                     line=line_no,
@@ -645,7 +617,7 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                         "şema doğrulamasından (validate_dataset) ve insan onaylı kürasyon sürecinden geçirin."
                     ),
                     cwe="CWE-20",
-                    control_id="SNIPER-INPV-07",
+                    control_id="VULKILL-INPV-07",
                     llm_risk="LLM04",
                     filename=clean_filename,
                     line=line_no,
@@ -696,7 +668,7 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                     "parametreli sorgular ve sıkı çıktı şema doğrulaması uygulayın."
                 ),
                 cwe="CWE-94",
-                control_id="SNIPER-INPV-07",
+                control_id="VULKILL-INPV-07",
                 llm_risk="LLM05",
                 filename=clean_filename,
                 line=line_no,
@@ -740,7 +712,7 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                         "en az ayrıcalık ilkesi ve salt-okunur kısıtlamalar uygulayın."
                     ),
                     cwe="CWE-250",
-                    control_id="SNIPER-AUTHZ-02",
+                    control_id="VULKILL-AUTHZ-02",
                     llm_risk="LLM06",
                     filename=clean_filename,
                     line=line_no,
@@ -783,7 +755,7 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                     "ayrıcalık sınırlarıyla ayırın ve yıkıcı araç çağrılarında zorunlu insan onayı (HITL) uygulayın."
                 ),
                 cwe="CWE-77",
-                control_id="SNIPER-AI-CHAIN-01",
+                control_id="VULKILL-AI-CHAIN-01",
                 llm_risk="LLM01",
                 filename=clean_filename,
                 line=sink_line_no,
@@ -822,7 +794,7 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                         "filter=, namespace= veya tenant_id= parametresiyle zorunlu kılın."
                     ),
                     cwe="CWE-284",
-                    control_id="SNIPER-AUTHZ-04",
+                    control_id="VULKILL-AUTHZ-04",
                     llm_risk="LLM08",
                     filename=clean_filename,
                     line=line_no,
@@ -869,7 +841,7 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                             "tutun ve yanıtları doğrulanmış RAG kaynakları (grounding/citations) ile sınırlandırın."
                         ),
                         cwe="CWE-1188",
-                        control_id="SNIPER-INPV-07",
+                        control_id="VULKILL-INPV-07",
                         llm_risk="LLM09",
                         filename=clean_filename,
                         line=line_no,
@@ -904,7 +876,7 @@ def audit_ai_llm_inline(raw_content: str, *, filename: str = "agent.py") -> dict
                         "kullanıcı bazlı hız sınırlandırma (rate limit) parametrelerini zorunlu kılın."
                     ),
                     cwe="CWE-400",
-                    control_id="SNIPER-APIT-05",
+                    control_id="VULKILL-APIT-05",
                     llm_risk="LLM10",
                     filename=clean_filename,
                     line=line_no,
@@ -1002,13 +974,10 @@ def audit_mcp_config_privileges(
     has_mcp_context = bool(
         re.search(
             r"(?i)(?:server-filesystem|mcpServers|mcp_servers|StdioServerParameters|"
-            r"@modelcontextprotocol|fastmcp|McpServer|server-everything|mcp-server-shell|"
-            r"mcp-server-commands|mcp_server_shell|mcp_server_commands|\bmcp\b)",
+            r"@modelcontextprotocol|fastmcp|McpServer|\bmcp\b)",
             raw_content,
         )
     ) or "mcp" in clean_filename.lower()
-    if not has_mcp_context:
-        return {"findings": [], "count": 0, "filename": clean_filename}
     has_fs_or_args = bool(
         re.search(r"(?i)(?:server-filesystem|\bargs\b)", raw_content)
     )
@@ -1036,7 +1005,7 @@ def audit_mcp_config_privileges(
                         "ve hassas sistem dizinlerini kesin olarak hariç tutun."
                     ),
                     cwe="CWE-250",
-                    control_id="SNIPER-MCP-PRIV-01",
+                    control_id="VULKILL-MCP-PRIV-01",
                     llm_risk="LLM06",
                     filename=clean_filename,
                     line=line_no,
@@ -1066,7 +1035,7 @@ def audit_mcp_config_privileges(
                     "izin listeli (allowlist) ve insan onaylı araçları etkinleştirin."
                 ),
                 cwe="CWE-78",
-                control_id="SNIPER-MCP-PRIV-02",
+                control_id="VULKILL-MCP-PRIV-02",
                 llm_risk="LLM06",
                 filename=clean_filename,
                 line=line_no,
@@ -1100,7 +1069,7 @@ def audit_mcp_config_privileges(
                     "erişim gerekiyorsa zorunlu Bearer/OAuth token doğrulaması ve TLS uygulayın."
                 ),
                 cwe="CWE-306",
-                control_id="SNIPER-MCP-PRIV-03",
+                control_id="VULKILL-MCP-PRIV-03",
                 llm_risk="LLM06",
                 filename=clean_filename,
                 line=line_no,

@@ -1,6 +1,6 @@
-# Sniper "yalnız değişenler" iş akışı ÖRNEĞİ — yayınlanmadı; kendi deponuzda .github/workflows/ altına kopyalayın.
-# Varsayım: Sniper kendi barındırılan (self-hosted) bir çalıştırıcıda çevrimdışı kurulu
-# (ör. /opt/sniper-community). Sniper dış ağa çıkmaz; yalnız depo kodunu yerelde okur.
+# VulKill "yalnız değişenler" iş akışı ÖRNEĞİ — yayınlanmadı; kendi deponuzda .github/workflows/ altına kopyalayın.
+# Varsayım: VulKill kendi barındırılan (self-hosted) bir çalıştırıcıda çevrimdışı kurulu
+# (ör. /opt/sniper-community). VulKill dış ağa çıkmaz; yalnız depo kodunu yerelde okur.
 name: sniper-changed
 on:
   pull_request:
@@ -14,7 +14,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0          # taban dalın commit'i yerelde olmalı
-      - name: Sniper (yalnız PR'ın değiştirdiği dosyalar)
+      - name: VulKill (yalnız PR'ın değiştirdiği dosyalar)
         env:
           SNIPER_APP: ${{ vars.SNIPER_APP || '/opt/sniper-community' }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}

@@ -10,7 +10,7 @@ Doğrulama: JDK arşivi Adoptium API'sinin yayımladığı SHA-256 ile, Joern zi
 varlık özeti (SHA-256) ve resmî ``.sha512`` dosyasıyla karşılaştırılır. Açma sırasında
 yol aşımı, mutlak yol ve kurulum dışını gösteren bağlar reddedilir; kurulumdan sonra
 tüm dosyalar salt okunur yapılır ve Joern için dosya başına SHA-256 içeren
-``SNIPER-INSTALL-MANIFEST.json`` üretilir. Çıktıdaki ``java_sha256`` ve ``manifest_sha256``
+``VULKILL-INSTALL-MANIFEST.json`` üretilir. Çıktıdaki ``java_sha256`` ve ``manifest_sha256``
 değerleri ``tool_pins.PINS["joern-jdk"]`` ve ``joern_active.JOERN_MANIFEST_SHA256`` içine
 sabitlenir (veya ``SNIPER_JOERN_JDK_SHA256`` / ``SNIPER_JOERN_MANIFEST_SHA256``).
 

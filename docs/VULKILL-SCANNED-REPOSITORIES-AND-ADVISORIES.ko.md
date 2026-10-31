@@ -1,19 +1,19 @@
-# Gökçe Baran Karakamış — Sniper macOS 설치 검증, 스캔된 오픈소스 저장소 및 검증된 보안 권고 보고서
+# Gökçe Baran Karakamış — VulKill macOS 설치 검증, 스캔된 오픈소스 저장소 및 검증된 보안 권고 보고서
 
-[English](SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md) | [Türkçe](SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md) | [日本語](SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md) | [简体中文](SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.zh-CN.md) | **한국어**
+[English](VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md) | [Türkçe](VULKILL-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md) | [日本語](VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md) | [简体中文](VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.zh-CN.md) | **한국어**
 
 **저자 / 보안 연구원:** **Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline))
 
 이 포괄적인 기술 가이드 및 보안 연구 보고서는 세 가지 핵심 파트로 구성되어 있습니다:
-1. **파트 I — macOS (Apple Silicon) 실제 하드웨어 설치 및 런타임 검증 보고서:** 실제 macOS 하드웨어에서 **네이티브 소스 설치(`--core-only`)**와 **Docker Desktop 5-엔진 컨테이너 스택(`community-tools`)**을 모두 사용하여 Sniper Community를 엔드투엔드로 테스트하고 검증한 결과입니다.
-2. **파트 II — Sniper로 스캔한 8개 오픈소스 저장소, 취약점 전환 메커니즘 및 일상 시나리오:** **Gökçe Baran Karakamış**가 **Sniper** 정적 분석(SAST), 코드형 인프라(IaC) 및 소프트웨어 구성 분석(SCA) 엔진으로 스캔한 **8개 오픈소스 저장소**에 대한 소스 코드 수준 감사, 오탐(False Positive) 제거, 코드/설정 결함이 어떤 조건에서 실제 취약점으로 이어지는지에 대한 쉬운 설명, 각 저장소별 **3가지 일상 핵심 시나리오(`시나리오 A / B / C`)**, 그리고 **예제 실행 및 검증 명령어**입니다.
-3. **파트 III — Sniper 스캔에서 발견한 46건의 검증된 보안 권고(45건의 고유 취약점 + 1건의 업스트림 중복 심층 방어 기록)(`01`..`11`), 코드 분석, 시나리오 및 런타임 증명(`RED -> GREEN + BENIGN`):** 6개 오픈소스 프로젝트(**Stirling-PDF, TryCua `cua`, OpenZiti, n8n, Gotify Server, NIIS X-Road**)에서 발견되어 GitHub Security Advisory(`GHSA`)로 보고된 **46건의 검증된 보안 권고(45건의 고유 취약점 + 1건의 업스트림 중복 심층 방어 기록)**이 코드에서 어떻게 발생하고 단계별로 어떻게 취약점으로 작동하는지, 각 항목에 대한 **3가지 구체적인 일상 핵심 시나리오(`시나리오 A / B / C`)**, **예제 실행/트리거 명령어**, 그리고 **검증된 방어 패치(`git diff`)**를 다룹니다.
+1. **파트 I — macOS (Apple Silicon) 실제 하드웨어 설치 및 런타임 검증 보고서:** 실제 macOS 하드웨어에서 **네이티브 소스 설치(`--core-only`)**와 **Docker Desktop 5-엔진 컨테이너 스택(`community-tools`)**을 모두 사용하여 VulKill Community를 엔드투엔드로 테스트하고 검증한 결과입니다.
+2. **파트 II — VulKill로 스캔한 8개 오픈소스 저장소, 취약점 전환 메커니즘 및 일상 시나리오:** **Gökçe Baran Karakamış**가 **VulKill** 정적 분석(SAST), 코드형 인프라(IaC) 및 소프트웨어 구성 분석(SCA) 엔진으로 스캔한 **8개 오픈소스 저장소**에 대한 소스 코드 수준 감사, 오탐(False Positive) 제거, 코드/설정 결함이 어떤 조건에서 실제 취약점으로 이어지는지에 대한 쉬운 설명, 각 저장소별 **3가지 일상 핵심 시나리오(`시나리오 A / B / C`)**, 그리고 **예제 실행 및 검증 명령어**입니다.
+3. **파트 III — VulKill 스캔에서 발견한 46건의 검증된 보안 권고(45건의 고유 취약점 + 1건의 업스트림 중복 심층 방어 기록)(`01`..`11`), 코드 분석, 시나리오 및 런타임 증명(`RED -> GREEN + BENIGN`):** 6개 오픈소스 프로젝트(**Stirling-PDF, TryCua `cua`, OpenZiti, n8n, Gotify Server, NIIS X-Road**)에서 발견되어 GitHub Security Advisory(`GHSA`)로 보고된 **46건의 검증된 보안 권고(45건의 고유 취약점 + 1건의 업스트림 중복 심층 방어 기록)**이 코드에서 어떻게 발생하고 단계별로 어떻게 취약점으로 작동하는지, 각 항목에 대한 **3가지 구체적인 일상 핵심 시나리오(`시나리오 A / B / C`)**, **예제 실행/트리거 명령어**, 그리고 **검증된 방어 패치(`git diff`)**를 다룹니다.
 
 ---
 
 ## 파트 I — macOS (Apple Silicon) 실제 하드웨어 설치 및 검증 보고서 (2026-10-24)
 
-macOS (Apple Silicon)에서의 Sniper 설치는 **실험적(Experimental) 기능이 아닙니다**. **네이티브 소스 설치(`--core-only`)**와 **Docker Desktop 5-엔진 설치** 모두 실제 macOS 하드웨어에서 테스트 및 검증을 마쳤으며 공식 지원됩니다:
+macOS (Apple Silicon)에서의 VulKill 설치는 **실험적(Experimental) 기능이 아닙니다**. **네이티브 소스 설치(`--core-only`)**와 **Docker Desktop 5-엔진 설치** 모두 실제 macOS 하드웨어에서 테스트 및 검증을 마쳤으며 공식 지원됩니다:
 
 | 설치 경로 | 실행 명령어 | 실제 macOS 하드웨어에서 검증된 범위 | 상태 |
 | :--- | :--- | :--- | :---: |
@@ -27,15 +27,15 @@ macOS (Apple Silicon)에서의 Sniper 설치는 **실험적(Experimental) 기능
 
 ---
 
-## 파트 II — Sniper로 스캔한 8개 오픈소스 저장소 및 잠재적 연관 취약점 분석
+## 파트 II — VulKill로 스캔한 8개 오픈소스 저장소 및 잠재적 연관 취약점 분석
 
-이 파트에서는 사전 보안 연구에서 **Sniper**로 스캔한 **8개 오픈소스 저장소** 각각에 대해 (A) Sniper 스캔 통계 요약, (B) 소스 코드 검증을 통한 오탐(False Positive) 분리, (C) 실제 존재하는 코드 및 인프라 설정 결함, (D) **코드에서 어떻게 발생하고 취약점으로 전환되는지(누구나 이해할 수 있는 설명)**, (E) **일상 환경에서 발생 가능한 3가지 핵심 시나리오(`시나리오 A / B / C`)**, (F) **단독 vs. 결합(공격 체인 Chaining) 심각도 분석**, 그리고 (G) **예제 실행 및 검증 명령어**를 상세히 제시합니다.
+이 파트에서는 사전 보안 연구에서 **VulKill**로 스캔한 **8개 오픈소스 저장소** 각각에 대해 (A) VulKill 스캔 통계 요약, (B) 소스 코드 검증을 통한 오탐(False Positive) 분리, (C) 실제 존재하는 코드 및 인프라 설정 결함, (D) **코드에서 어떻게 발생하고 취약점으로 전환되는지(누구나 이해할 수 있는 설명)**, (E) **일상 환경에서 발생 가능한 3가지 핵심 시나리오(`시나리오 A / B / C`)**, (F) **단독 vs. 결합(공격 체인 Chaining) 심각도 분석**, 그리고 (G) **예제 실행 및 검증 명령어**를 상세히 제시합니다.
 
 ---
 
 ## 1. AutoGPT (`Significant-Gravitas/AutoGPT`)
 
-### A. Sniper 스캔 통계 요약
+### A. VulKill 스캔 통계 요약
 * **임계값 초과(고신뢰도) 탐지 수:** `93`건 (Critical `2`, High `39`, Medium `49`, Low `3`)
 * **트리아지 전체 탐지 수:** `142`건 (SAST `61`, IaC `42`, SCA `39`)
 
@@ -68,7 +68,7 @@ Python의 `pickle.loads()`는 바이트 데이터를 객체로 복원할 때 공
 
 ### G. 예제 실행 및 검증 명령어
 ```bash
-# 1. AutoGPT 저장소에 대한 Sniper 전체 감사 실행
+# 1. AutoGPT 저장소에 대한 VulKill 전체 감사 실행
 python3 scripts/sniper-project-audit "$HOME/audit-targets/autogpt" --format json --output "$HOME/audit-targets/reports/autogpt-audit.json"
 
 # 2. jobstore_backfill.py 내 pickle.loads 호출 코드 확인
@@ -82,7 +82,7 @@ grep -n -C 5 "\.execute(" "$HOME/audit-targets/autogpt/autogpt_platform/backend/
 
 ## 2. Zitadel (`zitadel/zitadel`)
 
-### A. Sniper 스캔 통계 요약
+### A. VulKill 스캔 통계 요약
 * **임계값 초과(고신뢰도) 탐지 수:** `67`건 (Critical `8`, High `42`, Medium `17`)
 * **트리아지 전체 탐지 수:** `286`건
 
@@ -110,7 +110,7 @@ grep -n -C 5 "\.execute(" "$HOME/audit-targets/autogpt/autogpt_platform/backend/
 
 ### G. 예제 실행 및 검증 명령어
 ```bash
-# 1. Zitadel 저장소에 대한 Sniper 감사 실행
+# 1. Zitadel 저장소에 대한 VulKill 감사 실행
 python3 scripts/sniper-project-audit "$HOME/audit-targets/zitadel" --format json --output "$HOME/audit-targets/reports/zitadel-audit.json"
 
 # 2. Compose 파일 내 docker.sock 마운트 위치 확인
@@ -124,7 +124,7 @@ grep -rn "NODE_TLS_REJECT_UNAUTHORIZED" "$HOME/audit-targets/zitadel/apps/docs/"
 
 ## 3. Nextcloud MCP Server (`cbcoutinho/nextcloud-mcp-server`)
 
-### A. Sniper 스캔 통계 요약
+### A. VulKill 스캔 통계 요약
 * **임계값 초과(고신뢰도) 탐지 수:** `59`건 (SAST Critical `1` / High `6`, IaC High `7`, SCA Critical `5` / High `40`)
 
 ### B. 소스 코드 검증 및 오탐(False Positive) 분리
@@ -149,7 +149,7 @@ grep -rn "NODE_TLS_REJECT_UNAUTHORIZED" "$HOME/audit-targets/zitadel/apps/docs/"
 
 ### G. 예제 실행 및 검증 명령어
 ```bash
-# 1. Nextcloud MCP Server에 대한 Sniper 감사 실행
+# 1. Nextcloud MCP Server에 대한 VulKill 감사 실행
 python3 scripts/sniper-project-audit "$HOME/audit-targets/nextcloud-mcp" --format json --output "$HOME/audit-targets/reports/nextcloud-mcp-audit.json"
 
 # 2. login_flow.py 내 _rewrite_to_nextcloud_host 보호 로직 확인
@@ -163,7 +163,7 @@ grep -n -C 8 "head.repo.full_name" "$HOME/audit-targets/nextcloud-mcp/.github/wo
 
 ## 4. MCPJam Inspector (`MCPJam/inspector`)
 
-### A. Sniper 스캔 통계 요약
+### A. VulKill 스캔 통계 요약
 * **임계값 초과(고신뢰도) 탐지 수:** `122`건 (SAST Critical `12` / High `8`, SCA Critical `6` / High `96`)
 
 ### B. 소스 코드 검증 및 오탐(False Positive) 분리
@@ -186,7 +186,7 @@ grep -n -C 8 "head.repo.full_name" "$HOME/audit-targets/nextcloud-mcp/.github/wo
 
 ### G. 예제 실행 및 검증 명령어
 ```bash
-# 1. MCPJam Inspector에 대한 Sniper 감사 실행
+# 1. MCPJam Inspector에 대한 VulKill 감사 실행
 python3 scripts/sniper-project-audit "$HOME/audit-targets/mcpjam-inspector" --format json --output "$HOME/audit-targets/reports/mcpjam-inspector-audit.json"
 
 # 2. pr-preview.yml의 조건문 및 브랜치 보간 확인
@@ -197,7 +197,7 @@ grep -n -C 10 "pull_request" "$HOME/audit-targets/mcpjam-inspector/.github/workf
 
 ## 5. Codebase Memory MCP (`DeusData/codebase-memory-mcp`)
 
-### A. Sniper 스캔 통계 요약
+### A. VulKill 스캔 통계 요약
 * **임계값 초과(고신뢰도) 탐지 수:** `32`건 (SAST Critical `17` / High `7`, SCA High `8`)
 
 ### B. 소스 코드 검증 및 오탐(False Positive) 분리
@@ -222,7 +222,7 @@ C 언어 서버에서 길이 제한 없는 문자열 복사를 쓰면 버퍼 오
 
 ### G. 예제 실행 및 검증 명령어
 ```bash
-# 1. Codebase Memory MCP에 대한 Sniper 감사 실행
+# 1. Codebase Memory MCP에 대한 VulKill 감사 실행
 python3 scripts/sniper-project-audit "$HOME/audit-targets/codebase-memory-mcp" --format json --output "$HOME/audit-targets/reports/codebase-memory-mcp-audit.json"
 
 # 2. http_server.c 내 Host 헤더 검증(403 Forbidden) 및 CORS 방어 확인
@@ -236,7 +236,7 @@ sed -n '2850,2880p' "$HOME/audit-targets/codebase-memory-mcp/src/store/store.c"
 
 ## 6. GitLab MCP Server (`yoda-digital/gitlab-mcp-server`)
 
-### A. Sniper 스캔 통계 요약
+### A. VulKill 스캔 통계 요약
 * **임계값 초과(고신뢰도) 탐지 수:** `5`건 (Critical `0`, High `4`, Medium `1`)
 
 ### B. 소스 코드 검증 및 오탐(False Positive) 분리
@@ -261,7 +261,7 @@ sed -n '2850,2880p' "$HOME/audit-targets/codebase-memory-mcp/src/store/store.c"
 
 ### G. 예제 실행 및 검증 명령어
 ```bash
-# 1. GitLab MCP Server에 대한 Sniper 감사 실행
+# 1. GitLab MCP Server에 대한 VulKill 감사 실행
 python3 scripts/sniper-project-audit "$HOME/audit-targets/gitlab-mcp-server" --format json --output "$HOME/audit-targets/reports/gitlab-mcp-server-audit.json"
 
 # 2. GITLAB_MCP_SKIP_TLS_VERIFY 및 InsecureSkipVerify 구현 확인
@@ -272,7 +272,7 @@ grep -rn -C 8 "GITLAB_MCP_SKIP_TLS_VERIFY" "$HOME/audit-targets/gitlab-mcp-serve
 
 ## 7. Apktool MCP (`zinja-coder/apktool-mcp-server`)
 
-### A. Sniper 스캔 통계 요약
+### A. VulKill 스캔 통계 요약
 * **임계값 초과(고신뢰도) 탐지 수:** `16`건 (SAST Medium `1`, SCA Critical `4` / High `12`)
 
 ### B. 소스 코드 검증 및 오탐(False Positive) 분리
@@ -296,13 +296,13 @@ grep -rn -C 8 "GITLAB_MCP_SKIP_TLS_VERIFY" "$HOME/audit-targets/gitlab-mcp-serve
 
 ### G. 예제 실행 및 검증 명령어
 ```bash
-# 1. Apktool MCP에 대한 Sniper 감사 실행
+# 1. Apktool MCP에 대한 VulKill 감사 실행
 python3 scripts/sniper-project-audit "$HOME/audit-targets/apktool-mcp" --format json --output "$HOME/audit-targets/reports/apktool-mcp-audit.json"
 
 # 2. uv.lock 내 주요 패키지 버전 확인
 grep -n -A 2 -E 'name = "(authlib|cryptography|pyjwt|python-multipart|starlette|urllib3)"' "$HOME/audit-targets/apktool-mcp/uv.lock"
 
-# 3. Sniper CLI로 High 이상 탐지 항목 조회
+# 3. VulKill CLI로 High 이상 탐지 항목 조회
 python3 cli_reports.py --input "$HOME/audit-targets/reports/apktool-mcp-audit.json" --min-severity high
 ```
 
@@ -310,7 +310,7 @@ python3 cli_reports.py --input "$HOME/audit-targets/reports/apktool-mcp-audit.js
 
 ## 8. JADX MCP (`zinja-coder/jadx-mcp-server`)
 
-### A. Sniper 스캔 통계 요약
+### A. VulKill 스캔 통계 요약
 * **임계값 초과(고신뢰도) 탐지 수:** `32`건 (SAST Medium `3`, SCA Critical `6` / High `26`)
 
 ### B. 소스 코드 검증 및 오탐(False Positive) 분리
@@ -334,13 +334,13 @@ python3 cli_reports.py --input "$HOME/audit-targets/reports/apktool-mcp-audit.js
 
 ### G. 예제 실행 및 검증 명령어
 ```bash
-# 1. JADX MCP에 대한 Sniper 감사 실행
+# 1. JADX MCP에 대한 VulKill 감사 실행
 python3 scripts/sniper-project-audit "$HOME/audit-targets/jadx-mcp" --format json --output "$HOME/audit-targets/reports/jadx-mcp-audit.json"
 
 # 2. uv.lock 내 취약 의존성 버전 확인
 grep -n -A 2 -E 'name = "(authlib|cryptography|pyjwt|python-multipart|starlette|urllib3)"' "$HOME/audit-targets/jadx-mcp/uv.lock"
 
-# 3. Sniper CLI를 통해 High 이상 SCA 결과 필터링
+# 3. VulKill CLI를 통해 High 이상 SCA 결과 필터링
 python3 cli_reports.py --input "$HOME/audit-targets/reports/jadx-mcp-audit.json" --min-severity high
 ```
 
@@ -348,7 +348,7 @@ python3 cli_reports.py --input "$HOME/audit-targets/reports/jadx-mcp-audit.json"
 
 ## 요약 비교 표: 단독 vs. 결합(공격 체인 Chaining) 심각도 및 증거 상태
 
-| 저장소 | Sniper SAST / IaC / SCA 요약 | 검증된 소스 코드 증거 (실제 vs. 오탐) | 단독 심각도 | 결함이 결합되는가? (Chaining) | 결합(체인) 심각도 및 공개 상태 |
+| 저장소 | VulKill SAST / IaC / SCA 요약 | 검증된 소스 코드 증거 (실제 vs. 오탐) | 단독 심각도 | 결함이 결합되는가? (Chaining) | 결합(체인) 심각도 및 공개 상태 |
 | :--- | :--- | :--- | :---: | :--- | :--- |
 | **1. `autogpt`** | 임계값 초과 `93`건 (`2C / 39H`); 트리아지 `142`건 | **Critical SQLi 2건(`obj.execute`), JWT, FastAPI `Security()`는 모두 오탐**; `jobstore_backfill.py` `pickle.loads` + Compose 기본 비밀번호 + Root Dockerfile은 실제 존재 | **낮음 / 중간** | **조건부 가설:** 공격자가 DB `apscheduler_jobs` 테이블 쓰기 권한을 얻은 경우에만 `pickle.loads` + Root 컨테이너가 결합됨 | **중간 / 높음 (조건부)** *(직접적인 비인증 취약점 없음; 심층 방어 강화)* |
 | **2. `zitadel`** | 임계값 초과 `67`건 (`8C / 42H`); 트리아지 `286`건 | **Critical SQLi/`exec` 8건 모두 오탐**; `deploy/compose/` 내 3개 `docker.sock` 마운트 및 문서 예제의 `TLS_REJECT=0`은 실제 존재 | **낮음 / 중간** | **아니요 (서로 다른 예제):** `docker.sock`(`deploy/compose/`)과 `TLS_REJECT=0`(`apps/docs/...`)은 서로 다른 파일에 위치 | **낮음 / 중간** *(개발/예제 배포 강화; 제품 CVE 아님)* |
@@ -361,9 +361,9 @@ python3 cli_reports.py --input "$HOME/audit-targets/reports/jadx-mcp-audit.json"
 
 ---
 
-## 파트 III — Sniper 스캔에서 발견한 46건의 검증된 보안 권고(45건의 고유 취약점 + 1건의 업스트림 중복 심층 방어 기록) (취약점 전환 메커니즘, 일상 시나리오 및 예제 실행 명령어)
+## 파트 III — VulKill 스캔에서 발견한 46건의 검증된 보안 권고(45건의 고유 취약점 + 1건의 업스트림 중복 심층 방어 기록) (취약점 전환 메커니즘, 일상 시나리오 및 예제 실행 명령어)
 
-아래는 **Sniper** 정적/동적 분석 엔진으로 수행한 보안 스캔에서 발견되어 **단계별 일상 핵심 시나리오(`시나리오 A / B / C`)**, **엔드투엔드 런타임 증명(`RED -> GREEN + BENIGN`)**, 그리고 **검증된 방어 패치(`git diff`)**로 입증된 **11건의 보안 취약점**([advisories/README.ko.md](advisories/README.ko.md))입니다. 먼저 요약 표를 제시하고, 이어서 **각 버그가 코드에서 어떻게 발생하여 실제 악용 가능한 취약점으로 이어지는지, 3가지 일상 핵심 시나리오, 그리고 예제 실행/검증 명령어**를 담은 11개의 심층 기술 섹션(`III.01` – `III.46`)을 수록합니다:
+아래는 **VulKill** 정적/동적 분석 엔진으로 수행한 보안 스캔에서 발견되어 **단계별 일상 핵심 시나리오(`시나리오 A / B / C`)**, **엔드투엔드 런타임 증명(`RED -> GREEN + BENIGN`)**, 그리고 **검증된 방어 패치(`git diff`)**로 입증된 **11건의 보안 취약점**([advisories/README.ko.md](advisories/README.ko.md))입니다. 먼저 요약 표를 제시하고, 이어서 **각 버그가 코드에서 어떻게 발생하여 실제 악용 가능한 취약점으로 이어지는지, 3가지 일상 핵심 시나리오, 그리고 예제 실행/검증 명령어**를 담은 11개의 심층 기술 섹션(`III.01` – `III.46`)을 수록합니다:
 
 | # | 보안 권고 & Upstream GHSA ID | 대상 프로젝트 & 컴포넌트 | CWE & CVSS v3.1 | 일상 환경에서 유발하는 핵심 시나리오 (`시나리오 A / B / C`) | 런타임 증명 (`RED -> GREEN`) |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -423,7 +423,7 @@ python3 cli_reports.py --input "$HOME/audit-targets/reports/jadx-mcp-audit.json"
 * **영향받는 버전 & 컴포넌트:** `<= v3.2.2` (`commit 684608d143779bf3a8ffc67639f077a1202c62ff`) — `FolderInputSource.java` (`listFiles`, `337-377`행), `ProcessingFolderController.java` (`374-380`행), `FolderOutputSink.java` (`archiveOriginal`, `338-345`행)
 * **취약점 분류 & 점수:** `CWE-59` (파일 접근 전 부적절한 링크 해석) / `CWE-61` (UNIX 심볼릭 링크 추적) — **CVSS v3.1: `7.1 High`** (`CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N`)
 * **GitHub GHSA 링크:** `GHSA-hpc7-xx5r-gc44` (`https://github.com/Stirling-Tools/Stirling-PDF/security/advisories/GHSA-hpc7-xx5r-gc44`)
-* **Sniper 개별 권고 보고서:** [`docs/advisories/ko/01-STIRLING-CAND-02-SYMLINK.md`](advisories/ko/01-STIRLING-CAND-02-SYMLINK.md)
+* **VulKill 개별 권고 보고서:** [`docs/advisories/ko/01-STIRLING-CAND-02-SYMLINK.md`](advisories/ko/01-STIRLING-CAND-02-SYMLINK.md)
 
 #### 2. 코드에서 어떻게 발생하고 취약점으로 전환되는가 (누구나 이해할 수 있는 단계별 설명)
 Stirling-PDF의 **자동 처리 감시 폴더(Watched Folder)** 기능은 사내 공유 폴더(예: `/mnt/scanner-incoming`)에 들어오는 문서를 자동으로 읽어 처리한 뒤 출력 폴더(`/mnt/scanner-processed`)에 저장합니다. 개발자들은 이 기능이 서버 자신의 비밀 설정 파일(`/configs/settings.yml` 등)을 읽지 못하도록 `FolderAccessGuard.isProtected(path)`라는 보안 가드를 작성했습니다.
@@ -462,7 +462,7 @@ private static List<Path> listFiles(
 
 #### 4. 예제 실행, 재현 및 검증 명령어
 ```bash
-# 1. Sniper SAST 엔진으로 Stirling-PDF 감시 폴더 모듈 감사
+# 1. VulKill SAST 엔진으로 Stirling-PDF 감시 폴더 모듈 감사
 python3 scripts/sniper-project-audit /path/to/Stirling-PDF --format json --output stirling-audit.json
 
 # 2. 로컬 격리 테스트 환경에서 RED -> GREEN 런타임 증명 실행
@@ -498,7 +498,7 @@ python3 -c 'import json; d=json.load(open("docs/advisories/other-repos-and-cua-r
 * **영향받는 버전 & 컴포넌트:** `<= v3.2.2` (`commit 684608d143779bf3a8ffc67639f077a1202c62ff`) — `ConvertWebsiteToPDF.java` (`urlToPdf`, `116-143`행 — `POST /api/v1/convert/url/pdf`)
 * **취약점 분류 & 점수:** `CWE-918` (서버 사이드 요청 위조 / SSRF) — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N`)
 * **GitHub GHSA 링크:** `GHSA-ff6j-8xch-j8r6` (`https://github.com/Stirling-Tools/Stirling-PDF/security/advisories/GHSA-ff6j-8xch-j8r6` — `CVE-2026-71270` / `GHSA-j5rg-wh78-9f2q`의 불완전 수정)
-* **Sniper 개별 권고 보고서:** [`docs/advisories/ko/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md`](advisories/ko/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md)
+* **VulKill 개별 권고 보고서:** [`docs/advisories/ko/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md`](advisories/ko/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md)
 
 #### 2. 코드에서 어떻게 발생하고 취약점으로 전환되는가 (누구나 이해할 수 있는 단계별 설명)
 이전에 Stirling-PDF는 WeasyPrint가 HTML 내부의 외부 리소스(`<link>`, `<img>`, `@import`)를 자동으로 가져오면서 발생하는 SSRF 취약점(`CVE-2026-71270` / `GHSA-j5rg-wh78-9f2q`)을 패치하면서 HTML 파일 업로드 엔드포인트인 `FileToPdf.java`에 새니타이저와 `--allowed-protocols data` 제한을 적용했습니다.
@@ -567,7 +567,7 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 * **영향받는 버전 & 컴포넌트:** `>= 1.0.1, <= 1.0.16` (`commit e754cfec69c41400eb2aabde716c27d15607b2f0`) — `libs/cuabot/src/cuabotd.ts` (`34-36, 259-260, 741-743, 969-1002, 1018-1063, 1120`행)
 * **취약점 분류 & 점수:** `CWE-306` (중요 기능에 대한 인증 누락) / `CWE-942` (과도하게 허용적인 교차 도메인 화이트리스트) — **CVSS v3.1: `9.6 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:H`)
 * **GitHub GHSA 링크:** `GHSA-cp36-x5hg-3gg8` (`https://github.com/trycua/cua/security/advisories/GHSA-cp36-x5hg-3gg8`)
-* **Sniper 개별 권고 보고서:** [`docs/advisories/ko/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md`](advisories/ko/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md)
+* **VulKill 개별 권고 보고서:** [`docs/advisories/ko/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md`](advisories/ko/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md)
 
 #### 2. 코드에서 어떻게 발생하고 취약점으로 전환되는가 (누구나 이해할 수 있는 단계별 설명)
 `cuabot`의 백그라운드 데몬인 `cuabotd.ts`에는 네 가지 치명적인 결함이 동시에 결합되어 있습니다:
@@ -608,7 +608,7 @@ curl -i -X POST http://127.0.0.1:7842/bash \
   -H "Content-Type: application/json" \
   -d '{"command":"id && cat /home/community-user/.claude/.credentials.json"}'
 
-# 2. Sniper E2E 자동 검증 테스트(RED -> GREEN + BENIGN) 실행
+# 2. VulKill E2E 자동 검증 테스트(RED -> GREEN + BENIGN) 실행
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_cua_cand01 -v
 ```
 **관찰된 런타임 증명 출력 (`RED -> GREEN + BENIGN`):**
@@ -642,7 +642,7 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 * **영향받는 버전 & 컴포넌트:** `<= 0.1.0` (`commit e754cfec69c41400eb2aabde716c27d15607b2f0`) — `libs/cua-bench-rl/cua_bench_rl/workers/worker_server.py` (`79-108, 338-360, 499`행) 및 `libs/cua-bench/cua_bench/core.py` (`make`, `25-51`행)
 * **취약점 분류 & 점수:** `CWE-94` (코드 생성의 부적절한 제어) / `CWE-942` (과도하게 허용적인 교차 도메인 화이트리스트) — **CVSS v3.1: `8.8 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`)
 * **GitHub GHSA 링크:** `GHSA-xm8w-gj3g-4f25` (`https://github.com/trycua/cua/security/advisories/GHSA-xm8w-gj3g-4f25`)
-* **Sniper 개별 권고 보고서:** [`docs/advisories/ko/04-CUA-CAND-02-WORKER-SERVER-RCE.md`](advisories/ko/04-CUA-CAND-02-WORKER-SERVER-RCE.md)
+* **VulKill 개별 권고 보고서:** [`docs/advisories/ko/04-CUA-CAND-02-WORKER-SERVER-RCE.md`](advisories/ko/04-CUA-CAND-02-WORKER-SERVER-RCE.md)
 
 #### 2. 코드에서 어떻게 발생하고 취약점으로 전환되는가 (누구나 이해할 수 있는 단계별 설명)
 강화학습 워커 서버 `worker_server.py`는 접근 제어를 위해 `ip_filter_middleware`를 사용하지만 다음 세 가지 버그가 겹쳐 있습니다:
@@ -687,7 +687,7 @@ curl -i -X POST http://127.0.0.1:8001/reset \
   -H "Content-Type: application/json" \
   -d '{"env_path":"/tmp/poc_env","task_index":0}'
 
-# 2. Sniper E2E 검증 테스트(RED -> GREEN + BENIGN) 실행
+# 2. VulKill E2E 검증 테스트(RED -> GREEN + BENIGN) 실행
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_cua_cand02 -v
 ```
 **관찰된 런타임 증명 출력 (`RED -> GREEN + BENIGN`):**
@@ -719,7 +719,7 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 * **영향받는 버전 & 컴포넌트:** `<= 0.8.0` (`commit e754cfec69c41400eb2aabde716c27d15607b2f0`) — `libs/cua/crates/cua-compat/src/daytona/objectstore.rs` (`handle`, `320-325, 360-422`행)
 * **취약점 분류 & 점수:** `CWE-22` (경로 탐색 / Path Traversal) — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:H`)
 * **GitHub GHSA 링크:** `GHSA-3x8g-6h2v-8qx9` (`https://github.com/trycua/cua/security/advisories/GHSA-3x8g-6h2v-8qx9`)
-* **Sniper 개별 권고 보고서:** [`docs/advisories/ko/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md`](advisories/ko/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md)
+* **VulKill 개별 권고 보고서:** [`docs/advisories/ko/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md`](advisories/ko/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md)
 
 #### 2. 코드에서 어떻게 발생하고 취약점으로 전환되는가 (누구나 이해할 수 있는 단계별 설명)
 Daytona 호환 S3 객체 저장소(`objectstore.rs`)는 객체 키(`key`)에 대해서는 `object_path(&key)`로 `..`를 차단하지만, 쿼리 문자열에서 추출하는 **`?uploadId=` 매개변수에 대해서는 아무런 검증도 수행하지 않습니다**.
@@ -754,7 +754,7 @@ Daytona 호환 S3 객체 저장소(`objectstore.rs`)는 객체 키(`key`)에 대
 curl -i -X DELETE "http://127.0.0.1:9000/daytona/dummy-key?uploadId=../objects" \
   -H "Authorization: Bearer <push-token>"
 
-# 2. Sniper E2E 검증 테스트(RED -> GREEN + BENIGN) 실행
+# 2. VulKill E2E 검증 테스트(RED -> GREEN + BENIGN) 실행
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_cua_cand03 -v
 ```
 **관찰된 런타임 증명 출력 (`RED -> GREEN + BENIGN`):**
@@ -785,7 +785,7 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 * **영향받는 버전 & 컴포넌트:** `<= 0.8.0` (`commit e754cfec69c41400eb2aabde716c27d15607b2f0`) — `libs/cua/crates/cua-media-codec/src/videotoolbox/mod.rs` (`VtEncoder::encode` -> `pixel_buffer_for`, `308-420`행)
 * **취약점 분류 & 점수:** `CWE-125` (경계 밖 읽기 / Out-of-Bounds Read) / `CWE-190` (정수 오버플로 또는 랩어라운드) — **CVSS v3.1: `5.5 Medium`** (`CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:H`)
 * **GitHub GHSA 링크:** `GHSA-54v9-fxw3-36mm` (`https://github.com/trycua/cua/security/advisories/GHSA-54v9-fxw3-36mm`)
-* **Sniper 개별 권고 보고서:** [`docs/advisories/ko/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md`](advisories/ko/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md)
+* **VulKill 개별 권고 보고서:** [`docs/advisories/ko/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md`](advisories/ko/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md)
 
 #### 2. 코드에서 어떻게 발생하고 취약점으로 전환되는가 (누구나 이해할 수 있는 단계별 설명)
 Rust에서 `unsafe`가 붙지 않은 안전한 공개 함수(`pub fn encode(&mut self, frame: &VideoFrame)`)는 어떤 입력이 들어와도 메모리 안전성을 보장해야 합니다. 그러나 macOS VideoToolbox 하드웨어 인코더의 `pixel_buffer_for`(`308-420`행)는 입력 슬라이스(`y.len()`, `uv.len()`, `data.len()`)의 길이를 전혀 확인하지 않고 `unsafe { std::ptr::copy_nonoverlapping }`를 호출합니다:
@@ -819,7 +819,7 @@ unsafe {
 # 1. videotoolbox/mod.rs 내 copy_nonoverlapping 구현 확인
 sed -n '335,415p' /path/to/cua/libs/cua/crates/cua-media-codec/src/videotoolbox/mod.rs
 
-# 2. Sniper E2E 검증 테스트(RED -> GREEN + BENIGN) 실행
+# 2. VulKill E2E 검증 테스트(RED -> GREEN + BENIGN) 실행
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_cua_vt01 -v
 ```
 **관찰된 런타임 증명 출력 (`RED -> GREEN + BENIGN`):**
@@ -849,7 +849,7 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 * **영향받는 버전 & 컴포넌트:** `<= 0.3.1` (`commit e754cfec69c41400eb2aabde716c27d15607b2f0`) — `libs/cua-bench/tasks/winarena_adapter/cli.py` (`cmd_vm_setup`, `cmd_vm_start`, `cmd_task_run`, `262-265, 421-424, 646-649`행) 및 `infra/vm/setup/server/main.py` (`180-248, 290-321`행)
 * **취약점 분류 & 점수:** `CWE-668` (잘못된 영역으로의 리소스 노출) / `CWE-732` (중요 리소스에 대한 부적절한 권한 할당) — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H`)
 * **GitHub GHSA 링크:** `GHSA-hvhg-6x47-cq96` (`https://github.com/trycua/cua/security/advisories/GHSA-hvhg-6x47-cq96`)
-* **Sniper 개별 권고 보고서:** [`docs/advisories/ko/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md`](advisories/ko/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md)
+* **VulKill 개별 권고 보고서:** [`docs/advisories/ko/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md`](advisories/ko/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md)
 
 #### 2. 코드에서 어떻게 발생하고 취약점으로 전환되는가 (누구나 이해할 수 있는 단계별 설명)
 Docker 컨테이너를 시작할 때 `127.0.0.1:` 접두사 없이 `-p 8006:8006`을 전달하면 포트가 **`0.0.0.0`(호스트의 모든 Wi-Fi 및 이더넷 인터페이스)**에 바인딩되며, Linux `iptables`의 `DOCKER` 포워딩 체인을 통해 일반적인 `ufw` 입력 방화벽 규칙을 우회합니다.
@@ -879,7 +879,7 @@ WinArena 오케스트레이터(`cli.py:262-265, 421-424, 646-649`)의 세 가지
 # 1. cli.py 내 Docker 포트 바인딩 및 볼륨 마운트 코드 확인
 sed -n '255,272p' /path/to/cua/libs/cua-bench/tasks/winarena_adapter/cli.py
 
-# 2. Sniper E2E 검증 테스트(RED -> GREEN + BENIGN) 실행
+# 2. VulKill E2E 검증 테스트(RED -> GREEN + BENIGN) 실행
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_cua_cand06 -v
 ```
 **관찰된 런타임 증명 출력 (`RED -> GREEN + BENIGN`):**
@@ -908,7 +908,7 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 * **영향받는 버전 & 컴포넌트:** `v2.0.0-pre6` 이하 (`commit 08f09c510bb2673d3632419ba8d6e10002d5eb00`) — `ziti/util/certs.go` (`AreCertsTrusted` `91-103`행, `InsecureClient` `199-208`행) 및 `ziti/cmd/edge/login.go` (`319-390`행)
 * **취약점 분류 & 점수:** `CWE-295` (부적절한 인증서 검증) — **CVSS v3.1: `7.4 High`** (`CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N`)
 * **GitHub GHSA 링크:** `GHSA-qwv8-hh9r-cqrf` (`https://github.com/openziti/ziti/security/advisories/GHSA-qwv8-hh9r-cqrf`)
-* **Sniper 개별 권고 보고서:** [`docs/advisories/ko/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md`](advisories/ko/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md)
+* **VulKill 개별 권고 보고서:** [`docs/advisories/ko/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md`](advisories/ko/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md)
 
 #### 2. 코드에서 어떻게 발생하고 취약점으로 전환되는가 (누구나 이해할 수 있는 단계별 설명)
 관리자가 `ziti edge login`을 실행하면 CLI는 대상 컨트롤러의 TLS 인증서가 신뢰할 수 있는지 확인하기 위해 `AreCertsTrusted(host)`(`certs.go:91-103`)를 호출합니다.
@@ -960,7 +960,7 @@ Go 표준 라이브러리 `crypto/tls`에서는 **`InsecureSkipVerify: true`가 
 # 1. ziti/util/certs.go 내 AreCertsTrusted 및 InsecureClient 소스 확인
 sed -n '90,105p;198,210p' /path/to/ziti/ziti/util/certs.go
 
-# 2. Sniper E2E 검증 테스트(RED -> GREEN + BENIGN) 실행
+# 2. VulKill E2E 검증 테스트(RED -> GREEN + BENIGN) 실행
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_ziti_cand01 -v
 ```
 **관찰된 런타임 증명 출력 (`RED -> GREEN + BENIGN`):**
@@ -989,7 +989,7 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 * **대상 저장소 & 패키지:** `n8n-io/n8n` (`npm: n8n-workflow <= 2.45.0`)
 * **영향받는 버전 & 컴포넌트:** `<= 2.45.0` (`commit 976c80c63ba38fffe1ffde1fb6fb6fb4edbe8b51`) — `packages/workflow/src/extensions/string-extensions.ts` (`59, 94, 326, 375, 383`행)
 * **취약점 분류 & 점수:** `CWE-1333` (비효율적인 정규 표현식 복잡도 / ReDoS) — **CVSS v3.1: `5.3 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L`)
-* **Sniper 개별 권고 보고서:** [`docs/advisories/ko/09-N8N-CAND-01-WEBHOOK-REDOS.md`](advisories/ko/09-N8N-CAND-01-WEBHOOK-REDOS.md)
+* **VulKill 개별 권고 보고서:** [`docs/advisories/ko/09-N8N-CAND-01-WEBHOOK-REDOS.md`](advisories/ko/09-N8N-CAND-01-WEBHOOK-REDOS.md)
 
 #### 2. 코드에서 어떻게 발생하고 취약점으로 전환되는가 (누구나 이해할 수 있는 단계별 설명)
 `n8n` 워크플로에서는 Webhook 입력값을 검증하기 위해 `{{ $json.body.email.isEmail() }}`, `{{ $json.body.text.extractEmail() }}`, `{{ $json.body.url.extractDomain() }}` 표현식을 자주 사용합니다.
@@ -1018,7 +1018,7 @@ Node.js는 단일 스레드 이벤트 루프에서 모든 HTTP Webhook 요청을
 # 1. Node.js 원라이너로 20KB 입력에 대한 EMAIL_REGEXP 이벤트 루프 정지 시간 측정
 node -e 'const re = /(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))/; const s = "a.".repeat(10000) + "a@!"; const t0 = performance.now(); re.test(s); console.log("Elapsed ms:", (performance.now() - t0).toFixed(2));'
 
-# 2. Sniper E2E 검증 테스트(RED -> GREEN + BENIGN) 실행
+# 2. VulKill E2E 검증 테스트(RED -> GREEN + BENIGN) 실행
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_n8n_cand01 -v
 ```
 **관찰된 런타임 증명 출력 (`RED -> GREEN + BENIGN`):**
@@ -1049,7 +1049,7 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 * **영향받는 버전 & 컴포넌트:** `<= v2.9.1` (`commit 97685e2a6f9c02b92263ef0df9831371a79d150b`) — `router/router.go` (`52-73, 93-102`행)
 * **취약점 분류 & 점수:** `CWE-601` (신뢰할 수 없는 사이트로의 URL 리다이렉트 / 오픈 리다이렉트) — **CVSS v3.1: `4.7 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:N/A:N`)
 * **GitHub GHSA 링크:** `GHSA-cc9f-m5vr-pm75` (`https://github.com/gotify/server/security/advisories/GHSA-cc9f-m5vr-pm75`)
-* **Sniper 개별 권고 보고서:** [`docs/advisories/ko/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md`](advisories/ko/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md)
+* **VulKill 개별 권고 보고서:** [`docs/advisories/ko/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md`](advisories/ko/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md)
 
 #### 2. 코드에서 어떻게 발생하고 취약점으로 전환되는가 (누구나 이해할 수 있는 단계별 설명)
 Gotify Server에서 내장 TLS(`SSL.Enabled: true`)와 HTTPS 자동 리다이렉트(`SSL.RedirectToHTTPS: true`)를 활성화하면 `router/router.go`가 HTTP 요청을 HTTPS로 리다이렉트하는 미들웨어를 등록합니다.
@@ -1089,7 +1089,7 @@ httpRouter.Use(func(ctx *gin.Context) {
 curl -i "http://127.0.0.1:18080/message?token=secret-app-token" \
   -H "Host: evil-phish.example.com"
 
-# 2. Sniper E2E 검증 테스트(RED -> GREEN + BENIGN) 실행
+# 2. VulKill E2E 검증 테스트(RED -> GREEN + BENIGN) 실행
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_gotify_cand01 -v
 ```
 **관찰된 런타임 증명 출력 (`RED -> GREEN + BENIGN`):**
@@ -1118,7 +1118,7 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 * **영향받는 버전 & 컴포넌트:** `develop` 브랜치 — `.github/workflows/build.yaml` (`1-55`행) 및 `.github/workflows/_build-and-package.yml` (`Determine target branch` 단계, `84-91`행)
 * **취약점 분류 & 점수:** `CWE-78` (OS 명령 인젝션) — **CVSS v3.1: `8.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:N`)
 * **GitHub GHSA 링크:** `GHSA-4fcw-7xqx-fjv5` (`https://github.com/nordic-institute/X-Road/security/advisories/GHSA-4fcw-7xqx-fjv5`)
-* **Sniper 개별 권고 보고서:** [`docs/advisories/ko/11-XROAD-CAND-01-RUNNER-INJECTION.md`](advisories/ko/11-XROAD-CAND-01-RUNNER-INJECTION.md)
+* **VulKill 개별 권고 보고서:** [`docs/advisories/ko/11-XROAD-CAND-01-RUNNER-INJECTION.md`](advisories/ko/11-XROAD-CAND-01-RUNNER-INJECTION.md)
 
 #### 2. 코드에서 어떻게 발생하고 취약점으로 전환되는가 (누구나 이해할 수 있는 단계별 설명)
 GitHub Actions 워크플로에서 `${{ github.head_ref }}`(PR 브랜치 이름)를 `run:` 스크립트 안에 직접 쓰면 GitHub는 **bash를 실행하기 전에 해당 텍스트를 스크립트 문자열에 그대로 치환**합니다.
@@ -1155,7 +1155,7 @@ Git 브랜치 이름에는 큰따옴표(`"`)와 세미콜론(`;`)이 허용되�
 sed -n '1,55p' /path/to/X-Road/.github/workflows/build.yaml
 sed -n '80,95p' /path/to/X-Road/.github/workflows/_build-and-package.yml
 
-# 2. Sniper E2E 검증 테스트(RED -> GREEN + BENIGN) 실행
+# 2. VulKill E2E 검증 테스트(RED -> GREEN + BENIGN) 실행
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_xroad_cand01 -v
 ```
 **관찰된 런타임 증명 출력 (`RED -> GREEN + BENIGN`):**
@@ -1187,7 +1187,7 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 * **Target Repository & Package:** `gitlab-org/gitlab` (`RubyGems / GitLab CE & EE: gitlab-ce / gitlab-ee`)
 * **Affected Versions & Components:** `<= 19.6.0-pre (verified on live 19.5.1-ce.0 & 19.6.0-pre commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `app/controllers/oauth/device_authorizations_controller.rb:4-50`, `app/controllers/oauth/tokens_controller.rb:42-75`
 * **Vulnerability Class & Score:** `CWE-863 / CWE-285` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md`](advisories/ko/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md`](advisories/ko/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Missing `verify_admin_allowed!` Bypasses Default `disable_admin_oauth_scopes` (`CAND-02A`, `device_authorizations_controller.rb:4-42`):** In `Oauth::AuthorizationsController` (`authorizations_controller.rb:18, 274-296`), `before_action :verify_admin_allowed!` blocks any untrusted OAuth application (`trusted: false`) from connecting to an administrator account with dangerous scopes (`api`, `read_api`, `admin_mode`, `sudo`, `write_repository`) whenever `Gitlab::CurrentSettings.disable_admin_oauth_scopes` is `true` (the default GitLab security setting). Because `Oauth::DeviceAuthorizationsController` inherits directly from `Doorkeeper::DeviceAuthorizationGrant::DeviceAuthorizationsController` without adding `before_action :verify_admin_allowed!`, any regular user can create an untrusted OAuth app (`trusted: false, device_code_enabled: true, scopes: 'api admin_mode'`) and obtain a full-privilege admin access token when an admin approves a `user_code` on `/oauth/device`.
@@ -1272,7 +1272,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Target Repository & Package:** `gitlab-org/gitlab` (`RubyGems / GitLab EE: gitlab-ee`)
 * **Affected Versions & Components:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `ee/app/services/ai/catalog/mcp_servers/callback_service.rb:17-50, 87-129`, `refresh_token_service.rb:18-70`, `dynamic_registration_client.rb:104-136`
 * **Vulnerability Class & Score:** `CWE-918 / CWE-209` — **CVSS v3.1: `8.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md`](advisories/ko/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md`](advisories/ko/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unvalidated RFC 8414 `token_endpoint`, `revocation_endpoint`, and `authorization_servers` (`dynamic_registration_client.rb:104-136`):** `DynamicRegistrationClient#discover_auth_server_url` and `#discover_metadata` validate only the initial discovery URL via `UrlBlocker`, but return `resource_metadata['authorization_servers'].first` and `response.parsed_response` (`token_endpoint`, `revocation_endpoint`, `issuer`) without running `Gitlab::HTTP_V2::UrlBlocker.validate!` on the discovered endpoints.
@@ -1358,7 +1358,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Target Repository & Package:** `gitlab-org/gitlab` (`RubyGems / GitLab EE: gitlab-ee`)
 * **Affected Versions & Components:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `ee/app/controllers/oauth/mcp_connectors_auth_controller.rb:16-78`, `ee/app/services/ai/catalog/mcp_servers/connect_service.rb:16-79`, `ee/lib/gitlab/oauth/client_state.rb:17-23`
 * **Vulnerability Class & Score:** `CWE-639 / CWE-862` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md`](advisories/ko/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md`](advisories/ko/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unscoped Global `Ai::Catalog::McpServer.find` Across Organizations (`mcp_connectors_auth_controller.rb:19, 38, 63, 71-73`):** `Oauth::McpConnectorsAuthController` checks `can?(current_user, :read_ai_catalog_mcp_server, Current.organization)` against the caller's own organization, and then calls `::Ai::Catalog::McpServer.find(mcp_server_params[:id])` without `.in_organization(Current.organization)`. Any user in Organization A can target an `McpServer` belonging to Organization B by ID.
@@ -1432,7 +1432,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Target Repository & Package:** `gitlab-org/gitlab` (`Go / GitLab Workhorse: gitlab.com/gitlab-org/gitlab/workhorse`)
 * **Affected Versions & Components:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `workhorse/internal/ai_assist/duoworkflow/mcp.go:25-60, 101-112, 220-239`
 * **Vulnerability Class & Score:** `CWE-918 / CWE-522` — **CVSS v3.1: `8.2 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md`](advisories/ko/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md`](advisories/ko/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — `externalMcpTransport` Omits `transport.WithSSRFFilter` (`workhorse/internal/ai_assist/duoworkflow/mcp.go:41-44`):** In GitLab Workhorse's `transport` package, `transport.NewRestrictedTransport` only blocks loopback (`127.0.0.1`), link-local metadata (`169.254.169.254`), and RFC1918 private IPs when `transport.WithSSRFFilter(...)` is explicitly passed (as done in `workhorse/internal/sendurl/sendurl.go:365-374`). `externalMcpTransport` in `mcp.go:41-44` omits `transport.WithSSRFFilter`, leaving external MCP connections completely unfiltered at the dialer/transport layer.
@@ -1508,7 +1508,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Target Repository & Package:** `gitlab-org/gitlab` (`RubyGems / GitLab EE: gitlab-ee`)
 * **Affected Versions & Components:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `ee/app/services/ai/duo_workflows/mcp_config_service.rb:131-135`, `ee/lib/api/ai/duo_workflows/workflows.rb:341-344, 1065`, `connection_config_service.rb:220-228`
 * **Vulnerability Class & Score:** `CWE-862 / CWE-639` — **CVSS v3.1: `7.7 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md`](advisories/ko/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md`](advisories/ko/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — In-File Authorization Inconsistency in `McpConfigService` (`mcp_config_service.rb:134` vs. `334`):** In `ee/app/services/ai/duo_workflows/mcp_config_service.rb`, `ai_catalog_mcp_servers` (line 334) explicitly enforces `return {} unless Ability.allowed?(current_user, :read_ai_catalog_item, item_version)`. However, in the exact same file, `item_version` (line 134), `agent_mcp_tools` (line 297), and `built_in_tool_ids` (line 318) call `::Ai::Catalog::ItemVersion.find_by_id(ai_catalog_item_version_id)` without any `Ability.allowed?` check.
@@ -1585,7 +1585,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Target Repository & Package:** `gitlab-org/gitlab` (`RubyGems & Go / GitLab EE & Workhorse: gitlab-ee`)
 * **Affected Versions & Components:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `ee/app/services/ai/duo_workflows/mcp_config_service.rb:57-64`, `ee/app/services/ai/catalog/mcp_servers/list_service.rb:14-24`, `workhorse/internal/ai_assist/duoworkflow/mcp.go:254`
 * **Vulnerability Class & Score:** `CWE-863 / CWE-639` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:L`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md`](advisories/ko/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md`](advisories/ko/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — `McpConfigService#execute` Protects `:orbit` with `.except(:orbit)` But Forgets `:gitlab` (`mcp_config_service.rb:59-63`):** `McpConfigService#execute` builds the Workhorse MCP configuration hash via `gitlab_mcp_server(denied).merge(orbit_mcp_server).merge(ai_catalog_mcp_servers.except(:orbit))`. Because `.except(:orbit)` omits `:gitlab`, any `Ai::Catalog::McpServer` named `"GitLab"` (which normalizes to `server_key => :gitlab`) overwrites the built-in `:gitlab` entry produced by `gitlab_mcp_server(denied)`.
@@ -1654,7 +1654,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Target Repository & Package:** `gitlab-org/gitlab` (`RubyGems / GitLab CE & EE: gitlab-ce / gitlab-ee`)
 * **Affected Versions & Components:** `<= 19.6.0-pre (verified on live 19.5.1-ce.0 & 19.6.0-pre commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `app/controllers/projects/integrations/slash_commands_controller.rb:21-48`, `app/models/concerns/integrations/base/slash_commands.rb:6-10, 68-76`
 * **Vulnerability Class & Score:** `CWE-601 / CWE-863` — **CVSS v3.1: `5.4 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:L/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md`](advisories/ko/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md`](advisories/ko/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unvalidated `redirect_to request_params[:redirect_url]` with `raise_on_open_redirects = false` (`slash_commands_controller.rb:26`, `config/application.rb:63`):** While `SlashCommandsController#show` (line 11) safely computes `@redirect_url = integration_redirect_url`, `#confirm` (line 26) calls `redirect_to request_params[:redirect_url]` directly on the user-controlled parameter. Because `config.action_controller.raise_on_open_redirects = false` is set globally in `config/application.rb:63`, Rails issues a `302 Found` redirect to any arbitrary external `https://` URL.
@@ -1724,7 +1724,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Target Repository & Package:** `gitlab-org/gitlab` (`RubyGems / GitLab CE & EE (Devise 5.0.3): gitlab-ce / gitlab-ee (devise 5.0.3)`)
 * **Affected Versions & Components:** `<= 19.6.0-pre (Devise 5.0.3 CVE-2026-40295 upstream dependency & Oauth::AuthorizationsController defense-in-depth)` — `lib/gitlab/devise_failure.rb:4-18`, `lib/gitlab/auth/session_expire_from_init_enforcer.rb:44-62`, `app/controllers/oauth/authorizations_controller.rb:316-330`
 * **Vulnerability Class & Score:** `CWE-601 / CWE-345` — **CVSS v3.1: `5.4 Medium (Upstream CVE-2026-40295 Duplicate)`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md`](advisories/ko/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md`](advisories/ko/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Important Duplicate & Non-Submission Disclosure:** During our pre-submission duplicate and runtime verification gate, we identified that the `Gitlab::DeviseFailure#redirect_url` open redirect is the product-level manifestation of upstream **Devise `5.0.3` `CVE-2026-40295`**, and that `GITLAB-CAND-03` (`validate_pkce_for_dynamic_applications`) is mitigated at runtime by `Doorkeeper 5.9.3` (`pkce_code_challenge_methods ['S256']` at `config/initializers/doorkeeper.rb:158`). Therefore, **this advisory is published on GitHub for full engineering transparency and remediation, and was deliberately NOT submitted to MITRE for a duplicate CVE ID**.
@@ -1784,7 +1784,7 @@ sed -n '316,330p' /home/community-user/targets/gitlab/app/controllers/oauth/auth
 * **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/wallet/wallet_node.py:926-995` (`_add_block_from_header`)
 * **Vulnerability Class & Score:** `CWE-345 / CWE-347` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md`](advisories/ko/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md`](advisories/ko/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Header-Body Cryptographic Binding Omission (`chia/wallet/wallet_node.py:926-995`):** In Chia's block structure, the signed `HeaderBlock.foliage` commits to the transaction payload via the 32-byte SHA-256 digest `header_block.foliage.foliage_transaction_block_hash`. However, when `WalletNode._add_block_from_header` ingests a `RespondBlockHeader` message from a P2P peer, it reads `header_block.foliage_transaction_block` and extracts coin additions without verifying `header_block.foliage_transaction_block.get_hash() == header_block.foliage.foliage_transaction_block_hash`.
@@ -1848,7 +1848,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/wallet/wallet_node.py:725-777`, `chia/wallet/wallet_state_manager.py:1735-1778`
 * **Vulnerability Class & Score:** `CWE-345 / CWE-400` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md`](advisories/ko/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md`](advisories/ko/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unverified `RespondRemovals(..., proofs=None)` & `spent_height` Acceptance (`wallet_node.py:725-777` & `wallet_state_manager.py:1735-1778`):** When a wallet synchronizes coin removals or receives a `RespondRemovals` message with `proofs=None` (or an unverified `CoinState` with `spent_height` set), `_add_coin_states` updates the coin's `spent_height` in SQLite `WalletCoinStore` without verifying a Merkle removal proof against a validated peak header.
@@ -1911,7 +1911,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Target Repository & Package:** `Chia-Network/chia-blockchain-gui` (`npm / TypeScript (Electron Desktop GUI): chia-blockchain-gui`)
 * **Affected Versions & Components:** `<= 2.6.1-rc2.dev60 (verified on commit 2f6ee83a23ac8b0370b96111e02f8edfb81fa1f3)` — `packages/gui/src/components/walletConnect/WalletConnectContext.tsx:314-441`, `constants/WalletConnectCommands.ts`
 * **Vulnerability Class & Score:** `CWE-367 / CWE-285` — **CVSS v3.1: `8.8 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md`](advisories/ko/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md`](advisories/ko/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — All 29 WalletConnect Commands Exposed Upon Pairing (`constants/WalletConnectCommands.ts`):** When a user connects their Chia desktop wallet to any website/dApp (even one claiming to only check an address or NFT eligibility), the WalletConnect session namespace grants access to all 29 RPC commands, including `chia_sendTransaction`, `chia_spendCAT`, and `chia_takeOffer`.
@@ -1979,7 +1979,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/rpc/wallet_rpc_api.py:4066-4120` (`dl_verify_proof`), `chia/data_layer/data_layer_util.py`
 * **Vulnerability Class & Score:** `CWE-347 / CWE-345` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md`](advisories/ko/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md`](advisories/ko/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Missing Singleton Top-Layer & Launcher Lineage Check in `WalletRpcApi.dl_verify_proof` (`chia/rpc/wallet_rpc_api.py:4066-4120`):** When verifying a `DLProof` (`ProofOfInclusion`), `dl_verify_proof` confirms that the referenced coin (`coin_id`) was spent on-chain and that its inner puzzle announcement matches the Merkle root of the key/value pairs, plus checks `dl_wallet.get_latest_singleton(store_id)` for existence. However, it **never calls `match_dl_singleton`** on the proof's parent coin spend to verify that the coin is actually the canonical DataLayer singleton for `store_id`!
@@ -2044,7 +2044,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs`, `crates/chia-sdk-driver/src/clear_signing/tests.rs`
 * **Vulnerability Class & Score:** `CWE-451 / CWE-345` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md`](advisories/ko/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md`](advisories/ko/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Parser Divergence Between Consensus CLVM (`chia_rs`) and `cni-wallet-sdk` (`clear_signing.rs`):** Chia's consensus CLVM engine ignores extra trailing arguments on condition opcodes such as `RESERVE_FEE` (`(52 amount extra_atom)`), executing the full fee reservation on-chain. However, `cni-wallet-sdk` parses conditions using strict fixed-arity structs and silently wraps any condition with trailing atoms into `Condition::Other(NodePtr)` instead of rejecting it.
@@ -2102,7 +2102,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (`NEW_METADATA_INFO` evaluation)
 * **Vulnerability Class & Score:** `CWE-451 / CWE-345` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md`](advisories/ko/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md`](advisories/ko/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — NFT State Layer Executes Conditions Returned by the Metadata Updater Program:** Under Chia's CHIP-0007 NFT standard, when an inner spend emits a `NEW_METADATA_INFO` (`-24`) condition, the NFT state layer executes the metadata updater puzzle and merges any returned conditions into the spend's output conditions.
@@ -2153,7 +2153,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (dependent offer leg aggregation)
 * **Vulnerability Class & Score:** `CWE-682 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md`](advisories/ko/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md`](advisories/ko/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Set-Intersection Filtering Across Dependent Settlement Legs (`clear_signing.rs`):** When a Vault transaction participates in a multi-leg Offer settlement (`POC-4`), `cni-wallet-sdk` correlates notarized payments across legs using set intersection rather than union/full conservation.
@@ -2203,7 +2203,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (unrevealed settlement output handling)
 * **Vulnerability Class & Score:** `CWE-345 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md`](advisories/ko/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md`](advisories/ko/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Settlement Coins Require No Signature to Spend Once Created:** Any coin created at `SETTLEMENT_PAYMENT_HASH` can be spent by anyone who supplies a matching notarized payment solution (unless constrained by a signed announcement in the parent vault spend).
@@ -2255,7 +2255,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (`chia-sdk-driver` & `chia-sdk-bindings` FFI): chia-sdk-bindings`)
 * **Affected Versions & Components:** `chia-sdk-bindings <= 0.38.0 / chia-sdk-driver <= 0.36.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs`, `crates/chia-sdk-bindings/src/clear_signing.rs:62` (`parse_vault_transaction`)
 * **Vulnerability Class & Score:** `CWE-682 / CWE-451` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md`](advisories/ko/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md`](advisories/ko/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — External `DropCoin` Output Credited as Vault Change (`clear_signing.rs` & `chia-sdk-bindings/src/clear_signing.rs:62`):** When `parse_vault_transaction` computes the net outflow of a Vault transaction, it credits outputs sent to the vault's puzzle hash as vault change without verifying that the parent coin creating that output actually belonged to the vault (`DropCoin` parent lineage).
@@ -2310,7 +2310,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (offer pre-split coin destination binding)
 * **Vulnerability Class & Score:** `CWE-347 / CWE-451` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md`](advisories/ko/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md`](advisories/ko/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Pre-Split Intermediate Coin Spent Without Cryptographic Destination Binding (`clear_signing.rs`):** In an Offer pre-split transaction (`POC-7`), the user signs a bundle (`476b8e836e435eecb16fb924b8d8b8532fb6872fda3f9d50030d98231fff7833`, `1,994 bytes`) that splits `1,000 XCH` (`1,000,000,000,000,000 mojo`) into an intermediate settlement/pre-split coin whose downstream spend is not pinned by an `ASSERT_PUZZLE_ANNOUNCEMENT` signed by the vault.
@@ -2363,7 +2363,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (Clawback `sender_puzzle_hash` ownership check)
 * **Vulnerability Class & Score:** `CWE-345 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md`](advisories/ko/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md`](advisories/ko/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Missing Verification That `sender_puzzle_hash` Belongs to the Signing Vault (`clear_signing.rs`):** When a Vault creates a Clawback-protected output (`POC-8`), `cni-wallet-sdk` inspects the Clawback parameters and memo/hint without verifying that the Clawback `sender_puzzle_hash` (the party authorized to claw back the coin before the timelock expires) is owned by the signing vault.
@@ -2414,7 +2414,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (external CAT ring TAIL melt/issuance accounting)
 * **Vulnerability Class & Score:** `CWE-682 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md`](advisories/ko/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md`](advisories/ko/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Chia CAT Ring Conservation Balances Across All Spends in the Ring:** In Chia's CAT2 standard, multiple CAT coin spends form a ring where a negative `extra_delta` (`RUN_TAIL` melt, opcode `51 0 -113`) in an external ring member is funded by the excess input of the victim vault's CAT spend.
@@ -2464,7 +2464,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Target Repository & Package:** `Chia-Network/chia-vault-recover` (`Cargo / Rust (Chia Emergency Vault Recovery CLI): chia-vault-recover`)
 * **Affected Versions & Components:** `<= 1.0.0-rc9 (verified on commit 75e3a8efe02a131adbf3059afc20852de183ca82)` — `src/locate.rs:148-219` (`find_launcher_id`)
 * **Vulnerability Class & Score:** `CWE-345 / CWE-400` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md`](advisories/ko/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md`](advisories/ko/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unverified First-Match `SINGLETON_LAUNCHER_HASH` Return in `find_launcher_id` (`src/locate.rs:148-219`):** To locate a user's Vault singleton, `find_launcher_id` fetches all coins at the user's address via `get_coin_records_by_puzzle_hash`, inspects each coin's parent spend, and immediately returns the **first** child coin whose puzzle hash equals `SINGLETON_LAUNCHER_HASH`.
@@ -2523,7 +2523,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/full_node/full_node.py:2220-2310` (`new_peak` / `sync_from_fork_point`)
 * **Vulnerability Class & Score:** `CWE-400 / CWE-345` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md`](advisories/ko/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md`](advisories/ko/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Repeated `sync_from_fork_point` Aborts Without Peer Disconnection (`chia/full_node/full_node.py:2220-2310`):** When an unauthenticated mTLS 1.3 P2P peer on port `8444` advertises a higher `NewPeak` and supplies invalid or empty sub-epoch/weight-proof responses during `sync_from_fork_point`, `FullNode` aborts the sync attempt without disconnecting or banning the malicious peer.
@@ -2586,7 +2586,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/rpc/wallet_rpc_api.py` (`take_offer`), `chia/wallet/trade_manager.py` (`respond_to_offer`)
 * **Vulnerability Class & Score:** `CWE-863` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md`](advisories/ko/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md`](advisories/ko/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Implicit Coin Selection From Requested Notarized Payments (`trade_manager.py` & `wallet_rpc_api.py`):** When fulfilling an Offer via `take_offer`, `respond_to_offer` computes the deficit of requested notarized payments and invokes `select_coins` + `sign_coin_spends` for every requested asset.
@@ -2607,7 +2607,7 @@ async def respond_to_offer(self, offer: Offer, peer: WSChiaConnection, ...):
 
 #### 4. Example Execution, Reproduction & Verification Commands
 ```bash
-# 1. Run Sniper's Cryptographic Wallet Signing Auditor & Offer Cap Verification
+# 1. Run VulKill's Cryptographic Wallet Signing Auditor & Offer Cap Verification
 python3 -m unittest /home/community-user/targets/sniper/tests/test_wave5_orchestrator_and_wallet.py
 ```
 **Observed Runtime Proof (`RED -> GREEN`):**
@@ -2636,7 +2636,7 @@ python3 -m unittest /home/community-user/targets/sniper/tests/test_wave5_orchest
 * **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python & Rust FFI (`chia-blockchain` & `chiapos`): chia-blockchain`)
 * **Affected Versions & Components:** `chia-blockchain <= 2.7.5 (commit bdb7be2a45fc459b0672656166701ac4f46e0cfc) / chiapos <= 2.0.11` — `chia/farmer/farmer_api.py:85-185` (`FarmerAPI.new_proof_of_space`), `chiapos` Rust FFI (`size_v2` / `get_quality_string`)
 * **Vulnerability Class & Score:** `CWE-248 / CWE-20` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md`](advisories/ko/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md`](advisories/ko/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Missing Pre-Validation in `FarmerAPI.new_proof_of_space` (`chia/farmer/farmer_api.py:85-185`) vs. `FullNode` (`8444`):** While `FullNode` on port `8444` calls `ProofOfSpace.verify_and_get_quality_string` (which checks pool public key / pool contract puzzle hash XOR exclusivity and `check_plot_param` before touching native code), `FarmerAPI.new_proof_of_space` on port `8447` immediately calls `new_proof_of_space.proof.size_v2()` and `get_quality_string(...)` on the raw wire-deserialized message.
@@ -2698,7 +2698,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Target Repository & Package:** `Chia-Network/chiapos` (`PyPI / C++17 Native Extension (`chiapos`): chiapos`)
 * **Affected Versions & Components:** `<= 2.0.11 (upstream main)` — `src/verifier.hpp:48-108` (`Verifier::ValidateProof`), `src/bits.hpp:184`, `src/prover_disk.hpp:254-322` (`DiskProver`)
 * **Vulnerability Class & Score:** `CWE-190 / CWE-787 / CWE-125` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md`](advisories/ko/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md`](advisories/ko/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — `Verifier::ValidateProof` Out-of-Bounds Stack Access at Consensus-Permitted `k=50` (`src/verifier.hpp:48-108` & `src/bits.hpp:184`):** Chia's Python consensus pre-filter `check_plot_param` allows `k` up to `50` (`size <= 50`). However, inside native C++ `Verifier::ValidateProof`, evaluating Table 4 at `k=50` (and Table 1 at `k=60`) overflows 32/64-bit bit-slice offsets in `src/bits.hpp:184` (`AddressSanitizer: stack-buffer-overflow` / `runtime error: load of address ... with insufficient space`, verified in compiled ASan/UBSan binary `chiapos_k_probe`, `exit_code=1`).
@@ -2753,7 +2753,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Target Repository & Package:** `Chia-Network/chiavdf` (`PyPI / C++17 Native Extension (`chiavdf`): chiavdf`)
 * **Affected Versions & Components:** `<= 1.1.11 (upstream main)` — `src/verifier.cpp` (`CheckProofOfTimeNWesolowski`), `src/prover_slow.h`
 * **Vulnerability Class & Score:** `CWE-125 / CWE-416` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md`](advisories/ko/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md`](advisories/ko/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unchecked `proof_blob` Length and Segment Slicing in `CheckProofOfTimeNWesolowski` (`src/verifier.cpp`):** When verifying an N-Wesolowski VDF proof, `CheckProofOfTimeNWesolowski` indexes directly into `proof_blob` at fixed `2 * B_bytes` offsets per segment without verifying that `proof_blob.size()` is an exact multiple of the serialized quadratic form length or that `num_iterations > 0`.
@@ -2804,7 +2804,7 @@ grep -n -C 12 "CheckProofOfTimeNWesolowski" /home/community-user/targets/chiavdf
 * **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/data_layer/download_data.py`, `chia/data_layer/data_layer.py`
 * **Vulnerability Class & Score:** `CWE-918` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md`](advisories/ko/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md`](advisories/ko/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Public On-Chain DataLayer Mirror URLs Automatically Fetched by Subscribers (`chia/data_layer/download_data.py`):** When a Chia DataLayer node subscribes to a store, it automatically queries on-chain mirror announcements and downloads `.dat` generation files over HTTP/HTTPS using `aiohttp.ClientSession.get(...)`.
@@ -2858,7 +2858,7 @@ grep -n -C 10 "session.get" /home/community-user/targets/chia-blockchain/chia/da
 * **Target Repository & Package:** `vercel/next.js` (`npm / Node.js: next`)
 * **Affected Versions & Components:** `<= 16.4.3 (verified on published npm next@16.4.3 & canary)` — `packages/next/src/server/app-render/action-handler.ts:363-411, 962-1166`, `packages/next/src/client/components/router-reducer/reducers/server-action-reducer.ts:154-201`
 * **Vulnerability Class & Score:** `CWE-200 / CWE-918 / CWE-345` — **CVSS v3.1: `8.2 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:L/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md`](advisories/ko/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md`](advisories/ko/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Scheme-Relative URL Acceptance & Missing `redirect: 'manual'` in `createRedirectRenderResult()` (`action-handler.js:270-303`):** While `forwardActionToWorker()` explicitly sets `redirect: 'manual'` (line 175), `createRedirectRenderResult()` calls `await fetch(fetchUrl, { method: 'GET', headers: head, next: { internal: 1 } })` with Undici's default `redirect: 'follow'`. Furthermore, `getAppRelativeRedirectUrl()` checks `redirectUrl.startsWith('/')` without rejecting scheme-relative URLs (`//attacker.example/collect`).
@@ -2971,7 +2971,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Target Repository & Package:** `vercel/next.js` (`npm / Node.js: next`)
 * **Affected Versions & Components:** `<= 16.4.3 (verified on published npm next@16.4.3 & canary)` — `packages/next/src/server/image-optimizer.ts:696-729`, `packages/next/src/server/lib/find-root.ts` / `validate-url.ts` (`isPrivateIp`)
 * **Vulnerability Class & Score:** `CWE-918 / CWE-863` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md`](advisories/ko/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md`](advisories/ko/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Initial-Hop-Only `remotePatterns` Verification (`image-optimizer.js:586-615`):** `validateParams()` checks `hasMatch(domains, remotePatterns, href)` only once on the initial `/_next/image?url=...` parameter. When the allowlisted origin returns a `301`/`302`/`307`/`308` redirect, `fetchExternalImage()` resolves the new `Location` URL and calls `validateUrl(parsedRedirectUrl)` without re-evaluating `hasMatch(domains, remotePatterns, parsedRedirectUrl)`. This bypasses both **same-host pathname/search restrictions** (`/public-avatars/**` -> `/private-kyc-docs/passport-scan.png`) and **cross-host domain restrictions**.
@@ -3074,7 +3074,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Target Repository & Package:** `vercel/vercel` (`npm / Node.js: vercel`)
 * **Affected Versions & Components:** `<= 65.4.0 (verified on published npm vercel@65.4.0)` — `packages/cli/src/commands/curl/utils.ts:34-42, 74-96, 179-216`, `packages/cli/src/commands/http-cli/index.ts`
 * **Vulnerability Class & Score:** `CWE-200 / CWE-436` — **CVSS v3.1: `8.2 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md`](advisories/ko/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md`](advisories/ko/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — WHATWG `new URL()` vs. `libcurl` (`curl_url_set`) Authority Differential (`packages/cli/src/commands/curl/utils.ts:179-216`):** `constructFullUrl(baseUrl, path)` checks `const url = new URL(path, baseUrl); if (url.origin !== baseUrl) throw ...`, and then returns the **raw string concatenation** `return \`${baseUrl}${normalizedPath}\`` instead of `url.href`. When `path` is `\\@attacker.example/collect` (or `/\\@attacker.example`), WHATWG `new URL()` normalizes `\\` to `/`, seeing `https://my-app.vercel.app/%5C@attacker.example/collect` (`url.origin === baseUrl`). However, the raw string passed to `/usr/bin/curl` is `https://my-app.vercel.app\\@attacker.example/collect`, which `libcurl` parses as username `my-app.vercel.app\\` authenticating to host **`attacker.example`**!
@@ -3142,7 +3142,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Target Repository & Package:** `vercel/flags` (`npm / Node.js: @vercel/flags-core`)
 * **Affected Versions & Components:** `<= 1.10.2 (verified on published npm @vercel/flags-core@1.10.2)` — `packages/flags-core/src/controller.ts:555-615`, `packages/flags-core/dist/index.js:465-516` (`streamResponse` / `readBundledDefinitions`)
 * **Vulnerability Class & Score:** `CWE-400 / CWE-345` — **CVSS v3.1: `6.5 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md`](advisories/ko/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md`](advisories/ko/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unvalidated Header Watermark Update Before Body Verification (`packages/flags-core/src/controller.ts:555-615`):** In `streamResponse()` and `readBundledDefinitions()`, `@vercel/flags-core` reads `res.headers.get('x-datafile-Updated-At')`, parses it with `Number(updatedAtHeader)`, and immediately sets `this.datafileUpdatedAtWatermark = Math.max(this.datafileUpdatedAtWatermark, updatedAt)` BEFORE verifying `res.ok` (`200 OK`) or validating the JSON datafile body.
@@ -3207,7 +3207,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Target Repository & Package:** `vercel/flags` (`npm / Node.js: flags`)
 * **Affected Versions & Components:** `<= 4.4.0 (verified on published npm flags@4.4.0)` — `packages/flags/src/next/precompute.ts:206-214`, `packages/flags/dist/next/index.js:119-125` (`deserialize`)
 * **Vulnerability Class & Score:** `CWE-347` — **CVSS v3.1: `6.5 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md`](advisories/ko/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md`](advisories/ko/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unconditional Early Return Before JWS Verification (`packages/flags/src/next/precompute.ts:206-214`):** `serialize()` returns `'__no_flags__'` only when `flags.length === 0`. However, `deserialize(flags, code, secret)` checks `if (code === '__no_flags__') return {};` at the very top of the function WITHOUT checking `if (flags.length === 0)` and BEFORE invoking `compactVerify(code, encodedSecret)`.
@@ -3272,7 +3272,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Target Repository & Package:** `vercel/firewall` (`npm / Node.js & Go: @vercel/firewall`)
 * **Affected Versions & Components:** `<= 1.2.6 (verified on published npm @vercel/firewall@1.2.6 & Go ipc-proxy)` — `packages/firewall/src/rate-limit.ts:138-183, 211-285`, `cmd/ipc-proxy/client.go:34-41, 79-97`
 * **Vulnerability Class & Score:** `CWE-918 / CWE-200 / CWE-636` — **CVSS v3.1: `7.2 High`** (`CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:L/I:L/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md`](advisories/ko/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md`](advisories/ko/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unvalidated `Host` Header Interpolation Into Outbound HTTPS Authority (`packages/firewall/src/rate-limit.ts:138-167, 224`):** When `process.env.VERCEL_ENV !== 'production'` (such as staging, preview, self-hosted Kubernetes/Docker, or custom reverse-proxy deployments where `request` or `headers` is passed to `checkRateLimit()`), `resolveFirewallHost()` extracts `request.headers.get('host')` and constructs `const endpoint = \`https://${firewallHost}${pathPrefix}/.well-known/vercel/rate-limit/check\``.
@@ -3340,7 +3340,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Target Repository & Package:** `vercel/vercel` (`npm / Node.js: @vercel/client`)
 * **Affected Versions & Components:** `<= 18.10.0 (verified on published npm @vercel/client@18.10.0)` — `packages/client/src/utils/hashes.ts:115-167`, `packages/client/src/deploy.ts:127-195` (`filesFromFilePathMap`)
 * **Vulnerability Class & Score:** `CWE-200 / CWE-706` — **CVSS v3.1: `5.0 Medium`** (`CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md`](advisories/ko/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md`](advisories/ko/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unconfined `path.resolve(cwd, filePath)` in `filesFromFilePathMap()` (`packages/client/src/utils/hashes.ts:115-167`):** When `prebuilt: true` (`vercel deploy --prebuilt`), `@vercel/client` parses `.vercel/output/functions/**/.vc-config.json` and iterates over `Object.entries(vcConfig.filePathMap)`. For each entry, it computes `const fsPath = path.resolve(cwd, filePath)` and reads the file (`fs.readFile(fsPath)`) without checking that `fsPath` is inside `cwd` or filtering against `.vercelignore`.
@@ -3364,7 +3364,7 @@ export async function filesFromFilePathMap(
 
 #### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
 * **Scenario A — Default `vercel build && vercel deploy --prebuilt` `.env.local` Secret Leakage:** A developer adds `.env*` to `.vercelignore` expecting local secrets to stay off the deployment server, but `filePathMap` pulls `.next/required-server-files.json` containing `DATABASE_URL` and `STRIPE_SECRET_KEY` into the uploaded function bundle.
-* **Scenario B — Split CI/CD Pipeline (`build` PR Artifact -> `deploy --prebuilt` Privileged Job) Host Credential Exfiltration:** An unprivileged PR build job outputs `.vercel/output` as a workflow artifact with `filePathMap: { "leaked.txt": "/home/runner/.npmrc" }`. The privileged deploy job runs `vercel deploy --prebuilt`, uploading the runner's credentials into the deployed function.
+* **Scenario B — Split CI/CD Pipeline (`build` PR Artifact -> `deploy --prebuilt` Privileged Job) Host Credential Exfiltration:** An unprivileged PR build job outputs `.vercel/output` as a workflow artifact with `filePathMap: { "leaked.txt": "${HOME}/.npmrc" }`. The privileged deploy job runs `vercel deploy --prebuilt`, uploading the runner's credentials into the deployed function.
 * **Scenario C — Monorepo Shared Cache / Turborepo Remote Cache Poisoning:** A poisoned `.vc-config.json` restored from a shared build cache exfiltrates CI environment files during prebuilt deployment.
 
 #### 4. Example Execution, Reproduction & Verification Commands
@@ -3403,7 +3403,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Target Repository & Package:** `vercel/vercel` (`npm / Node.js: @vercel/client`)
 * **Affected Versions & Components:** `<= 18.10.0 (verified on published npm @vercel/client@18.10.0)` — `packages/client/src/utils/index.ts:116-148`, `packages/client/src/deploy.ts:145-195` (`buildFileTree` / `bulkRedirectsPath`)
 * **Vulnerability Class & Score:** `CWE-59 / CWE-200` — **CVSS v3.1: `5.0 Medium`** (`CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ko/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md`](advisories/ko/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/ko/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md`](advisories/ko/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unvalidated `config.bulkRedirectsPath` & Symlink Following in `buildFileTree()` (`packages/client/src/utils/index.ts:116-148`):** In `buildFileTree()`, when `prebuilt` is `true`, `@vercel/client` reads `.vercel/output/config.json` and resolves `const bulkRedirectsRoot = join(cwd, config.bulkRedirectsPath)`. It then recursively walks `bulkRedirectsRoot` using `fs.stat()` (which transparently dereferences symlinks to files/directories outside `cwd`) without checking `fs.realpath()` confinement.
@@ -3422,7 +3422,7 @@ if (config?.bulkRedirectsPath) {
 ```
 
 #### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
-* **Scenario A — Symlink inside `bulkRedirectsPath` Exfiltrating Host SSH/Cloud Credentials During `vercel deploy --prebuilt`:** A prebuilt output directory sets `"bulkRedirectsPath": ".vercel/output/redirects"` containing a symlink `leak.json -> /home/runner/.ssh/id_rsa`. `buildFileTree()` follows the symlink via `fs.stat()` and uploads the private key to the deployment.
+* **Scenario A — Symlink inside `bulkRedirectsPath` Exfiltrating Host SSH/Cloud Credentials During `vercel deploy --prebuilt`:** A prebuilt output directory sets `"bulkRedirectsPath": ".vercel/output/redirects"` containing a symlink `leak.json -> ${HOME}/.ssh/id_rsa`. `buildFileTree()` follows the symlink via `fs.stat()` and uploads the private key to the deployment.
 * **Scenario B — Relative Path Traversal in `.vercel/output/config.json` (`"bulkRedirectsPath": "../../secrets"`):** Setting `bulkRedirectsPath` to a parent directory walks and uploads all files in that host directory.
 * **Scenario C — `.vercelignore` Bypass for Local Secret Files:** Files explicitly excluded by `.vercelignore` are still packaged when referenced via `bulkRedirectsPath`.
 

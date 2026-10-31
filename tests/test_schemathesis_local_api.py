@@ -85,7 +85,7 @@ class SchemathesisSyntheticLocalApiTests(unittest.TestCase):
         self.origin = f"http://127.0.0.1:{self.fixture.server_address[1]}"
         os.environ["SNIPER_SCHEMATHESIS_LOCAL_ORIGIN"] = self.origin
 
-        self.api = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.api = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.api.daemon_threads = True
         self.api_thread = threading.Thread(target=self.api.serve_forever, daemon=True)
         self.api_thread.start()

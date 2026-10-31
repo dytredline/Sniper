@@ -1,6 +1,6 @@
-# Sniper CI güvenlik kapısı — GitHub Actions ÖRNEĞİ (yayınlanmadı; .github/workflows/ altına kopyalayın).
-# Tamamen çevrimdışı: Sniper ve yerel OSV veritabanı kendi barındırılan çalıştırıcıda önceden kurulu/kopyalı.
-# Sniper dış ağa çıkmaz; yalnız depo kodunu ve SNIPER_OSV_DB_ROOT altındaki imzalı OSV arşivlerini okur.
+# VulKill CI güvenlik kapısı — GitHub Actions ÖRNEĞİ (yayınlanmadı; .github/workflows/ altına kopyalayın).
+# Tamamen çevrimdışı: VulKill ve yerel OSV veritabanı kendi barındırılan çalıştırıcıda önceden kurulu/kopyalı.
+# VulKill dış ağa çıkmaz; yalnız depo kodunu ve SNIPER_OSV_DB_ROOT altındaki imzalı OSV arşivlerini okur.
 name: sniper-gate
 on:
   pull_request:
@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0          # --baseline-ref için taban commit yerelde olmalı
-      - name: Sniper kapısı
+      - name: VulKill kapısı
         run: |
           BASE="${{ github.event.pull_request.base.sha }}"
           ARGS=""

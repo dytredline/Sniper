@@ -1,4 +1,4 @@
-"""Sniper Intruder & Param Miner (Burp Intruder 4 Saldırı Modu + Param Miner karşılığı).
+"""VulKill Intruder & Param Miner (Burp Intruder 4 Saldırı Modu + Param Miner karşılığı).
 
 1. Burp Intruder'ın 4 çoklu yük (payload position §...§) modunu destekler:
    - sniper: Tek yük kümesini her konumda sırayla dener (diğer konumlar varsayılan değerinde kalır).
@@ -173,7 +173,7 @@ def execute_intruder_campaign(
         time_delta_ms = round(elapsed_ms - base_ms, 2)
         if matched_greps:
             findings.append({
-                "control_id": "SNIPER-INTRUDER-GREP-01",
+                "control_id": "VULKILL-INTRUDER-GREP-01",
                 "cwe": "CWE-89",
                 "reference": "CWE-89",
                 "severity": "critical",
@@ -185,7 +185,7 @@ def execute_intruder_campaign(
 
         if time_delta_ms >= float(time_anomaly_threshold_ms):
             findings.append({
-                "control_id": "SNIPER-INTRUDER-TIMING-02",
+                "control_id": "VULKILL-INTRUDER-TIMING-02",
                 "cwe": "CWE-89",
                 "reference": "CWE-89",
                 "severity": "high",
@@ -245,7 +245,7 @@ def mine_unlinked_parameters_and_headers(
         if code != base_status or canary in body or sim < 0.85:
             discovered_params.append({"parameter": param, "baseline_status": base_status, "probe_status": code, "similarity": round(sim, 4)})
             findings.append({
-                "control_id": "SNIPER-PARAM-MINER-01",
+                "control_id": "VULKILL-PARAM-MINER-01",
                 "cwe": "CWE-472",
                 "reference": "CWE-472",
                 "severity": "high" if (base_status in {401, 403} and 200 <= code < 300) else "medium",
@@ -268,7 +268,7 @@ def mine_unlinked_parameters_and_headers(
         if code != base_status or sim < 0.85:
             discovered_headers.append({"header": hdr, "baseline_status": base_status, "probe_status": code, "similarity": round(sim, 4)})
             findings.append({
-                "control_id": "SNIPER-PARAM-MINER-02",
+                "control_id": "VULKILL-PARAM-MINER-02",
                 "cwe": "CWE-285",
                 "reference": "CWE-285",
                 "severity": "critical" if (base_status in {401, 403} and 200 <= code < 300) else "high",

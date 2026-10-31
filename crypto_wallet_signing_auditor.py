@@ -2,9 +2,9 @@
 
 Kriptografik cüzdan, teklif (offer) çözümü ve imzalama akışlarındaki iki yüksek etkili
 yetkilendirme / kriptografi zafiyetini tespit eder:
-- SNIPER-WALLET-SPEND-01: Cüzdan/Teklif imzalama akışında örtük coin seçimi ve aşım
+- VULKILL-WALLET-SPEND-01: Cüzdan/Teklif imzalama akışında örtük coin seçimi ve aşım
   kontrolsüz harcama yetkisi (Implicit Coin Spend — CWE-863).
-- SNIPER-CRYPTO-DOMAIN-02: Kriptografik imzalama/doğrulama çağrısında alan ayrımı
+- VULKILL-CRYPTO-DOMAIN-02: Kriptografik imzalama/doğrulama çağrısında alan ayrımı
   (Domain Separation / Genesis Challenge / ChainID) eksikliği (CWE-347).
 """
 
@@ -129,7 +129,7 @@ def audit_wallet_signing_and_domain_separation(
 
     preamble, scopes = _extract_scopes(content)
 
-    # (a) SNIPER-WALLET-SPEND-01
+    # (a) VULKILL-WALLET-SPEND-01
     seen_spend_lines: set[int] = set()
     for scope in scopes:
         scope_text = scope["text"]
@@ -172,8 +172,8 @@ def audit_wallet_signing_and_domain_separation(
         )
         findings.append(
             {
-                "control_id": "SNIPER-WALLET-SPEND-01",
-                "rule_id": "SNIPER-WALLET-SPEND-01",
+                "control_id": "VULKILL-WALLET-SPEND-01",
+                "rule_id": "VULKILL-WALLET-SPEND-01",
                 "cwe": "CWE-863",
                 "reference": "CWE-863",
                 "severity": "high",
@@ -194,7 +194,7 @@ def audit_wallet_signing_and_domain_separation(
             }
         )
 
-    # (b) SNIPER-CRYPTO-DOMAIN-02
+    # (b) VULKILL-CRYPTO-DOMAIN-02
     seen_crypto_lines: set[int] = set()
     for m in _RAW_CRYPTO_SIGN_RE.finditer(content):
         call_offset = m.start()
@@ -226,8 +226,8 @@ def audit_wallet_signing_and_domain_separation(
         )
         findings.append(
             {
-                "control_id": "SNIPER-CRYPTO-DOMAIN-02",
-                "rule_id": "SNIPER-CRYPTO-DOMAIN-02",
+                "control_id": "VULKILL-CRYPTO-DOMAIN-02",
+                "rule_id": "VULKILL-CRYPTO-DOMAIN-02",
                 "cwe": "CWE-347",
                 "reference": "CWE-347",
                 "severity": "high",

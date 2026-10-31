@@ -50,7 +50,7 @@ In `trycua/cua` (`cua-compat` crate `<= 0.8.0`, `libs/cua/crates/cua-compat/src/
 
 ## 3. Example Execution & Verification Commands
 
-### 1. Auditing the Component with Sniper CLI
+### 1. Auditing the Component with VulKill CLI
 ```bash
 python3 scripts/sniper-project-audit \
   --repo-path /home/community-user/targets/cua \

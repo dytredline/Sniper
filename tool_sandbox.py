@@ -1,7 +1,7 @@
 """Docker'sız, root'suz yalıtılmış araç çalıştırma: bubblewrap + tek hedefe TCP aktarıcı.
 
 Katmanlar:
-1. Arayan (Sniper): girdiyi ve hedefi (sandbox_targets: liste, kapsam, doğrulama) denetler, veri dizininde özel bir
+1. Arayan (VulKill): girdiyi ve hedefi (sandbox_targets: liste, kapsam, doğrulama) denetler, veri dizininde özel bir
    iş dizini hazırlar, yardımcıyı başlatır. Servis sandbox'ı ayrıcalıksız kullanıcı ad alanındaysa (systemd kullanıcı
    birimi + Ubuntu ``unprivileged_userns`` AppArmor profili) bwrap orada çalışamaz; yardımcı ad alanı açmayan kısıtlı
    geçici bir kullanıcı biriminde başlatılır (qa_broker_client / joern_active ile aynı yaklaşım).

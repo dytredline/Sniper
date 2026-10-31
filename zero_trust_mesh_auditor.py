@@ -38,12 +38,12 @@ _MAX_ALIASES = 10_000
 _TAB_SIZE = 8
 
 ZERO_TRUST_CONTROLS_EVALUATED: list[str] = [
-    "SNIPER-ZT-01",
-    "SNIPER-ZT-02",
-    "SNIPER-ZT-03",
-    "SNIPER-ZT-04",
-    "SNIPER-ZT-05",
-    "SNIPER-ZT-06",
+    "VULKILL-ZT-01",
+    "VULKILL-ZT-02",
+    "VULKILL-ZT-03",
+    "VULKILL-ZT-04",
+    "VULKILL-ZT-05",
+    "VULKILL-ZT-06",
 ]
 
 ZERO_TRUST_EXTENSIONS: set[str] = {".yaml", ".yml", ".json"}
@@ -865,7 +865,7 @@ def _check_network_policy(
                     evidence=f"NetworkPolicy {namespace}/{name} ingress kuralı: {json.dumps(rule_d, ensure_ascii=False)[:160]}",
                     recommendation="Giriş kuralına açık podSelector / namespaceSelector kaynakları ekleyin; `- {}` ile herkese izin vermeyin.",
                     cwe="CWE-284",
-                    control_id="SNIPER-ZT-02",
+                    control_id="VULKILL-ZT-02",
                     filename=filename,
                     line=rule_line,
                 )
@@ -885,7 +885,7 @@ def _check_network_policy(
                         evidence=f"NetworkPolicy {namespace}/{name} ingress ipBlock.cidr: {cidr}",
                         recommendation="ipBlock kaynağını yalnızca bilinen yük dengeleyici / ofis CIDR aralıklarıyla sınırlandırın.",
                         cwe="CWE-284",
-                        control_id="SNIPER-ZT-02",
+                        control_id="VULKILL-ZT-02",
                         filename=filename,
                         line=_ln(peer, rule_line),
                     )
@@ -910,7 +910,7 @@ def _check_network_policy(
                     evidence=f"NetworkPolicy {namespace}/{name} egress kuralı: {json.dumps(rule_d, ensure_ascii=False)[:160]}",
                     recommendation="Çıkışı yalnızca gerekli hedeflerle (DNS, bağımlı servisler) ve portlarla sınırlandırın.",
                     cwe="CWE-284",
-                    control_id="SNIPER-ZT-02",
+                    control_id="VULKILL-ZT-02",
                     filename=filename,
                     line=rule_line,
                 )
@@ -932,7 +932,7 @@ def _check_network_policy(
                         evidence=f"NetworkPolicy {namespace}/{name} egress ipBlock.cidr: {cidr}",
                         recommendation="Çıkış hedeflerini açık CIDR / FQDN izin listesiyle veya egress gateway üzerinden sınırlandırın.",
                         cwe="CWE-284",
-                        control_id="SNIPER-ZT-02",
+                        control_id="VULKILL-ZT-02",
                         filename=filename,
                         line=_ln(peer, rule_line),
                     )
@@ -970,7 +970,7 @@ def _check_peer_authentication(
                 evidence=f"PeerAuthentication {namespace}/{name} mtls.mode: DISABLE · kapsam: {scope_text}",
                 recommendation="mtls.mode değerini STRICT yapın; geçiş gerekiyorsa yalnızca belirli port/iş yükü için sınırlı süreli istisna tanımlayın.",
                 cwe="CWE-319",
-                control_id="SNIPER-ZT-03",
+                control_id="VULKILL-ZT-03",
                 filename=filename,
                 line=mode_line,
             )
@@ -987,7 +987,7 @@ def _check_peer_authentication(
                 evidence=f"PeerAuthentication {namespace}/{name} mtls.mode: PERMISSIVE · kapsam: {scope_text}",
                 recommendation="Geçiş tamamlandığında mtls.mode: STRICT uygulayın ve mesh genelinde istio-system içinde STRICT varsayılanı tanımlayın.",
                 cwe="CWE-319",
-                control_id="SNIPER-ZT-03",
+                control_id="VULKILL-ZT-03",
                 filename=filename,
                 line=mode_line,
             )
@@ -1006,7 +1006,7 @@ def _check_peer_authentication(
                         evidence=f"PeerAuthentication {namespace}/{name} portLevelMtls[{port}].mode: DISABLE · kapsam: {scope_text}",
                         recommendation="Port düzeyi istisnayı kaldırın veya yalnızca sağlık denetimi gibi zorunlu durumlarla sınırlandırıp belgeleyin.",
                         cwe="CWE-319",
-                        control_id="SNIPER-ZT-03",
+                        control_id="VULKILL-ZT-03",
                         filename=filename,
                         line=port_line,
                     )
@@ -1020,7 +1020,7 @@ def _check_peer_authentication(
                         evidence=f"PeerAuthentication {namespace}/{name} portLevelMtls[{port}].mode: PERMISSIVE · kapsam: {scope_text}",
                         recommendation="Port düzeyinde STRICT mTLS uygulayın.",
                         cwe="CWE-319",
-                        control_id="SNIPER-ZT-03",
+                        control_id="VULKILL-ZT-03",
                         filename=filename,
                         line=port_line,
                     )
@@ -1064,7 +1064,7 @@ def _check_destination_rule(
                     evidence=f"DestinationRule {namespace}/{name} host={host} {label}.tls.mode: DISABLE",
                     recommendation="tls.mode değerini ISTIO_MUTUAL (mesh içi) veya doğrulamalı SIMPLE/MUTUAL (mesh dışı) yapın.",
                     cwe="CWE-319",
-                    control_id="SNIPER-ZT-03",
+                    control_id="VULKILL-ZT-03",
                     filename=filename,
                     line=tls_line,
                 )
@@ -1082,7 +1082,7 @@ def _check_destination_rule(
                     evidence=f"DestinationRule {namespace}/{name} host={host} {label}.tls.mode: SIMPLE (caCertificates/credentialName yok)",
                     recommendation="tls.caCertificates veya credentialName ile güvenilen CA'yı ve gerekiyorsa subjectAltNames/sni değerlerini tanımlayın.",
                     cwe="CWE-319",
-                    control_id="SNIPER-ZT-03",
+                    control_id="VULKILL-ZT-03",
                     filename=filename,
                     line=tls_line,
                 )
@@ -1099,7 +1099,7 @@ def _check_destination_rule(
                     evidence=f"DestinationRule {namespace}/{name} host={host} {label}.tls.insecureSkipVerify: true",
                     recommendation="insecureSkipVerify ayarını kaldırın ve caCertificates ile doğrulama yapın.",
                     cwe="CWE-295",
-                    control_id="SNIPER-ZT-03",
+                    control_id="VULKILL-ZT-03",
                     filename=filename,
                     line=_kln(tls, "insecureSkipVerify", tls_line),
                 )
@@ -1133,7 +1133,7 @@ def _check_authorization_policy(
                     evidence=f"AuthorizationPolicy {namespace}/{name} action: ALLOW rules: - {{}}",
                     recommendation="Boş kuralı kaldırın; from.source.principals, to.operation ve when koşullarıyla en az ayrıcalık tanımlayın.",
                     cwe="CWE-863",
-                    control_id="SNIPER-ZT-04",
+                    control_id="VULKILL-ZT-04",
                     filename=filename,
                     line=rule_line,
                 )
@@ -1163,7 +1163,7 @@ def _check_authorization_policy(
                     ),
                     recommendation="Joker yerine açık SPIFFE kimlikleri (cluster.local/ns/<ns>/sa/<sa>) ve gerekli ad alanlarını listeleyin.",
                     cwe="CWE-863",
-                    control_id="SNIPER-ZT-04",
+                    control_id="VULKILL-ZT-04",
                     filename=filename,
                     line=rule_line,
                 )
@@ -1195,7 +1195,7 @@ def _check_request_authentication(
                     evidence=f"RequestAuthentication {namespace}/{name} jwtRules: {target[:160]}",
                     recommendation="jwksUri ve issuer adreslerinde yalnızca HTTPS kullanın veya jwks alanıyla anahtarları yerel olarak sabitleyin.",
                     cwe="CWE-319",
-                    control_id="SNIPER-ZT-03",
+                    control_id="VULKILL-ZT-03",
                     filename=filename,
                     line=rule_line,
                 )
@@ -1213,7 +1213,7 @@ def _check_request_authentication(
                     evidence=f"RequestAuthentication {namespace}/{name} issuer={issuer or '?'} (audiences yok)",
                     recommendation="jwtRules altına yalnızca bu servisin beklediği hedef kitleleri içeren açık `audiences` listesi ekleyin.",
                     cwe="CWE-287",
-                    control_id="SNIPER-ZT-04",
+                    control_id="VULKILL-ZT-04",
                     filename=filename,
                     line=rule_line,
                 )
@@ -1241,7 +1241,7 @@ def _check_gateway(spec: Any, *, name: str, namespace: str, filename: str, line:
                     evidence=f"Gateway {namespace}/{name} port.protocol: HTTP hosts: {hosts}",
                     recommendation="HTTP sunucusuna `tls: {httpsRedirect: true}` ekleyin ve HTTPS sunucusu tanımlayın.",
                     cwe="CWE-319",
-                    control_id="SNIPER-ZT-05",
+                    control_id="VULKILL-ZT-05",
                     filename=filename,
                     line=server_line,
                 )
@@ -1259,7 +1259,7 @@ def _check_gateway(spec: Any, *, name: str, namespace: str, filename: str, line:
                     evidence=f"Gateway {namespace}/{name} tls.mode: PASSTHROUGH hosts: {hosts}",
                     recommendation="Arka uç TLS yapılandırmasının güçlü olduğunu doğrulayın veya SIMPLE/MUTUAL ile ağ geçidinde sonlandırın.",
                     cwe="CWE-319",
-                    control_id="SNIPER-ZT-05",
+                    control_id="VULKILL-ZT-05",
                     filename=filename,
                     line=server_line,
                 )
@@ -1274,7 +1274,7 @@ def _check_gateway(spec: Any, *, name: str, namespace: str, filename: str, line:
                     evidence=f"Gateway {namespace}/{name} tls.minProtocolVersion: {min_version}",
                     recommendation="minProtocolVersion değerini en az TLSV1_2 (tercihen TLSV1_3) yapın.",
                     cwe="CWE-327",
-                    control_id="SNIPER-ZT-05",
+                    control_id="VULKILL-ZT-05",
                     filename=filename,
                     line=_kln(tls, "minProtocolVersion", server_line),
                 )
@@ -1317,7 +1317,7 @@ def _check_gateway_api(
                     evidence=f"Gateway {namespace}/{name} listener {listener_name} protocol: TLS tls.mode: Passthrough hostname: {hostname}",
                     recommendation="Arka uç TLS yapılandırmasını doğrulayın veya mümkünse tls.mode: Terminate kullanın.",
                     cwe="CWE-319",
-                    control_id="SNIPER-ZT-05",
+                    control_id="VULKILL-ZT-05",
                     filename=filename,
                     line=listener_line,
                 )
@@ -1339,7 +1339,7 @@ def _check_gateway_api(
                         "rota sahipliğini ReferenceGrant ve ad alanı etiketleriyle sınırlandırın."
                     ),
                     cwe="CWE-284",
-                    control_id="SNIPER-ZT-05",
+                    control_id="VULKILL-ZT-05",
                     filename=filename,
                     line=listener_line,
                 )
@@ -1397,7 +1397,7 @@ def _check_service(
                 evidence=f"Service {namespace}/{name} spec.type: {service_type} (loadBalancerSourceRanges yok)",
                 recommendation="loadBalancerSourceRanges ile izinli CIDR'leri tanımlayın, iç yük dengeleyici kullanın veya Ingress/Gateway arkasına alın.",
                 cwe="CWE-284",
-                control_id="SNIPER-ZT-06",
+                control_id="VULKILL-ZT-06",
                 filename=filename,
                 line=type_line,
             )
@@ -1411,7 +1411,7 @@ def _check_service(
                 evidence=f"Service {namespace}/{name} loadBalancerSourceRanges: {', '.join(ranges)[:120]}",
                 recommendation="Kaynak aralığını yalnızca gerekli istemci CIDR'leriyle sınırlandırın.",
                 cwe="CWE-284",
-                control_id="SNIPER-ZT-06",
+                control_id="VULKILL-ZT-06",
                 filename=filename,
                 line=_kln(spec_d, "loadBalancerSourceRanges", type_line),
             )
@@ -1434,7 +1434,7 @@ def _linkerd_skip_port_findings(
                     evidence=f"{owner} {key}: {str(annotations[key])[:80]}",
                     recommendation="Atlanan portları en aza indirin, nedenini belgeleyin ve bu portları NetworkPolicy ile ayrıca kısıtlayın.",
                     cwe="CWE-319",
-                    control_id="SNIPER-ZT-03",
+                    control_id="VULKILL-ZT-03",
                     filename=filename,
                     line=_kln(annotations, key, line),
                 )
@@ -1501,7 +1501,7 @@ def _check_envoy(doc: dict[str, Any], *, filename: str, line: int, add: _AddFn) 
                 evidence=f"Envoy cluster {cluster_name} → {', '.join(remote[:3])} (transport_socket yok)",
                 recommendation="Kümeye envoy.transport_sockets.tls (UpstreamTlsContext) ile doğrulamalı TLS/mTLS ekleyin.",
                 cwe="CWE-319",
-                control_id="SNIPER-ZT-03",
+                control_id="VULKILL-ZT-03",
                 filename=filename,
                 line=_ln(cluster, line),
             )
@@ -1543,7 +1543,7 @@ def _check_envoy(doc: dict[str, Any], *, filename: str, line: int, add: _AddFn) 
                 evidence=f"Envoy listener {listener_name} http_filters: rbac/ext_authz yok",
                 recommendation="HTTP filtre zincirine envoy.filters.http.rbac veya envoy.filters.http.ext_authz ekleyin (router filtresinden önce).",
                 cwe="CWE-863",
-                control_id="SNIPER-ZT-04",
+                control_id="VULKILL-ZT-04",
                 filename=filename,
                 line=_ln(listener, line),
             )
@@ -1663,7 +1663,7 @@ def _heuristic_document(
                     evidence=f"{prefix}{stripped}",
                     recommendation="mtls.mode değerini STRICT yapın ve manifest sözdizimini düzeltin.",
                     cwe="CWE-319",
-                    control_id="SNIPER-ZT-03",
+                    control_id="VULKILL-ZT-03",
                     filename=filename,
                     line=line_no,
                 )
@@ -1677,7 +1677,7 @@ def _heuristic_document(
                     evidence=f"{prefix}{stripped}",
                     recommendation="tls.mode değerini ISTIO_MUTUAL veya doğrulamalı SIMPLE/MUTUAL yapın.",
                     cwe="CWE-319",
-                    control_id="SNIPER-ZT-03",
+                    control_id="VULKILL-ZT-03",
                     filename=filename,
                     line=line_no,
                 )
@@ -1694,7 +1694,7 @@ def _heuristic_document(
                     evidence=f"{prefix}{stripped}",
                     recommendation="Joker yerine açık SPIFFE kimliklerini listeleyin.",
                     cwe="CWE-863",
-                    control_id="SNIPER-ZT-04",
+                    control_id="VULKILL-ZT-04",
                     filename=filename,
                     line=line_no,
                 )
@@ -1708,7 +1708,7 @@ def _heuristic_document(
                     evidence=f"{prefix}{stripped}",
                     recommendation="ipBlock aralığını bilinen CIDR'lerle sınırlandırın.",
                     cwe="CWE-284",
-                    control_id="SNIPER-ZT-02",
+                    control_id="VULKILL-ZT-02",
                     filename=filename,
                     line=line_no,
                 )
@@ -1751,7 +1751,7 @@ def _aggregate_findings(ctx: _MeshContext, add: _AddFn) -> None:
                         "NetworkPolicy ekleyin; ardından yalnızca gerekli akışlara açık izin verin."
                     ),
                     cwe="CWE-923",
-                    control_id="SNIPER-ZT-01",
+                    control_id="VULKILL-ZT-01",
                     filename=first_file,
                     line=first_line,
                 )
@@ -1771,7 +1771,7 @@ def _aggregate_findings(ctx: _MeshContext, add: _AddFn) -> None:
                         "DNS ve gerekli bağımlılıklara açık izin verin."
                     ),
                     cwe="CWE-923",
-                    control_id="SNIPER-ZT-01",
+                    control_id="VULKILL-ZT-01",
                     filename=first_file,
                     line=first_line,
                 )
@@ -1798,7 +1798,7 @@ def _aggregate_findings(ctx: _MeshContext, add: _AddFn) -> None:
                     "{scheme: https, statusCode: 301}}]` tanımlayın ve uygulama trafiğini HTTPS dinleyicisine taşıyın."
                 ),
                 cwe="CWE-319",
-                control_id="SNIPER-ZT-05",
+                control_id="VULKILL-ZT-05",
                 filename=filename,
                 line=line,
             )
@@ -1816,7 +1816,7 @@ def _aggregate_findings(ctx: _MeshContext, add: _AddFn) -> None:
                     evidence=f"{kind} {namespace}/{name} linkerd.io/inject: disabled (namespace: enabled)",
                     recommendation="İstisnayı kaldırın veya iş yükünü ayrı bir ad alanına taşıyıp NetworkPolicy ile izole edin.",
                     cwe="CWE-319",
-                    control_id="SNIPER-ZT-03",
+                    control_id="VULKILL-ZT-03",
                     filename=filename,
                     line=line,
                 )

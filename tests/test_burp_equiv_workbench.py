@@ -1,4 +1,4 @@
-"""Sniper 5'li Burp Suite eşdeğeri modüllerin (Repeater/Comparer, Autorize, Race Runner,
+"""VulKill 5'li Burp Suite eşdeğeri modüllerin (Repeater/Comparer, Autorize, Race Runner,
 Token Sequencer, Traffic Decoder/Inspector) çalışma zamanı ve API/CLI regresyon testleri.
 """
 from __future__ import annotations
@@ -58,8 +58,8 @@ class BurpEquivWorkbenchTests(unittest.TestCase):
         self.assertEqual(res_red["format"], "sniper-http-repeater-comparer/1")
         self.assertGreaterEqual(res_red["finding_count"], 2)
         control_ids = {f["control_id"] for f in res_red["findings"]}
-        self.assertIn("SNIPER-REPEATER-LOGIC-02", control_ids)
-        self.assertIn("SNIPER-REPEATER-MASS-03", control_ids)
+        self.assertIn("VULKILL-REPEATER-LOGIC-02", control_ids)
+        self.assertIn("VULKILL-REPEATER-MASS-03", control_ids)
 
         def safe_checkout_handler(_req: dict) -> dict:
             return {
@@ -107,7 +107,7 @@ class BurpEquivWorkbenchTests(unittest.TestCase):
         self.assertEqual(red_report["format"], "sniper-autorize-matrix-report/1")
         self.assertEqual(red_report["finding_count"], 3)
         cids = {f["control_id"] for f in red_report["findings"]}
-        self.assertEqual(cids, {"SNIPER-AUTORIZE-IDOR-01", "SNIPER-AUTORIZE-UNAUTH-02", "SNIPER-AUTORIZE-MASS-03"})
+        self.assertEqual(cids, {"VULKILL-AUTORIZE-IDOR-01", "VULKILL-AUTORIZE-UNAUTH-02", "VULKILL-AUTORIZE-MASS-03"})
 
         def safe_api_handler(req: dict) -> dict:
             headers = req.get("headers") or {}
@@ -153,7 +153,7 @@ class BurpEquivWorkbenchTests(unittest.TestCase):
         )
         self.assertTrue(race_red["race_reproduced"])
         self.assertGreater(race_red["actual_success_count"], 1)
-        self.assertEqual(race_red["findings"][0]["control_id"], "SNIPER-RACE-TOCTOU-01")
+        self.assertEqual(race_red["findings"][0]["control_id"], "VULKILL-RACE-TOCTOU-01")
 
         # GREEN: Atomik kilitli kupon kullanımı
         safe_lock = threading.Lock()
@@ -183,7 +183,7 @@ class BurpEquivWorkbenchTests(unittest.TestCase):
         self.assertTrue(weak_res["timestamp_leak_detected"])
         self.assertEqual(weak_res["quality_grade"], "critical_predictable")
         self.assertEqual(weak_res["finding_count"], 1)
-        self.assertEqual(weak_res["findings"][0]["control_id"], "SNIPER-SEQUENCER-WEAK-01")
+        self.assertEqual(weak_res["findings"][0]["control_id"], "VULKILL-SEQUENCER-WEAK-01")
 
         strong_tokens = [secrets.token_urlsafe(32) for _ in range(16)]
         strong_res = token_sequencer.analyze_token_sequence_entropy(strong_tokens, token_label="session_cookie")
@@ -198,7 +198,7 @@ class BurpEquivWorkbenchTests(unittest.TestCase):
         unsigned_jwt = f"{hdr}.{pay}."
         dec_jwt = traffic_decoder_inspector.recursive_decode_and_inspect(unsigned_jwt)
         self.assertIn("jwt_alg_none_or_unsigned", dec_jwt["detected_signals"])
-        self.assertEqual(dec_jwt["findings"][0]["control_id"], "SNIPER-DECODER-JWT-01")
+        self.assertEqual(dec_jwt["findings"][0]["control_id"], "VULKILL-DECODER-JWT-01")
 
         # 2. URL + Base64 kodlu IMDS SSRF hedefi ve HAR incelemesi
         b64_imds = base64.b64encode(b"http://169.254.169.254/latest/meta-data/").decode("ascii")
@@ -258,7 +258,7 @@ class BurpEquivWorkbenchTests(unittest.TestCase):
             time_anomaly_threshold_ms=500.0,
         )
         cids = {f["control_id"] for f in camp["findings"]}
-        self.assertEqual(cids, {"SNIPER-INTRUDER-GREP-01", "SNIPER-INTRUDER-TIMING-02"})
+        self.assertEqual(cids, {"VULKILL-INTRUDER-GREP-01", "VULKILL-INTRUDER-TIMING-02"})
 
         def hidden_param_handler(req: dict) -> dict:
             qp = req.get("query_params") or {}
@@ -292,7 +292,7 @@ class BurpEquivWorkbenchTests(unittest.TestCase):
         cids = {f["control_id"] for f in res_red["findings"]}
         self.assertEqual(
             cids,
-            {"SNIPER-DOM-CSPP-01", "SNIPER-DOM-GADGET-02", "SNIPER-DOM-CLOBBER-03", "SNIPER-DOM-POSTMSG-04"},
+            {"VULKILL-DOM-CSPP-01", "VULKILL-DOM-GADGET-02", "VULKILL-DOM-CLOBBER-03", "VULKILL-DOM-POSTMSG-04"},
         )
 
         safe_js = """
@@ -318,7 +318,7 @@ class BurpEquivWorkbenchTests(unittest.TestCase):
             }
         ])
         self.assertEqual(smug_red["finding_count"], 1)
-        self.assertEqual(smug_red["findings"][0]["control_id"], "SNIPER-SMUGGLE-DESYNC-01")
+        self.assertEqual(smug_red["findings"][0]["control_id"], "VULKILL-SMUGGLE-DESYNC-01")
 
         cache_store: dict[str, dict] = {}
 
@@ -338,7 +338,7 @@ class BurpEquivWorkbenchTests(unittest.TestCase):
             target_handler_fn=vulnerable_cdn_handler,
         )
         self.assertTrue(cp_red["cache_poisoned"])
-        self.assertEqual(cp_red["findings"][0]["control_id"], "SNIPER-CACHE-POISON-01")
+        self.assertEqual(cp_red["findings"][0]["control_id"], "VULKILL-CACHE-POISON-01")
 
 
 if __name__ == "__main__":

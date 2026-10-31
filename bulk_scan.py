@@ -860,7 +860,7 @@ def audit_auth_contract_graph(items: list[dict[str, Any]]) -> dict[str, Any]:
             if len(findings) >= MAX_AUTH_GRAPH_FINDINGS:
                 continue
             findings.append({
-                "rule_id": "SNIPER-BULK-AUTH-01",
+                "rule_id": "VULKILL-BULK-AUTH-01",
                 "severity": "high",
                 "category": "authorization",
                 "title": "Depolar arası kimlik doğrulama sözleşmesi uyumsuz",

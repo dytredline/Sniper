@@ -1,4 +1,4 @@
-"""Sniper Parallel Race Condition Runner (Burp Repeater 'Send group in parallel' karşılığı).
+"""VulKill Parallel Race Condition Runner (Burp Repeater 'Send group in parallel' karşılığı).
 
 Tek kullanımlık kupon, bakiye çekimi, davet kabulü veya durum geçişi uç noktalarına
 bariyer-senkronize (threading.Barrier) paralel istek grubu göndererek TOCTOU / çift harcama
@@ -68,7 +68,7 @@ def run_barrier_synchronized_race_probe(
     findings: list[dict[str, Any]] = []
     if race_reproduced:
         findings.append({
-            "control_id": "SNIPER-RACE-TOCTOU-01",
+            "control_id": "VULKILL-RACE-TOCTOU-01",
             "cwe": "CWE-362",
             "reference": "CWE-362",
             "severity": "critical",

@@ -313,7 +313,7 @@ def render_page_html(summary: dict[str, Any]) -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sniper Yönetici Özeti — {title}</title>
+<title>VulKill Yönetici Özeti — {title}</title>
 <style>
 body {{ font-family: system-ui, -apple-system, sans-serif; margin: 2rem; color: #0f172a; background: #f8fafc; max-width: 960px; }}
 table {{ width: 100%; border-collapse: collapse; background: #fff; margin-bottom: 1.25rem; }}

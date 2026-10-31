@@ -14,10 +14,10 @@ MAX_INLINE_BYTES = 512_000
 MAX_PROJECT_FILES = 1_500
 
 DATABASE_SCHEMA_CONTROLS_EVALUATED: list[str] = [
-    "SNIPER-AUTHZ-04",
-    "SNIPER-DATA-02",
-    "SNIPER-CONF-08",
-    "SNIPER-INFR-03",
+    "VULKILL-AUTHZ-04",
+    "VULKILL-DATA-02",
+    "VULKILL-CONF-08",
+    "VULKILL-INFR-03",
 ]
 
 DB_SCAN_EXTENSIONS: set[str] = {".sql", ".prisma", ".conf", ".py", ".js", ".ts"}
@@ -240,7 +240,7 @@ def audit_database_schema_inline(
             seen_keys.add(key)
             findings.append(finding)
 
-    # 1. Missing Row-Level Security (RLS) on Multi-Tenant Tables (high, CWE-284, SNIPER-AUTHZ-04)
+    # 1. Missing Row-Level Security (RLS) on Multi-Tenant Tables (high, CWE-284, VULKILL-AUTHZ-04)
     has_global_rls = bool(
         re.search(r"\b(?:ENABLE\s+ROW\s+LEVEL\s+SECURITY|CREATE\s+POLICY)\b", raw_content, re.IGNORECASE)
     )
@@ -277,7 +277,7 @@ def audit_database_schema_inline(
                             "komutlarıyla birlikte current_setting('app.current_tenant_id') tabanlı CREATE POLICY ekleyin."
                         ),
                         cwe="CWE-284",
-                        control_id="SNIPER-AUTHZ-04",
+                        control_id="VULKILL-AUTHZ-04",
                         filename=clean_filename,
                         line=line_no,
                     )
@@ -305,13 +305,13 @@ def audit_database_schema_inline(
                         "ENABLE ROW LEVEL SECURITY ve kiracı izolasyon politikalarını zorunlu kılın."
                     ),
                     cwe="CWE-284",
-                    control_id="SNIPER-AUTHZ-04",
+                    control_id="VULKILL-AUTHZ-04",
                     filename=clean_filename,
                     line=line_no,
                 )
             )
 
-    # 2. Plaintext Sensitive PII / Financial Columns (high, CWE-311, SNIPER-DATA-02)
+    # 2. Plaintext Sensitive PII / Financial Columns (high, CWE-311, VULKILL-DATA-02)
     sensitive_col_re = re.compile(
         r"(?im)^\s*[\"`']?([A-Za-z0-9_]*(?:ssn|tc_kimlik|iban|card_number|cvv|pin|password|api_secret|private_key|tax_id)[A-Za-z0-9_]*)[\"`']?\s+"
         r"(?:VARCHAR|TEXT|CHAR|NVARCHAR|CHARACTER\s+VARYING|String\b)",
@@ -338,13 +338,13 @@ def audit_database_schema_inline(
                     "tokenizasyon ile saklayın."
                 ),
                 cwe="CWE-311",
-                control_id="SNIPER-DATA-02",
+                control_id="VULKILL-DATA-02",
                 filename=clean_filename,
                 line=line_no,
             )
         )
 
-    # 3. Excessive Database Privileges & Dangerous Command Execution (critical, CWE-250, SNIPER-CONF-08)
+    # 3. Excessive Database Privileges & Dangerous Command Execution (critical, CWE-250, VULKILL-CONF-08)
     for privilege_start, privilege_text in _iter_dangerous_db_privileges(raw_content):
         if privilege_text.upper() == "SUPERUSER" and re.search(
             r"\bNOSUPERUSER\b", lines[_line_number_for_offset(raw_content, privilege_start) - 1], re.IGNORECASE
@@ -367,13 +367,13 @@ def audit_database_schema_inline(
                     "işletim sistemi dosya/komut erişimini kapatın ve scram-sha-256 kimlik doğrulaması kullanın."
                 ),
                 cwe="CWE-250",
-                control_id="SNIPER-CONF-08",
+                control_id="VULKILL-CONF-08",
                 filename=clean_filename,
                 line=line_no,
             )
         )
 
-    # 4. Unsafe Schema Migration / Foreign Key Disablement (medium, CWE-400, SNIPER-INFR-03)
+    # 4. Unsafe Schema Migration / Foreign Key Disablement (medium, CWE-400, VULKILL-INFR-03)
     for migration_start, migration_text in _iter_unsafe_migrations(raw_content):
         line_no = _line_number_for_offset(raw_content, migration_start)
         snippet = lines[line_no - 1] if 1 <= line_no <= len(lines) else migration_text
@@ -392,13 +392,13 @@ def audit_database_schema_inline(
                     "DROP ... CASCADE yerine açık bağımlılık sırasıyla aşamalı migrasyon uygulayın."
                 ),
                 cwe="CWE-400",
-                control_id="SNIPER-INFR-03",
+                control_id="VULKILL-INFR-03",
                 filename=clean_filename,
                 line=line_no,
             )
         )
 
-    # 5. PostgreSQL SECURITY DEFINER Without SET search_path (high, CWE-426, SNIPER-CONF-08)
+    # 5. PostgreSQL SECURITY DEFINER Without SET search_path (high, CWE-426, VULKILL-CONF-08)
     sec_definer_re = re.compile(r"\bSECURITY\s+DEFINER\b", re.IGNORECASE)
     search_path_re = re.compile(r"\bSET\s+search_path\b", re.IGNORECASE)
     for match in sec_definer_re.finditer(raw_content):
@@ -424,13 +424,13 @@ def audit_database_schema_inline(
                         "(veya yalnızca güvenilen şema) direktifini ekleyin."
                     ),
                     cwe="CWE-426",
-                    control_id="SNIPER-CONF-08",
+                    control_id="VULKILL-CONF-08",
                     filename=clean_filename,
                     line=line_no,
                 )
             )
 
-    # 6. Overly Permissive RLS Policy USING (true) / WITH CHECK (true) (high, CWE-284, SNIPER-AUTHZ-04)
+    # 6. Overly Permissive RLS Policy USING (true) / WITH CHECK (true) (high, CWE-284, VULKILL-AUTHZ-04)
     permissive_policy_re = re.compile(
         r"\bCREATE\s+POLICY\b[^;]*?\b(?:USING|WITH\s+CHECK)\s*\(\s*true\s*\)",
         re.IGNORECASE | re.DOTALL,
@@ -459,7 +459,7 @@ def audit_database_schema_inline(
                         "tenant_id = current_setting('app.current_tenant_id')::uuid koşulunu zorunlu kılın."
                     ),
                     cwe="CWE-284",
-                    control_id="SNIPER-AUTHZ-04",
+                    control_id="VULKILL-AUTHZ-04",
                     filename=clean_filename,
                     line=line_no,
                 )
@@ -599,7 +599,7 @@ def audit_multitenant_rls_isolation(
     tenant_tables: set[str] = set()
     reported_missing_rls: set[str] = set()
 
-    # (a) SNIPER-DB-RLS-05: Multi-tenant CREATE TABLE / Prisma model without ENABLE/FORCE ROW LEVEL SECURITY
+    # (a) VULKILL-DB-RLS-05: Multi-tenant CREATE TABLE / Prisma model without ENABLE/FORCE ROW LEVEL SECURITY
     for table_start, raw_table_name, table_body in _iter_balanced_sql_tables(raw_content):
         table_name = raw_table_name.strip("\"'`")
         short_key = _short_name(table_name)
@@ -626,7 +626,7 @@ def audit_multitenant_rls_isolation(
                             "komutlarını ekleyerek kiracı bazlı RLS politikası tanımlayın."
                         ),
                         cwe="CWE-284",
-                        control_id="SNIPER-DB-RLS-05",
+                        control_id="VULKILL-DB-RLS-05",
                         filename=clean_filename,
                         line=line_no,
                     ),
@@ -657,14 +657,14 @@ def audit_multitenant_rls_isolation(
                             "FORCE ROW LEVEL SECURITY komutlarını etkinleştirin."
                         ),
                         cwe="CWE-284",
-                        control_id="SNIPER-DB-RLS-05",
+                        control_id="VULKILL-DB-RLS-05",
                         filename=clean_filename,
                         line=line_no,
                     ),
                     desc,
                 )
 
-    # (b) SNIPER-DB-RLS-06: Overly broad USING (true) or WITH CHECK (true) in CREATE POLICY
+    # (b) VULKILL-DB-RLS-06: Overly broad USING (true) or WITH CHECK (true) in CREATE POLICY
     policy_re = re.compile(
         r"\bCREATE\s+POLICY\b[^;]*?\b(?:USING|WITH\s+CHECK)\s*\(\s*true\s*\)[^;]*",
         re.IGNORECASE | re.DOTALL,
@@ -699,7 +699,7 @@ def audit_multitenant_rls_isolation(
                         "tenant_id = current_setting('app.current_tenant_id')::uuid kısıtını uygulayın."
                     ),
                     cwe="CWE-732",
-                    control_id="SNIPER-DB-RLS-06",
+                    control_id="VULKILL-DB-RLS-06",
                     filename=clean_filename,
                     line=line_no,
                 ),

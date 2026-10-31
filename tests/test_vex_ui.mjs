@@ -19,7 +19,7 @@ function load() {
   const document = { createElement: (tag) => node(tag) };  // addEventListener yok → otomatik bağlama atlanır
   const window = {};
   vm.runInNewContext(source, { window, globalThis: window, document, String, Number, Object, JSON, Error, Promise });
-  return window.SniperVex;
+  return window.VulKillVex;
 }
 
 function texts(root) {

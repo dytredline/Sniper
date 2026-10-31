@@ -222,7 +222,7 @@ def synchronize_engagement_auto_evidence(
                 return
         evaluated[control_id] = (status, notes, evidence)
 
-    # 1. Information Gathering (SNIPER-INFO-*)
+    # 1. Information Gathering (VULKILL-INFO-*)
     if has_scan:
         m = _scan_matches(
             scan_findings,
@@ -230,11 +230,11 @@ def synchronize_engagement_auto_evidence(
             title_substrings=("robots.txt", "bilgi", "ifşa"),
         )
         note, ev = _format_scan_evidence(scan_id, m, "harici bilgi sızıntısı ve arama motoru indeksleme")
-        record("SNIPER-INFO-01", "failed" if m else "passed", note, ev)
+        record("VULKILL-INFO-01", "failed" if m else "passed", note, ev)
 
         m = _scan_matches(scan_findings, titles=("Sunucu teknolojisi ayrıntısı açığa çıkıyor",))
         note, ev = _format_scan_evidence(scan_id, m, "sunucu parmak izi ve üstbilgi ifşası")
-        record("SNIPER-INFO-02", "failed" if m else "passed", note, ev)
+        record("VULKILL-INFO-02", "failed" if m else "passed", note, ev)
 
         m = _scan_matches(
             scan_findings,
@@ -247,10 +247,10 @@ def synchronize_engagement_auto_evidence(
             title_substrings=("robots.txt", "security.txt"),
         )
         note, ev = _format_scan_evidence(scan_id, m, "web meta dosyaları (security.txt / robots.txt)")
-        record("SNIPER-INFO-03", "failed" if m else "passed", note, ev)
+        record("VULKILL-INFO-03", "failed" if m else "passed", note, ev)
 
         note, ev = _format_scan_evidence(scan_id, [], "uygulama ve hedef URL envanteri")
-        record("SNIPER-INFO-04", "passed", note, ev)
+        record("VULKILL-INFO-04", "passed", note, ev)
 
         m = _scan_matches(
             scan_findings,
@@ -260,19 +260,19 @@ def synchronize_engagement_auto_evidence(
             ),
         )
         note, ev = _format_scan_evidence(scan_id, m, "sayfa içeriği ve kaynak haritası sızıntısı")
-        record("SNIPER-INFO-05", "failed" if m else "passed", note, ev)
+        record("VULKILL-INFO-05", "failed" if m else "passed", note, ev)
 
         note, ev = _format_scan_evidence(scan_id, [], "HTTP giriş noktaları ve form yüzeyi")
-        record("SNIPER-INFO-06", "passed", note, ev)
+        record("VULKILL-INFO-06", "passed", note, ev)
 
     if has_scan or has_audit:
         if has_audit:
             note, ev = _format_audit_evidence(audit_id, [], "teknoloji, dil ve mimari bileşen haritalama")
         else:
             note, ev = _format_scan_evidence(scan_id, [], "teknoloji ve mimari haritalama")
-        record("SNIPER-INFO-08", "passed", note, ev)
+        record("VULKILL-INFO-08", "passed", note, ev)
 
-    # 2. Configuration (SNIPER-CONF-*)
+    # 2. Configuration (VULKILL-CONF-*)
     if has_audit:
         m = _audit_matches(
             audit_findings,
@@ -281,7 +281,7 @@ def synchronize_engagement_auto_evidence(
             title_substrings=("host_network", "privileged", "0.0.0.0"),
         )
         note, ev = _format_audit_evidence(audit_id, m, "ağ ve altyapı yapılandırma sertleştirmesi")
-        record("SNIPER-CONF-01", "failed" if m else "passed", note, ev)
+        record("VULKILL-CONF-01", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(
             audit_findings,
@@ -289,7 +289,7 @@ def synchronize_engagement_auto_evidence(
             title_substrings=("debug", "DEBUG", "werkzeug", "trace"),
         )
         note, ev = _format_audit_evidence(audit_id, m, "uygulama platformu yapılandırma incelemesi")
-        record("SNIPER-CONF-02", "failed" if m else "passed", note, ev)
+        record("VULKILL-CONF-02", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(
             audit_findings,
@@ -297,14 +297,14 @@ def synchronize_engagement_auto_evidence(
             title_substrings=(".env", ".pem", ".key", "gizli dosya"),
         )
         note, ev = _format_audit_evidence(audit_id, m, "dosya uzantıları ve hassas dosya işleme")
-        record("SNIPER-CONF-03", "failed" if m else "passed", note, ev)
+        record("VULKILL-CONF-03", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(
             audit_findings,
             title_substrings=(".bak", ".old", "backup", "yedek"),
         )
         note, ev = _format_audit_evidence(audit_id, m, "eski, yedek ve referanssız dosyaların kontrolü")
-        record("SNIPER-CONF-04", "failed" if m else "passed", note, ev)
+        record("VULKILL-CONF-04", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(
             audit_findings,
@@ -312,7 +312,7 @@ def synchronize_engagement_auto_evidence(
             title_substrings=("0.0.0.0", "2375", "9200", "admin"),
         )
         note, ev = _format_audit_evidence(audit_id, m, "yönetim arayüzlerinin ve özel uçların tespiti")
-        record("SNIPER-CONF-05", "failed" if m else "passed", note, ev)
+        record("VULKILL-CONF-05", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(
             audit_findings,
@@ -320,22 +320,22 @@ def synchronize_engagement_auto_evidence(
             cwes=("CWE-250",),
         )
         note, ev = _format_audit_evidence(audit_id, m, "bulut depolama ve konteyner izinleri")
-        record("SNIPER-CONF-09", "failed" if m else "passed", note, ev)
+        record("VULKILL-CONF-09", "failed" if m else "passed", note, ev)
 
     if has_scan:
         m = _scan_matches(scan_findings, categories=("configuration",), title_substrings=("HTTP", "yöntem", "TRACE"))
         note, ev = _format_scan_evidence(scan_id, m, "HTTP yöntemleri ve durum kodları")
-        record("SNIPER-CONF-06", "failed" if m else "passed", note, ev)
+        record("VULKILL-CONF-06", "failed" if m else "passed", note, ev)
 
         m = _scan_matches(scan_findings, categories=("headers", "privacy"))
         note, ev = _format_scan_evidence(scan_id, m, "HTTP güvenlik ve mahremiyet başlıkları")
-        record("SNIPER-CONF-07", "failed" if m else "passed", note, ev)
+        record("VULKILL-CONF-07", "failed" if m else "passed", note, ev)
 
-    # 3. Identity (SNIPER-IDNT-*)
+    # 3. Identity (VULKILL-IDNT-*)
     if has_audit:
         m = _audit_matches(audit_findings, categories=("authorization", "identity"), cwes=("CWE-862", "CWE-285"))
         note, ev = _format_audit_evidence(audit_id, m, "rol tanımlarının ve yetki matrisinin incelenmesi")
-        record("SNIPER-IDNT-01", "failed" if m else "passed", note, ev)
+        record("VULKILL-IDNT-01", "failed" if m else "passed", note, ev)
 
     if has_scan or has_audit:
         m_scan = _scan_matches(scan_findings, categories=("identity",), cwes=("CWE-204",))
@@ -346,7 +346,7 @@ def synchronize_engagement_auto_evidence(
                 if m_scan
                 else _format_audit_evidence(audit_id, m_aud, "hesap numaralandırma")
             )
-            record("SNIPER-IDNT-04", "failed", note, ev)
+            record("VULKILL-IDNT-04", "failed", note, ev)
         elif has_scan:
             pwd_forms = int(
                 latest_scan.get("password_form_count", (latest_scan.get("metadata") or {}).get("password_form_count", 0))
@@ -354,16 +354,16 @@ def synchronize_engagement_auto_evidence(
             )
             if pwd_forms > 0:
                 record(
-                    "SNIPER-IDNT-04",
+                    "VULKILL-IDNT-04",
                     "needs_review",
                     f"Otomatik taramada ({scan_id}) giriş formu tespit edildi; hesap numaralandırma tepkileri uzman incelemesi gerektiriyor.",
                     f"Tarama kimliği: {scan_id} · password_form_count={pwd_forms}",
                 )
             else:
                 note, ev = _format_scan_evidence(scan_id, [], "hesap numaralandırma yüzeyi")
-                record("SNIPER-IDNT-04", "passed", note, ev)
+                record("VULKILL-IDNT-04", "passed", note, ev)
 
-    # 4. Authentication (SNIPER-AUTH-*)
+    # 4. Authentication (VULKILL-AUTH-*)
     if has_scan:
         m = _scan_matches(
             scan_findings,
@@ -373,11 +373,11 @@ def synchronize_engagement_auto_evidence(
             ),
         )
         note, ev = _format_scan_evidence(scan_id, m, "şifreli kimlik bilgisi taşıma")
-        record("SNIPER-AUTH-01", "failed" if m else "passed", note, ev)
+        record("VULKILL-AUTH-01", "failed" if m else "passed", note, ev)
 
         m = _scan_matches(scan_findings, titles=("Kimlik doğrulama sayfasında no-store yok",))
         note, ev = _format_scan_evidence(scan_id, m, "kimlik doğrulama önbellek politikası")
-        record("SNIPER-AUTH-06", "failed" if m else "passed", note, ev)
+        record("VULKILL-AUTH-06", "failed" if m else "passed", note, ev)
 
     if has_audit:
         m = _audit_matches(
@@ -387,7 +387,7 @@ def synchronize_engagement_auto_evidence(
             title_substrings=("parola", "password", "varsayılan", "kimlik"),
         )
         note, ev = _format_audit_evidence(audit_id, m, "varsayılan veya sabit kodlu kimlik bilgileri")
-        record("SNIPER-AUTH-02", "failed" if m else "passed", note, ev)
+        record("VULKILL-AUTH-02", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(
             audit_findings,
@@ -395,9 +395,9 @@ def synchronize_engagement_auto_evidence(
             title_substrings=("KDF", "parola", "pbkdf2", "bcrypt", "argon2"),
         )
         note, ev = _format_audit_evidence(audit_id, m, "parola karmaşıklığı ve saklama politikası")
-        record("SNIPER-AUTH-07", "failed" if m else "passed", note, ev)
+        record("VULKILL-AUTH-07", "failed" if m else "passed", note, ev)
 
-    # 5. Authorization (SNIPER-ATHZ-*)
+    # 5. Authorization (VULKILL-ATHZ-*)
     if has_scan or has_audit:
         m_scan = _scan_matches(scan_findings, categories=("authorization",))
         m_aud = _audit_matches(audit_findings, categories=("authorization",), cwes=("CWE-862", "CWE-863", "CWE-285"))
@@ -407,13 +407,13 @@ def synchronize_engagement_auto_evidence(
                 if m_scan
                 else _format_audit_evidence(audit_id, m_aud, "dizin ve dosya yetkisi")
             )
-            record("SNIPER-ATHZ-01", "failed", note, ev)
+            record("VULKILL-ATHZ-01", "failed", note, ev)
         elif has_scan:
             note, ev = _format_scan_evidence(scan_id, [], "dizin ve dosya yetki sınırları")
-            record("SNIPER-ATHZ-01", "passed", note, ev)
+            record("VULKILL-ATHZ-01", "passed", note, ev)
         elif has_audit:
             note, ev = _format_audit_evidence(audit_id, [], "dizin ve dosya yetki sınırları")
-            record("SNIPER-ATHZ-01", "passed", note, ev)
+            record("VULKILL-ATHZ-01", "passed", note, ev)
 
     if has_audit:
         m = _audit_matches(
@@ -422,43 +422,43 @@ def synchronize_engagement_auto_evidence(
             title_substrings=("privileged", "root", "yetki yükseltme", "CAP_SYS_ADMIN"),
         )
         note, ev = _format_audit_evidence(audit_id, m, "yetki yükseltme ve rol atlama kontrolleri")
-        record("SNIPER-ATHZ-02", "failed" if m else "passed", note, ev)
+        record("VULKILL-ATHZ-02", "failed" if m else "passed", note, ev)
 
-    # 6. Session Management (SNIPER-SESS-*)
+    # 6. Session Management (VULKILL-SESS-*)
     if has_audit:
         m = _audit_matches(audit_findings, cwes=("CWE-338", "CWE-330"), title_substrings=("PRNG", "random", "token"))
         note, ev = _format_audit_evidence(audit_id, m, "oturum belirteci üretim ve entropi şeması")
-        record("SNIPER-SESS-01", "failed" if m else "passed", note, ev)
+        record("VULKILL-SESS-01", "failed" if m else "passed", note, ev)
 
     if has_scan:
         m = _scan_matches(scan_findings, categories=("session",))
         note, ev = _format_scan_evidence(scan_id, m, "oturum çerez nitelikleri (Secure/HttpOnly/SameSite)")
-        record("SNIPER-SESS-02", "failed" if m else "passed", note, ev)
+        record("VULKILL-SESS-02", "failed" if m else "passed", note, ev)
 
         m = _scan_matches(scan_findings, categories=("session",), title_substrings=("HttpOnly", "çerez", "cookie"))
         note, ev = _format_scan_evidence(scan_id, m, "istemci tarafı oturum verisi sızıntısı")
-        record("SNIPER-SESS-04", "failed" if m else "passed", note, ev)
+        record("VULKILL-SESS-04", "failed" if m else "passed", note, ev)
 
         m = _scan_matches(scan_findings, categories=("session",), title_substrings=("SameSite", "CSRF"))
         note, ev = _format_scan_evidence(scan_id, m, "siteler arası istek sahteciliği (CSRF) çerez savunması")
-        record("SNIPER-SESS-05", "failed" if m else "passed", note, ev)
+        record("VULKILL-SESS-05", "failed" if m else "passed", note, ev)
 
-    # 7. Input Validation (SNIPER-INPV-*)
+    # 7. Input Validation (VULKILL-INPV-*)
     if has_scan or has_audit:
         m_scan = _scan_matches(scan_findings, title_substrings=("Content-Security-Policy", "CSP", "XSS"))
         m_aud = _audit_matches(audit_findings, cwes=("CWE-79",))
         if m_scan:
             note, ev = _format_scan_evidence(scan_id, m_scan, "yansıtılmış betik enjeksiyonu (XSS) ve CSP yüzeyi")
-            record("SNIPER-INPV-01", "failed", note, ev)
+            record("VULKILL-INPV-01", "failed", note, ev)
         elif m_aud:
             note, ev = _format_audit_evidence(audit_id, m_aud, "betik enjeksiyonu (XSS) yüzeyi")
-            record("SNIPER-INPV-01", "failed", note, ev)
+            record("VULKILL-INPV-01", "failed", note, ev)
         elif has_scan:
             note, ev = _format_scan_evidence(scan_id, [], "yansıtılmış betik enjeksiyonu (XSS) ve CSP yüzeyi")
-            record("SNIPER-INPV-01", "passed", note, ev)
+            record("VULKILL-INPV-01", "passed", note, ev)
         elif has_audit:
             note, ev = _format_audit_evidence(audit_id, [], "betik enjeksiyonu (XSS) yüzeyi")
-            record("SNIPER-INPV-01", "passed", note, ev)
+            record("VULKILL-INPV-01", "passed", note, ev)
 
     if has_audit:
         m = _audit_matches(
@@ -467,78 +467,78 @@ def synchronize_engagement_auto_evidence(
             title_substrings=("innerHTML", "dangerouslySetInnerHTML", "mark_safe", "v-html"),
         )
         note, ev = _format_audit_evidence(audit_id, m, "kalıcı betik enjeksiyonu ve içerik temizleme")
-        record("SNIPER-INPV-02", "failed" if m else "passed", note, ev)
+        record("VULKILL-INPV-02", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(audit_findings, categories=("data_query",), cwes=("CWE-89", "CWE-943"))
         note, ev = _format_audit_evidence(audit_id, m, "veri tabanı sorgu parametreleştirme")
-        record("SNIPER-INPV-05", "failed" if m else "passed", note, ev)
+        record("VULKILL-INPV-05", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(audit_findings, cwes=("CWE-611",))
         note, ev = _format_audit_evidence(audit_id, m, "XML ve XPath dış varlık (XXE) güvenliği")
-        record("SNIPER-INPV-06", "failed" if m else "passed", note, ev)
+        record("VULKILL-INPV-06", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(audit_findings, categories=("command_data",), cwes=("CWE-78", "CWE-95"))
         note, ev = _format_audit_evidence(audit_id, m, "sunucu tarafı kod ve işletim sistemi komut işleme")
-        record("SNIPER-INPV-07", "failed" if m else "passed", note, ev)
+        record("VULKILL-INPV-07", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(audit_findings, categories=("ssrf",), cwes=("CWE-918",))
         note, ev = _format_audit_evidence(audit_id, m, "sunucu tarafı istek tetikleme (SSRF) girdi doğrulaması")
-        record("SNIPER-INPV-08", "failed" if m else "passed", note, ev)
+        record("VULKILL-INPV-08", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(audit_findings, cwes=("CWE-22", "CWE-434"), title_substrings=("extractall", "upload", "dosya"))
         note, ev = _format_audit_evidence(audit_id, m, "dosya yükleme ve arşiv doğrulama kontrolleri")
-        record("SNIPER-INPV-10", "failed" if m else "passed", note, ev)
+        record("VULKILL-INPV-10", "failed" if m else "passed", note, ev)
 
-    # 8. Server-side Interactions (SNIPER-SRVR-*)
+    # 8. Server-side Interactions (VULKILL-SRVR-*)
     if has_audit:
         m = _audit_matches(audit_findings, categories=("ssrf",), cwes=("CWE-918",))
         note, ev = _format_audit_evidence(audit_id, m, "sunucu tarafı istek sahteciliği (SSRF) kontrolleri")
-        record("SNIPER-SRVR-01", "failed" if m else "passed", note, ev)
+        record("VULKILL-SRVR-01", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(audit_findings, cwes=("CWE-22", "CWE-98"), title_substrings=("include", "path", "dizin"))
         note, ev = _format_audit_evidence(audit_id, m, "yerel ve uzak dosya dahil etme riskleri")
-        record("SNIPER-SRVR-02", "failed" if m else "passed", note, ev)
+        record("VULKILL-SRVR-02", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(audit_findings, cwes=("CWE-22",))
         note, ev = _format_audit_evidence(audit_id, m, "dizin geçişi ve arşiv çıkarma sınırları")
-        record("SNIPER-SRVR-03", "failed" if m else "passed", note, ev)
+        record("VULKILL-SRVR-03", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(audit_findings, cwes=("CWE-1336",))
         note, ev = _format_audit_evidence(audit_id, m, "sunucu tarafı şablon enjeksiyonu (SSTI)")
-        record("SNIPER-SRVR-04", "failed" if m else "passed", note, ev)
+        record("VULKILL-SRVR-04", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(audit_findings, categories=("command_data",), cwes=("CWE-78",))
         note, ev = _format_audit_evidence(audit_id, m, "işletim sistemi komut çağrısı yüzeyleri")
-        record("SNIPER-SRVR-05", "failed" if m else "passed", note, ev)
+        record("VULKILL-SRVR-05", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(audit_findings, cwes=("CWE-502",))
         note, ev = _format_audit_evidence(audit_id, m, "güvensiz nesne serileştirme")
-        record("SNIPER-SRVR-06", "failed" if m else "passed", note, ev)
+        record("VULKILL-SRVR-06", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(audit_findings, cwes=("CWE-611",))
         note, ev = _format_audit_evidence(audit_id, m, "XML ve harici varlık işleme güvenliği")
-        record("SNIPER-SRVR-07", "failed" if m else "passed", note, ev)
+        record("VULKILL-SRVR-07", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(audit_findings, cwes=("CWE-22", "CWE-409"), title_substrings=("extractall", "arşiv", "Zip Slip"))
         note, ev = _format_audit_evidence(audit_id, m, "dosya işleme ve dönüştürme hattı güvenliği")
-        record("SNIPER-SRVR-10", "failed" if m else "passed", note, ev)
+        record("VULKILL-SRVR-10", "failed" if m else "passed", note, ev)
 
-    # 9. Error Handling (SNIPER-ERRH-*)
+    # 9. Error Handling (VULKILL-ERRH-*)
     if has_scan:
         m = _scan_matches(scan_findings, categories=("errors",))
         note, ev = _format_scan_evidence(scan_id, m, "uygulama hata mesajları ve yığın izi kontrolü")
-        record("SNIPER-ERRH-01", "failed" if m else "passed", note, ev)
+        record("VULKILL-ERRH-01", "failed" if m else "passed", note, ev)
 
         m = _scan_matches(scan_findings, categories=("errors",), title_substrings=("500", "istisna", "stack", "hata"))
         note, ev = _format_scan_evidence(scan_id, m, "beklenmeyen girdi ve sınır durum hata davranışı")
-        record("SNIPER-ERRH-02", "failed" if m else "passed", note, ev)
+        record("VULKILL-ERRH-02", "failed" if m else "passed", note, ev)
 
     if has_audit:
         m = _audit_matches(audit_findings, categories=("logging",), cwes=("CWE-209", "CWE-532"))
         note, ev = _format_audit_evidence(audit_id, m, "hata kaydı ve izleme bütünlüğü")
-        record("SNIPER-ERRH-03", "failed" if m else "passed", note, ev)
+        record("VULKILL-ERRH-03", "failed" if m else "passed", note, ev)
 
-    # 10. Cryptography (SNIPER-CRYP-*)
+    # 10. Cryptography (VULKILL-CRYP-*)
     if has_scan or has_audit or testssl_evidence:
         m_scan = _scan_matches(scan_findings, categories=("transport",))
         m_aud = _audit_matches(audit_findings, categories=("transport",), cwes=("CWE-295",))
@@ -551,24 +551,24 @@ def synchronize_engagement_auto_evidence(
         )
         if m_scan:
             note, ev = _format_scan_evidence(scan_id, m_scan, "TLS ve taşıma katmanı yapılandırması")
-            record("SNIPER-CRYP-01", "failed", note, ev)
+            record("VULKILL-CRYP-01", "failed", note, ev)
         elif m_aud:
             note, ev = _format_audit_evidence(audit_id, m_aud, "TLS sertifika doğrulaması")
-            record("SNIPER-CRYP-01", "failed", note, ev)
+            record("VULKILL-CRYP-01", "failed", note, ev)
         elif testssl_bad:
             digest = str(testssl_evidence[0].get("report_sha256", ""))[:16]
             record(
-                "SNIPER-CRYP-01",
+                "VULKILL-CRYP-01",
                 "failed",
                 "testssl.sh toplu kanıtında orta/yüksek/kritik TLS bulgusu tespit edildi.",
                 f"testssl.sh SHA-256: {digest}",
             )
         elif has_scan:
             note, ev = _format_scan_evidence(scan_id, [], "TLS ve taşıma katmanı yapılandırması")
-            record("SNIPER-CRYP-01", "passed", note, ev)
+            record("VULKILL-CRYP-01", "passed", note, ev)
         elif has_audit:
             note, ev = _format_audit_evidence(audit_id, [], "TLS sertifika doğrulaması")
-            record("SNIPER-CRYP-01", "passed", note, ev)
+            record("VULKILL-CRYP-01", "passed", note, ev)
 
     if has_scan:
         m = _scan_matches(
@@ -577,33 +577,33 @@ def synchronize_engagement_auto_evidence(
             title_substrings=("HSTS", "Strict-Transport-Security", "HTTPS", "Karışık içerik"),
         )
         note, ev = _format_scan_evidence(scan_id, m, "hassas verilerin taşıma sırasında korunması")
-        record("SNIPER-CRYP-02", "failed" if m else "passed", note, ev)
+        record("VULKILL-CRYP-02", "failed" if m else "passed", note, ev)
 
     if has_audit:
         m = _audit_matches(audit_findings, cwes=("CWE-327", "CWE-338"))
         note, ev = _format_audit_evidence(audit_id, m, "uygulama kriptografisi ve PRNG güvenliği")
-        record("SNIPER-CRYP-03", "failed" if m else "passed", note, ev)
+        record("VULKILL-CRYP-03", "failed" if m else "passed", note, ev)
 
     if has_audit or gitleaks_evidence:
         m_aud = _audit_matches(audit_findings, categories=("secrets",), cwes=("CWE-798", "CWE-522"))
         if m_aud:
             note, ev = _format_audit_evidence(audit_id, m_aud, "sır yönetimi")
-            record("SNIPER-CRYP-04", "failed", note, ev)
+            record("VULKILL-CRYP-04", "failed", note, ev)
         elif gitleaks_finding_count > 0:
             digest = str(gitleaks_evidence[0].get("report_sha256", ""))[:16]
             record(
-                "SNIPER-CRYP-04",
+                "VULKILL-CRYP-04",
                 "failed",
                 f"Gitleaks toplu kanıtında {gitleaks_finding_count} sır bulgusu tespit edildi.",
                 f"Gitleaks bulgu sayısı: {gitleaks_finding_count} · SHA-256: {digest}",
             )
         elif has_audit:
             note, ev = _format_audit_evidence(audit_id, [], "sır yönetimi")
-            record("SNIPER-CRYP-04", "passed", note, ev)
+            record("VULKILL-CRYP-04", "passed", note, ev)
         elif gitleaks_evidence:
             digest = str(gitleaks_evidence[0].get("report_sha256", ""))[:16]
             record(
-                "SNIPER-CRYP-04",
+                "VULKILL-CRYP-04",
                 "passed",
                 "Gitleaks toplu kanıtında sır sızıntısı gözlenmedi.",
                 f"Gitleaks bulgu sayısı: 0 · SHA-256: {digest}",
@@ -616,71 +616,71 @@ def synchronize_engagement_auto_evidence(
             cwes=("CWE-916",),
         )
         note, ev = _format_audit_evidence(audit_id, m, "parola saklama ve yavaş KDF kullanımı")
-        record("SNIPER-CRYP-05", "failed" if m else "passed", note, ev)
+        record("VULKILL-CRYP-05", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(audit_findings, categories=("qr",), cwes=("CWE-347",))
         note, ev = _format_audit_evidence(audit_id, m, "belirteç ve imza doğrulama")
-        record("SNIPER-CRYP-06", "failed" if m else "passed", note, ev)
+        record("VULKILL-CRYP-06", "failed" if m else "passed", note, ev)
 
-    # 11. Data Protection (SNIPER-DATA-*)
+    # 11. Data Protection (VULKILL-DATA-*)
     if has_scan:
         m = _scan_matches(scan_findings, categories=("privacy",), title_substrings=("Referrer-Policy", "Permissions-Policy"))
         note, ev = _format_scan_evidence(scan_id, m, "veri minimizasyonu ve mahremiyet üstbilgileri")
-        record("SNIPER-DATA-02", "failed" if m else "passed", note, ev)
+        record("VULKILL-DATA-02", "failed" if m else "passed", note, ev)
 
         m = _scan_matches(scan_findings, title_substrings=("no-store", "Cache-Control", "önbellek"))
         note, ev = _format_scan_evidence(scan_id, m, "arama, dışa aktarma ve önbellek veri sızıntısı")
-        record("SNIPER-DATA-06", "failed" if m else "passed", note, ev)
+        record("VULKILL-DATA-06", "failed" if m else "passed", note, ev)
 
         m = _scan_matches(scan_findings, titles=("İstemci yanıtında olası sır deseni bulundu",))
         note, ev = _format_scan_evidence(scan_id, m, "istemci paketi sırları")
-        record("SNIPER-DATA-09", "failed" if m else "passed", note, ev)
+        record("VULKILL-DATA-09", "failed" if m else "passed", note, ev)
 
-    # 12. Business Logic (SNIPER-BUSL-*)
+    # 12. Business Logic (VULKILL-BUSL-*)
     if has_audit:
         m = _audit_matches(audit_findings, cwes=("CWE-400", "CWE-770"))
         note, ev = _format_audit_evidence(audit_id, m, "dosya ve kaynak limitleri")
-        record("SNIPER-BUSL-06", "failed" if m else "passed", note, ev)
+        record("VULKILL-BUSL-06", "failed" if m else "passed", note, ev)
 
-    # 13. Client-side (SNIPER-CLNT-*)
+    # 13. Client-side (VULKILL-CLNT-*)
     if has_audit:
         m = _audit_matches(audit_findings, cwes=("CWE-79",))
         note, ev = _format_audit_evidence(audit_id, m, "DOM tabanlı betik enjeksiyonu (XSS)")
-        record("SNIPER-CLNT-01", "failed" if m else "passed", note, ev)
+        record("VULKILL-CLNT-01", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(audit_findings, cwes=("CWE-95",), title_substrings=("eval", "Function(", "dinamik kod"))
         note, ev = _format_audit_evidence(audit_id, m, "istemci tarafı JavaScript çalıştırma yüzeyleri")
-        record("SNIPER-CLNT-02", "failed" if m else "passed", note, ev)
+        record("VULKILL-CLNT-02", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(audit_findings, cwes=("CWE-79", "CWE-1336"), title_substrings=("innerHTML", "şablon", "template"))
         note, ev = _format_audit_evidence(audit_id, m, "istemci tarafı HTML ve şablon enjeksiyonu")
-        record("SNIPER-CLNT-03", "failed" if m else "passed", note, ev)
+        record("VULKILL-CLNT-03", "failed" if m else "passed", note, ev)
 
     if has_scan:
         m = _scan_matches(scan_findings, title_substrings=("Karışık içerik", "Content-Security-Policy"))
         note, ev = _format_scan_evidence(scan_id, m, "CSS, stil ve harici kaynak yükleme riskleri")
-        record("SNIPER-CLNT-05", "failed" if m else "passed", note, ev)
+        record("VULKILL-CLNT-05", "failed" if m else "passed", note, ev)
 
     if has_scan or has_audit:
         m_scan = _scan_matches(scan_findings, categories=("cors",))
         m_aud = _audit_matches(audit_findings, cwes=("CWE-942", "CWE-345"))
         if m_scan:
             note, ev = _format_scan_evidence(scan_id, m_scan, "CORS ve web mesajlaşması")
-            record("SNIPER-CLNT-07", "failed", note, ev)
+            record("VULKILL-CLNT-07", "failed", note, ev)
         elif m_aud:
             note, ev = _format_audit_evidence(audit_id, m_aud, "CORS ve postMessage köken doğrulaması")
-            record("SNIPER-CLNT-07", "failed", note, ev)
+            record("VULKILL-CLNT-07", "failed", note, ev)
         elif has_scan:
             note, ev = _format_scan_evidence(scan_id, [], "CORS ve web mesajlaşması")
-            record("SNIPER-CLNT-07", "passed", note, ev)
+            record("VULKILL-CLNT-07", "passed", note, ev)
         elif has_audit:
             note, ev = _format_audit_evidence(audit_id, [], "CORS ve postMessage köken doğrulaması")
-            record("SNIPER-CLNT-07", "passed", note, ev)
+            record("VULKILL-CLNT-07", "passed", note, ev)
 
     if has_scan:
         m = _scan_matches(scan_findings, titles=("Çerçeveleme koruması eksik",))
         note, ev = _format_scan_evidence(scan_id, m, "tıklama kaçırma (clickjacking) koruması")
-        record("SNIPER-CLNT-08", "failed" if m else "passed", note, ev)
+        record("VULKILL-CLNT-08", "failed" if m else "passed", note, ev)
 
         m = _scan_matches(
             scan_findings,
@@ -690,13 +690,13 @@ def synchronize_engagement_auto_evidence(
             ),
         )
         note, ev = _format_scan_evidence(scan_id, m, "üçüncü taraf istemci bağımlılıkları")
-        record("SNIPER-CLNT-09", "failed" if m else "passed", note, ev)
+        record("VULKILL-CLNT-09", "failed" if m else "passed", note, ev)
 
-    # 14. API Security (SNIPER-APIT-*)
+    # 14. API Security (VULKILL-APIT-*)
     if has_audit:
         m = _audit_matches(audit_findings, categories=("api", "openapi"), cwes=("CWE-347",))
         note, ev = _format_audit_evidence(audit_id, m, "JWT ve API erişim belirteçleri")
-        record("SNIPER-APIT-12", "failed" if m else "passed", note, ev)
+        record("VULKILL-APIT-12", "failed" if m else "passed", note, ev)
 
     if isinstance(openapi_audit, dict) and (
         int(openapi_audit.get("contracts_audited", openapi_audit.get("contract_count", 0)) or 0) > 0
@@ -705,13 +705,13 @@ def synchronize_engagement_auto_evidence(
     ):
         oa_findings = [f for f in (openapi_audit.get("findings") or []) if isinstance(f, dict)]
         oa_controls = (
-            ("SNIPER-APIT-01", "API envanteri, sürümleme ve dokümantasyon sızıntısı"),
-            ("SNIPER-APIT-02", "nesne ve alan düzeyinde yetkilendirme (BOLA/BOPLA)"),
-            ("SNIPER-APIT-03", "toplu atama ve beklenmeyen alan kabulü"),
-            ("SNIPER-APIT-04", "sorgu karmaşıklığı, sayfalama ve hız sınırı"),
-            ("SNIPER-APIT-05", "webhook ve geri çağırma entegrasyon güvenliği"),
-            ("SNIPER-APIT-06", "GraphQL ve şema tabanlı sorgu güvenliği"),
-            ("SNIPER-APIT-09", "şema doğrulama ve içerik tipi zorlaması"),
+            ("VULKILL-APIT-01", "API envanteri, sürümleme ve dokümantasyon sızıntısı"),
+            ("VULKILL-APIT-02", "nesne ve alan düzeyinde yetkilendirme (BOLA/BOPLA)"),
+            ("VULKILL-APIT-03", "toplu atama ve beklenmeyen alan kabulü"),
+            ("VULKILL-APIT-04", "sorgu karmaşıklığı, sayfalama ve hız sınırı"),
+            ("VULKILL-APIT-05", "webhook ve geri çağırma entegrasyon güvenliği"),
+            ("VULKILL-APIT-06", "GraphQL ve şema tabanlı sorgu güvenliği"),
+            ("VULKILL-APIT-09", "şema doğrulama ve içerik tipi zorlaması"),
         )
         for cid, desc in oa_controls:
             matched_oa = [
@@ -739,11 +739,11 @@ def synchronize_engagement_auto_evidence(
                 )
         matched_cryp02 = [
             f for f in oa_findings
-            if str(f.get("control_id") or f.get("rule_id") or "").strip() == "SNIPER-CRYP-02"
+            if str(f.get("control_id") or f.get("rule_id") or "").strip() == "VULKILL-CRYP-02"
         ]
         if matched_cryp02:
             record(
-                "SNIPER-CRYP-02",
+                "VULKILL-CRYP-02",
                 "failed",
                 f"OpenAPI sözleşmesinde güvensiz taşıma şeması: {matched_cryp02[0].get('title', 'HTTP')}",
                 str(matched_cryp02[0].get("evidence", "http://"))[:500],
@@ -754,9 +754,9 @@ def synchronize_engagement_auto_evidence(
             extra_cid = str(f.get("control_id") or f.get("rule_id") or "").strip()
             if (
                 extra_cid
-                and extra_cid.startswith("SNIPER-")
+                and extra_cid.startswith("VULKILL-")
                 and extra_cid not in oa_control_ids
-                and extra_cid != "SNIPER-CRYP-02"
+                and extra_cid != "VULKILL-CRYP-02"
             ):
                 extra_oa_controls.setdefault(extra_cid, []).append(f)
         for extra_cid, extra_matches in sorted(extra_oa_controls.items()):
@@ -772,37 +772,37 @@ def synchronize_engagement_auto_evidence(
                 ev_str[:1000] or f"OpenAPI denetimi ({extra_cid})",
             )
 
-    # 15. Infrastructure (SNIPER-INFR-*)
+    # 15. Infrastructure (VULKILL-INFR-*)
     if has_audit:
         m = _audit_matches(audit_findings, categories=("ports", "iac"), title_substrings=("0.0.0.0", "2375", "host_network"))
         note, ev = _format_audit_evidence(audit_id, m, "yönetim ve teşhis yüzeylerinin izolasyonu")
-        record("SNIPER-INFR-04", "failed" if m else "passed", note, ev)
+        record("VULKILL-INFR-04", "failed" if m else "passed", note, ev)
 
     if has_audit or nmap_evidence or has_scan:
         m_aud = _audit_matches(audit_findings, categories=("ports",), cwes=("CWE-284",))
         if m_aud:
             note, ev = _format_audit_evidence(audit_id, m_aud, "ağ ve servis maruziyeti")
-            record("SNIPER-INFR-09", "failed", note, ev)
+            record("VULKILL-INFR-09", "failed", note, ev)
         elif nmap_evidence:
             open_ports = sum(int(item.get("open_port_count", 0) or 0) for item in nmap_evidence)
             digest = str(nmap_evidence[0].get("report_sha256", ""))[:16]
             record(
-                "SNIPER-INFR-09",
+                "VULKILL-INFR-09",
                 "needs_review" if open_ports > 0 else "passed",
                 f"Nmap toplu kanıtında {open_ports} açık port gözlendi.",
                 f"Nmap açık port sayısı: {open_ports} · SHA-256: {digest}",
             )
         elif has_audit:
             note, ev = _format_audit_evidence(audit_id, [], "ağ ve servis maruziyeti")
-            record("SNIPER-INFR-09", "passed", note, ev)
+            record("VULKILL-INFR-09", "passed", note, ev)
 
     if isinstance(dns_email_audit, dict):
         dns_findings = [f for f in (dns_email_audit.get("findings") or []) if isinstance(f, dict)]
         dns_controls = (
-            ("SNIPER-INFR-01", "DNS, CAA ve alan adı devralma kontrolleri"),
-            ("SNIPER-INFR-02", "e-posta kimlik doğrulama (SPF, DKIM ve DMARC)"),
-            ("SNIPER-INFR-07", "CDN, WAF ve ters vekil başlık güvenilirliği"),
-            ("SNIPER-INFR-08", "TLS/mTLS ve servisler arası iletişim"),
+            ("VULKILL-INFR-01", "DNS, CAA ve alan adı devralma kontrolleri"),
+            ("VULKILL-INFR-02", "e-posta kimlik doğrulama (SPF, DKIM ve DMARC)"),
+            ("VULKILL-INFR-07", "CDN, WAF ve ters vekil başlık güvenilirliği"),
+            ("VULKILL-INFR-08", "TLS/mTLS ve servisler arası iletişim"),
         )
         for cid, desc in dns_controls:
             matched_dns = [
@@ -829,8 +829,8 @@ def synchronize_engagement_auto_evidence(
     if isinstance(discovery_audit, dict):
         disc_findings = [f for f in (discovery_audit.get("findings") or []) if isinstance(f, dict)]
         disc_controls = (
-            ("SNIPER-AUTH-11", "SSO, OAuth ve OIDC yönlendirme/durum güvenliği"),
-            ("SNIPER-APIT-06", "GraphQL ve şema tabanlı sorgu güvenliği"),
+            ("VULKILL-AUTH-11", "SSO, OAuth ve OIDC yönlendirme/durum güvenliği"),
+            ("VULKILL-APIT-06", "GraphQL ve şema tabanlı sorgu güvenliği"),
         )
         for cid, desc in disc_controls:
             matched_disc = [
@@ -855,7 +855,7 @@ def synchronize_engagement_auto_evidence(
                 )
         for extra_f in disc_findings:
             extra_cid = str(extra_f.get("control_id") or "").strip()
-            if extra_cid and extra_cid not in {"SNIPER-AUTH-11", "SNIPER-APIT-06"}:
+            if extra_cid and extra_cid not in {"VULKILL-AUTH-11", "VULKILL-APIT-06"}:
                 record(
                     extra_cid,
                     "failed",
@@ -863,21 +863,21 @@ def synchronize_engagement_auto_evidence(
                     str(extra_f.get("evidence", ""))[:500] or f"Keşif denetimi ({extra_cid})",
                 )
 
-    # 16. Supply Chain (SNIPER-SUPP-*)
+    # 16. Supply Chain (VULKILL-SUPP-*)
     if has_audit:
         m = _audit_matches(audit_findings, categories=("components",), cwes=("CWE-1104",))
         note, ev = _format_audit_evidence(audit_id, m, "bağımlılık envanteri ve sürüm sabitleme")
-        record("SNIPER-SUPP-01", "failed" if m else "passed", note, ev)
-        record("SNIPER-SUPP-03", "failed" if m else "passed", note, ev)
+        record("VULKILL-SUPP-01", "failed" if m else "passed", note, ev)
+        record("VULKILL-SUPP-03", "failed" if m else "passed", note, ev)
 
         m_sec = _audit_matches(audit_findings, categories=("secrets", "secret_file"), cwes=("CWE-798",))
         note_s, ev_s = _format_audit_evidence(audit_id, m_sec, "kaynak kodu ve yapı artefaktlarında sır taraması")
-        record("SNIPER-SUPP-08", "failed" if m_sec else "passed", note_s, ev_s)
+        record("VULKILL-SUPP-08", "failed" if m_sec else "passed", note_s, ev_s)
 
     if dep_sec.get("sboms") or has_audit:
         sbom_count = len(dep_sec.get("sboms") or [])
         record(
-            "SNIPER-SUPP-06",
+            "VULKILL-SUPP-06",
             "passed",
             f"SBOM ve bileşen köken envanteri doğrulandı (kayıtlı SBOM: {sbom_count}).",
             f"SBOM sayısı: {sbom_count} · proje denetimi: {audit_id or 'yok'}",
@@ -889,14 +889,14 @@ def synchronize_engagement_auto_evidence(
     )
     if dep_active_count > 0 or trivy_vulns > 0:
         record(
-            "SNIPER-SUPP-02",
+            "VULKILL-SUPP-02",
             "failed",
             f"Bağımlılık güvenliği taramasında {dep_active_count + trivy_vulns} açık zafiyet bulundu.",
             f"Açık bağımlılık bulgusu: {dep_active_count} · Trivy zafiyeti: {trivy_vulns}",
         )
     elif has_dep_reports or trivy_evidence:
         record(
-            "SNIPER-SUPP-02",
+            "VULKILL-SUPP-02",
             "passed",
             "Bağımlılık güvenliği raporlarında açık CVE/OSV bulgusu bulunmadı.",
             f"Toplam izlenen bağımlılık kaydı: {int(dep_summary.get('total', 0) or 0)} · açık: 0",
@@ -905,7 +905,7 @@ def synchronize_engagement_auto_evidence(
     if has_scan:
         m = _scan_matches(scan_findings, categories=("supplychain",))
         note, ev = _format_scan_evidence(scan_id, m, "üçüncü taraf betik bütünlüğü (SRI)")
-        record("SNIPER-SUPP-04", "failed" if m else "passed", note, ev)
+        record("VULKILL-SUPP-04", "failed" if m else "passed", note, ev)
 
     if has_audit:
         m = _audit_matches(
@@ -914,15 +914,15 @@ def synchronize_engagement_auto_evidence(
             cwes=("CWE-250", "CWE-829"),
         )
         note, ev = _format_audit_evidence(audit_id, m, "derleme, konteyner ve CI/CD yayın hattı")
-        record("SNIPER-SUPP-05", "failed" if m else "passed", note, ev)
+        record("VULKILL-SUPP-05", "failed" if m else "passed", note, ev)
 
-    # 17. Availability (SNIPER-AVAL-*)
+    # 17. Availability (VULKILL-AVAL-*)
     if has_audit:
         m = _audit_matches(audit_findings, cwes=("CWE-409",), title_substrings=("arşiv", "Zip Slip"))
         note, ev = _format_audit_evidence(audit_id, m, "sıkıştırma ve arşiv çıkarma güvenliği")
-        record("SNIPER-AVAL-03", "failed" if m else "passed", note, ev)
+        record("VULKILL-AVAL-03", "failed" if m else "passed", note, ev)
 
-    # 18. Logging & Incident Response (SNIPER-LOGG-*)
+    # 18. Logging & Incident Response (VULKILL-LOGG-*)
     if has_audit:
         m = _audit_matches(
             audit_findings,
@@ -930,7 +930,7 @@ def synchronize_engagement_auto_evidence(
             cwes=("CWE-778",),
         )
         note, ev = _format_audit_evidence(audit_id, m, "güvenlik olay kapsamı ve denetim izi")
-        record("SNIPER-LOGG-01", "failed" if m else "passed", note, ev)
+        record("VULKILL-LOGG-01", "failed" if m else "passed", note, ev)
 
         m = _audit_matches(
             audit_findings,
@@ -938,9 +938,9 @@ def synchronize_engagement_auto_evidence(
             cwes=("CWE-532",),
         )
         note, ev = _format_audit_evidence(audit_id, m, "günlüklerde hassas veri maskeleme")
-        record("SNIPER-LOGG-02", "failed" if m else "passed", note, ev)
+        record("VULKILL-LOGG-02", "failed" if m else "passed", note, ev)
 
-    # 19. Controlled Lab Scenarios (SNIPER-SAFE-*)
+    # 19. Controlled Lab Scenarios (VULKILL-SAFE-*)
     try:
         lab_runs = store.list_lab_runs() if hasattr(store, "list_lab_runs") else []
     except Exception:
@@ -955,33 +955,33 @@ def synchronize_engagement_auto_evidence(
         ev_sum = str(run.get("evidence_summary") or run.get("name") or run_id)[:300]
         if stype == "lockout_plan":
             record(
-                "SNIPER-SAFE-AUTH-01",
+                "VULKILL-SAFE-AUTH-01",
                 "passed",
                 f"Kontrollü hesap kilitleme laboratuvar senaryosu ({run_id}) tamamlandı.",
                 f"Lab çalışması: {run_id} · {ev_sum}",
             )
             record(
-                "SNIPER-AUTH-03",
+                "VULKILL-AUTH-03",
                 "passed",
                 f"Hesap kilitleme ve hız sınırı davranışı laboratuvar planıyla ({run_id}) doğrulandı.",
                 f"Lab çalışması: {run_id} · {ev_sum}",
             )
         elif stype == "capacity_plan":
             record(
-                "SNIPER-SAFE-CAP-01",
+                "VULKILL-SAFE-CAP-01",
                 "passed",
                 f"Staging kapasite ve hız sınırı laboratuvar senaryosu ({run_id}) tamamlandı.",
                 f"Lab çalışması: {run_id} · {ev_sum}",
             )
             record(
-                "SNIPER-AVAL-08",
+                "VULKILL-AVAL-08",
                 "passed",
                 f"Kapasite planı ve önbellek/CDN dayanıklılığı ({run_id}) doğrulandı.",
                 f"Lab çalışması: {run_id} · {ev_sum}",
             )
         elif stype == "external_result":
             record(
-                "SNIPER-SAFE-DATA-01",
+                "VULKILL-SAFE-DATA-01",
                 "passed",
                 f"Maskeli veri kanıtı ve dış doğrulama sonucu ({run_id}) kaydedildi.",
                 f"Lab çalışması: {run_id} · {ev_sum}",
@@ -1023,54 +1023,54 @@ def synchronize_engagement_auto_evidence(
             ...,
         ] = (
             (
-                "SNIPER-DATA-02",
+                "VULKILL-DATA-02",
                 ("CWE-312", "CWE-532"),
-                ("SNIPER-MOB-STOR-01", "SNIPER-MOB-STOR-02", "SNIPER-MOB-STOR-03", "SNIPER-MOB-STOR-04", "SNIPER-MOB-PKG-01"),
+                ("VULKILL-MOB-STOR-01", "VULKILL-MOB-STOR-02", "VULKILL-MOB-STOR-03", "VULKILL-MOB-STOR-04", "VULKILL-MOB-PKG-01"),
                 "MASVS-STORAGE",
                 "mobil yerel veri saklama ve mahremiyet (MASVS-STORAGE)",
             ),
             (
-                "SNIPER-CONF-02",
+                "VULKILL-CONF-02",
                 ("CWE-489", "CWE-693"),
-                ("SNIPER-MOB-MAN-01", "SNIPER-MOB-IOS-02", "SNIPER-MOB-GRD-01", "SNIPER-MOB-RES-01", "SNIPER-MOB-PKG-02"),
+                ("VULKILL-MOB-MAN-01", "VULKILL-MOB-IOS-02", "VULKILL-MOB-GRD-01", "VULKILL-MOB-RES-01", "VULKILL-MOB-PKG-02"),
                 "MASVS-RESILIENCE",
                 "mobil uygulama yapılandırması, debuggable ve tersine mühendislik direnci (MASVS-RESILIENCE)",
             ),
             (
-                "SNIPER-CLNT-01",
+                "VULKILL-CLNT-01",
                 ("CWE-749", "CWE-939"),
                 (
-                    "SNIPER-MOB-PLAT-01",
-                    "SNIPER-MOB-PLAT-02",
-                    "SNIPER-MOB-PLAT-03",
-                    "SNIPER-MOB-PLAT-04",
-                    "SNIPER-MOB-MAN-05",
-                    "SNIPER-MOB-MAN-06",
-                    "SNIPER-MOB-MAN-07",
-                    "SNIPER-MOB-MAN-08",
-                    "SNIPER-MOB-IOS-04",
+                    "VULKILL-MOB-PLAT-01",
+                    "VULKILL-MOB-PLAT-02",
+                    "VULKILL-MOB-PLAT-03",
+                    "VULKILL-MOB-PLAT-04",
+                    "VULKILL-MOB-MAN-05",
+                    "VULKILL-MOB-MAN-06",
+                    "VULKILL-MOB-MAN-07",
+                    "VULKILL-MOB-MAN-08",
+                    "VULKILL-MOB-IOS-04",
                 ),
                 "MASVS-PLATFORM",
                 "mobil WebView, IPC ve Deep Link istemci yüzeyleri (MASVS-PLATFORM)",
             ),
             (
-                "SNIPER-AUTH-02",
+                "VULKILL-AUTH-02",
                 ("CWE-287", "CWE-347"),
-                ("SNIPER-MOB-AUTH-01",),
+                ("VULKILL-MOB-AUTH-01",),
                 "MASVS-AUTH",
                 "mobil kimlik doğrulama ve kriptografik biyometri bağlaması (MASVS-AUTH)",
             ),
             (
-                "SNIPER-BUSL-01",
+                "VULKILL-BUSL-01",
                 ("CWE-530",),
-                ("SNIPER-MOB-MAN-02", "SNIPER-MOB-DOM-FIN-01", "SNIPER-MOB-IOS-03"),
+                ("VULKILL-MOB-MAN-02", "VULKILL-MOB-DOM-FIN-01", "VULKILL-MOB-IOS-03"),
                 "",
                 "mobil yedekleme (allowBackup) ve ekran görüntüsü veri sızıntısı (MASVS-STORAGE)",
             ),
             (
-                "SNIPER-BUSL-04",
+                "VULKILL-BUSL-04",
                 ("CWE-602",),
-                ("SNIPER-MOB-AUTH-02", "SNIPER-MOB-DOM-GAM-01", "SNIPER-MOB-DOM-GAM-02"),
+                ("VULKILL-MOB-AUTH-02", "VULKILL-MOB-DOM-GAM-01", "VULKILL-MOB-DOM-GAM-02"),
                 "",
                 "istemci tarafı rol/fiyat doğrulaması ve uygulama içi satın alma (IAP) bütünlüğü (MASVS-RESILIENCE)",
             ),
@@ -1095,12 +1095,12 @@ def synchronize_engagement_auto_evidence(
                     )
                     and mf_rule
                     not in {
-                        "SNIPER-MOB-MAN-02",
-                        "SNIPER-MOB-DOM-FIN-01",
-                        "SNIPER-MOB-IOS-03",
-                        "SNIPER-MOB-AUTH-02",
-                        "SNIPER-MOB-DOM-GAM-01",
-                        "SNIPER-MOB-DOM-GAM-02",
+                        "VULKILL-MOB-MAN-02",
+                        "VULKILL-MOB-DOM-FIN-01",
+                        "VULKILL-MOB-IOS-03",
+                        "VULKILL-MOB-AUTH-02",
+                        "VULKILL-MOB-DOM-GAM-01",
+                        "VULKILL-MOB-DOM-GAM-02",
                     }
                 ):
                     matched_mob.append(mf)
@@ -1279,7 +1279,7 @@ def verify_engagement_retests(
         if isinstance(row, dict) and row.get("control_id")
     }
 
-    control_re = re.compile(r"SNIPER-(?:SAFE-)?[A-Z]{4}-\d{2}")
+    control_re = re.compile(r"VULKILL-(?:SAFE-)?[A-Z]{4}-\d{2}")
     candidate_statuses = {"retest_required", "reopened", "in_progress", "open"}
     decisions: list[dict[str, Any]] = []
     resolved_ids: list[str] = []

@@ -19,7 +19,7 @@ CATALOG = Path("/home/community-user/.local/state/sniper-tool-runtimes/nuclei-te
 
 def _prepare_nuclei_catalog(temp_root: Path) -> dict[str, object]:
     pin_file = CATALOG / "SNIPER-HTTP-CATALOG-PIN-v2.json"
-    idx_file = CATALOG / "SNIPER-HTTP-ID-INDEX.json"
+    idx_file = CATALOG / "VULKILL-HTTP-ID-INDEX.json"
     if pin_file.is_file() and idx_file.is_file():
         return {
             "catalog_root": CATALOG,
@@ -127,7 +127,7 @@ def _prepare_nuclei_catalog(temp_root: Path) -> dict[str, object]:
         "ids_paths_hashes": ids_paths_hashes,
     }
     idx_bytes = json.dumps(idx_doc, sort_keys=True).encode("utf-8")
-    idx_out = catalog_root / "SNIPER-HTTP-ID-INDEX.json"
+    idx_out = catalog_root / "VULKILL-HTTP-ID-INDEX.json"
     idx_out.write_bytes(idx_bytes)
 
     return {

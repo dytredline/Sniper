@@ -20,13 +20,13 @@ function load(jobResult, extraIds = []) {
   const calls = [];
   const document = { readyState: 'complete', getElementById: id => ids[id] || null, createElement: () => new Node() };
   const window = {
-    SniperJobs: {
+    VulKillJobs: {
       run: async (route, payload) => { calls.push({ route, payload }); return jobResult; },
       stateLabel: s => s,
     },
   };
   vm.runInNewContext(source, { window, globalThis: window, document, String, Number, Object, Array, JSON, Promise, Error, setTimeout });
-  return { ids, calls, api: window.SniperJoernDeep };
+  return { ids, calls, api: window.VulKillJoernDeep };
 }
 
 test('onay ve yol olmadan iş başlatılmaz', async () => {

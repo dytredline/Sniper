@@ -1,6 +1,6 @@
-# Sniper çekirdek Opengrep kural paketi (sniper-core v1).
+# VulKill çekirdek Opengrep kural paketi (sniper-core v1).
 #
-# Bu kurallar Sniper için sıfırdan yazıldı. Semgrep Registry kuralları lisansı
+# Bu kurallar VulKill için sıfırdan yazıldı. Semgrep Registry kuralları lisansı
 # (Semgrep Rules License v1.0) başka bir üründe dağıtıma izin vermediği için
 # KULLANILMAZ. Her kuralda CWE, kategori ve Türkçe mesaj vardır; olumlu/olumsuz
 # örnekler tests/fixtures/opengrep_rules/ altında, testi tests/test_opengrep_rulepack.py.

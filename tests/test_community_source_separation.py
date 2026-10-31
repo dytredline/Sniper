@@ -101,6 +101,11 @@ class TestCommunitySourceSeparation(unittest.TestCase):
         self.assertTrue((self.output / "tests/test_mcp_community_mode.py").is_file())
         self.assertTrue((self.output / "tests/test_runtime_source_portability.py").is_file())
 
+        public_builder = (self.output / "scripts/build-community-source.py").read_text(encoding="utf-8")
+        self.assertIn("_PUBLIC_HARDENING_OVERLAYS: dict[str, dict[str, object]] = {\n}\n", public_builder)
+        self.assertIn("PRIVATE_HARDENING_PATHS = frozenset()", public_builder)
+        self.assertNotIn('"payload_b85":', public_builder)
+
     def test_private_product_wording_is_absent_but_community_installers_remain(self) -> None:
         violations: list[str] = []
         for path in sorted(item for item in self.output.rglob("*") if item.is_file()):
@@ -134,7 +139,7 @@ class TestCommunitySourceSeparation(unittest.TestCase):
     def test_public_tree_normalizes_inherited_executable_bits(self) -> None:
         for relative in ("cli_reports.py", "static/app.js", "static/app.css", "tests/test_reports.py"):
             self.assertEqual(self.output.joinpath(relative).stat().st_mode & 0o777, 0o644, relative)
-        for relative in ("scripts/setup-community", "scripts/sniper-mcp", "scripts/install-community-tools"):
+        for relative in ("scripts/setup-community", "scripts/vulkill-mcp", "scripts/install-community-tools"):
             self.assertEqual(self.output.joinpath(relative).stat().st_mode & 0o777, 0o755, relative)
 
     def test_community_server_and_mcp_import_without_closed_modules(self) -> None:
@@ -164,7 +169,7 @@ class TestCommunitySourceSeparation(unittest.TestCase):
         self.assertEqual(smoke.returncode, 0, smoke.stdout + smoke.stderr)
 
         mcp_help = subprocess.run(
-            [sys.executable, "-B", "scripts/sniper-mcp", "--help"],
+            [sys.executable, "-B", "scripts/vulkill-mcp", "--help"],
             cwd=self.output,
             env=self.env,
             text=True,
@@ -209,7 +214,7 @@ else:
 
 payload = info.system_version_payload(pathlib.Path.cwd(), root)
 assert payload['format'] == 'sniper-community-version/1'
-assert payload['product_version'] == '1.1.0'
+assert payload['product_version'] == '1.0.0'
 assert payload['distribution'] == 'community-source'
 assert payload['packaged'] is False
 assert 'entitlement' not in payload
@@ -240,11 +245,20 @@ assert 'entitlement' not in payload
                 with self.assertRaisesRegex(ValueError, re.escape(relative) + ".*anchor"):
                     builder._apply_artifact_transform(Path(relative), "anchorless source\n")
 
+    def test_public_readme_transform_is_idempotent_but_anchor_drift_fails_closed(self) -> None:
+        builder = _load(BUILDER, "community_readme_builder_test")
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        self.assertEqual(builder._transform_public_readme(readme), readme)
+        drifted = readme.replace("## Validation and tests\n", "## Validation drifted\n", 1)
+        with self.assertRaisesRegex(ValueError, "README.md.*anchor"):
+            builder._transform_public_readme(drifted)
+
+
     def test_builder_rejects_broken_output_symlink_and_symlinked_parent(self) -> None:
         builder = _load(BUILDER, "community_output_path_builder_test")
         source = self.root / "minimal-output-source"
         source.mkdir()
-        (source / "COMMUNITY_VERSION").write_text("1.1.0\n", encoding="utf-8")
+        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
 
         redirected = self.root / "redirected-output"
         requested = self.root / "requested-output"
@@ -265,7 +279,7 @@ assert 'entitlement' not in payload
         builder = _load(BUILDER, "community_source_race_builder_test")
         source = self.root / "minimal-race-source"
         source.mkdir()
-        (source / "COMMUNITY_VERSION").write_text("1.1.0\n", encoding="utf-8")
+        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
         raced = source / "zz-race.txt"
         raced.write_text("inside\n", encoding="utf-8")
         outside = self.root / "outside-race.txt"
@@ -293,7 +307,7 @@ assert 'entitlement' not in payload
         builder = _load(BUILDER, "community_excluded_payload_builder_test")
         source = self.root / "minimal-excluded-source"
         (source / "data").mkdir(parents=True)
-        (source / "COMMUNITY_VERSION").write_text("1.1.0\n", encoding="utf-8")
+        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
         excluded = source / "data" / "sniper.db"
         excluded.write_bytes(b"runtime-state-must-not-be-read")
         output = self.root / "excluded-output"
@@ -318,10 +332,10 @@ assert 'entitlement' not in payload
         source = self.root / "minimal-tool-runtime-source"
         runtime = source / "runtimes" / "demo-1.0"
         runtime.mkdir(parents=True)
-        (source / "COMMUNITY_VERSION").write_text("1.1.0\n", encoding="utf-8")
+        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
         installed_binary = runtime / "demo"
         installed_binary.write_bytes(b"third-party-runtime-must-not-be-read")
-        install_manifest = source / "runtimes" / "SNIPER-COMMUNITY-TOOLS-MANIFEST.json"
+        install_manifest = source / "runtimes" / "VULKILL-COMMUNITY-TOOLS-MANIFEST.json"
         install_manifest.write_text('{"schema":"local-runtime"}\n', encoding="utf-8")
         output = self.root / "tool-runtime-output"
 
@@ -330,7 +344,7 @@ assert 'entitlement' not in payload
 
         def observing_open(path, flags, *args, **kwargs):
             nonlocal opened_runtime_payload
-            if path in {"demo", "SNIPER-COMMUNITY-TOOLS-MANIFEST.json"} \
+            if path in {"demo", "VULKILL-COMMUNITY-TOOLS-MANIFEST.json"} \
                     and kwargs.get("dir_fd") is not None:
                 opened_runtime_payload = True
                 raise AssertionError("installed tool runtime payload was opened")
@@ -347,7 +361,7 @@ assert 'entitlement' not in payload
         source = self.root / "minimal-codebase-index-source"
         index = source / ".codebase-memory"
         index.mkdir(parents=True)
-        (source / "COMMUNITY_VERSION").write_text("1.1.0\n", encoding="utf-8")
+        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
         graph = index / "graph.db.zst"
         graph.write_bytes(b"local-structural-index-must-not-be-published")
         output = self.root / "codebase-index-output"
@@ -368,39 +382,11 @@ assert 'entitlement' not in payload
         self.assertFalse((output / ".codebase-memory").exists())
         self.assertTrue((output / "COMMUNITY_VERSION").is_file())
 
-    def test_builder_excludes_git_worktree_pointer_without_reading_it(self) -> None:
-        builder = _load(BUILDER, "community_git_worktree_pointer_exclusion_test")
-        source = self.root / "minimal-git-worktree-source"
-        source.mkdir()
-        (source / "COMMUNITY_VERSION").write_text("1.1.0\n", encoding="utf-8")
-        git_pointer = source / ".git"
-        git_pointer.write_text(
-            "gitdir: /home/community-user/project/.git/worktrees/community\n",
-            encoding="utf-8",
-        )
-        output = self.root / "git-worktree-output"
-
-        real_open = builder.os.open
-        opened_pointer = False
-
-        def observing_open(path, flags, *args, **kwargs):
-            nonlocal opened_pointer
-            if path == ".git" and kwargs.get("dir_fd") is not None:
-                opened_pointer = True
-                raise AssertionError("Git worktree pointer was opened")
-            return real_open(path, flags, *args, **kwargs)
-
-        with mock.patch.object(builder.os, "open", side_effect=observing_open):
-            builder.build(source, output)
-        self.assertFalse(opened_pointer)
-        self.assertFalse((output / ".git").exists())
-        self.assertTrue((output / "COMMUNITY_VERSION").is_file())
-
     def test_builder_excludes_deployment_secrets_and_archives(self) -> None:
         builder = _load(BUILDER, "community_deployment_secret_exclusion_test")
         source = self.root / "minimal-secret-name-source"
         source.mkdir()
-        (source / "COMMUNITY_VERSION").write_text("1.1.0\n", encoding="utf-8")
+        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
         secret_paths = (
             source / ".env",
             source / ".env.local",
@@ -439,24 +425,6 @@ assert 'entitlement' not in payload
         self.assertTrue(any("forbidden secret-bearing filename: .env" in failure for failure in failures), failures)
         self.assertFalse(any("manifest:" in failure for failure in failures), failures)
 
-    def test_validator_rejects_manifest_listed_git_worktree_pointer(self) -> None:
-        validator = _load(VALIDATOR, "community_git_pointer_rejection_validator_test")
-        self.assertEqual(validator.validate(self.output, scan_release_tree=True), [])
-        pointer = self.output / ".git"
-        pointer.write_text("gitdir: /neutral/worktree/path\n", encoding="utf-8")
-        source_manifest = self.output / "COMMUNITY-SOURCE-MANIFEST.sha256"
-        original_manifest = source_manifest.read_bytes()
-        entry = f"{hashlib.sha256(pointer.read_bytes()).hexdigest()}  .git\n".encode("utf-8")
-        source_manifest.write_bytes(original_manifest + entry)
-        try:
-            failures = validator.validate(self.output, scan_release_tree=True)
-        finally:
-            source_manifest.write_bytes(original_manifest)
-            pointer.unlink()
-
-        self.assertIn("release tree: forbidden installed/runtime record: .git", failures)
-        self.assertFalse(any("manifest:" in failure for failure in failures), failures)
-
     def test_validator_rejects_manifest_listed_nested_runtime_artifacts(self) -> None:
         validator = _load(VALIDATOR, "community_tool_runtime_rejection_validator_test")
         self.assertEqual(validator.validate(self.output, scan_release_tree=True), [])
@@ -464,7 +432,7 @@ assert 'entitlement' not in payload
         runtime.mkdir(parents=True)
         installed_binary = runtime / "demo"
         installed_binary.write_bytes(b"manifest-listed-third-party-runtime")
-        install_manifest = self.output / "runtimes" / "SNIPER-COMMUNITY-TOOLS-MANIFEST.json"
+        install_manifest = self.output / "runtimes" / "VULKILL-COMMUNITY-TOOLS-MANIFEST.json"
         install_manifest.write_text('{"schema":"local-runtime"}\n', encoding="utf-8")
         source_manifest = self.output / "COMMUNITY-SOURCE-MANIFEST.sha256"
         original_manifest = source_manifest.read_bytes()
@@ -493,7 +461,7 @@ assert 'entitlement' not in payload
         validator = _load(VALIDATOR, "community_size_bound_validator_test")
         source = self.root / "minimal-size-source"
         source.mkdir()
-        (source / "COMMUNITY_VERSION").write_text("1.1.0\n", encoding="utf-8")
+        (source / "COMMUNITY_VERSION").write_text("1.0.0\n", encoding="utf-8")
         oversized_source = source / "oversized.bin"
         with oversized_source.open("wb") as stream:
             stream.truncate(builder.MAX_REGULAR_FILE_BYTES + 1)

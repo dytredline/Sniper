@@ -2,12 +2,12 @@
 
 WebSocket (`ws.on("message")`, `onmessage`), gRPC akışları (`stream.Recv()`), MQTT ve
 çok adımlı iş akışı denetleyicilerinde:
-1. `SNIPER-STATE-SKIP-01` (CWE-841, critical): Kimlik doğrulama / MFA / el sıkışma
+1. `VULKILL-STATE-SKIP-01` (CWE-841, critical): Kimlik doğrulama / MFA / el sıkışma
    adımı (`AUTH`, `LOGIN`, `VERIFY_MFA`) tanımlı olduğu halde, ayrıcalıklı işlem
    dalının (`TRANSFER_FUNDS`, `EXECUTE`, `ADMIN_CMD`, `EXPORT_DATA`, `DELETE_ACCOUNT`,
    `COMPLETE_ORDER` vb.) oturum durumunu (`isAuthenticated`, `authenticated`,
    `mfa_verified`, `state == "AUTHENTICATED"`) doğrulamadan çalışması.
-2. `SNIPER-STATE-REPLAY-02` (CWE-294, high): Durum değiştiren protokol mesajlarında
+2. `VULKILL-STATE-REPLAY-02` (CWE-294, high): Durum değiştiren protokol mesajlarında
    monotonik sıra numarası / tek kullanımlık anahtar (`seq`, `lastSeq`, `nonce`,
    `message_id`, `timestamp`, `version`) kontrolünün bulunmaması veya oturum
    ayrıcalıklarını sıfırlamadan başlangıç durumuna (`INIT`, `RESET`) geri sarma
@@ -82,7 +82,7 @@ _RESET_ROLLBACK_STATES = frozenset(
 )
 
 _BRANCH_HEADER_RE = re.compile(
-    r"""(?:^\s*+case\s++(?:[A-Za-z0-9_]++\.)?['"]?([A-Z][A-Z0-9_]{1,40})['"]?\s*+:|^\s*+(?:el)?if\b[^\n{;:]{0,2048}?(?:type|action|step|stage|cmd|command|event|state)\s*+['"\]]*+\s*+[=!]==?\s*+['"]([A-Z][A-Z0-9_]{1,40})['"])""",
+    r"""(?:^\s*case\s+(?:[A-Za-z0-9_]+\.)?['"]?([A-Z][A-Z0-9_]{1,40})['"]?\s*:|^\s*(?:el)?if\b[^\n{;:]*?(?:type|action|step|stage|cmd|command|event|state)\s*['"\]]*\s*[=!]==?\s*['"]([A-Z][A-Z0-9_]{1,40})['"])""",
     re.MULTILINE,
 )
 
@@ -137,7 +137,7 @@ def audit_stateful_protocol_state_machine(
     *,
     filename: str = "ws_handler.ts",
 ) -> dict[str, Any]:
-    """Durum bilgili protokol işleyicilerinde adım atlama (SNIPER-STATE-SKIP-01) ve tekrar/geri sarma (SNIPER-STATE-REPLAY-02) zafiyetlerini denetler."""
+    """Durum bilgili protokol işleyicilerinde adım atlama (VULKILL-STATE-SKIP-01) ve tekrar/geri sarma (VULKILL-STATE-REPLAY-02) zafiyetlerini denetler."""
     content = str(raw_content or "")
     branches = _extract_protocol_branches(content)
 
@@ -178,7 +178,7 @@ def audit_stateful_protocol_state_machine(
             )
         )
 
-        # 1) SNIPER-STATE-SKIP-01: Ayrıcalıklı dalda durum/kimlik doğrulama kontrolü eksikliği
+        # 1) VULKILL-STATE-SKIP-01: Ayrıcalıklı dalda durum/kimlik doğrulama kontrolü eksikliği
         if has_auth_gate and is_privileged_branch:
             has_branch_guard = has_global_auth_guard or bool(
                 _STATE_GUARD_CHECK_RE.search(b_body)
@@ -188,7 +188,7 @@ def audit_stateful_protocol_state_machine(
                     unprotected_actions.append(b_name)
                 findings.append(
                     {
-                        "rule_id": "SNIPER-STATE-SKIP-01",
+                        "rule_id": "VULKILL-STATE-SKIP-01",
                         "cwe": "CWE-841",
                         "reference": "CWE-841",
                         "severity": "critical",
@@ -210,7 +210,7 @@ def audit_stateful_protocol_state_machine(
                     }
                 )
 
-        # 2a) SNIPER-STATE-REPLAY-02: Geri sarma (Rollback / Reset) dalında ayrıcalıkların sıfırlanmaması
+        # 2a) VULKILL-STATE-REPLAY-02: Geri sarma (Rollback / Reset) dalında ayrıcalıkların sıfırlanmaması
         if b_name in _RESET_ROLLBACK_STATES or (
             b_name in _INITIAL_STATES
             and re.search(r"\b(?:state|step|stage)\s*=", b_body)
@@ -222,7 +222,7 @@ def audit_stateful_protocol_state_machine(
             ):
                 findings.append(
                     {
-                        "rule_id": "SNIPER-STATE-REPLAY-02",
+                        "rule_id": "VULKILL-STATE-REPLAY-02",
                         "cwe": "CWE-294",
                         "reference": "CWE-294",
                         "severity": "high",
@@ -243,7 +243,7 @@ def audit_stateful_protocol_state_machine(
                     }
                 )
 
-    # 2b) SNIPER-STATE-REPLAY-02: Durum değiştiren protokolde sıra numarası (seq/nonce) kontrolü eksikliği
+    # 2b) VULKILL-STATE-REPLAY-02: Durum değiştiren protokolde sıra numarası (seq/nonce) kontrolü eksikliği
     if branches and has_auth_gate and not has_global_seq_guard:
         anchor_branch = next(
             (b for b in branches if b["name"] in _PRIVILEGED_ACTION_STATES),
@@ -251,7 +251,7 @@ def audit_stateful_protocol_state_machine(
         )
         findings.append(
             {
-                "rule_id": "SNIPER-STATE-REPLAY-02",
+                "rule_id": "VULKILL-STATE-REPLAY-02",
                 "cwe": "CWE-294",
                 "reference": "CWE-294",
                 "severity": "high",

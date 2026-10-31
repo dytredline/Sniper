@@ -6,8 +6,10 @@ from __future__ import annotations
 
 from http import HTTPStatus
 import os
+from pathlib import Path
+import secrets
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 import auth
 import request_context
@@ -17,6 +19,7 @@ LOGIN_ASSETS = frozenset({
     "i18n-en.tsv", "i18n-ja.tsv", "i18n-ko.tsv", "i18n-zh-CN.tsv",
     "ui-refresh.css", "ui-icons.svg",
 })  # Girişten önce dil paketleri, stil ve simgeler yüklenebilir.
+OIDC_FLOW_COOKIE = "sniper_oidc_flow"
 
 
 def manager() -> auth.AuthManager:
@@ -148,9 +151,87 @@ def _issue_session(handler, user: dict[str, Any], payload_extra: dict | None = N
     handler._json(body, status=status, cookies=auth.session_cookie_headers(token, csrf, secure=_secure_cookies()))
 
 
+def _oidc_config():
+    raw = os.environ.get("SNIPER_OIDC_CONFIG_FILE", "").strip()
+    if not raw:
+        return None
+    import enterprise_identity
+    return enterprise_identity.load_oidc_browser_config(Path(raw))
+
+
+def _oidc_available() -> bool:
+    try:
+        return _oidc_config() is not None
+    except (OSError, ValueError):
+        return False
+
+
+def _redirect(handler, location: str, *, cookies: list[str] | None = None) -> None:
+    handler.send_response(HTTPStatus.FOUND)
+    handler.send_header("Location", location)
+    for cookie in cookies or ():
+        handler.send_header("Set-Cookie", cookie)
+    handler.send_header("Cache-Control", "no-store")
+    handler.send_header("Referrer-Policy", "no-referrer")
+    handler.send_header("Content-Length", "0")
+    handler.end_headers()
+
+
+def _oidc_flow_cookie(value: str, *, clear: bool = False) -> str:
+    flags = "; Path=/api/auth/oidc/callback; HttpOnly; SameSite=Lax"
+    if _secure_cookies():
+        flags += "; Secure"
+    return f"{OIDC_FLOW_COOKIE}={'' if clear else value}{flags}; Max-Age={0 if clear else 300}"
+
+
 def handle_get(handler, path: str) -> None:
     m = manager()
     session = getattr(handler, "_auth_session", None)
+    if path == "/api/auth/oidc/status":
+        return handler._json({"enabled": _oidc_available()})
+    if path == "/api/auth/oidc/start":
+        if not m.enabled():
+            return handler._error(HTTPStatus.CONFLICT, "Giriş etkin değil.")
+        try:
+            import enterprise_identity
+            config = _oidc_config()
+            if config is None:
+                return handler._error(HTTPStatus.NOT_FOUND, "Kurumsal OIDC yapılandırılmadı.")
+            binding = secrets.token_urlsafe(32)
+            started = enterprise_identity.OIDCLoginFlowStore(m.data_dir).begin(
+                config, browser_binding=binding,
+            )
+            return _redirect(handler, started["authorization_url"], cookies=[_oidc_flow_cookie(binding)])
+        except Exception:
+            return handler._error(HTTPStatus.SERVICE_UNAVAILABLE, "Kurumsal OIDC başlatılamadı.")
+    if path == "/api/auth/oidc/callback":
+        if not m.enabled():
+            return handler._error(HTTPStatus.CONFLICT, "Giriş etkin değil.")
+        query = parse_qs(urlsplit(handler.path).query, keep_blank_values=True)
+        if set(query) - {"code", "state", "error", "error_description"} or len(query.get("code", [])) != 1 \
+                or len(query.get("state", [])) != 1 or query.get("error"):
+            return handler._error(HTTPStatus.BAD_REQUEST, "OIDC geri çağrısı geçersiz.")
+        try:
+            import enterprise_identity
+            config = _oidc_config()
+            if config is None:
+                raise enterprise_identity.IdentityDenied("OIDC disabled")
+            binding = auth.parse_cookies(handler.headers.get("Cookie")).get(OIDC_FLOW_COOKIE)
+            flow = enterprise_identity.OIDCLoginFlowStore(m.data_dir).consume(
+                query["state"][0], browser_binding=binding,
+            )
+            token = enterprise_identity.exchange_oidc_code(
+                config, code=query["code"][0], code_verifier=flow["code_verifier"],
+            )
+            identity = m.verify_enterprise_oidc(token, config=config, expected_nonce=flow["nonce"])
+            user = m.upsert_enterprise_user(identity)
+            session_token, csrf = m.create_session(user["id"], _client(handler))
+            _log("auth.oidc_login", user["id"], {"client": _client(handler), "issuer": identity["issuer"]}, actor=user)
+            cookies = auth.session_cookie_headers(session_token, csrf, secure=_secure_cookies())
+            cookies.append(_oidc_flow_cookie("", clear=True))
+            return _redirect(handler, "/", cookies=cookies)
+        except Exception:
+            return handler._error(HTTPStatus.UNAUTHORIZED, "Kurumsal OIDC doğrulaması başarısız.")
     if path == "/api/auth/status":
         enabled = m.enabled()
         return handler._json({
@@ -160,6 +241,7 @@ def handle_get(handler, path: str) -> None:
             "setup_pending": (not enabled) and m.setup_token_path().is_file(),
             "roles": auth.ROLE_LABELS,
             "password_min": auth.PASSWORD_MIN,
+            "oidc_enabled": _oidc_available(),
         })
     if not m.enabled():
         return handler._error(HTTPStatus.CONFLICT, "Giriş etkin değil.")

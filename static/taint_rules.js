@@ -133,7 +133,7 @@
     refresh();
   }
 
-  scope.SniperTaintRules = Object.freeze({ refresh, save, remove, tryRule, renderStatus, renderTrial, init });
+  scope.VulKillTaintRules = Object.freeze({ refresh, save, remove, tryRule, renderStatus, renderTrial, init });
   if (typeof document !== "undefined" && document.readyState !== "loading") init();
   else if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", init);
 })();

@@ -1,4 +1,4 @@
-"""Sniper Traffic Decoder & HAR/HTTP Inspector (Burp Decoder + Proxy Inspector karşılığı).
+"""VulKill Traffic Decoder & HAR/HTTP Inspector (Burp Decoder + Proxy Inspector karşılığı).
 
 Çok katmanlı kodlanmış (URL, Base64/Base64URL, Hex, HTML entity, JWT) verileri özyinelemeli
 olarak çözer; içindeki güvensiz JWT başlıklarını (alg:none, jku, x5u), serileştirilmiş
@@ -55,7 +55,7 @@ def recursive_decode_and_inspect(raw_value: str, *, max_depth: int = 4) -> dict[
     if current.startswith("rO0AB"):
         signals.append("java_serialized_object_base64")
         findings.append({
-            "control_id": "SNIPER-DECODER-DESER-01",
+            "control_id": "VULKILL-DECODER-DESER-01",
             "cwe": "CWE-502",
             "reference": "CWE-502",
             "severity": "critical",
@@ -73,7 +73,7 @@ def recursive_decode_and_inspect(raw_value: str, *, max_depth: int = 4) -> dict[
             if alg == "none" or not jwt_info["has_signature"]:
                 signals.append("jwt_alg_none_or_unsigned")
                 findings.append({
-                    "control_id": "SNIPER-DECODER-JWT-01",
+                    "control_id": "VULKILL-DECODER-JWT-01",
                     "cwe": "CWE-347",
                     "reference": "CWE-347",
                     "severity": "critical",
@@ -85,7 +85,7 @@ def recursive_decode_and_inspect(raw_value: str, *, max_depth: int = 4) -> dict[
             if any(k in jwt_info["header"] for k in ("jku", "x5u")):
                 signals.append("jwt_external_key_url_header")
                 findings.append({
-                    "control_id": "SNIPER-DECODER-JWT-02",
+                    "control_id": "VULKILL-DECODER-JWT-02",
                     "cwe": "CWE-347",
                     "reference": "CWE-347",
                     "severity": "high",
@@ -139,7 +139,7 @@ def recursive_decode_and_inspect(raw_value: str, *, max_depth: int = 4) -> dict[
     if _INTERNAL_HOST_RE.search(current):
         signals.append("internal_network_or_imds_target")
         findings.append({
-            "control_id": "SNIPER-DECODER-SSRF-03",
+            "control_id": "VULKILL-DECODER-SSRF-03",
             "cwe": "CWE-918",
             "reference": "CWE-918",
             "severity": "high",
@@ -152,7 +152,7 @@ def recursive_decode_and_inspect(raw_value: str, *, max_depth: int = 4) -> dict[
     if re.search(r'\bO:\d+:"[A-Za-z0-9_]+"', current):
         signals.append("php_serialized_object")
         findings.append({
-            "control_id": "SNIPER-DECODER-DESER-02",
+            "control_id": "VULKILL-DECODER-DESER-02",
             "cwe": "CWE-502",
             "reference": "CWE-502",
             "severity": "critical",

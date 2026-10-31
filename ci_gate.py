@@ -54,7 +54,7 @@ DEFAULT_POLICY: dict[str, Any] = {
 }
 _POLICY_KEYS = set(DEFAULT_POLICY) | {"baseline"}
 _ID_RE = re.compile(r"[A-Za-z0-9_.:/@+\-]{1,200}\Z")
-_TOOL_NAME = "Sniper"
+_TOOL_NAME = "VulKill"
 _INFO_URI = "https://owasp.org/www-project-web-security-testing-guide/"
 MAX_SARIF_RESULTS = 25_000  # GitHub code scanning sınırı
 
@@ -213,15 +213,7 @@ def _rule_id(finding: dict[str, Any]) -> str:
     else:
         base = str(finding.get("cwe") or finding.get("reference") or "")
         if not base:
-            # A SARIF rule identifier is metadata, not a password verifier.
-            # Keep it readable and avoid feeding potentially sensitive finding
-            # text to a fast cryptographic digest.
-            title_slug = re.sub(
-                r"[^A-Za-z0-9_.\-]+",
-                "-",
-                finding_tracking._norm(finding.get("title")),
-            ).strip("-")
-            base = "t-" + (title_slug[:96] or "finding")
+            base = "t-" + hashlib.sha256(finding_tracking._norm(finding.get("title")).encode("utf-8")).hexdigest()[:12]
     base = re.sub(r"[^A-Za-z0-9_.\-]+", "-", base).strip("-") or "kural"
     return f"sniper/{group}/{base}"[:255]
 
@@ -477,7 +469,7 @@ def build_sarif(findings: list[dict[str, Any]], *, root: Path | None = None, ver
         if rule_id not in rules:
             tags = ["security", group] + ([cwe_tag] if cwe_tag else [])
             rules[rule_id] = {
-                "id": rule_id, "name": re.sub(r"[^A-Za-z0-9]+", "", rule_id.title())[:120] or "SniperRule",
+                "id": rule_id, "name": re.sub(r"[^A-Za-z0-9]+", "", rule_id.title())[:120] or "VulKillRule",
                 "shortDescription": {"text": title[:200]},
                 "fullDescription": {"text": (str(finding.get("evidence") or title))[:1000]},
                 "help": {"text": recommendation or title, "markdown": recommendation or title},
@@ -746,7 +738,7 @@ def _md(text: Any) -> str:
 
 def markdown_summary(report: dict[str, Any]) -> str:
     decision = report["decision"]
-    lines = [f"## Sniper güvenlik kapısı: {'✅ GEÇTİ' if decision['passed'] else '❌ BAŞARISIZ'}", ""]
+    lines = [f"## VulKill güvenlik kapısı: {'✅ GEÇTİ' if decision['passed'] else '❌ BAŞARISIZ'}", ""]
     lines.append(f"Proje: `{_md(report['project_name'])}` · Politika: {_md(report['policy_source'])} · "
                  f"Taban: {_md(report.get('baseline') or 'yok')}")
     lines += ["", "| Grup | Kritik | Yüksek | Orta | Düşük | Bilgi |", "|---|---|---|---|---|---|"]
@@ -995,7 +987,7 @@ def console_lines(code: int, report: dict[str, Any]) -> Iterable[str]:
         yield f"HATA: {report['error']}"
         return
     decision = report["decision"]
-    yield (f"Sniper CI: {report['project_name']} · {report['finding_count']} bulgu · bileşen {report['component_count']}"
+    yield (f"VulKill CI: {report['project_name']} · {report['finding_count']} bulgu · bileşen {report['component_count']}"
            f" · politika {report['policy_source']} · taban {report.get('baseline') or 'yok'}")
     for group, counts in report["counts"].items():
         if any(counts.values()):
@@ -1068,7 +1060,7 @@ def evaluate_enterprise_v2_ci_gate(
         "ssvc_act_count": ssvc_act_count,
         "critical_production_count": critical_count,
         "pr_comment_markdown": (
-            f"## Sniper Enterprise v2 CI Gate: **{verdict}**\n"
+            f"## VulKill Enterprise v2 CI Gate: **{verdict}**\n"
             f"- Attack Chains: {attack_chain_count}\n"
             f"- CISA SSVC Act: {ssvc_act_count}\n"
             f"- Critical Findings: {critical_count}\n"

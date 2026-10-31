@@ -1,15 +1,15 @@
 cff-version: 1.2.0
-message: "If you use Sniper Community in research or published work, please cite this software."
+message: "If you use VulKill Community in research or published work, please cite this software."
 type: software
-title: Sniper Community
+title: VulKill Community
 authors:
   - family-names: "Karakamış"
     given-names: "Gökçe Baran"
     website: "https://github.com/dytredline"
-version: 1.1.0
+version: 1.0.0
 license: Apache-2.0
-repository-code: "https://github.com/dytredline/Sniper"
-url: "https://github.com/dytredline/Sniper"
+repository-code: "https://github.com/dytredline/VulKill"
+url: "https://github.com/dytredline/VulKill"
 abstract: >-
   A local-first defensive application-security toolkit with source, dependency,
   container, reporting, web, command-line, and human-approved MCP workflows.

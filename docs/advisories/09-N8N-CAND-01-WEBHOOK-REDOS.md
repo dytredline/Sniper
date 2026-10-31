@@ -54,7 +54,7 @@ function extractEmail(value: string) {
 
 ## 3. Example Execution & Verification Commands
 
-### 1. Auditing the Component with Sniper CLI
+### 1. Auditing the Component with VulKill CLI
 ```bash
 python3 scripts/sniper-project-audit \
   --repo-path /home/community-user/targets/n8n \

@@ -360,11 +360,11 @@ class DependencySecurityTests(unittest.TestCase):
         self.assertEqual(oa_result["format"], "sniper-api-contract-audit-v1")
         self.assertEqual(oa_result["contract_type"], "openapi3")
         oa_rules = {f["rule_id"] for f in oa_result["findings"]}
-        self.assertIn("SNIPER-CRYP-02", oa_rules)
-        self.assertIn("SNIPER-APIT-02", oa_rules)
-        self.assertIn("SNIPER-APIT-03", oa_rules)
-        self.assertIn("SNIPER-APIT-05", oa_rules)
-        self.assertIn("SNIPER-APIT-09", oa_rules)
+        self.assertIn("VULKILL-CRYP-02", oa_rules)
+        self.assertIn("VULKILL-APIT-02", oa_rules)
+        self.assertIn("VULKILL-APIT-03", oa_rules)
+        self.assertIn("VULKILL-APIT-05", oa_rules)
+        self.assertIn("VULKILL-APIT-09", oa_rules)
 
         gql_sdl = """
         type Query {
@@ -383,7 +383,7 @@ class DependencySecurityTests(unittest.TestCase):
         gql_result = audit_api_contract(gql_sdl, source_name="schema.graphql")
         self.assertEqual(gql_result["contract_type"], "graphql")
         gql_rules = {f["rule_id"] for f in gql_result["findings"]}
-        self.assertEqual(gql_rules, {"SNIPER-APIT-02", "SNIPER-APIT-06", "SNIPER-APIT-09"})
+        self.assertEqual(gql_rules, {"VULKILL-APIT-02", "VULKILL-APIT-06", "VULKILL-APIT-09"})
 
         (self.project / "openapi.json").write_text(json.dumps(openapi_doc), encoding="utf-8")
         (self.project / "schema.graphql").write_text(gql_sdl, encoding="utf-8")

@@ -1,19 +1,19 @@
-# Verified Vulnerabilities Discovered by Our Sniper Scanner
+# Verified Vulnerabilities Discovered by Our VulKill Scanner
 
 **English** | [Türkçe](README.tr.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [한국어](README.ko.md)
 
 **Researcher / Security Maintainer:** **Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline))  
-**Discovery & Verification Engine:** **Sniper Security Toolkit** (`https://github.com/dytredline/Sniper`)  
+**Discovery & Verification Engine:** **VulKill Security Toolkit** (`https://github.com/dytredline/VulKill`)
 **Verification Standard:** 3-Layer Real-World Impact (`1. Code-to-Vulnerability Mechanics -> 2. Three Diversified Real-World Critical Scenarios (Scenario A / B / C) -> 3. Example Execution Commands & Runtime Proof (RED -> GREEN + BENIGN)`)
 
-This directory contains **46 verified security advisories (45 original vulnerabilities + 1 upstream `CVE-2026-40295` duplicate defense-in-depth note)** (across 9 open-source projects/ecosystems, including GitLab, Chia Network, and Vercel / Next.js) discovered during our security audits with the **Sniper** static/dynamic analysis engine, complete with plain-language and code-level explanations of **how each bug turns into a vulnerability**, **3 diversified real-world critical scenarios (`Scenario A`, `Scenario B`, `Scenario C`)**, **example execution and verification commands**, and **end-to-end runtime proofs (`RED -> GREEN + BENIGN`)**.
+This directory contains **46 verified security advisories (45 original vulnerabilities + 1 upstream `CVE-2026-40295` duplicate defense-in-depth note)** (across 9 open-source projects/ecosystems, including GitLab, Chia Network, and Vercel / Next.js) discovered during our security audits with the **VulKill** static/dynamic analysis engine, complete with plain-language and code-level explanations of **how each bug turns into a vulnerability**, **3 diversified real-world critical scenarios (`Scenario A`, `Scenario B`, `Scenario C`)**, **example execution and verification commands**, and **end-to-end runtime proofs (`RED -> GREEN + BENIGN`)**.
 
 - **End-to-End Runtime Proof Record (11/11 PASS):** [`other-repos-and-cua-real-world-impact-e2e-20261029.json`](other-repos-and-cua-real-world-impact-e2e-20261029.json)
-- **Full Scanned Repositories & Advisories Catalog (8 Earlier Scanned Repos + 11 Verified Advisories):** [`../SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md`](../SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md)
+- **Full Scanned Repositories & Advisories Catalog (8 Earlier Scanned Repos + 11 Verified Advisories):** [`../VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md`](../VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md)
 
 ---
 
-## 1. Summary Table: 46 Verified Security Advisories (45 Original Vulnerabilities + 1 Upstream Duplicate Note) Discovered by Our Sniper Scanner (`Scenario A / B / C` & Runtime Proofs)
+## 1. Summary Table: 46 Verified Security Advisories (45 Original Vulnerabilities + 1 Upstream Duplicate Note) Discovered by Our VulKill Scanner (`Scenario A / B / C` & Runtime Proofs)
 
 | # | Advisory Document & Upstream GHSA | Target Project & Component | CWE & CVSS v3.1 | How the Bug Turns into a Vulnerability & 3 Critical Real-World Scenarios (`Scenario A / B / C`) | Runtime Proof (`RED -> GREEN`) & Example Command |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -68,10 +68,10 @@ This directory contains **46 verified security advisories (45 original vulnerabi
 
 ## 2. Quick Local Verification & Execution Commands for All 46 Advisories
 
-You can verify both the **Sniper static analysis (SAST/IaC)** detections and the **isolated local runtime proofs (`RED -> GREEN + BENIGN`)** for all 46 advisories with the following commands:
+You can verify both the **VulKill static analysis (SAST/IaC)** detections and the **isolated local runtime proofs (`RED -> GREEN + BENIGN`)** for all 46 advisories with the following commands:
 
 ```bash
-# 1. Run a Sniper local project audit (SAST + IaC + SCA + Route/Boundary Analysis)
+# 1. Run a VulKill local project audit (SAST + IaC + SCA + Route/Boundary Analysis)
 python3 scripts/sniper-project-audit /path/to/target-repo --format json --output audit-report.json
 
 # 2. Inspect the end-to-end runtime proof summary across all 46 verified advisories

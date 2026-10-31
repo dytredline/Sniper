@@ -1,4 +1,4 @@
-// ASP.NET WebForms: lock (x) { … } gövdesi (csharpsrc2cpg süslü parantezliyse bile düşürür; Sniper "_ = (x);" yapar).
+// ASP.NET WebForms: lock (x) { … } gövdesi (csharpsrc2cpg süslü parantezliyse bile düşürür; VulKill "_ = (x);" yapar).
 using System;
 using System.Data.SqlClient;
 using System.IO;

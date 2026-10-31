@@ -1,4 +1,4 @@
-"""Yalıtılmış k6/Schemathesis: Sniper içinden yönetilen hedefler (kapsam seçenekleri, kritik yerel servisler,
+"""Yalıtılmış k6/Schemathesis: VulKill içinden yönetilen hedefler (kapsam seçenekleri, kritik yerel servisler,
 sahipliği doğrulanmış uzak hedefler), yük profilleri, API + denetim kaydı ve gerçek bubblewrap ile yalıtım
 (başka port, dış adres, yönlendirme, ev/veri dizini, yetenekler, iç içe userns, süre aşımı).
 
@@ -248,7 +248,7 @@ class SandboxApiTests(_DataDir):
         self.server = server
         self.previous_store = server.STORE
         server.STORE = Store(self.data / "sniper.db")
-        self.http = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.http = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.http.daemon_threads = True
         self.thread = threading.Thread(target=self.http.serve_forever, daemon=True)
         self.thread.start()

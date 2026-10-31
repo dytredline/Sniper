@@ -14,13 +14,13 @@ MAX_INLINE_BYTES = 512_000
 MAX_PROJECT_FILES = 1_500
 
 BUSINESS_LOGIC_CONTROLS_EVALUATED: list[str] = [
-    "SNIPER-BUSL-01",
-    "SNIPER-BUSL-02",
-    "SNIPER-BUSL-03",
-    "SNIPER-AUTHZ-02",
-    "SNIPER-AUTHZ-03",
-    "SNIPER-AUTHZ-BOLA-04",
-    "SNIPER-FIN-TOCTOU-05",
+    "VULKILL-BUSL-01",
+    "VULKILL-BUSL-02",
+    "VULKILL-BUSL-03",
+    "VULKILL-AUTHZ-02",
+    "VULKILL-AUTHZ-03",
+    "VULKILL-AUTHZ-BOLA-04",
+    "VULKILL-FIN-TOCTOU-05",
 ]
 
 BUSINESS_LOGIC_EXTENSIONS: set[str] = {
@@ -183,7 +183,7 @@ def audit_business_logic_inline(
             seen_keys.add(key)
             findings.append(finding)
 
-    # 1. Race Condition / TOCTOU / Double Spending (high, CWE-362, SNIPER-BUSL-01)
+    # 1. Race Condition / TOCTOU / Double Spending (high, CWE-362, VULKILL-BUSL-01)
     concurrency_guard_re = re.compile(
         r"\b(?:select_for_update|with_for_update|FOR\s+UPDATE|transaction\.atomic|"
         r"F\s*\(|idempotency_key|Idempotency-Key|mutex|RLock|Lock\s*\(|atomic\b|SERIALIZABLE)\b",
@@ -214,14 +214,14 @@ def audit_business_logic_inline(
                         "select_for_update() veya atomik veritabanı güncellemeleri ve Idempotency-Key ile koruyun."
                     ),
                     cwe="CWE-362",
-                    control_id="SNIPER-BUSL-01",
+                    control_id="VULKILL-BUSL-01",
                     filename=clean_filename,
                     line=line_no,
                 )
             )
         offset += len(raw_line)
 
-    # 2. Financial Float Precision & Negative Amount Bypass (high, CWE-682, SNIPER-BUSL-02)
+    # 2. Financial Float Precision & Negative Amount Bypass (high, CWE-682, VULKILL-BUSL-02)
     float_money_re = re.compile(
         r"(?im)^[^\n#]*(?:\b(?:float|parseFloat)\s*\([^)\n]*\b(?:amount|price|balance|total|discount|fee|payout|cost)\b"
         r"|\b(?:amount|price|balance|total|discount|fee|payout)\s*[:=]\s*(?:float|parseFloat)\s*\()"
@@ -244,7 +244,7 @@ def audit_business_logic_inline(
                     "birimi cinsinden (kuruş/cent) tam sayı (integer) kullanın."
                 ),
                 cwe="CWE-682",
-                control_id="SNIPER-BUSL-02",
+                control_id="VULKILL-BUSL-02",
                 filename=clean_filename,
                 line=line_no,
             )
@@ -281,13 +281,13 @@ def audit_business_logic_inline(
                             "(amount <= 0 ise hata döndürerek) doğrulayın."
                         ),
                         cwe="CWE-682",
-                        control_id="SNIPER-BUSL-02",
+                        control_id="VULKILL-BUSL-02",
                         filename=clean_filename,
                         line=line_no,
                     )
                 )
 
-    # 3. Broken Function Level Authorization — BFLA (high, CWE-285, SNIPER-AUTHZ-02)
+    # 3. Broken Function Level Authorization — BFLA (high, CWE-285, VULKILL-AUTHZ-02)
     bfla_func_re = re.compile(
         r"(?im)^[ \t]*(?:async\s+)?(?:def|function)\s+"
         r"(admin_[A-Za-z0-9_]*|delete_user[A-Za-z0-9_]*|refund[A-Za-z0-9_]*|approve_loan[A-Za-z0-9_]*|"
@@ -319,13 +319,13 @@ def audit_business_logic_inline(
                         "yetkilendirme (RBAC/ABAC) kontrolünü zorunlu kılın."
                     ),
                     cwe="CWE-285",
-                    control_id="SNIPER-AUTHZ-02",
+                    control_id="VULKILL-AUTHZ-02",
                     filename=clean_filename,
                     line=line_no,
                 )
             )
 
-    # 4. Workflow / State Machine Step Bypass (medium, CWE-841, SNIPER-BUSL-03)
+    # 4. Workflow / State Machine Step Bypass (medium, CWE-841, VULKILL-BUSL-03)
     state_bypass_re = re.compile(
         r"(?im)^[^\n#]*(?:\b(?:[A-Za-z0-9_]+\.)?(?:status|payment_status|order_status|kyc_status)\s*=\s*[\"'](?:paid|completed|approved|settled)[\"']"
         r"|\b(?:[A-Za-z0-9_]+\.)?is_verified\s*=\s*True\b)"
@@ -350,13 +350,13 @@ def audit_business_logic_inline(
                         "ödeme/onay geçişlerinde webhook imza doğrulaması uygulayın."
                     ),
                     cwe="CWE-841",
-                    control_id="SNIPER-BUSL-03",
+                    control_id="VULKILL-BUSL-03",
                     filename=clean_filename,
                     line=line_no,
                 )
             )
 
-    # 5. Mass Assignment / BOPLA (high, CWE-915, SNIPER-AUTHZ-03)
+    # 5. Mass Assignment / BOPLA (high, CWE-915, VULKILL-AUTHZ-03)
     mass_assign_re = re.compile(
         r"(?im)^[^\n#]*(?:\b(?:create|update|update_or_create|bulk_create|findByIdAndUpdate|updateOne|updateMany|assign)\s*\([^)\n]*\*\*\s*(?:request\.(?:json|data|form|POST)|req\.body|payload|body)\b"
         r"|\bObject\.assign\s*\([^,\n]+,\s*req\.body\b"
@@ -387,13 +387,13 @@ def audit_business_logic_inline(
                         "uygulayın ve ayrıcalıklı alanları (role, is_admin, balance, tenant_id) dışlayın."
                     ),
                     cwe="CWE-915",
-                    control_id="SNIPER-AUTHZ-03",
+                    control_id="VULKILL-AUTHZ-03",
                     filename=clean_filename,
                     line=line_no,
                 )
             )
 
-    # 6. Client-Side Price / Discount Manipulation (critical, CWE-472, SNIPER-BUSL-02)
+    # 6. Client-Side Price / Discount Manipulation (critical, CWE-472, VULKILL-BUSL-02)
     client_price_re = re.compile(
         r"(?im)^[^\n#]*(?:request\.(?:json|data|form|args|POST|GET)|req\.(?:body|query))\s*"
         r"(?:\[\s*['\"](?:unit_price|price|discount|discount_rate|total_price|fee)['\"]\s*\]"
@@ -425,20 +425,20 @@ def audit_business_logic_inline(
                         "birim fiyat, indirim ve vergi oranlarını her zaman sunucu veritabanından hesaplayın."
                     ),
                     cwe="CWE-472",
-                    control_id="SNIPER-BUSL-02",
+                    control_id="VULKILL-BUSL-02",
                     filename=clean_filename,
                     line=line_no,
                 )
             )
 
-    # 7. Multi-Tenant / Object Ownership Filter Gap — BOLA / IDOR (high, CWE-639, SNIPER-AUTHZ-BOLA-04)
+    # 7. Multi-Tenant / Object Ownership Filter Gap — BOLA / IDOR (high, CWE-639, VULKILL-AUTHZ-BOLA-04)
     bola_handler_re = re.compile(
         r"(?im)^[ \t]*(?:"
-        r"@(?:app|router|bp|api)\.(?:get|post|put|delete|patch|route)\s*+\([^\n]*+\)"
-        r"(?:\s*+\n[ \t]*+@[^\n]++)*+"
-        r"(?:\s*+\n[ \t]*+(?:async\s++)?def\s++\w++\s*+\([^)]*+\))?"
-        r"|(?:async\s++)?def\s++\w++\s*+\([^)]{0,1024}\b(?:item_id|order_id|doc_id|invoice_id|record_id|account_id|patient_id)\b[^)]{0,1024}\)"
-        r"|(?:app|router)\.(?:get|post|put|delete|patch)\s*+\([^\n]*+"
+        r"@(?:app|router|bp|api)\.(?:get|post|put|delete|patch|route)\s*\([^\n]*\)"
+        r"(?:\s*\n[ \t]*@[^\n]+)*"
+        r"(?:\s*\n[ \t]*(?:async\s+)?def\s+\w+\s*\([^)]*\))?"
+        r"|(?:async\s+)?def\s+\w+\s*\([^)]*\b(?:item_id|order_id|doc_id|invoice_id|record_id|account_id|patient_id)\b[^)]*\)"
+        r"|(?:app|router)\.(?:get|post|put|delete|patch)\s*\([^\n]*"
         r")"
     )
     bola_lookup_re = re.compile(
@@ -482,13 +482,13 @@ def audit_business_logic_inline(
                         "kimliğiyle sınırlandırın (ör. filter_by(id=item_id, tenant_id=current_user.tenant_id))."
                     ),
                     cwe="CWE-639",
-                    control_id="SNIPER-AUTHZ-BOLA-04",
+                    control_id="VULKILL-AUTHZ-BOLA-04",
                     filename=clean_filename,
                     line=line_no,
                 )
             )
 
-    # 8. Financial / Inventory Read-Modify-Write Race Condition — TOCTOU (critical, CWE-362, SNIPER-FIN-TOCTOU-05)
+    # 8. Financial / Inventory Read-Modify-Write Race Condition — TOCTOU (critical, CWE-362, VULKILL-FIN-TOCTOU-05)
     fin_race_report = audit_financial_race_conditions(raw_content, filename=clean_filename)
     for fin_finding in fin_race_report["findings"]:
         _add(fin_finding)
@@ -509,12 +509,12 @@ def audit_business_logic_inline(
 
 _FIN_RMW_HANDLER_RE = re.compile(
     r"(?im)^[ \t]*(?:"
-    r"@(?:app|router|bp|api)\.(?:get|post|put|delete|patch|route)\s*+\([^\n]*+\)"
-    r"(?:\s*+\n[ \t]*+@[^\n]++)*+"
-    r"(?:\s*+\n[ \t]*+(?:async\s++)?def\s++\w++\s*+\([^)]*+\))?"
-    r"|(?:async\s++)?(?:def|function)\s++\w++\s*+\([^)]*+\)"
-    r"|(?:app|router)\.(?:get|post|put|delete|patch)\s*+\([^\n]*+"
-    r"|func\s++(?:\([^)]+\)\s*+)?\w++\s*+\([^)]*+\)"
+    r"@(?:app|router|bp|api)\.(?:get|post|put|delete|patch|route)\s*\([^\n]*\)"
+    r"(?:\s*\n[ \t]*@[^\n]+)*"
+    r"(?:\s*\n[ \t]*(?:async\s+)?def\s+\w+\s*\([^)]*\))?"
+    r"|(?:async\s+)?(?:def|function)\s+\w+\s*\([^)]*\)"
+    r"|(?:app|router)\.(?:get|post|put|delete|patch)\s*\([^\n]*"
+    r"|func\s+(?:\([^)]+\)\s*)?\w+\s*\([^)]*\)"
     r")"
 )
 _FIN_RMW_STATE_RE = re.compile(
@@ -523,7 +523,7 @@ _FIN_RMW_STATE_RE = re.compile(
 )
 _FIN_RMW_READ_CHECK_RE = re.compile(
     r"(?:\b(?:get|filter|filter_by|findUnique|findOne|SELECT)\b"
-    r"|if\s++[^:\n]{0,1024}(?:balance|wallet|credits|funds|stock|inventory|used|redeemed))",
+    r"|if\s+[^:\n]*(?:balance|wallet|credits|funds|stock|inventory|used|redeemed))",
     re.IGNORECASE,
 )
 _FIN_RMW_MUTATION_RE = re.compile(
@@ -607,7 +607,7 @@ def audit_financial_race_conditions(
                 "satır kilidi veya atomik veritabanı ifadeleri (F('balance') / $inc) ile koruyun."
             ),
             cwe="CWE-362",
-            control_id="SNIPER-FIN-TOCTOU-05",
+            control_id="VULKILL-FIN-TOCTOU-05",
             filename=clean_filename,
             line=line_no,
         )
@@ -666,8 +666,10 @@ def audit_business_logic_project(
     }
 
 
-_WEB3_CALL_BLOCK_RE = re.compile(r"\.call\s*+\{", re.IGNORECASE)
-_WEB3_CALL_VALUE_METHOD_RE = re.compile(r"\.call\.value\s*+\(", re.IGNORECASE)
+_WEB3_CALL_VALUE_RE = re.compile(
+    r"(?:\.call\s*\{[^}]*\bvalue\s*:|\.call\.value\s*\()",
+    re.IGNORECASE,
+)
 _WEB3_STATE_MUTATION_RE = re.compile(
     r"\b(?:balances|shares|credits|userBalance|stakes)\s*\[[^\]]+\]\s*(?:-=|(?<![!<>=])=(?!=))",
     re.IGNORECASE,
@@ -680,15 +682,6 @@ _WEB3_DELEGATE_OR_TX_ORIGIN_RE = re.compile(
 _WEB3_ECRECOVER_RE = re.compile(r"\becrecover\s*\(", re.IGNORECASE)
 _WEB3_ZERO_ADDR_RE = re.compile(r"(?:address\s*\(\s*0\s*\)|0x0{1,40}\b)", re.IGNORECASE)
 _WEB3_CHAINID_RE = re.compile(r"\bchainid\b", re.IGNORECASE)
-
-
-def _find_web3_value_call(content: str) -> re.Match[str] | None:
-    direct = _WEB3_CALL_VALUE_METHOD_RE.search(content)
-    for candidate in _WEB3_CALL_BLOCK_RE.finditer(content):
-        close = content.find("}", candidate.end(), candidate.end() + 2048)
-        if close >= 0 and re.search(r"\bvalue\s*+:", content[candidate.end():close]):
-            return candidate
-    return direct
 
 
 def audit_web3_smart_contracts(
@@ -710,8 +703,8 @@ def audit_web3_smart_contracts(
     lines = raw_content.splitlines()
     findings: list[dict[str, Any]] = []
 
-    # (a) SNIPER-WEB3-REENT-01: Reentrancy (Checks-Effects-Interactions violation)
-    call_match = _find_web3_value_call(raw_content)
+    # (a) VULKILL-WEB3-REENT-01: Reentrancy (Checks-Effects-Interactions violation)
+    call_match = _WEB3_CALL_VALUE_RE.search(raw_content)
     if call_match is not None and not _WEB3_NON_REENTRANT_RE.search(raw_content):
         mut_after_call = None
         for candidate in _WEB3_STATE_MUTATION_RE.finditer(raw_content):
@@ -739,14 +732,14 @@ def audit_web3_smart_contracts(
                     "önce gerçekleştirin ve OpenZeppelin ReentrancyGuard (nonReentrant) kullanın."
                 ),
                 cwe="CWE-841",
-                control_id="SNIPER-WEB3-REENT-01",
+                control_id="VULKILL-WEB3-REENT-01",
                 filename=clean_filename,
                 line=line_no,
             )
             finding["reference"] = "CWE-841"
             findings.append(finding)
 
-    # (b) SNIPER-WEB3-DELEG-02: tx.origin authorization or unrestricted delegatecall
+    # (b) VULKILL-WEB3-DELEG-02: tx.origin authorization or unrestricted delegatecall
     deleg_match = _WEB3_DELEGATE_OR_TX_ORIGIN_RE.search(raw_content)
     if deleg_match is not None:
         line_no = _line_number_for_offset(raw_content, deleg_match.start())
@@ -766,14 +759,14 @@ def audit_web3_smart_contracts(
                 "girdisiyle kontrol edilen hedeflere delegatecall yapmaktan kaçının."
             ),
             cwe="CWE-829",
-            control_id="SNIPER-WEB3-DELEG-02",
+            control_id="VULKILL-WEB3-DELEG-02",
             filename=clean_filename,
             line=line_no,
         )
         finding["reference"] = "CWE-829"
         findings.append(finding)
 
-    # (c) SNIPER-WEB3-SIG-03: ecrecover missing zero-address or chainid replay protection
+    # (c) VULKILL-WEB3-SIG-03: ecrecover missing zero-address or chainid replay protection
     ecrecover_match = _WEB3_ECRECOVER_RE.search(raw_content)
     if ecrecover_match is not None:
         has_zero_addr = bool(_WEB3_ZERO_ADDR_RE.search(raw_content))
@@ -798,7 +791,7 @@ def audit_web3_smart_contracts(
                     "ve imzalanan özete block.chainid ile tek kullanımlık nonce dahil edin."
                 ),
                 cwe="CWE-347",
-                control_id="SNIPER-WEB3-SIG-03",
+                control_id="VULKILL-WEB3-SIG-03",
                 filename=clean_filename,
                 line=line_no,
             )

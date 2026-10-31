@@ -95,7 +95,7 @@ class AuthTestBase(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
         auth._MANAGERS.clear()
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
         self.port = self.httpd.server_address[1]
 
@@ -319,7 +319,7 @@ class TotpTests(AuthTestBase):
         admin = self.enable_with_admin()
         status, data = admin.post("/api/auth/totp/begin", {})
         self.assertEqual(status, 200)
-        self.assertTrue(data["otpauth_uri"].startswith("otpauth://totp/Sniper%3Ayonetici?secret="))
+        self.assertTrue(data["otpauth_uri"].startswith("otpauth://totp/VulKill%3Ayonetici?secret="))
         secret = data["secret"]
         step = int(time.time() // 30)
         status, done = admin.post("/api/auth/totp/confirm", {"code": auth.totp_code(secret, step)})

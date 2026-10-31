@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""SNIPER 2.0 proje denetimlerini listele, dışa aktar ve çalıştır."""
+"""VULKILL 2.0 proje denetimlerini listele, dışa aktar ve çalıştır."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def resolve_db_path(db_path: Path | None = None) -> Path:
         return Path(os.environ["SNIPER_DB_PATH"]).expanduser()
     if APP_DIR != LIVE_DIR.resolve() and os.environ.get("SNIPER_ALLOW_LIVE_DB") != "1":
         raise LiveDatabaseGuard(
-            "Bu komut kurulu Sniper dizini dışından çalışıyor; canlı veritabanı korunuyor. "
+            "Bu komut kurulu VulKill dizini dışından çalışıyor; canlı veritabanı korunuyor. "
             "Sentetik bir veritabanı için --db yolu verin veya SNIPER_DB_PATH ayarlayın."
         )
     return DATA_DIR / "sniper.db"
@@ -83,7 +83,7 @@ def manage_users(args, *, db_path: Path | None = None) -> None:
         if action == "disable-auth":
             manager.disable_auth()
             _store(db_path).log("auth.disabled", "auth", {"method": "cli"})
-            print("Giriş kapatıldı; tüm oturumlar düşürüldü. Sniper yine yalnız yerel/tünel erişimiyle korunur.")
+            print("Giriş kapatıldı; tüm oturumlar düşürüldü. VulKill yine yalnız yerel/tünel erişimiyle korunur.")
             return
         if action == "enable-auth":
             manager.enable_auth()
@@ -246,7 +246,7 @@ def triage_cli(args, *, db_path: Path | None = None) -> int:
             manager = auth.manager_for(data_dir)
             if manager.enabled():
                 if not args.username:
-                    raise ai_triage.TriageError("Giriş etkin: --username ile bir Sniper kullanıcısı verin.")
+                    raise ai_triage.TriageError("Giriş etkin: --username ile bir VulKill kullanıcısı verin.")
                 user_id = manager.find_user_id(args.username)
                 user = manager.get_user(user_id) if user_id else None
                 if not user or user.get("disabled"):
@@ -674,7 +674,7 @@ def _print_diff_table(result: dict) -> None:
     summary = result["summary"]
 
     print("-" * 80)
-    print("SNIPER 2.0 - Tarama Karşılaştırması")
+    print("VULKILL 2.0 - Tarama Karşılaştırması")
     print("-" * 80)
     target = summary.get("target_hostname") or summary.get("target_id")
     if target:
@@ -882,7 +882,7 @@ def _bulk_slug(repo: Path, root: Path) -> str:
 def _bulk_markdown(root: Path, rows: list[dict], code: int) -> str:
     """Toplu CI özeti (Markdown): depo başına sonuç, bulgu ve kapıyı geçmeyen bulgu sayısı."""
     labels = {0: "✅ geçti", 1: "❌ politika ihlali", 2: "⚠️ yapılandırma hatası", 3: "⚠️ analiz hatası", None: "⏭️ atlandı"}
-    lines = [f"## Sniper toplu CI — {root.name}", "",
+    lines = [f"## VulKill toplu CI — {root.name}", "",
              f"{len(rows)} depo · sonuç: {'GEÇTİ' if code == 0 else 'BAŞARISIZ'} (çıkış kodu {code})", "",
              "| Depo | Sonuç | Bulgu | Kapıyı geçmeyen | SARIF |", "|---|---|---:|---:|---|"]
     for row in rows:
@@ -1080,7 +1080,7 @@ def compare_project_audits_cli(
     if view == "table":
         lines = [
             "-" * 80,
-            f"SNIPER 2.0 - Proje Denetimi Karşılaştırması ({result['project_name']})",
+            f"VULKILL 2.0 - Proje Denetimi Karşılaştırması ({result['project_name']})",
             "-" * 80,
             f"Önceki Denetim: {result['audit_1_id']} (Skor: {result['score_1']} / {result['grade_1']})",
             f"Sonraki Denetim: {result['audit_2_id']} (Skor: {result['score_2']} / {result['grade_2']})",
@@ -1136,7 +1136,7 @@ def run_quality_gate_cli(
         status_label = "GEÇTİ (PASSED)" if result["passed"] else "KALDI (FAILED)"
         lines = [
             "-" * 80,
-            f"SNIPER 2.0 - Güvenlik Kalite Kapısı (Quality Gate): {status_label}",
+            f"VULKILL 2.0 - Güvenlik Kalite Kapısı (Quality Gate): {status_label}",
             "-" * 80,
         ]
         for chk in result.get("checks", []):
@@ -1199,7 +1199,7 @@ def run_compliance_cli(
     if view == "table":
         lines = [
             "-" * 80,
-            f"SNIPER 2.0 - Uyumluluk Matrisi (Genel Hazırlık: %{result['overall_readiness_percent']})",
+            f"VULKILL 2.0 - Uyumluluk Matrisi (Genel Hazırlık: %{result['overall_readiness_percent']})",
             "-" * 80,
         ]
         for fw in result.get("frameworks", []):
@@ -1229,7 +1229,7 @@ def _render_mobile_audit_markdown(result: dict) -> str:
         or "Mobil Uygulama"
     )
     lines = [
-        f"# SNIPER 2.0 - Mobil Güvenlik Denetim Raporu ({target_label})",
+        f"# VULKILL 2.0 - Mobil Güvenlik Denetim Raporu ({target_label})",
         "",
         f"- **Format:** `{result.get('format', 'sniper-mobile-security-audit-v1')}`",
         f"- **Hedef / Varlık:** `{target_label}`",
@@ -1430,7 +1430,7 @@ def _write_or_print_cli_output(result: dict, *, output_format: str = "json", out
         rendered = ("\n\n".join(b for b in blocks if b) + "\n") if blocks else ""
     elif fmt == "markdown":
         lines = [
-            f"# SNIPER 2.0 Denetim Raporu (`{result.get('format', 'sniper-audit-v1')}`)",
+            f"# VULKILL 2.0 Denetim Raporu (`{result.get('format', 'sniper-audit-v1')}`)",
             "",
             f"- **Puan:** **{result.get('score', 100)}/100**",
             f"- **Toplam Bulgu:** **{result.get('finding_count', len(result.get('findings') or []))}**",
@@ -2201,7 +2201,7 @@ def list_nuclei_history(data_dir: Path | None = None) -> list[dict]:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="sniper-report",
-        description="SNIPER 2.0 komut satırı raporlama aracı",
+        description="VULKILL 2.0 komut satırı raporlama aracı",
     )
     db_help = "SQLite veritabanı yolu (varsayılan: SNIPER_DB_PATH veya kurulu sürümün canlı veritabanı)"
     parser.add_argument("--db", type=Path, default=None, help=db_help)
@@ -2222,7 +2222,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     users_parser.add_argument("--username", "-u", help="Kullanıcı adı")
     users_parser.add_argument("--password-stdin", action="store_true", help="Parolayı standart girdiden tek satır oku")
-    users_parser.add_argument("--data-dir", type=Path, default=None, help="Sniper veri dizini (varsayılan: veritabanının dizini)")
+    users_parser.add_argument("--data-dir", type=Path, default=None, help="VulKill veri dizini (varsayılan: veritabanının dizini)")
     users_parser.add_argument("--migration-seconds", type=int, default=900,
                               help="open-totp-migration geçiş penceresi (60–3600 saniye; varsayılan 900)")
 
@@ -2264,11 +2264,11 @@ def build_parser() -> argparse.ArgumentParser:
     t_sugg.add_argument("project", help="Proje yolu ya da prj_… analiz kimliği")
     t_sugg.add_argument("--decision", choices=("pending", "accepted", "rejected", "auto_applied", "reverted"))
     t_sugg.add_argument("--limit", type=int, default=200)
-    t_token = triage_sub.add_parser("mcp-token", parents=[common], help="MCP oturum belirteci (Sniper kullanıcısına bağlı)")
+    t_token = triage_sub.add_parser("mcp-token", parents=[common], help="MCP oturum belirteci (VulKill kullanıcısına bağlı)")
     t_token.add_argument("token_action", choices=("create", "list", "revoke"))
     t_token.add_argument("token_id", nargs="?", help="revoke için mct_… kimliği")
     t_token.add_argument("--out", "-o", type=Path, help="create: belirteç dosyası (0600; belirteç ekrana yazılmaz)")
-    t_token.add_argument("--username", "-u", help="Bağlanacak Sniper kullanıcısı (giriş etkinse zorunlu)")
+    t_token.add_argument("--username", "-u", help="Bağlanacak VulKill kullanıcısı (giriş etkinse zorunlu)")
     t_token.add_argument("--role", choices=("reader", "analyst", "admin"), default="analyst",
                          help="Giriş kapalıyken belirteç rolü (varsayılan analyst)")
     t_token.add_argument("--label", help="Kısa etiket (ör. claude-code)")
@@ -3026,7 +3026,7 @@ def export_automated_openvex_json(
     reachability_report: dict[str, Any],
     *,
     product_id: str = "pkg:generic/sniper-audited-app@local",
-    author: str = "Sniper Enterprise Automated VEX Engine",
+    author: str = "VulKill Enterprise Automated VEX Engine",
 ) -> str:
     """Erişilebilirlik raporundan sembol kanıtlı otomatik OpenVEX v0.2.0 belgesini JSON dizgesi olarak dışa aktarır."""
     if str(APP_DIR) not in sys.path:

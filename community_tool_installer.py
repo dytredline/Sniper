@@ -1,4 +1,4 @@
-"""Rootless installer for SHA-256 locked Sniper Community tool runtimes.
+"""Rootless installer for SHA-256 locked VulKill Community tool runtimes.
 
 The installer downloads only artifacts declared in ``COMMUNITY-TOOLS.lock.json``,
 verifies the complete artifact before extraction, copies only the declared
@@ -22,7 +22,7 @@ import zipfile
 
 
 LOCK_SCHEMA = "sniper-community-tools-lock-v1"
-INSTALL_MANIFEST = "SNIPER-COMMUNITY-TOOLS-MANIFEST.json"
+INSTALL_MANIFEST = "VULKILL-COMMUNITY-TOOLS-MANIFEST.json"
 _HEX64 = frozenset("0123456789abcdef")
 _MAX_LOCK_BYTES = 1_000_000
 _READ_CHUNK = 1024 * 1024
@@ -152,7 +152,7 @@ def _obtain_artifact(spec: dict[str, Any], target: Path, cache_dir: Path | None)
                 except OSError as exc:
                     raise InstallError(f"{asset_name} cannot be read from the offline cache") from exc
             else:
-                request = Request(url, headers={"User-Agent": "Sniper-Community-tool-installer/1.0"})
+                request = Request(url, headers={"User-Agent": "VulKill-Community-tool-installer/1.0"})
                 try:
                     with urlopen(request, timeout=60) as source:  # noqa: S310 - URL is lock-validated HTTPS.
                         _copy_limited(source, destination, maximum)

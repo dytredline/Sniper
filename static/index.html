@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#0c2028">
-  <title>Sniper — Yerel güvenlik stüdyosu</title>
+  <title>VulKill — Yerel güvenlik stüdyosu</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/app.css?v=16">
   <link rel="stylesheet" href="/auth.css?v=1">
@@ -76,9 +76,9 @@
   <div class="app-shell">
     <aside class="sidebar" id="main-navigation" aria-label="Ana menü">
       <button class="sidebar-close" type="button" aria-label="Menüyü kapat"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#close"></use></svg></span></button>
-      <a class="brand" href="#dashboard" data-nav="dashboard" aria-label="Sniper ana sayfa">
+      <a class="brand" href="#dashboard" data-nav="dashboard" aria-label="VulKill ana sayfa">
         <span class="brand-mark" aria-hidden="true"><span class="ui-icon"><svg><use href="/static/ui-icons.svg#shield"></use></svg></span></span>
-        <span><strong>SNIPER 1.0</strong><small>YEREL GÜVENLİK STÜDYOSU</small></span>
+        <span><strong>VULKILL 1.0</strong><small>YEREL GÜVENLİK STÜDYOSU</small></span>
       </a>
 
       <nav class="nav-list">
@@ -100,14 +100,14 @@
 
       <div class="sidebar-foot">
         <div class="safety-badge"><span class="pulse"></span><span><b>Güvenli profil</b><small>Yerel ve düşük etkili</small></span></div>
-        <p>Sniper, düşük etkili kontroller yapar. DoS trafiği veya parola listesi çalıştırmaz.</p>
+        <p>VulKill, düşük etkili kontroller yapar. DoS trafiği veya parola listesi çalıştırmaz.</p>
       </div>
     </aside>
 
     <main class="main" id="main-content" tabindex="-1">
       <header class="topbar">
         <button class="mobile-menu" id="mobile-menu" aria-label="Menüyü aç" aria-controls="main-navigation" aria-expanded="false"><span class="ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#menu"></use></svg></span></button>
-        <div class="crumb"><span>SNIPER</span><i>/</i><strong id="page-label">Genel bakış</strong></div>
+        <div class="crumb"><span>VULKILL</span><i>/</i><strong id="page-label">Genel bakış</strong></div>
         <div class="top-actions">
           <label class="lang-switch" translate="no"><span class="lang-switch-label ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#globe"></use></svg></span><select data-i18n-lang-select aria-label="Dil / Language"><option value="tr">Türkçe</option><option value="en">English</option><option value="ja">日本語</option><option value="zh-CN">简体中文</option><option value="ko">한국어</option></select></label>
           <span class="service-status"><i></i>Yerel servis etkin</span>
@@ -169,7 +169,7 @@
           </section>
         </section>
         <section class="view" data-view="projects">
-        <div class="page-intro"><div><p class="eyebrow">SNIPER 1.0 · YEREL KAYNAK KOD</p><h1>Uygulama güvenliği analizi</h1><p>Ürettiğiniz uygulamanın gerçek kaynaklarını kriptografi, sorgu güvenliği, SSRF, QR, bağımlılık, günlükleme, sır ve port yüzeyi açısından inceleyin.</p></div></div>
+        <div class="page-intro"><div><p class="eyebrow">VULKILL 1.0 · YEREL KAYNAK KOD</p><h1>Uygulama güvenliği analizi</h1><p>Ürettiğiniz uygulamanın gerçek kaynaklarını kriptografi, sorgu güvenliği, SSRF, QR, bağımlılık, günlükleme, sır ve port yüzeyi açısından inceleyin.</p></div></div>
         <section class="panel project-audit-launcher">
           <div><span class="project-audit-icon" aria-hidden="true"><svg class="ui-symbol"><use href="/static/ui-icons.svg#folder-code"></use></svg></span><p><b>Proje klasörünü yerelde incele</b><small>Kaynak kod yerel makinenin dışına çıkmaz. Sır değerleri ve kaynak satırları rapora kopyalanmaz; yalnız kural, dosya ve satır numarası saklanır.</small></p></div>
           <form id="project-audit-form"><label>Yerel proje yolu<input name="project_path" id="project-path" value="~/projects/my-app" maxlength="1024" autocomplete="off" required></label><label>Mod<select name="scan_mode" id="project-scan-mode"><option value="saved">Kayıtlı kapsam</option><option value="all">Tümünü dahil ederek</option><option value="skipped">Yalnız atlananlar</option><option value="changed">Yalnız değişenler (git)</option></select></label><label class="changed-base hidden" id="changed-base-label">Taban (git ya da prj_…)<input name="base_ref" id="changed-base-ref" value="HEAD" maxlength="200" autocomplete="off" spellcheck="false" title="HEAD = kaydedilmemiş değişiklikler; HEAD~1, origin/main ya da analiz kimliği (prj_…)"></label><button class="button primary" type="submit">Analizi başlat</button></form>
@@ -252,7 +252,7 @@
           </article>
           <article class="lab-scenario"><span class="lab-scenario-icon lockout">⌁</span><p class="eyebrow">SENTETİK HESAP</p><h2>Kilitlenme planı</h2><p>Parola veya gerçek kullanıcı bilgisi almadan deneme sayısı, aralık ve beklenen kilit süresini planlayın.</p><ul><li>En fazla 10 kontrollü adım</li><li>Denemeler arasında en az 5 saniye</li><li>Parola listesi alanı bulunmaz</li></ul><button class="button primary" data-action="new-lab" data-type="lockout_plan">Plan oluştur</button>
           </article>
-          <article class="lab-scenario"><span class="lab-scenario-icon evidence">#</span><p class="eyebrow">MASKELİ KANIT</p><h2>Harici sonuç kaydı</h2><p>Kuruluşun ayrı ve yetkili aracıyla yapılan testin özetini ham günlük ya da veri taşımadan kaydedin.</p><ul><li>Kanıt hash’i zorunlu</li><li>Ham günlük ve kimlik bilgisi yok</li><li>Sniper tarafından üretilen istek: 0</li></ul><button class="button secondary" data-action="new-lab" data-type="external_result">Sonuç kaydet</button>
+          <article class="lab-scenario"><span class="lab-scenario-icon evidence">#</span><p class="eyebrow">MASKELİ KANIT</p><h2>Harici sonuç kaydı</h2><p>Kuruluşun ayrı ve yetkili aracıyla yapılan testin özetini ham günlük ya da veri taşımadan kaydedin.</p><ul><li>Kanıt hash’i zorunlu</li><li>Ham günlük ve kimlik bilgisi yok</li><li>VulKill tarafından üretilen istek: 0</li></ul><button class="button secondary" data-action="new-lab" data-type="external_result">Sonuç kaydet</button>
           </article>
         </div>
         <section class="panel lab-history-panel"><div class="panel-head"><div><p class="eyebrow">YEREL KAYITLAR</p><h2>Laboratuvar dosyaları</h2></div><span id="lab-count-label" class="muted"></span></div><div id="lab-run-list" class="lab-run-list"></div><div id="lab-empty" class="empty-state hidden"><div class="empty-icon">◫</div><h3>Henüz laboratuvar kaydı yok</h3><p>İlk güvenli planınızı oluşturduğunuzda hesaplanan tahminler burada görünür.</p></div></section>
@@ -455,7 +455,7 @@
 </section>
 <section class="panel hidden" id="npm-audit-active-panel" aria-labelledby="npm-audit-active-title">
   <div class="panel-head"><div><p class="eyebrow">YEREL BAĞIMLILIK TARAMASI</p><h2 id="npm-audit-active-title">npm audit ile canlı kilit dosyası denetimi</h2></div></div>
-  <p>Yalnız Sniper hizmet kullanıcısının evindeki bir projenin kök package-lock.json dosyası (npm v2/v3) geçici olarak kopyalanır. npm audit, paket adları ve sürümleri için resmî npm registry güvenlik bildirimlerini sorgular. Paket kurulmaz, düzeltme veya proje betiği çalıştırılmaz; dış site hedefi taranmaz. Sonuç yalnız toplu sayıları gösterir ve saklanmaz.</p>
+  <p>Yalnız VulKill hizmet kullanıcısının evindeki bir projenin kök package-lock.json dosyası (npm v2/v3) geçici olarak kopyalanır. npm audit, paket adları ve sürümleri için resmî npm registry güvenlik bildirimlerini sorgular. Paket kurulmaz, düzeltme veya proje betiği çalıştırılmaz; dış site hedefi taranmaz. Sonuç yalnız toplu sayıları gösterir ve saklanmaz.</p>
   <form id="npm-audit-active-form" class="form-grid">
     <label class="full">Yerel proje klasörü<input id="npm-audit-active-path" name="project_path" type="text" placeholder="/home/community-user/npm-projesi" maxlength="1024" autocomplete="off" autocapitalize="off" spellcheck="false" required></label>
     <label class="full"><input id="npm-audit-active-local-consent" type="checkbox" required> Bu yerel projenin kök package-lock.json dosyasının geçici kopyasını denetlemeyi onaylıyorum</label>
@@ -612,7 +612,7 @@
             <label class="full">Denenecek örnek kod<textarea id="taint-rules-code" rows="6" spellcheck="false"></textarea></label>
             <label>Örnek dosya adı<input id="taint-rules-filename" type="text" placeholder="ornek.py"></label>
             <label class="checkbox-inline"><input id="taint-rules-confirm" type="checkbox"> Özel kuralı kaydetmeyi/silmeyi onaylıyorum</label>
-            <div class="button-row full"><button id="taint-rules-try" class="button secondary" type="button">Kuralı dene</button><button id="taint-rules-save" class="button primary" type="button">Kaydet</button><a class="button secondary" href="/api/taint-rules/opengrep" download="sniper-custom-opengrep.json">Opengrep kuralı olarak indir</a></div>
+            <div class="button-row full"><button id="taint-rules-try" class="button secondary" type="button">Kuralı dene</button><button id="taint-rules-save" class="button primary" type="button">Kaydet</button><a class="button secondary" href="/api/taint-rules/opengrep" download="vulkill-custom-opengrep.json">Opengrep kuralı olarak indir</a></div>
           </div>
           <p id="taint-rules-message" class="muted" aria-live="polite"></p>
           <div id="taint-rules-trial" class="autofix-result hidden" aria-live="polite"></div>
@@ -670,7 +670,7 @@
         <section class="panel system-health-panel" id="system-health-panel"><div class="panel-head"><div><p class="eyebrow">SİSTEM</p><h2>Sistem sağlığı</h2></div><button type="button" class="mini-button" id="system-health-refresh">Yeniden denetle</button></div>
           <p id="system-health-overall" class="system-health-overall"></p>
           <div class="table-wrap"><table class="ops-table"><thead><tr><th>Denetim</th><th>Durum</th><th>Değer</th><th>Ayrıntı ve öneri</th></tr></thead><tbody id="system-health-checks"></tbody></table></div>
-          <p class="muted">Salt okunur: Sniper hiçbir dosyayı silmez ya da düzeltmez, yalnız öneri verir. Günlük denetimde sorun bulunursa bildirim merkezine uyarı düşer.</p>
+          <p class="muted">Salt okunur: VulKill hiçbir dosyayı silmez ya da düzeltmez, yalnız öneri verir. Günlük denetimde sorun bulunursa bildirim merkezine uyarı düşer.</p>
         </section>
         <section class="panel" id="mcp-scan-approval-panel"><div class="panel-head"><div><p class="eyebrow">MCP KONTROL DÜZLEMİ</p><h2>Hedef yetkisi bekleyen işler</h2></div><button type="button" class="mini-button" id="mcp-scan-approval-refresh">Yenile</button></div>
           <p class="muted">Hedef önceden kaydedilmiş olmak zorunda değildir. Her işte hedefi ve aracı inceleyin; yalnız yetkiniz varsa kutuyu işaretleyin. Onay, yönetici kimliği, UTC zamanı, normalize hedef ve consent sürümüyle SHA-256 makbuzuna bağlanır.</p>
@@ -680,7 +680,7 @@
       </section>
 
       <section class="view" data-view="schedules">
-        <div class="page-intro"><div><p class="eyebrow">İŞLETİM</p><h1>Zamanlanmış taramalar</h1><p>Yerel proje taramalarını Sniper içinden belirli aralıklarla çalıştırır. Uzak hedefli araçlar zamanlanamaz; aynı planın önceki işi sürerken yenisi atlanır, servis kapalıyken kaçırılan çalıştırma açılışta bir kez telafi edilir.</p></div></div>
+        <div class="page-intro"><div><p class="eyebrow">İŞLETİM</p><h1>Zamanlanmış taramalar</h1><p>Yerel proje taramalarını VulKill içinden belirli aralıklarla çalıştırır. Uzak hedefli araçlar zamanlanamaz; aynı planın önceki işi sürerken yenisi atlanır, servis kapalıyken kaçırılan çalıştırma açılışta bir kez telafi edilir.</p></div></div>
         <section class="panel ops-panel">
           <form id="ops-schedule-form" class="form-grid">
             <label>Plan adı<input name="name" maxlength="80" placeholder="Örn. Gece proje analizi"></label>
@@ -713,7 +713,7 @@
               <label><input type="checkbox" name="new_findings"> Yeni bulgu — en az <select name="min_severity"><option value="critical">kritik</option><option value="high">yüksek</option><option value="medium">orta</option><option value="low">düşük</option></select></label>
               <label><input type="checkbox" name="fixed_findings"> Düzelen bulgular</label>
               <label><input type="checkbox" name="scan_failed"> Başarısız tarama</label>
-              <label><input type="checkbox" name="system_health"> Sniper öz sağlık uyarıları (günlük denetim)</label>
+              <label><input type="checkbox" name="system_health"> VulKill öz sağlık uyarıları (günlük denetim)</label>
               <label><input type="checkbox" name="malicious_package"> Kötü amaçlı paket bulundu (kritik, sessiz saatleri deler)</label>
               <label><input type="checkbox" name="sca_fix_first"> Yeni “Önce düzelt” bağımlılık açıkları</label>
               <label><input type="checkbox" name="container_critical"> Yeni kritik konteyner açıkları</label>
@@ -766,7 +766,7 @@
         <label class="full">Kapsam dışı (isteğe bağlı)<textarea name="out_of_scope" rows="2" maxlength="5000" placeholder="Üçüncü taraflar, üretim ödeme akışı, sosyal mühendislik…"></textarea></label>
         <fieldset class="full approval-fieldset"><legend>Özel onaylı güvenli doğrulamalar</legend>
           <label class="approval-option"><input type="checkbox" name="controlled_lockout"><span><b>Kontrollü hesap kilitlenmesi</b><small>Yalnız sentetik hesap; parola listesi yok.</small></span></label>
-          <label class="approval-option"><input type="checkbox" name="staging_capacity"><span><b>Staging kapasite gözlemi</b><small>Sniper trafik üretmez; sistem sahibinin testi kaydedilir.</small></span></label>
+          <label class="approval-option"><input type="checkbox" name="staging_capacity"><span><b>Staging kapasite gözlemi</b><small>VulKill trafik üretmez; sistem sahibinin testi kaydedilir.</small></span></label>
           <label class="approval-option"><input type="checkbox" name="redacted_data_proof"><span><b>Maskeli veri kanıtı</b><small>Ham veri yok; yalnız hash, adet ve maskeli örnek.</small></span></label>
         </fieldset>
         <button class="button primary wide full" type="submit">Manuel denetimi oluştur <span>→</span></button>
@@ -787,7 +787,7 @@
         <label class="full">Manuel denetim bağlantısı<select name="engagement_id" id="lab-engagement"><option value="">Bağımsız kayıt</option></select></label>
         <div id="lab-specific-fields" class="full form-grid nested-form"></div>
         <label class="full">Maskeli not / kanıt özeti<textarea name="evidence_summary" rows="3" maxlength="4000" placeholder="Kişisel veri, parola, erişim anahtarı veya ham günlük eklemeyin."></textarea></label>
-        <label class="consent full"><input type="checkbox" name="plan_ack" required><span>Sniper’ın ağ isteği veya parola denemesi üretmeyeceğini; bu kaydın yalnız planlama ya da maskeli sonuç kaydı olduğunu anlıyorum.</span></label>
+        <label class="consent full"><input type="checkbox" name="plan_ack" required><span>VulKill’ın ağ isteği veya parola denemesi üretmeyeceğini; bu kaydın yalnız planlama ya da maskeli sonuç kaydı olduğunu anlıyorum.</span></label>
         <button class="button primary wide full" type="submit">Kaydı oluştur <span>→</span></button>
       </form>
     </div>
@@ -828,7 +828,7 @@
     <div class="modal modal-wide">
       <button class="modal-close" data-close="nmap-xml-preview-modal" aria-label="Kapat">×</button>
       <div class="modal-icon shield">▶</div><p class="eyebrow">NMAP XML ÖNİZLEME</p><h2 id="nmap-xml-preview-title">Kaydedilmiş Nmap raporunu özetle</h2>
-      <p class="modal-copy">Önceden üretilmiş Nmap XML raporunu yerel Sniper sunucusunda özetleyin. Bu işlem Nmap çalıştırmaz, hedef taramaz veya raporu saklamaz. Yalnız toplam sayılar ve rapor özeti gösterilir.</p>
+      <p class="modal-copy">Önceden üretilmiş Nmap XML raporunu yerel VulKill sunucusunda özetleyin. Bu işlem Nmap çalıştırmaz, hedef taramaz veya raporu saklamaz. Yalnız toplam sayılar ve rapor özeti gösterilir.</p>
       <form id="nmap-xml-preview-form" class="form-grid">
         <label class="full">Nmap XML içeriği<textarea id="nmap-xml-paste" rows="7" placeholder="&lt;nmaprun&gt;...&lt;/nmaprun&gt;"></textarea></label>
         <label class="full">Veya yerel XML dosyası seçin<input type="file" id="nmap-xml-file" accept=".xml,text/xml,application/xml"></label>
@@ -950,7 +950,7 @@
         <div class="modal modal-wide">
           <button class="modal-close" data-close="sarif-preview-modal" aria-label="Kapat">×</button>
           <div class="modal-icon shield">▶</div><p class="eyebrow">SARIF ÖNİZLEME</p><h2 id="sarif-preview-modal-title">Yerel SARIF rapor özetini göster</h2>
-          <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir.</p>
+          <p class="modal-copy">Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir.</p>
           <form id="sarif-preview-form" class="form-grid">
             <label class="full">SARIF içeriği (JSON yapıştırın)<textarea name="sarif_json" id="sarif-paste" rows="8" placeholder='{"$schema": "https://schemastore.azure.com/schemas/json/sarif-2.1.0.json", ...}'></textarea></label>
             <label class="full">Veya yerel dosya seçin<input type="file" id="sarif-file" accept=".sarif,.json"></label>
@@ -972,7 +972,7 @@
         <div class="modal modal-wide">
           <button class="modal-close" data-close="schemathesis-junit-preview-modal" aria-label="Kapat">×</button>
           <div class="modal-icon shield">▶</div><p class="eyebrow">JUNIT XML ÖNİZLEME</p><h2 id="schemathesis-junit-preview-title">Kaydedilmiş Schemathesis rapor özeti</h2>
-          <p class="modal-copy">Önceden dışa aktarılmış JUnit XML raporunu yalnız yerel Sniper sunucusunda özetleyin. Şema veya hedef test edilmez; rapor saklanmaz. Testcase sayısı üretilen HTTP istek sayısı değildir. Hata ayrıntıları gösterilmez.</p>
+          <p class="modal-copy">Önceden dışa aktarılmış JUnit XML raporunu yalnız yerel VulKill sunucusunda özetleyin. Şema veya hedef test edilmez; rapor saklanmaz. Testcase sayısı üretilen HTTP istek sayısı değildir. Hata ayrıntıları gösterilmez.</p>
           <form id="schemathesis-junit-preview-form" class="form-grid">
             <label class="full">JUnit XML içeriği<textarea id="schemathesis-junit-paste" rows="8" placeholder="&lt;testsuites&gt;...&lt;/testsuites&gt;"></textarea></label>
             <label class="full">Veya yerel dosya seçin<input id="schemathesis-junit-file" type="file" accept=".xml,text/xml,application/xml"></label>
@@ -1167,7 +1167,7 @@
         <div class="modal modal-wide">
           <button class="modal-close" data-close="trufflehog-preview-modal" aria-label="Kapat">×</button>
           <div class="modal-icon shield">▶</div><p class="eyebrow">TRUFFLEHOG JSONL ÖNİZLEME</p><h2 id="trufflehog-preview-modal-title">Yerel TruffleHog JSONL rapor özetini göster</h2>
-          <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir.</p>
+          <p class="modal-copy">Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir.</p>
           <form id="trufflehog-preview-form" class="form-grid">
             <label class="full">TruffleHog JSONL içeriği (her satırda bir JSON nesnesi)<textarea name="trufflehog_jsonl" id="trufflehog-paste" rows="8" placeholder='{"DetectorName": "...", "Verified": true}\n{"DetectorName": "...", "Verified": false}'></textarea></label>
             <label class="full">Veya yerel dosya seçin<input type="file" id="trufflehog-file" accept=".jsonl,.json"></label>
@@ -1246,7 +1246,7 @@
   <div class="modal modal-wide">
     <button class="modal-close" data-close="direct-nuclei-scan-modal" aria-label="Kapat">×</button>
     <div class="modal-icon shield">▶</div><p class="eyebrow">HER ÇALIŞTIRMADA İNSAN ONAYI</p><h2 id="direct-nuclei-scan-title">Doğrudan yetkili Nuclei taraması</h2>
-    <p class="modal-copy">Kayıtlı hedef veya denetim gerektirmez. Yalnız tam HTTP(S) origin kabul edilir; Sniper sabitlenmiş üç HTTP şablonunu 90 saniye ve 1 MB rapor bütçesiyle çalıştırır.</p>
+    <p class="modal-copy">Kayıtlı hedef veya denetim gerektirmez. Yalnız tam HTTP(S) origin kabul edilir; VulKill sabitlenmiş üç HTTP şablonunu 90 saniye ve 1 MB rapor bütçesiyle çalıştırır.</p>
     <form id="direct-nuclei-scan-form" class="form-grid">
       <label class="full">HTTP(S) origin<input id="direct-nuclei-origin" type="url" maxlength="2048" autocomplete="off" placeholder="https://example.com" required></label>
       <label class="full"><input type="checkbox" id="direct-nuclei-confirm-authorized" required> Bu origin üzerinde bu Nuclei çalıştırmasını yapmaya yetkili olduğumu onaylıyorum</label>
@@ -1296,7 +1296,7 @@
   <div class="modal modal-wide">
     <button class="modal-close" data-close="burp-xml-preview-modal" aria-label="Kapat">×</button>
     <div class="modal-icon shield">▶</div><p class="eyebrow">BURP SİTE-MAP XML ÖNİZLEME</p><h2 id="burp-xml-preview-modal-title">Yerel Burp Site-map XML rapor özetini göster</h2>
-    <p class="modal-copy">Rapor yerel Sniper sunucusunda özetlenir; ham XML saklanmaz. İsteğe bağlı açık onayla yalnızca toplu sayılar ve bu sayıların özeti denetim/test adımına bağlanır. Özeti oluşturan hash, kaynak XML’in kimliğini veya hedefe ait olduğunu kanıtlamaz. Bu işlem Burp Suite’i çalıştırmaz ve tarama yapmaz.</p>
+    <p class="modal-copy">Rapor yerel VulKill sunucusunda özetlenir; ham XML saklanmaz. İsteğe bağlı açık onayla yalnızca toplu sayılar ve bu sayıların özeti denetim/test adımına bağlanır. Özeti oluşturan hash, kaynak XML’in kimliğini veya hedefe ait olduğunu kanıtlamaz. Bu işlem Burp Suite’i çalıştırmaz ve tarama yapmaz.</p>
     <form id="burp-xml-preview-form" class="form-grid">
       <label class="full">
         <input type="checkbox" id="burp-xml-link-opt-in" name="link_opt_in">
@@ -1371,7 +1371,7 @@
   <div class="modal modal-wide">
     <button class="modal-close" data-close="testssl-preview-modal" aria-label="Kapat">×</button>
     <div class="modal-icon shield">▶</div><p class="eyebrow">TESTSSL.SH FLAT JSON ÖNİZLEME</p><h2 id="testssl-preview-modal-title">Yerel testssl.sh flat JSON rapor özetini göster</h2>
-    <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Ham JSON saklanmaz. İsterseniz ayrı açık onayla yalnız toplu özeti etkin, yetkili ve maskeli kanıt onaylı bir manuel denetim test adımına bağlayabilirsiniz. Bu işlem testssl.sh çalıştırmaz ve tarama yapmaz; SHA-256, hedef veya rapor kaynağını kanıtlamaz.</p>
+    <p class="modal-copy">Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Ham JSON saklanmaz. İsterseniz ayrı açık onayla yalnız toplu özeti etkin, yetkili ve maskeli kanıt onaylı bir manuel denetim test adımına bağlayabilirsiniz. Bu işlem testssl.sh çalıştırmaz ve tarama yapmaz; SHA-256, hedef veya rapor kaynağını kanıtlamaz.</p>
     <form id="testssl-preview-form" class="form-grid">
       <label class="full"><input type="checkbox" id="testssl-link-opt-in" name="link_opt_in" disabled> Toplu özeti etkin bir manuel denetimde test adımına bağla (isteğe bağlı, ayrı açık onay)</label>
       <div id="testssl-link-fields" class="hidden full">
@@ -1420,7 +1420,7 @@
   <div class="modal modal-wide">
     <button class="modal-close" data-close="gitleaks-preview-modal" aria-label="Kapat">×</button>
     <div class="modal-icon shield">▶</div><p class="eyebrow">GITLEAKS NATIVE JSON ÖNİZLEME</p><h2 id="gitleaks-preview-modal-title">Yerel Gitleaks native JSON bulgu özetini göster</h2>
-    <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Ham JSON saklanmaz. İsterseniz ayrı açık onayla yalnız toplu özeti etkin, yetkili ve maskeli kanıt onaylı bir manuel denetim test adımına bağlayabilirsiniz. Bu işlem Gitleaks’i çalıştırmaz ve tarama yapmaz; SHA-256, hedef veya rapor kaynağını kanıtlamaz.</p>
+    <p class="modal-copy">Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Ham JSON saklanmaz. İsterseniz ayrı açık onayla yalnız toplu özeti etkin, yetkili ve maskeli kanıt onaylı bir manuel denetim test adımına bağlayabilirsiniz. Bu işlem Gitleaks’i çalıştırmaz ve tarama yapmaz; SHA-256, hedef veya rapor kaynağını kanıtlamaz.</p>
     <form id="gitleaks-preview-form" class="form-grid">
       <label class="full"><input type="checkbox" id="gitleaks-link-opt-in" name="link_opt_in" disabled> Toplu özeti etkin bir manuel denetimde test adımına bağla (isteğe bağlı, ayrı açık onay)</label>
       <div id="gitleaks-link-fields" class="hidden full">
@@ -1449,7 +1449,7 @@
   <div class="modal modal-wide">
     <button class="modal-close" data-close="dependabot-preview-modal" aria-label="Kapat">×</button>
     <div class="modal-icon shield">▶</div><p class="eyebrow">DEPENDABOT ALERTS JSON ÖNİZLEME</p><h2 id="dependabot-preview-modal-title">Yerel Dependabot alerts JSON özetini göster</h2>
-    <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem Dependabot’u çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.</p>
+    <p class="modal-copy">Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem Dependabot’u çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.</p>
     <form id="dependabot-preview-form" class="form-grid">
       <label class="full">Dependabot alerts JSON içeriği (alerts dizisi)<textarea name="dependabot_json" id="dependabot-paste" rows="8"></textarea></label>
       <label class="full">Veya yerel dosya seçin<input type="file" id="dependabot-file" accept=".json"></label>
@@ -1472,7 +1472,7 @@
   <div class="modal modal-wide">
     <button class="modal-close" data-close="npm-audit-preview-modal" aria-label="Kapat">×</button>
     <div class="modal-icon shield">▶</div><p class="eyebrow">NPM AUDIT V2 JSON ÖNİZLEME</p><h2 id="npm-audit-preview-modal-title">Yerel npm audit v2 JSON özetini göster</h2>
-    <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem npm komutu çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.</p>
+    <p class="modal-copy">Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem npm komutu çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.</p>
     <form id="npm-audit-preview-form" class="form-grid">
       <label class="full">npm audit v2 JSON içeriği (auditReportVersion=2 ve vulnerabilities objesi)<textarea name="npm_audit_json" id="npm-audit-paste" rows="8"></textarea></label>
       <label class="full">Veya yerel dosya seçin<input type="file" id="npm-audit-file" accept=".json"></label>
@@ -1493,7 +1493,7 @@
   <div class="modal modal-wide">
     <button class="modal-close" data-close="trivy-preview-modal" aria-label="Kapat">×</button>
     <div class="modal-icon shield">▶</div><p class="eyebrow">TRIVY NATIVE JSON ÖNİZLEME</p><h2 id="trivy-preview-modal-title">Yerel Trivy native JSON özetini göster</h2>
-    <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Ham JSON saklanmaz. İsterseniz ayrı açık onayla yalnız toplu özeti etkin, yetkili ve maskeli kanıt onaylı bir manuel denetim test adımına bağlayabilirsiniz. Bu işlem Trivy komutu çalıştırmaz ve tarama yapmaz; SHA-256, hedef veya rapor kaynağını kanıtlamaz.</p>
+    <p class="modal-copy">Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Ham JSON saklanmaz. İsterseniz ayrı açık onayla yalnız toplu özeti etkin, yetkili ve maskeli kanıt onaylı bir manuel denetim test adımına bağlayabilirsiniz. Bu işlem Trivy komutu çalıştırmaz ve tarama yapmaz; SHA-256, hedef veya rapor kaynağını kanıtlamaz.</p>
     <form id="trivy-preview-form" class="form-grid">
       <label class="full"><input type="checkbox" id="trivy-link-opt-in" name="link_opt_in" disabled> Toplu özeti etkin bir manuel denetimde test adımına bağla (isteğe bağlı, ayrı açık onay)</label>
       <div id="trivy-link-fields" class="hidden full">
@@ -1525,7 +1525,7 @@
   <div class="modal modal-wide">
     <button class="modal-close" data-close="zap-preview-modal" aria-label="Kapat">×</button>
     <div class="modal-icon shield">▶</div><p class="eyebrow">ZAP TRADITIONAL JSON ÖNİZLEME</p><h2 id="zap-preview-modal-title">Yerel ZAP traditional JSON özetini göster</h2>
-    <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem ZAP çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.</p>
+    <p class="modal-copy">Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem ZAP çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.</p>
     <form id="zap-preview-form" class="form-grid">
       <label class="full">ZAP traditional JSON içeriği (site dizisi içeren nesne)<textarea name="zap_json" id="zap-paste" rows="8"></textarea></label>
       <label class="full">Veya yerel dosya seçin<input type="file" id="zap-file" accept=".json"></label>
@@ -1557,8 +1557,8 @@
       <p id="zap-evidence-link-result" class="field-help hidden" aria-live="polite"></p>
     </section>
     <section class="panel">
-      <h3>Sniper için yerel ZAP pasif kontrolü</h3>
-      <p class="field-help">Yalnız bu Sniper sunucusunun 127.0.0.1 üzerindeki /api/health adresine tek GET gönderilir. Örümcek, aktif saldırı ve dış hedef seçimi yoktur. Ham ZAP raporu geçici dizinde işlenir; veritabanına kaydedilmez veya arayüzde gösterilmez.</p>
+      <h3>VulKill için yerel ZAP pasif kontrolü</h3>
+      <p class="field-help">Yalnız bu VulKill sunucusunun 127.0.0.1 üzerindeki /api/health adresine tek GET gönderilir. Örümcek, aktif saldırı ve dış hedef seçimi yoktur. Ham ZAP raporu geçici dizinde işlenir; veritabanına kaydedilmez veya arayüzde gösterilmez.</p>
       <form id="zap-self-passive-form" class="form-grid">
         <label class="full"><input type="checkbox" id="zap-self-confirm"> Bu yerel pasif kontrolü çalıştırmayı onaylıyorum.</label>
         <button class="button secondary wide full" id="zap-self-run-button" type="submit">Yerel pasif kontrolü çalıştır</button>
@@ -1697,7 +1697,7 @@
   <div class="modal modal-wide">
     <button class="modal-close" data-close="ssllabs-preview-modal" aria-label="Kapat">×</button>
     <div class="modal-icon shield">▶</div><p class="eyebrow">SSL LABS HOST JSON ÖNİZLEME</p><h2 id="ssllabs-preview-modal-title">Yerel SSL Labs Host JSON özetini göster</h2>
-    <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem Qualys API çağrısı yapmaz, tarama yapmaz ve JSON içeriğini saklamaz.</p>
+    <p class="modal-copy">Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem Qualys API çağrısı yapmaz, tarama yapmaz ve JSON içeriğini saklamaz.</p>
     <form id="ssllabs-preview-form" class="form-grid">
       <label class="full">SSL Labs Host JSON içeriği (status ve endpoints içeren nesne)<textarea name="ssllabs_json" id="ssllabs-paste" rows="8"></textarea></label>
       <label class="full">Veya yerel dosya seçin<input type="file" id="ssllabs-file" accept=".json"></label>
@@ -1765,7 +1765,7 @@
   <div class="modal modal-wide">
     <button class="modal-close" data-close="openssl-x509-preview-modal" aria-label="Kapat">×</button>
     <div class="modal-icon shield">▶</div><p class="eyebrow">OPENSSL SERTİFİKA KANITI</p><h2 id="openssl-x509-preview-title">Kaydedilmiş sertifika geçerliliğini incele</h2>
-    <p class="modal-copy">Yerel bir sertifika dosyası için <code>openssl x509 -in certificate.pem -noout -dates -fingerprint -sha256</code> çıktısını yapıştırın. Sniper yalnız üç satırlık kayıt özetini işler; hedefe bağlanmaz, OpenSSL komutu çalıştırmaz veya raporu saklamaz.</p>
+    <p class="modal-copy">Yerel bir sertifika dosyası için <code>openssl x509 -in certificate.pem -noout -dates -fingerprint -sha256</code> çıktısını yapıştırın. VulKill yalnız üç satırlık kayıt özetini işler; hedefe bağlanmaz, OpenSSL komutu çalıştırmaz veya raporu saklamaz.</p>
     <form id="openssl-x509-preview-form" class="form-grid">
       <label class="full">OpenSSL x509 çıktısı<textarea id="openssl-x509-paste" rows="5" maxlength="4096" required></textarea></label>
       <button class="button primary wide full" type="submit">Geçerliliği göster</button>
@@ -1786,7 +1786,7 @@
   <div class="modal modal-wide">
     <button class="modal-close" data-close="semgrep-local-modal" aria-label="Kapat">×</button>
     <div class="modal-icon shield">▶</div><p class="eyebrow">YEREL KAYNAK KOD</p><h2 id="semgrep-local-title">Semgrep / Opengrep yerel proje taraması</h2>
-    <p class="modal-copy">Bu DGX üzerindeki kullanıcı ev dizininde seçtiğiniz projeyi açık onaydan sonra tarar. Motor, SHA-256 ile sabitlenmiş Opengrep (Sniper'ın kendi kural paketi: Python, JS/TS, Go, Java için enjeksiyon, yol aşımı, SSRF, güvensiz seri çözme, zayıf kripto, sabit sır, XSS) ya da operatörün sabitlediği Semgrep'tir; doğrulanamayan ikili çalıştırılmaz. Ağ hedefi taranmaz. Sonuçta bulgu sayısı, önem dağılımı, rapor özeti ve en çok 200 bulgu (kural, CWE, proje içi göreli dosya:satır, açıklama) gösterilir; ham kod gösterilmez ve hiçbir sonuç saklanmaz. Bulgular uzman doğrulaması gerektirir.</p>
+    <p class="modal-copy">Bu DGX üzerindeki kullanıcı ev dizininde seçtiğiniz projeyi açık onaydan sonra tarar. Motor, SHA-256 ile sabitlenmiş Opengrep (VulKill'ın kendi kural paketi: Python, JS/TS, Go, Java için enjeksiyon, yol aşımı, SSRF, güvensiz seri çözme, zayıf kripto, sabit sır, XSS) ya da operatörün sabitlediği Semgrep'tir; doğrulanamayan ikili çalıştırılmaz. Ağ hedefi taranmaz. Sonuçta bulgu sayısı, önem dağılımı, rapor özeti ve en çok 200 bulgu (kural, CWE, proje içi göreli dosya:satır, açıklama) gösterilir; ham kod gösterilmez ve hiçbir sonuç saklanmaz. Bulgular uzman doğrulaması gerektirir.</p>
     <form id="semgrep-local-form" class="form-grid">
       <label class="full">DGX üzerindeki yerel proje dizini<input id="semgrep-local-path" name="project_path" type="text" maxlength="1024" placeholder="/home/community-user/project" autocomplete="off" required></label>
       <label class="full"><input type="checkbox" id="semgrep-local-consent"> Bu yerel projenin Semgrep ile taranmasını onaylıyorum.</label>
@@ -1829,7 +1829,7 @@
   <div class="modal modal-wide">
     <button class="modal-close" data-close="semgrep-preview-modal" aria-label="Kapat">×</button>
     <div class="modal-icon shield">▶</div><p class="eyebrow">SEMGREP CLI --JSON ÖNİZLEME</p><h2 id="semgrep-preview-modal-title">Yerel Semgrep CLI --json özetini göster</h2>
-    <p class="modal-copy">Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem Semgrep çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.</p>
+    <p class="modal-copy">Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem Semgrep çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.</p>
     <form id="semgrep-preview-form" class="form-grid">
       <label class="full">Semgrep CLI --json içeriği (results, errors, paths içeren nesne)<textarea name="semgrep_json" id="semgrep-paste" rows="8"></textarea></label>
       <label class="full">Veya yerel dosya seçin<input type="file" id="semgrep-file" accept=".json"></label>
@@ -1850,7 +1850,7 @@
   <div class="modal modal-wide">
     <button class="modal-close" data-close="semgrep-trivy-compare-modal" aria-label="Kapat">×</button>
     <div class="modal-icon shield">▶</div><p class="eyebrow">SEMGREP / TRIVY KARŞILAŞTIRMA</p><h2 id="semgrep-trivy-compare-modal-title">Yerel Semgrep ve Trivy raporlarını karşılaştır</h2>
-    <p class="modal-copy">İki raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetlerini önizleyin. Raporlar saklanmaz, sadece özetler gösterilir. Bu işlem tarama yapmaz ve JSON içeriğini saklamaz.</p>
+    <p class="modal-copy">İki raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetlerini önizleyin. Raporlar saklanmaz, sadece özetler gösterilir. Bu işlem tarama yapmaz ve JSON içeriğini saklamaz.</p>
     <form id="semgrep-trivy-compare-form" class="form-grid">
       <div class="form-section">
         <h3>Semgrep CLI --json</h3>

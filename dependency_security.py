@@ -2519,7 +2519,7 @@ def generate_cyclonedx_sbom(project_path: str, *, allowed_roots: tuple[Path, ...
     except Exception:  # noqa: BLE001
         tool_version = ""
     metadata: dict[str, Any] = {
-        "tools": [{"vendor": "Sniper", "name": "sniper-sbom", "version": str(tool_version)}],
+        "tools": [{"vendor": "VulKill", "name": "sniper-sbom", "version": str(tool_version)}],
         "component": {"type": "application", "name": root.name, "bom-ref": "sniper-root"},
     }
     try:

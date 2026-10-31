@@ -1,4 +1,4 @@
-"""16. tur: bağımlılık lisans uyumu (çevrimdışı) ve Sniper öz sağlık panosu (salt okunur)."""
+"""16. tur: bağımlılık lisans uyumu (çevrimdışı) ve VulKill öz sağlık panosu (salt okunur)."""
 from __future__ import annotations
 
 import datetime as dt
@@ -336,7 +336,7 @@ class ApiAndRoleTests(_Env, unittest.TestCase):
         for patch in patches:
             patch.start()
             self.addCleanup(patch.stop)
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
         self.url = f"http://127.0.0.1:{self.httpd.server_address[1]}"
 

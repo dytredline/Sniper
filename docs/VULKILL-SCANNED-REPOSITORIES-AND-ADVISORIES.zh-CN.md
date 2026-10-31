@@ -1,80 +1,80 @@
-# Gökçe Baran Karakamış — Sniper macOS 導入検証、スキャン済みオープンソースリポジトリおよび検証済みセキュリティアドバイザリ報告書
+# Gökçe Baran Karakamış — VulKill macOS 安装验证、已扫描开源仓库与已验证安全漏洞报告
 
-[English](SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md) | [Türkçe](SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md) | **日本語** | [简体中文](SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.zh-CN.md) | [한국어](SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ko.md)
+[English](VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md) | [Türkçe](VULKILL-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md) | [日本語](VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md) | **简体中文** | [한국어](VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ko.md)
 
-**著者 / セキュリティ研究者:** **Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline))
+**作者 / 安全研究员:** **Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline))
 
-本包括的技術ガイドおよびセキュリティ調査報告書は、以下の3つの主要パートで構成されています。
-1. **第 I 部 — macOS（Apple Silicon）実機環境における導入・動作検証レポート:** Sniper Community を実機の macOS ハードウェア上で **ネイティブソース構成（`--core-only`）** と **Docker Desktop 5エンジン構成（`community-tools`）** の双方でエンドツーエンド検証した結果。
-2. **第 II 部 — Sniper でスキャンした8つのオープンソースリポジトリ、脆弱化の仕組みと日常業務シナリオ:** **Gökçe Baran Karakamış** が **Sniper** の静的解析（SAST）、インフラ構成解析（IaC）、および依存関係解析（SCA）エンジンを用いて監査した **8つのオープンソースリポジトリ** のソースコードレベル検証、誤検知（False Positive）の切り分け、コードや設定の欠陥がどのような条件で脆弱性へと変化するのかの平易な解説、各リポジトリにおける **3つの日常的な重大シナリオ（`シナリオ A / B / C`）**、および **実行・検証コマンド例**。
-3. **第 III 部 — Sniper スキャンで発見された11件の検証済み脆弱性（`01`..`11`）、コード解析、3つのシナリオとランタイム証明（`RED -> GREEN + BENIGN`）:** 6つのオープンソースプロジェクト（**Stirling-PDF、TryCua `cua`、OpenZiti、n8n、Gotify Server、NIIS X-Road**）で発見され、GitHub Security Advisory（`GHSA`）として報告された **11件の検証済み脆弱性** について、コード上でどのように発生し段階的に悪用可能な脆弱性へと至るのか、各脆弱性に対する **3つの具体的な日常業務シナリオ（`シナリオ A / B / C`）**、**再現・検証コマンド例**、および **防御パッチ（`git diff`）**。
+本综合技术指南与安全研究报告由三个核心部分组成：
+1. **第一部分 — macOS（Apple Silicon）真实硬件安装与运行验证报告：** VulKill Community 在真实 macOS 硬件上通过 **原生源码安装（`--core-only`）** 与 **Docker Desktop 五引擎容器栈（`community-tools`）** 两种方式进行的端到端测试与验证结果。
+2. **第二部分 — 使用 VulKill 扫描的 8 个开源仓库、漏洞形成机制与日常场景分析：** 由 **Gökçe Baran Karakamış** 使用 **VulKill** 静态代码分析（SAST）、基础设施即代码（IaC）与软件成分分析（SCA）引擎扫描的 **8 个开源仓库** 的源码级审计、误报（False Positive）剔除、以通俗易懂的语言解析代码或配置缺陷在何种条件下转化为可利用漏洞、每个仓库的 **3 个日常关键风险场景（`场景 A / B / C`）**，以及 **示例执行与验证命令**。
+3. **第三部分 — VulKill 扫描发现的 11 项已验证安全漏洞（`01`..`11`）、代码机理、场景与运行时证明（`RED -> GREEN + BENIGN`）：** 在 6 个开源项目（**Stirling-PDF、TryCua `cua`、OpenZiti、n8n、Gotify Server、NIIS X-Road**）中发现并提交 GitHub Security Advisory（`GHSA`）的 **11 项已验证安全漏洞** 的完整技术剖析，逐步讲解每个缺陷如何在代码中产生并演变为安全漏洞、每项漏洞的 **3 个真实日常场景（`场景 A / B / C`）**、**示例复现与验证命令**，以及 **已验证防御补丁（`git diff`）**。
 
 ---
 
-## 第 I 部 — macOS（Apple Silicon）実機環境における導入・動作検証レポート（2026-10-24）
+## 第一部分 — macOS（Apple Silicon）真实硬件安装与验证报告（2026-10-24）
 
-macOS（Apple Silicon）上での Sniper の導入は **実験的（Experimental）なものではありません**。**ネイティブソース構成（`--core-only`）** と **Docker Desktop 5エンジン構成** の両方が実機の macOS ハードウェア上でテスト・検証され、正式にサポートされています。
+在 macOS（Apple Silicon）上部署运行 VulKill **并非实验性功能**；**原生源码安装（`--core-only`）** 与 **Docker Desktop 五引擎容器栈安装** 均已在真实 macOS 硬件上完成完整测试、验证与正式支持：
 
-| 導入方式 | 実行コマンド | 実機 macOS ハードウェアで検証された範囲 | 状態 |
+| 安装路径 | 执行命令 | 真实 macOS 硬件上已验证的覆盖范围 | 状态 |
 | :--- | :--- | :--- | :---: |
-| **1. ネイティブ macOS ソース導入（Native Source Setup）** | `python3 scripts/setup-community --core-only` | `.venv`（CPython 3.12）作成、ロック済みランタイムパッケージ（`requirements-runtime.lock` + `pip check`）の導入、`scripts/sniper-mcp --help`、`scripts/sniper-project-audit --help`、`cli_reports.py --help`、ローカルループバック Web UI（`127.0.0.1:8787`）、ローカル SQLite データディレクトリの初期化、およびサンプルプロジェクトに対する実監査の実行 | **実機検証済み（PASS）** |
-| **2. Docker Desktop 5エンジン構成（5-Engine Container Stack）** | `python3 scripts/setup-community` *(または `docker compose --profile community-tools up -d`)* | Docker Desktop（Apple Silicon / `linux/arm64`）上での `sniper-community` コアコンテナと5つの補助オープンソースセキュリティエンジン（`zap`、`nuclei`、`trivy`、`httpx`、`katana`）の起動、ヘルスチェック、および共有 `/workspace` ボリューム監査 | **実機検証済み（PASS）** |
+| **1. 原生 macOS 源码安装（Native Source Setup）** | `python3 scripts/setup-community --core-only` | 创建 `.venv`（CPython 3.12）、安装锁定的运行时依赖包（`requirements-runtime.lock` + `pip check`）、`scripts/sniper-mcp --help`、`scripts/sniper-project-audit --help`、`cli_reports.py --help`、本地环回 Web 界面（`127.0.0.1:8787`）、初始化本地 SQLite 数据目录，以及对示例项目执行真实安全审计 | **真实硬件已验证（PASS）** |
+| **2. Docker Desktop 五引擎容器栈（5-Engine Container Stack）** | `python3 scripts/setup-community` *（或 `docker compose --profile community-tools up -d`）* | 在 Docker Desktop（Apple Silicon / `linux/arm64`）上启动 `sniper-community` 核心容器与 5 个开源安全引擎（`zap`、`nuclei`、`trivy`、`httpx`、`katana`）、健康检查，以及共享 `/workspace` 卷项目审计 | **真实硬件已验证（PASS）** |
 
-### macOS 実機環境で確認された技術的詳細
-* **Apple Silicon（`arm64`）ネイティブ Python 環境:** `scripts/setup-community` は macOS 上の Homebrew Python（`3.11+` / `3.12`）を自動検出し、ネイティブ `arm64` wheel パッケージ（`fastapi`、`uvicorn`、`pydantic`、`PyJWT`、`cryptography`、`httpx`、`beautifulsoup4`、`jinja2`）を用いて依存関係競合ゼロ（`pip check: No broken requirements found`）で `.venv` を構築します。
-* **エンドツーエンドのローカルプロジェクト監査:** macOS 実機上で実行した `scripts/sniper-project-audit` は、SAST・IaC・SCA の3レイヤーすべてで構造化 JSON レポートおよび SARIF/Markdown 出力をミリ秒〜数秒単位で生成しました。
-* **Docker エンジンのマルチアーキテクチャ互換性:** `docker-compose.yml` 内の `community-tools` プロファイルは、Apple Silicon 上の Docker Desktop でネイティブ `arm64` または透過的な Rosetta 2 レイヤーを介して起動し、`127.0.0.1:8787` のループバック境界を維持したまま動作します。
+### macOS 真实硬件验证的技术细节
+* **Apple Silicon（`arm64`）原生 Python 运行环境：** `scripts/setup-community` 自动识别 macOS 上的 Homebrew Python（`3.11+` / `3.12`），使用原生 `arm64` wheel 包（`fastapi`、`uvicorn`、`pydantic`、`PyJWT`、`cryptography`、`httpx`、`beautifulsoup4`、`jinja2`）构建 `.venv`，依赖一致性检查零冲突（`pip check: No broken requirements found`）。
+* **端到端本地项目安全审计：** 在真实 macOS 硬件上运行 `scripts/sniper-project-audit` 可在毫秒至数秒内完成 SAST、IaC 与 SCA 三层扫描，并输出结构化 JSON、SARIF 与 Markdown 报告。
+* **Docker 多架构兼容性：** `docker-compose.yml` 中的 `community-tools` 配置在 Apple Silicon Docker Desktop 上可原生或通过透明架构兼容层稳定运行，并严格绑定于本地 `127.0.0.1:8787` 环回接口。
 
 ---
 
-## 第 II 部 — Sniper でスキャンした8つのオープンソースリポジトリと関連リスク分析
+## 第二部分 — 使用 VulKill 扫描的 8 个开源仓库与潜在关联风险分析
 
-本パートでは、先行セキュリティ調査において **Sniper** でスキャンを実施した **8つのオープンソースリポジトリ** について、(A) Sniper の生スキャン結果、(B) ソースコード監査で特定された誤検知（False Positive）、(C) 実在するコード・設定上のリスク、(D) **コード内でどのように発生し脆弱性へと変化するのか（誰にでもわかる平易な解説）**、(E) **日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）**、(F) **単独 vs. 連鎖（Chaining）時の深刻度**、および (G) **具体的な実行・検証コマンド例** を詳述します。
+本部分针对前期安全研究中使用 **VulKill** 扫描的 **8 个开源仓库**，逐一提供：(A) VulKill 扫描统计摘要、(B) 源码审计确认的误报（False Positive）剔除、(C) 真实存在的代码与配置风险、(D) **代码缺陷如何产生并演变为安全漏洞（通俗易懂的机制解析）**、(E) **日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）**、(F) **独立严重度与攻击链组合（Chaining）分析**，以及 (G) **示例执行与验证命令**。
 
 ---
 
 ## 1. AutoGPT (`Significant-Gravitas/AutoGPT`)
 
-### A. Sniper スキャン統計概要
-* **閾値超過（高信頼度）検出数:** `93` 件（Critical `2`、High `39`、Medium `49`、Low `3`）
-* **トリアージ総検出数:** `142` 件（SAST `61`、IaC `42`、SCA `39`）
+### A. VulKill 扫描统计摘要
+* **超过阈值（高置信度）发现数：** `93` 项（严重 Critical `2`、高危 High `39`、中危 Medium `49`、低危 Low `3`）
+* **分诊总发现数：** `142` 项（SAST `61`、IaC `42`、SCA `39`）
 
-### B. ソースコード検証と誤検知（False Positive）の切り分け
-1. **誤検知と確認された Critical/High SAST アラート:**
-   * `autogpt_platform/backend/backend/executor/manager.py` および `scheduler.py` における **2件の Critical SQL インジェクション（`obj.execute(...)`）** アラートは、SQL クエリではなくブロック実行オブジェクトの Python メソッド呼び出し（`block_obj.execute(input_data)`）であり、**完全な誤検知（False Positive）** です。
-   * FastAPI ルーター上の `Security(...)` 依存性注入やテスト用ダミー JWT 文字列に対するハードコード秘密情報アラートも誤検知です。
-2. **実在が確認されたコードおよびインフラ所見:**
-   * **信頼境界付きの `pickle.loads` デシリアライゼーション:** `autogpt_platform/backend/backend/util/jobstore_backfill.py:67` は、APScheduler のジョブテーブル（`apscheduler_jobs.job_state`）から読み取ったバイナリ列に対して直接 `pickle.loads(job_state)` を実行します。
-   * **Docker Compose のデフォルト認証情報と非ルート未設定の Dockerfile:** ローカル・開発用 Compose ファイルにデフォルトの PostgreSQL/Redis パスワードが含まれており、一部のコンテナイメージが `root` ユーザーのまま実行されます。
+### B. 源码验证与误报（False Positive）剔除
+1. **确认为误报的严重/高危 SAST 告警：**
+   * `autogpt_platform/backend/backend/executor/manager.py` 与 `scheduler.py` 中的 **2 项严重 SQL 注入（`obj.execute(...)`）** 告警实际上是调用工作流组件对象的 Python 方法（`block_obj.execute(input_data)`），而非执行数据库 SQL 查询，属于 **完全误报（False Positive）**。
+   * FastAPI 路由中的 `Security(...)` 依赖注入与测试文件中的示例 JWT 字符串告警同样为误报。
+2. **确认为真实存在的代码与基础设施发现：**
+   * **依赖数据库信任边界的 `pickle.loads` 反序列化：** `autogpt_platform/backend/backend/util/jobstore_backfill.py:67` 从 APScheduler 的 `apscheduler_jobs.job_state` 列读取二进制数据后直接调用 `pickle.loads(job_state)`。
+   * **Docker Compose 硬编码默认口令与未配置非 root 用户的 Dockerfile：** 开发/部署示例 Compose 文件包含默认 PostgreSQL/Redis 凭据，且部分容器以默认 `root` 身份运行。
 
-### D. コード内でどのように発生し脆弱性へ変化するのか（平易な解説）
-Python の `pickle.loads()` は、保存されたバイト列から Python オブジェクトを復元する際に、攻撃者が細工した `__reduce__` メソッドを自動的に実行してしまう危険な関数です。通常、`jobstore_backfill.py` は内部の PostgreSQL データベース（`apscheduler_jobs` テーブル）しか読み取りません。しかし、もし開発用 Docker Compose のデフォルトパスワード（`postgres` 等）が本番やステージング環境でそのまま使われていたり、別の SQL インジェクションや SSRF によってデータベースへの書き込み権限が奪われたりすると、攻撃者は悪意ある Pickle ペイロードを `apscheduler_jobs` テーブルに書き込み、バックフィル処理が走った瞬間に **`root` 権限のコンテナ内で任意の OS コマンドを実行（RCE）** できるようになります。
+### D. 代码中如何产生并转化为安全漏洞（通俗讲解）
+Python 的 `pickle.loads()` 在还原序列化字节流时会自动执行攻击者构造的 `__reduce__` 指令。正常情况下，`jobstore_backfill.py` 只读取内部 PostgreSQL 数据库中的 `apscheduler_jobs` 表。但如果运维人员在测试或生产环境中直接使用了 Docker Compose 文件里的默认数据库密码（如 `postgres`），或者攻击者通过其他内网通道获得了数据库的写入权限，攻击者就可以向 `apscheduler_jobs` 表写入恶意 Pickle 载荷；当后台回填脚本运行时，便会在 **`root` 权限的容器内直接触发远程代码执行（RCE）**。
 
-### E. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — デフォルト Compose パスワードのまま公開されたステージング環境での DB 経由 RCE:**
-  1. 社内 AI チームが AutoGPT Platform をクラウド VM 上に Docker Compose で構築し、PostgreSQL や Redis のポートが内部ネットワークからデフォルト認証情報のまま到達可能になっている。
-  2. 同一 VPC 内の侵害された別サービスから攻撃者が PostgreSQL の `apscheduler_jobs` テーブルに悪意ある `job_state`（`pickle` ペイロード）を挿入する。
-  3. `jobstore_backfill.py:67` の `pickle.loads(job_state)` が実行され、`root` コンテナ内で任意コード実行が成立し、登録済みの OpenAI/Anthropic API キーやユーザーデータが窃取される。
-* **シナリオ B — 共有 Redis / メッセージブローカー汚染によるワーカー乗っ取り:**
-  1. 複数の検証環境が同じ内部ネットワーク上の認証なし Redis インスタンスを共有している。
-  2. 攻撃者がジョブキューまたはスケジュール状態のペイロードを書き換え、バックエンド Executor ワーカーに悪意あるジョブを実行させる。
-* **シナリオ C — `root` 権限コンテナ内でのカスタムブロック実行によるホストマウント汚染:**
-  1. 開発者がローカルまたは共有サーバー上でホストディレクトリをバインドマウントした状態で AutoGPT コンテナを `root` のまま稼働させる。
-  2. ワークフロー内で意図しないファイル書き込みが発生した際、`root` 権限のためマウントされたホスト側の設定ファイルやスクリプトが上書きされる。
+### E. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — 沿用默认 Compose 数据库密码的预发布环境遭遇数据库投毒 RCE：**
+  1. 团队使用仓库自带的 Docker Compose 在云服务器上部署 AutoGPT Platform，PostgreSQL 端口对内网开放且保留了默认密码。
+  2. 同一内网中受控节点的攻击者连接 PostgreSQL，向 `apscheduler_jobs` 表插入包含恶意 `job_state` 的记录。
+  3. 当 `jobstore_backfill.py:67` 执行 `pickle.loads(job_state)` 时，恶意命令在 `root` 容器内执行，导致配置的 OpenAI/Anthropic API 密钥与业务数据泄露。
+* **场景 B — 共享 Redis / 消息队列未授权访问导致执行器任务篡改：**
+  1. 多个内部开发环境共用未开启密码认证的 Redis 实例。
+  2. 攻击者向任务队列注入伪造的执行负载，诱导后台 Executor 节点执行非预期操作。
+* **场景 C — 以 `root` 运行的容器在挂载宿主机目录时覆写宿主机文件：**
+  1. 开发者在服务器上将宿主机目录挂载进 AutoGPT 容器，且容器以 `root` 身份运行。
+  2. 容器内工作流发生越权文件写入时，直接修改或破坏宿主机上的只读配置与脚本。
 
-### F. 単独および連鎖（Chaining）時の深刻度分析
-* **単独深刻度:** **Low / Medium**（外部から認証なしで直接 `pickle.loads` に到達するエンドポイントは存在しないため）。
-* **連鎖（Chaining）深刻度:** **条件付き Medium / High**（Compose のデフォルト DB パスワード露出 + `apscheduler_jobs` への書き込み + `jobstore_backfill.py` の `pickle.loads` + `root` コンテナが連鎖した場合）。外部から直接悪用可能な未認証脆弱性ではなく、多層防御（Defense-in-Depth）の強化対象です。
+### F. 独立与组合（攻击链 Chaining）严重度分析
+* **独立严重度：** **低危 / 中危（Low / Medium）**（外部未授权用户无法直接触达 `pickle.loads`）。
+* **组合（Chaining）严重度：** **条件性中危 / 高危（Conditional Medium / High）**（仅当攻击者获取 `apscheduler_jobs` 表的数据库写权限时，`pickle.loads` 与 `root` 容器才会形成攻击链）。属于纵深防御加固项，而非直接的未授权产品漏洞。
 
-### G. 実行・検証コマンド例
+### G. 示例执行与验证命令
 ```bash
-# 1. AutoGPT リポジトリに対する Sniper フル監査の実行
+# 1. 对 AutoGPT 仓库运行 VulKill 完整安全审计
 python3 scripts/sniper-project-audit "$HOME/audit-targets/autogpt" --format json --output "$HOME/audit-targets/reports/autogpt-audit.json"
 
-# 2. jobstore_backfill.py 内の pickle.loads 呼び出し箇所の確認
+# 2. 检查 jobstore_backfill.py 中的 pickle.loads 调用上下文
 grep -n -C 5 "pickle.loads" "$HOME/audit-targets/autogpt/autogpt_platform/backend/backend/util/jobstore_backfill.py"
 
-# 3. 誤検知と確認された executor/manager.py の .execute() 呼び出しの確認
+# 3. 验证被判定为误报的 executor/manager.py .execute() 调用
 grep -n -C 5 "\.execute(" "$HOME/audit-targets/autogpt/autogpt_platform/backend/backend/executor/manager.py"
 ```
 
@@ -82,41 +82,41 @@ grep -n -C 5 "\.execute(" "$HOME/audit-targets/autogpt/autogpt_platform/backend/
 
 ## 2. Zitadel (`zitadel/zitadel`)
 
-### A. Sniper スキャン統計概要
-* **閾値超過（高信頼度）検出数:** `67` 件（Critical `8`、High `42`、Medium `17`）
-* **トリアージ総検出数:** `286` 件
+### A. VulKill 扫描统计摘要
+* **超过阈值（高置信度）发现数：** `67` 项（严重 Critical `8`、高危 High `42`、中危 Medium `17`）
+* **分诊总发现数：** `286` 项
 
-### B. ソースコード検証と誤検知（False Positive）の切り分け
-1. **8件すべての Critical アラートは誤検知:** Go コード内の `exec.Command` や SQL クエリ構築に関する8件の Critical SAST アラートは、ビルドツール・マイグレーション補助スクリプト内の固定引数呼び出しであり、外部入力が流入しないため **すべて誤検知（False Positive）** です。
-2. **実在が確認されたインフラ設定所見:**
-   * `deploy/compose/` 配下の3つの開発・テスト用 Docker Compose ファイルでホストの `/var/run/docker.sock` がコンテナにマウントされています。
-   * `apps/docs/` 配下のサンプル環境変数設定で `NODE_TLS_REJECT_UNAUTHORIZED=0` が使用されています。
+### B. 源码验证与误报（False Positive）剔除
+1. **全部 8 项严重 SAST 告警均为误报：** Go 源码中的 `exec.Command` 与 SQL 字符串构造告警均位于构建脚本与数据库迁移工具内部，参数均为编译期常量，无外部用户输入流入，属于 **完全误报**。
+2. **确认为真实存在的基础设施配置发现：**
+   * `deploy/compose/` 下的 3 个开发/示例 Compose 文件将宿主机的 `/var/run/docker.sock` 挂载进了容器。
+   * `apps/docs/` 文档示例配置中出现了 `NODE_TLS_REJECT_UNAUTHORIZED=0`。
 
-### D. コード内でどのように発生し脆弱性へ変化するのか（平易な解説）
-Docker ソケット（`/var/run/docker.sock`）はホスト上の Docker デーモンを直接制御する管理者 API です。これをコンテナ内にマウントすると、そのコンテナ内で動作するプロセスはホスト上の全コンテナの停止・起動や、ホストのルートファイルシステム（`/`）をマウントした特権コンテナの新規起動が可能になります。また、`NODE_TLS_REJECT_UNAUTHORIZED=0` は Node.js の TLS 証明書検証を全面的に無効化するため、サンプル設定をそのまま本番環境へコピーすると中間者攻撃（MITM）に対して無防備になります。
+### D. 代码中如何产生并转化为安全漏洞（通俗讲解）
+宿主机的 `/var/run/docker.sock` 相当于 Docker 守护进程的最高管理员接口。任何挂载了该套接字的容器一旦被攻破，攻击者只需在容器内调用 Docker API 即可启动一个挂载宿主机根目录（`/`）的特权容器，瞬间完全控制宿主机。而 `NODE_TLS_REJECT_UNAUTHORIZED=0` 会彻底关闭 Node.js 的 HTTPS 证书校验，若开发者直接复制文档示例到生产环境，所有 OIDC 身份认证流量都将暴露于中间人（MITM）劫持之下。
 
-### E. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — 開発用 Compose 構成を流用した共有ステージング環境での `docker.sock` 経由のホスト奪取:**
-  1. DevOps チームが `deploy/compose/` の構成をそのまま共有ステージング VM にデプロイし、`/var/run/docker.sock` をマウントした補助コンテナを稼働させる。
-  2. その補助コンテナが侵害されると、攻撃者は `/var/run/docker.sock` を通じてホスト OS のファイルシステム全体をマウントした新規コンテナを起動し、Zitadel のマスター鍵と DB 認証情報を奪取する。
-* **シナリオ B — ドキュメントの `NODE_TLS_REJECT_UNAUTHORIZED=0` をコピーした本番ポータルでの OIDC トークン盗聴:**
-  1. 開発者が `apps/docs/` のサンプル設定を参考にしてフロントエンド/BFF 環境変数に `NODE_TLS_REJECT_UNAUTHORIZED=0` を設定したままデプロイする。
-  2. ネットワーク経路上の攻撃者が自己署名証明書を用いて TLS 通信を傍受し、OIDC アクセストークンやクライアントシークレットを平文で取得する。
-* **シナリオ C — CI/CD テスト環境でのソケット共有によるビルドキャッシュ汚染:**
-  1. セルフホスト CI サーバー上で `docker.sock` マウント付きの Compose テストを実行中、悪意あるテストコードがホストの Docker デーモンを操作して他のジョブのコンテナイメージを改ざんする。
+### E. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — 直接复用开发 Compose 模板的共享测试服务器通过 `docker.sock` 被容器逃逸控制：**
+  1. 运维人员在共享测试主机上直接运行 `deploy/compose/` 下的配置，使辅助容器挂载了 `/var/run/docker.sock`。
+  2. 攻击者取得该容器权限后，通过 `docker.sock` 创建挂载宿主机 `/` 的容器，窃取 Zitadel 主加密密钥与数据库凭据。
+* **场景 B — 照搬文档 `NODE_TLS_REJECT_UNAUTHORIZED=0` 配置导致生产门户 OIDC 令牌被中间人窃取：**
+  1. 开发人员参照 `apps/docs/` 示例在生产 Node.js 前端/BFF 服务中保留了 `NODE_TLS_REJECT_UNAUTHORIZED=0`。
+  2. 攻击者在网络路径上使用自签名证书实施 MITM 劫持，截获管理员 OIDC 令牌与会话密钥。
+* **场景 C — 自托管 CI 环境中共享 `docker.sock` 导致跨任务镜像投毒：**
+  1. 在自托管 CI 节点上运行包含 `docker.sock` 挂载的集成测试时，恶意测试任务可篡改宿主机上的其他容器镜像缓存。
 
-### F. 単独および連鎖（Chaining）時の深刻度分析
-* **単独・連鎖深刻度:** **Low / Medium**。`docker.sock`（`deploy/compose/`）と `NODE_TLS_REJECT_UNAUTHORIZED=0`（`apps/docs/`）は別々のサンプル/開発用ファイルに存在し、製品本体の CVE ではなくデプロイテンプレートのハードニング項目です。
+### F. 独立与组合（攻击链 Chaining）严重度分析
+* **独立与组合严重度：** **低危 / 中危（Low / Medium）**。`docker.sock`（`deploy/compose/`）与 `NODE_TLS_REJECT_UNAUTHORIZED=0`（`apps/docs/`）位于不同的开发/文档示例中，互不串联，属于部署加固建议而非产品本体 CVE。
 
-### G. 実行・検証コマンド例
+### G. 示例执行与验证命令
 ```bash
-# 1. Zitadel リポジトリに対する Sniper 監査の実行
+# 1. 对 Zitadel 仓库运行 VulKill 安全审计
 python3 scripts/sniper-project-audit "$HOME/audit-targets/zitadel" --format json --output "$HOME/audit-targets/reports/zitadel-audit.json"
 
-# 2. Compose ファイル内の docker.sock マウント箇所の確認
+# 2. 检查 Compose 文件中的 docker.sock 挂载点
 grep -rn "docker.sock" "$HOME/audit-targets/zitadel/deploy/"
 
-# 3. ドキュメント内の NODE_TLS_REJECT_UNAUTHORIZED 設定箇所の確認
+# 3. 检查文档示例中的 NODE_TLS_REJECT_UNAUTHORIZED 配置
 grep -rn "NODE_TLS_REJECT_UNAUTHORIZED" "$HOME/audit-targets/zitadel/apps/docs/"
 ```
 
@@ -124,38 +124,38 @@ grep -rn "NODE_TLS_REJECT_UNAUTHORIZED" "$HOME/audit-targets/zitadel/apps/docs/"
 
 ## 3. Nextcloud MCP Server (`cbcoutinho/nextcloud-mcp-server`)
 
-### A. Sniper スキャン統計概要
-* **閾値超過（高信頼度）検出数:** `59` 件（SAST Critical `1` / High `6`、IaC High `7`、SCA Critical `5` / High `40`）
+### A. VulKill 扫描统计摘要
+* **超过阈值（高置信度）发现数：** `59` 项（SAST 严重 `1` / 高危 `6`，IaC 高危 `7`，SCA 严重 `5` / 高危 `40`）
 
-### B. ソースコード検証と誤検知（False Positive）の切り分け
-1. **SSRF アラート（`nextcloud_mcp_server/auth/login_flow.py:192`）は誤検知:** Sniper は `poll_endpoint` に対する HTTP リクエストを SSRF 候補として検出しましたが、直前の `initiate()` メソッド内で `_rewrite_to_nextcloud_host(poll_endpoint, self.nextcloud_host)` が呼ばれており、スキーム・ホスト・ポートがすべて設定済みの `self.nextcloud_host` に強制書き換えされるため、外部ホストへの SSRF は発生しません。
-2. **JWT アラート（`token_utils.py`）は意図されたトークンインスペクタ:** `verify_signature=False` は検証済みトークンまたはメタデータ表示用のヘルパーであり、認証バイパスではありません。
-3. **GitHub Actions ワークフロー（`.github/workflows/pact.yml`）:** ブランチ名のシェル展開がありますが、`if: github.event.pull_request.head.repo.full_name == github.repository` によって外部フォークからの PR はブロックされています。
+### B. 源码验证与误报（False Positive）剔除
+1. **SSRF 告警（`nextcloud_mcp_server/auth/login_flow.py:192`）为误报：** 尽管代码向 `poll_endpoint` 发起了 HTTP 请求，但在 `initiate()` 阶段已通过 `_rewrite_to_nextcloud_host(poll_endpoint, self.nextcloud_host)` 将 URL 的协议、主机名与端口强制重写为受信任的 `self.nextcloud_host`，无法被导向内网地址。
+2. **JWT 告警（`token_utils.py`）为只读元数据解析器：** `verify_signature=False` 仅用于解析令牌声明供调试展示，并非鉴权绕过。
+3. **GitHub Actions 工作流（`.github/workflows/pact.yml`）：** 存在分支名 Shell 插值，但受 `if: github.event.pull_request.head.repo.full_name == github.repository`（仅限同仓库 PR）保护，外部 Fork 仓库无法触发。
 
-### D. コード内でどのように発生し脆弱性へ変化するのか（平易な解説）
-OAuth / Login Flow v2 では、サーバーが返す `poll.endpoint` URL に対してクライアントがポーリングを行います。もしクライアントがサーバーから返された URL をそのまま信じてリクエストすると、悪意あるレスポンスによって内部ネットワーク（`169.254.169.254` 等）へリクエストが誘導される SSRF になります。本リポジトリでは `_rewrite_to_nextcloud_host()` で接続先オリジンを固定することでこれを防いでいます。一方、`.github/workflows/pact.yml` では同一リポジトリ内のブランチ名がシェルに直接展開されるため、リポジトリへの書き込み権限を持つアカウントが侵害された場合に限り、CI ランナー上でコマンド注入が可能になります。
+### D. 代码中如何产生并转化为安全漏洞（通俗讲解）
+在 Nextcloud 登录流中，如果客户端无条件请求服务端返回的 `poll.endpoint`，攻击者就能诱导客户端访问云元数据或内网接口（SSRF）。该项目通过 `_rewrite_to_nextcloud_host()` 锁定目标主机从而消除了此隐患。而在 `.github/workflows/pact.yml` 中，由于直接在 bash 脚本中拼接分支名，一旦拥有仓库写权限的内部账号令牌泄露，攻击者便可通过创建恶意命名的同仓库分支在 CI 运行器上执行命令。
 
-### E. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — 同一リポジトリのブランチ名を用いた CI ワークフロー（`pact.yml`）でのシークレット漏洩:**
-  1. 開発者の個人アクセストークン（PAT）が漏洩し、攻撃者がリポジトリ内に `feat";curl ...;#` のようなブランチを作成して PR を開く。
-  2. `same-repo` 条件を通過した `pact.yml` がブランチ名を bash スクリプト内で展開し、CI シークレットが外部へ送信される。
-* **シナリオ B — 古いロックファイル依存関係（SCA）を含んだままのコンテナ公開:**
-  1. チームが MCP サーバーを HTTP/SSE モードで社内ネットワークに公開する際、更新されていない Python 依存パッケージの既知の脆弱性（SCA 検出分）が攻撃面に露出する。
-* **シナリオ C — カスタム認証フォークで `_rewrite_to_nextcloud_host()` を削除した場合の SSRF 再発:**
-  1. 開発者がリバースプロキシ対応のために `_rewrite_to_nextcloud_host()` のオリジン固定処理を削除すると、`poll_endpoint` が任意の内部 URL を指せるようになり SSRF が発生する。
+### E. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — 利用同仓库分支名在 `pact.yml` CI 工作流中触发命令注入：**
+  1. 拥有仓库写权限的开发者令牌被盗，攻击者在主仓库创建名为 `feat";curl ...;#` 的分支并发起 PR。
+  2. `pact.yml` 通过 `same-repo` 检查并在 bash 中直接展开分支名，导致 CI 环境密钥外泄。
+* **场景 B — 以 HTTP/SSE 模式对内网开放时暴露出 `uv.lock` / `poetry.lock` 中的旧版依赖漏洞（SCA）：**
+  1. 团队将 Nextcloud MCP Server 部署为共享 HTTP 服务，未及时更新的第三方 Web 依赖包（SCA 检出项）暴露在网络边界。
+* **场景 C — 二次开发移除 `_rewrite_to_nextcloud_host()` 后引入真实 SSRF：**
+  1. 开发者为适配多域名反向代理而注释掉 `_rewrite_to_nextcloud_host()`，导致 `poll_endpoint` 可指向 `169.254.169.254` 等内网地址。
 
-### F. 単独および連鎖（Chaining）時の深刻度分析
-* **単独・連鎖深刻度:** **Low**。プロダクション SAST 脆弱性は存在せず、CI の環境変数パラメータ化および依存関係更新のみが推奨されます。
+### F. 独立与组合（攻击链 Chaining）严重度分析
+* **独立与组合严重度：** **低危（Low）**。无已验证的一方代码 SAST 漏洞，建议对 CI 变量进行 `env:` 参数化并升级依赖锁文件。
 
-### G. 実行・検証コマンド例
+### G. 示例执行与验证命令
 ```bash
-# 1. Nextcloud MCP Server に対する Sniper 監査の実行
+# 1. 对 Nextcloud MCP Server 运行 VulKill 安全审计
 python3 scripts/sniper-project-audit "$HOME/audit-targets/nextcloud-mcp" --format json --output "$HOME/audit-targets/reports/nextcloud-mcp-audit.json"
 
-# 2. login_flow.py 内の _rewrite_to_nextcloud_host 防御ロジックの確認
+# 2. 检查 login_flow.py 中的 _rewrite_to_nextcloud_host 主机重写保护逻辑
 grep -n -C 12 "_rewrite_to_nextcloud_host" "$HOME/audit-targets/nextcloud-mcp/nextcloud_mcp_server/auth/login_flow.py"
 
-# 3. pact.yml の same-repo ガード条件の確認
+# 3. 检查 pact.yml 中的 same-repo 限制条件
 grep -n -C 8 "head.repo.full_name" "$HOME/audit-targets/nextcloud-mcp/.github/workflows/pact.yml"
 ```
 
@@ -163,34 +163,34 @@ grep -n -C 8 "head.repo.full_name" "$HOME/audit-targets/nextcloud-mcp/.github/wo
 
 ## 4. MCPJam Inspector (`MCPJam/inspector`)
 
-### A. Sniper スキャン統計概要
-* **閾値超過（高信頼度）検出数:** `122` 件（SAST Critical `12` / High `8`、SCA Critical `6` / High `96`）
+### A. VulKill 扫描统计摘要
+* **超过阈值（高置信度）发现数：** `122` 项（SAST 严重 `12` / 高危 `8`，SCA 严重 `6` / 高危 `96`）
 
-### B. ソースコード検証と誤検知（False Positive）の切り分け
-* **20件の Critical/High SAST アラートのうち18件は完全な誤検知:** 14件はコメント内の英語表現 `eval (` / `exec (` に反応したもの、2件は TypeScript 型定義ファイル（`.d.ts`）、2件はフロントエンド UI のラベル文字列連結でした。
-* **実在が確認された所見:** `.github/workflows/pr-preview.yml` における同一リポジトリ限定（`same-repo` ガード付き）のブランチ名シェル展開と、ロックファイル内の SCA 依存関係アラートです。
+### B. 源码验证与误报（False Positive）剔除
+* **20 项严重/高危 SAST 告警中有 18 项为明确误报：** 其中 14 项为注释文本中的英文词汇 `eval (` / `exec (`，2 项位于 TypeScript 类型声明文件（`.d.ts`），2 项为前端 UI 标签与静态字符串拼接。
+* **确认为真实存在的发现：** `.github/workflows/pr-preview.yml` 中带有 `same-repo` 保护的分支名插值，以及锁文件中的第三方 SCA 依赖告警。
 
-### D. コード内でどのように発生し脆弱性へ変化するのか（平易な解説）
-MCPJam Inspector は開発者がローカルの MCP サーバーをブラウザ上でテスト・デバッグするためのツールです。CI ワークフロー `pr-preview.yml` では PR プレビュー環境を作成する際にブランチ名をスクリプトへ埋め込んでいます。外部フォークからの PR は `head.repo.full_name == github.repository` で遮断されていますが、環境変数（`env:`）経由ではなく直接 `${{ ... }}` で展開しているため、内部ブランチ名によるシェルインジェクションの余地が残っています。また、`npm` ロックファイル内の多数のトランジティブ依存関係（SCA）は、Inspector を共有サーバー上でホストする場合に更新が必要です。
+### D. 代码中如何产生并转化为安全漏洞（通俗讲解）
+MCPJam Inspector 是用于调试 MCP 服务的 Web 工具。在 `.github/workflows/pr-preview.yml` 中，虽然外部 Fork PR 被 `head.repo.full_name == github.repository` 拦截，但内部 PR 分支名仍直接拼接到 Shell 脚本中而非通过环境变量读取。此外，前端与服务端锁文件中包含较多旧版 npm 依赖（SCA），若将 Inspector 暴露在共享网络中则需及时更新。
 
-### E. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — 内部コントリビュータ権限を用いた `pr-preview.yml` でのプレビュー環境シークレット取得:**
-  1. リポジトリにブランチ作成権限を持つアカウントが特殊文字を含むブランチ名で PR を作成する。
-  2. プレビューデプロイ用ワークフローがブランチ名をシェル展開し、クラウドプレビュー環境のデプロイトークンが露出する。
-* **シナリオ B — 共有デバッグサーバーとして公開された Inspector の古い npm パッケージ悪用:**
-  1. 開発チームが MCPJam Inspector を社内共有サーバー上で常時稼働させ、古いフロントエンド/サーバー依存パッケージの脆弱性が内部ネットワークに露出する。
-* **シナリオ C — 悪意ある外部 MCP サーバー出力のインスペクタ表示時の DOM 処理リスク:**
-  1. 開発者が信頼できないサードパーティ MCP サーバーに接続してレスポンスを検査する際、古い UI 依存ライブラリを介して予期しないスクリプト動作が発生する。
+### E. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — 内部仓库分支命名触发 `pr-preview.yml` 预览环境部署凭据泄露：**
+  1. 具有仓库分支创建权限的账号创建包含 Shell 元字符的分支并打开 PR。
+  2. 预览部署脚本在拼接分支名时执行注入指令，泄露云端预览环境部署令牌。
+* **场景 B — 在团队内网长期托管未更新 npm 依赖的 Inspector 实例：**
+  1. 研发团队将 MCPJam Inspector 部署在内部公共服务器上，攻击者利用锁文件中旧版依赖的已知漏洞发起拒绝服务或请求伪造。
+* **场景 C — 连接不受信任的第三方 MCP 服务端时渲染恶意工具元数据：**
+  1. 开发者使用 Inspector 调试外部未知的 MCP Server，恶意服务端返回超长或特殊构造的响应负载引发前端异常。
 
-### F. 単独および連鎖（Chaining）時の深刻度分析
-* **単独・連鎖深刻度:** **Low / Medium**。外部フォーク PR は遮断されており、内部 CI ハードニングと SCA パッケージ更新が推奨事項です。
+### F. 独立与组合（攻击链 Chaining）严重度分析
+* **独立与组合严重度：** **低危 / 中危（Low / Medium）**。外部 Fork PR 已阻断，仅需加固内部 CI 脚本并升级 npm 依赖。
 
-### G. 実行・検証コマンド例
+### G. 示例执行与验证命令
 ```bash
-# 1. MCPJam Inspector に対する Sniper 監査の実行
+# 1. 对 MCPJam Inspector 运行 VulKill 安全审计
 python3 scripts/sniper-project-audit "$HOME/audit-targets/mcpjam-inspector" --format json --output "$HOME/audit-targets/reports/mcpjam-inspector-audit.json"
 
-# 2. pr-preview.yml の条件式とスクリプト展開箇所の確認
+# 2. 检查 pr-preview.yml 的触发条件与脚本插值
 grep -n -C 10 "pull_request" "$HOME/audit-targets/mcpjam-inspector/.github/workflows/pr-preview.yml"
 ```
 
@@ -198,40 +198,40 @@ grep -n -C 10 "pull_request" "$HOME/audit-targets/mcpjam-inspector/.github/workf
 
 ## 5. Codebase Memory MCP (`DeusData/codebase-memory-mcp`)
 
-### A. Sniper スキャン統計概要
-* **閾値超過（高信頼度）検出数:** `32` 件（SAST Critical `17` / High `7`、SCA High `8`）
+### A. VulKill 扫描统计摘要
+* **超过阈值（高置信度）发现数：** `32` 项（SAST 严重 `17` / 高危 `7`，SCA 高危 `8`）
 
-### B. ソースコード検証と誤検知（False Positive）の切り分け
-* **17件すべての Critical SAST アラートは誤検知:**
-  * `src/store/store.c:2864` の SQL インジェクションアラートは、プログラム内部の固定テーブル名配列と `sqlite3_prepare_v2` パラメータバインディング（`?`）を使用しており安全です。
-  * `src/lang/c_lsp.h:54` はコメント行、`kotlin_lsp.c` / `py_lsp.c` / `store.c:4482` はすべて `snprintf` や固定長境界チェック付きのバッファ操作であり、`xmalloc.c` や `mcp.c` も安全なラッパー実装です。
-  * `src/http/http_server.c` には `localhost` / `127.0.0.1` のみに限定した厳格な `Host` ヘッダー検証（違反時は HTTP `403 Forbidden`）と CORS オリジン検証が実装されており、ブラウザからのドライブバイ攻撃や DNS Rebinding は成立しません。
+### B. 源码验证与误报（False Positive）剔除
+* **全部 17 项严重 SAST 告警均为误报：**
+  * `src/store/store.c:2864` 的 SQL 注入告警实际使用的是编译期常量表名数组与 `sqlite3_prepare_v2` 参数化绑定（`?`）。
+  * `src/lang/c_lsp.h:54` 为注释行；`kotlin_lsp.c`、`py_lsp.c` 与 `store.c:4482` 均使用了带严格长度上限的 `snprintf`；`xmalloc.c` 与 `mcp.c` 为安全的内存分配包装器。
+  * `src/http/http_server.c` 已实现严格的 `Host` 请求头校验（非 `localhost` / `127.0.0.1` 直接返回 `403 Forbidden`）及仅限本地的 CORS 校验，完全阻断了浏览器跨域读取与 DNS 重绑定（DNS Rebinding）攻击。
 
-### D. コード内でどのように発生し脆弱性へ変化するのか（平易な解説）
-C 言語のプログラムでは、`sprintf` や境界チェックのないメモリコピーを使うとバッファオーバーフローになり、SQL 文字列を直接連結すると SQL インジェクションになります。また、ローカル HTTP サーバーが `Host` ヘッダーや `Origin` ヘッダーを検証しないと、ブラウザで悪意あるサイトを開いた際にローカルのソースコードインデックスが盗まれる危険があります。しかし `codebase-memory-mcp` の実際の C ソースコードを精査すると、SQL はプリペアドステートメントで処理され、文字列は `snprintf(buf, sizeof(buf), ...)` で上限が守られ、`http_server.c` は非ローカルの `Host` / `Origin` を `403` で拒否しているため、これらが脆弱性に変化することはありません。
+### D. 代码中如何产生并转化为安全漏洞（通俗讲解）
+在 C 语言服务中，如果使用不带长度限制的 `sprintf` 会导致缓冲区溢出，直接拼接用户输入与 SQL 会导致 SQL 注入，而本地 HTTP 服务若不检查 `Host` 与 `Origin` 头则会被恶意网页通过浏览器窃取本地代码索引。经逐行核查 `codebase-memory-mcp` 源码，其 SQL 查询全部采用参数化预编译，缓冲区写入均受 `snprintf(..., sizeof(buf), ...)` 约束，且 `http_server.c` 对所有外部 `Host` 与跨域 `Origin` 均强制拦截，因此静态扫描告警不会在运行时转化为实际漏洞。
 
-### E. 日常業務で発生し得る3つの重大シナリオ（もし防御実装が外された場合の境界シナリオ `シナリオ A / B / C`）
-* **シナリオ A — リバースプロキシ経由でローカル HTTP ポートを LAN に転送した場合のインデックス閲覧:**
-  1. 開発者が `http_server.c` のローカルポートを `socat` や `nginx`（`Host: localhost` 書き換え付き）で社内 LAN に公開してしまう。
-  2. この場合、`http_server.c` の `Host: localhost` チェックがプロキシによって満たされるため、同一 LAN 上の第三者がコードグラフを検索できるようになる。
-* **シナリオ B — 共有マルチユーザー Linux サーバー上でのローカルループバック共有:**
-  1. 1台の Linux 開発サーバーに複数の開発者が SSH ログインして作業している。
-  2. あるユーザーが起動した `127.0.0.1` ポートには同一マシン上の別 OS ユーザーからも接続可能であるため、`/home/community-user/private-project` のインデックス情報にローカルプロセスからアクセスされる可能性がある。
-* **シナリオ C — 大規模リポジトリの初回インデックス作成時の CPU / I/O 負荷:**
-  1. 数百万行規模のモノレポとビルド成果物ディレクトリ（`node_modules` や `target`）を除外せずにインデックス化すると、SQLite トランザクションと LSP パーサーがローカル CPU とディスク I/O を一時的に占有する。
+### E. 日常环境中可能引发的 3 个关键场景（若错误配置突破本地边界时的场景 `场景 A / B / C`）
+* **场景 A — 使用反向代理并重写 `Host: localhost` 将本地 HTTP 服务暴露至局域网：**
+  1. 开发者为方便远程访问，使用 `nginx` 或 `socat` 将 `codebase-memory-mcp` 的本地端口转发至局域网，并在代理层硬编码设置 `proxy_set_header Host localhost`。
+  2. 此举人为绕过了 `http_server.c` 的 `Host` 头保护，使局域网内其他主机可查询代码知识图谱。
+* **场景 B — 多用户共享 Linux 开发机上的本地环回端口访问：**
+  1. 多名开发者通过 SSH 共用同一台 Linux 服务器。
+  2. 由于 `127.0.0.1` 对同一操作系统内的所有本地用户可达，机器上的其他本地用户进程可连接该端口并查询 `/home/community-user/private-project` 的索引摘要。
+* **场景 C — 超大型单仓（Monorepo）首次全量构建索引时的 CPU 与磁盘 I/O 峰值：**
+  1. 对包含海量生成文件与依赖目录的仓库执行首次全量索引时，LSP 解析器与 SQLite 写入会短暂占满本地 CPU 与磁盘带宽。
 
-### F. 単独および連鎖（Chaining）時の深刻度分析
-* **単独・連鎖深刻度:** **Low**。ブラウザ経由のリモートコード漏洩チェーンは `http_server.c` の `Host` + CORS 防御により成立しません。
+### F. 独立与组合（攻击链 Chaining）严重度分析
+* **独立与组合严重度：** **低危（Low）**。浏览器远程窃取源码的攻击链因 `http_server.c` 的 `Host` + CORS 双重防护而不成立。
 
-### G. 実行・検証コマンド例
+### G. 示例执行与验证命令
 ```bash
-# 1. Codebase Memory MCP に対する Sniper 監査の実行
+# 1. 对 Codebase Memory MCP 运行 VulKill 安全审计
 python3 scripts/sniper-project-audit "$HOME/audit-targets/codebase-memory-mcp" --format json --output "$HOME/audit-targets/reports/codebase-memory-mcp-audit.json"
 
-# 2. http_server.c 内の Host ヘッダー検証（403 Forbidden）と CORS 防御の確認
+# 2. 验证 http_server.c 中的 Host 头校验（403 Forbidden）与 CORS 防护
 grep -n -C 15 "403" "$HOME/audit-targets/codebase-memory-mcp/src/http/http_server.c"
 
-# 3. store.c:2864 周辺の sqlite3 パラメータバインディング実装の確認
+# 3. 检查 store.c:2864 附近的 sqlite3 参数化绑定源码
 sed -n '2850,2880p' "$HOME/audit-targets/codebase-memory-mcp/src/store/store.c"
 ```
 
@@ -239,35 +239,35 @@ sed -n '2850,2880p' "$HOME/audit-targets/codebase-memory-mcp/src/store/store.c"
 
 ## 6. GitLab MCP Server (`yoda-digital/gitlab-mcp-server`)
 
-### A. Sniper スキャン統計概要
-* **閾値超過（高信頼度）検出数:** `5` 件（Critical `0`、High `4`、Medium `1`）
+### A. VulKill 扫描统计摘要
+* **超过阈值（高置信度）发现数：** `5` 项（严重 `0`、高危 `4`、中危 `1`）
 
-### B. ソースコード検証と誤検知（False Positive）の切り分け
-* `recorder.go` および `make.go` におけるファイル操作・コマンド実行アラートはテスト記録およびビルド補助ツールであり誤検知です。
-* 実在する唯一のセキュリティ設定所見は、ユーザーが明示的に環境変数 `GITLAB_MCP_SKIP_TLS_VERIFY=true` を設定した場合に `InsecureSkipVerify: true` が有効になるオプトイン機能です。
+### B. 源码验证与误报（False Positive）剔除
+* `recorder.go` 与 `make.go` 中的文件读写与命令执行告警均为本地测试录制与构建脚本，属于误报。
+* 唯一真实的安全配置项是：当用户显式设置环境变量 `GITLAB_MCP_SKIP_TLS_VERIFY=true` 时，Go HTTP 客户端会启用 `InsecureSkipVerify: true`。
 
-### D. コード内でどのように発生し脆弱性へ変化するのか（平易な解説）
-社内 GitLab サーバーが自己署名証明書（Self-Signed Certificate）を使っている場合、開発者は手っ取り早く接続エラーを消すために `GITLAB_MCP_SKIP_TLS_VERIFY=true` を設定しがちです。このフラグを有効にすると、Go の HTTP クライアントは接続先サーバーの TLS 証明書が本物かどうかを一切確認しなくなります。その結果、開発者が外出先の Wi-Fi 等で IDE を開いた際、通信経路上の攻撃者（MITM）が偽の GitLab サーバーになりすましてリクエストを受け取り、ヘッダーに含まれる `PRIVATE-TOKEN` や `Authorization: Bearer glpat-...` トークンをそのまま盗み取ることが可能になります。
+### D. 代码中如何产生并转化为安全漏洞（通俗讲解）
+许多企业的内部 GitLab 使用自签名证书。开发者为了省去配置根证书的步骤，往往在 MCP 配置文件中开启 `GITLAB_MCP_SKIP_TLS_VERIFY=true`。一旦启用该选项，Go TLS 客户端将不再验证服务端证书的真伪。当开发者携带笔记本电脑连接到咖啡馆、酒店或机场的公共 Wi-Fi 时，同一网络中的攻击者只需伪造任意 TLS 证书即可劫持连接，直接截获请求头中的 `PRIVATE-TOKEN` 或 `Authorization: Bearer glpat-...` 高权限个人访问令牌。
 
-### E. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — 社内自己署名 GitLab 用に `GITLAB_MCP_SKIP_TLS_VERIFY=true` を設定した開発者がカフェ/ホテルの Wi-Fi でトークンを奪われる:**
-  1. エンジニアが社内 GitLab の証明書エラーを回避するため、IDE の MCP 設定に `GITLAB_MCP_SKIP_TLS_VERIFY=true` を追加する。
-  2. 出張先のホテルやカフェの Wi-Fi で IDE を起動した際、MCP サーバーが GitLab へ接続を試み、同一ネットワーク上の攻撃者が偽証明書で応答して `glpat-...` パーソナルアクセストークンを窃取する。
-* **シナリオ B — チーム共有ドキュメントでの非安全な MCP 設定テンプレートの拡散:**
-  1. チームのオンボーディング資料で `claude_desktop_config.json` のサンプルに最初から `GITLAB_MCP_SKIP_TLS_VERIFY=true` が記載され、全員に配布される。
-  2. 正規の TLS 証明書を持つ本番 GitLab インスタンスへの通信まで恒久的に証明書検証なしとなり、組織全体のソースコード・PR 操作権限が MITM リスクに晒される。
-* **シナリオ C — 企業プロキシ（TLS インスペクション）環境でのルート CA 登録省略による検証無効化:**
-  1. 社内プロキシのルート CA 証明書を `SSL_CERT_FILE` に登録する代わりに、CI エージェント上で `GITLAB_MCP_SKIP_TLS_VERIFY=true` を有効化してしまい、偽装エンドポイントへの接続を許す。
+### E. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — 为内网自签名 GitLab 开启 `GITLAB_MCP_SKIP_TLS_VERIFY=true` 的开发者在公共 Wi-Fi 下泄露 GitLab PAT：**
+  1. 工程师为消除内网 GitLab 证书报错，在 IDE 的 MCP 配置中写入 `GITLAB_MCP_SKIP_TLS_VERIFY=true`。
+  2. 当工程师在外网 Wi-Fi 下启动 IDE 时，MCP 服务发起连接，局域网中间人使用伪造证书完成握手并窃取 `glpat-...` 令牌。
+* **场景 B — 团队内部文档将不安全的 MCP 配置模板作为默认标准推广：**
+  1. 团队 Wiki 中的 `claude_desktop_config.json` 模板默认加上了 `GITLAB_MCP_SKIP_TLS_VERIFY=true` 并被全体成员复制使用。
+  2. 即便访问拥有合法证书的生产 GitLab 实例，TLS 校验也被永久关闭，整个研发团队的代码库读写权限面临中间人劫持风险。
+* **场景 C — 在企业 TLS 流量解密网关环境下用关闭校验替代配置 `SSL_CERT_FILE`：**
+  1. CI/CD 节点因企业防火墙 TLS 解密而报证书错误，运维人员未导入企业根 CA，而是直接设置 `GITLAB_MCP_SKIP_TLS_VERIFY=true`，导致流水线通信丧失传输层认证。
 
-### F. 単独および連鎖（Chaining）時の深刻度分析
-* **単独・連鎖深刻度:** **Low**。デフォルトでは TLS 検証は有効（`false`）であり、連鎖する他の脆弱性も存在しません。
+### F. 独立与组合（攻击链 Chaining）严重度分析
+* **独立与组合严重度：** **低危（Low）**。默认状态下 TLS 校验保持开启，仅在用户主动启用该环境变量时产生风险。
 
-### G. 実行・検証コマンド例
+### G. 示例执行与验证命令
 ```bash
-# 1. GitLab MCP Server に対する Sniper 監査の実行
+# 1. 对 GitLab MCP Server 运行 VulKill 安全审计
 python3 scripts/sniper-project-audit "$HOME/audit-targets/gitlab-mcp-server" --format json --output "$HOME/audit-targets/reports/gitlab-mcp-server-audit.json"
 
-# 2. GITLAB_MCP_SKIP_TLS_VERIFY と InsecureSkipVerify の実装箇所の確認
+# 2. 检查 GITLAB_MCP_SKIP_TLS_VERIFY 与 InsecureSkipVerify 的源码实现
 grep -rn -C 8 "GITLAB_MCP_SKIP_TLS_VERIFY" "$HOME/audit-targets/gitlab-mcp-server/"
 ```
 
@@ -275,39 +275,38 @@ grep -rn -C 8 "GITLAB_MCP_SKIP_TLS_VERIFY" "$HOME/audit-targets/gitlab-mcp-serve
 
 ## 7. Apktool MCP (`zinja-coder/apktool-mcp-server`)
 
-### A. Sniper スキャン統計概要
-* **閾値超過（高信頼度）検出数:** `16` 件（SAST Medium `1`、SCA Critical `4` / High `12`）
+### A. VulKill 扫描统计摘要
+* **超过阈值（高置信度）发现数：** `16` 项（SAST 中危 `1`，SCA 严重 `4` / 高危 `12`）
 
-### B. ソースコード検証と誤検知（False Positive）の切り分け
-* ファーストパーティ Python コードには Critical/High の SAST 脆弱性（コマンドインジェクション等）は存在せず、1件の Medium アラートは誤検知です。
-* 一方、`uv.lock` 内にロックされているサードパーティパッケージ（`authlib 1.6.8`、`cryptography 46.0.5`、`pyjwt 2.11.0`、`python-multipart 0.0.20`、`starlette 0.47.3`、`urllib3 2.5.0` 等）に対して **Critical 4件、High 12件の SCA 依存関係レコード** が検出されました。
+### B. 源码验证与误报（False Positive）剔除
+* 一方 Python 源码无严重或高危 SAST 漏洞，1 项中危告警为误报。
+* `uv.lock` 锁定的第三方依赖包中存在 **4 项严重、12 项高危 SCA 漏洞记录**（涉及 `authlib 1.6.8`、`cryptography 46.0.5`、`pyjwt 2.11.0`、`python-multipart 0.0.20`、`starlette 0.47.3`、`urllib3 2.5.0`）。
 
-### D. コード内でどのように発生し脆弱性へ変化するのか（平易な解説）
-自身の Python コードにバグがなくても、`uv.lock` で古いバージョンのライブラリ（`starlette`、`python-multipart`、`authlib` 等）が固定されていると、`uv sync --frozen` を実行したすべての環境に既知の脆弱性を持つライブラリがそのままインストールされます。ローカルの `stdio` モードで個人利用する分には影響は限定的ですが、MCP サーバーを HTTP/SSE モードでネットワーク越しに公開したり、不特定の外部 APK 解析パイプラインに組み込んだりすると、下層ライブラリの認証不備や DoS 脆弱性が直接悪用可能になります。
+### D. 代码中如何产生并转化为安全漏洞（通俗讲解）
+即便项目自身编写的 Python 业务逻辑没有漏洞，只要 `uv.lock` 锁定了存在已知 CVE 的旧版底层框架（如 `starlette`、`python-multipart`、`authlib`），用户执行 `uv sync --frozen` 时就会原封不动地安装这些旧版本。如果将该 MCP 服务以 HTTP/SSE 模式部署在共享网络上，攻击者便可通过底层框架的鉴权绕过或分片解析缺陷直接发起攻击。
 
-### E. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — ネットワーク公開されたリモート APK 解析 MCP サーバーにおける `authlib` / `pyjwt` の認証検証不備:**
-  1. セキュリティチームが Apktool MCP を社内共有サーバー上で HTTP/SSE トランスポートとして公開し、JWT ベースのアクセス制御を有効化する。
-  2. `uv.lock` 内の古い `authlib 1.6.8` / `pyjwt 2.11.0` の既知のトークン検証不備を突かれ、未承認クライアントからデコンパイル API が呼び出される。
-* **シナリオ B — `python-multipart 0.0.20` / `starlette 0.47.3` を介した異常なマルチパートリクエストによるサービス停止（DoS）:**
-  1. HTTP エンドポイントに対して細工されたマルチパート境界（boundary）を持つリクエストが送信される。
-  2. 古い `python-multipart` パーサーが過剰な CPU・メモリを消費し、MCP サーバープロセスがハングする。
-* **シナリオ C — 悪意ある APK ファイルの逆アセンブル時におけるリソース枯渇（Zip Bomb / 大量リソース展開）:**
-  1. マルウェア解析担当者が極端に圧縮率の高い APK（Zip Bomb 構造）を Apktool MCP に渡す。
-  2. 下層の展開処理がディスク容量とメモリを使い果たし、解析ワークステーションが一時停止する。
+### E. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — 远程共享 APK 逆向分析服务器上利用 `authlib 1.6.8` / `pyjwt 2.11.0` 缺陷绕过鉴权：**
+  1. 安全团队将 Apktool MCP 以 HTTP/SSE 模式部署在内网分析服务器上，并使用 JWT 中间件保护接口。
+  2. 攻击者利用 `uv.lock` 中旧版 `authlib` / `pyjwt` 的已知验证缺陷伪造令牌，未授权调用反编译接口。
+* **场景 B — 利用 `python-multipart 0.0.20` 与 `starlette 0.47.3` 解析缺陷触发拒绝服务（DoS）：**
+  1. 攻击者向 HTTP 模式的 MCP 端点发送构造了特殊边界（boundary）的 `multipart/form-data` 请求。
+  2. 旧版解析器消耗大量 CPU 与内存，导致 APK 逆向服务卡死。
+* **场景 C — 反编译恶意构造的高压缩比 APK（Zip Bomb）引发分析主机资源耗尽：**
+  1. 分析人员提交包含超深层嵌套或超大资源表的恶意 APK，导致本地磁盘与内存耗尽。
 
-### F. 単独および連鎖（Chaining）時の深刻度分析
-* **単独・連鎖深刻度:** **Low / Medium（SCA）**。ファーストパーティ SAST はクリーンであり、`uv lock --upgrade` による依存パッケージ更新が推奨されます。
+### F. 独立与组合（攻击链 Chaining）严重度分析
+* **独立与组合严重度：** **低危 / 中危（SCA）**。一方代码无漏洞链，升级 `uv.lock` 即可修复。
 
-### G. 実行・検証コマンド例
+### G. 示例执行与验证命令
 ```bash
-# 1. Apktool MCP に対する Sniper 監査の実行
+# 1. 对 Apktool MCP 运行 VulKill 安全审计
 python3 scripts/sniper-project-audit "$HOME/audit-targets/apktool-mcp" --format json --output "$HOME/audit-targets/reports/apktool-mcp-audit.json"
 
-# 2. uv.lock 内の主要パッケージバージョンの確認
+# 2. 检查 uv.lock 中锁定的第三方依赖版本
 grep -n -A 2 -E 'name = "(authlib|cryptography|pyjwt|python-multipart|starlette|urllib3)"' "$HOME/audit-targets/apktool-mcp/uv.lock"
 
-# 3. Sniper CLI レポートツールで High 以上の検出項目を一覧表示
+# 3. 使用 VulKill CLI 报告工具筛选高危及以上发现
 python3 cli_reports.py --input "$HOME/audit-targets/reports/apktool-mcp-audit.json" --min-severity high
 ```
 
@@ -315,169 +314,168 @@ python3 cli_reports.py --input "$HOME/audit-targets/reports/apktool-mcp-audit.js
 
 ## 8. JADX MCP (`zinja-coder/jadx-mcp-server`)
 
-### A. Sniper スキャン統計概要
-* **閾値超過（高信頼度）検出数:** `32` 件（SAST Medium `3`、SCA Critical `6` / High `26`）
+### A. VulKill 扫描统计摘要
+* **超过阈值（高置信度）发现数：** `32` 项（SAST 中危 `3`，SCA 严重 `6` / 高危 `26`）
 
-### B. ソースコード検証と誤検知（False Positive）の切り分け
-* ファーストパーティ Python コードに Critical/High の SAST 脆弱性はなく、3件の Medium アラートもローカル JADX ブリッジ通信に関するもので悪用可能な脆弱性ではありません。
-* `uv.lock` 内のロック済み依存関係に対して **Critical 6件、High 26件の SCA 脆弱性レコード**（`authlib 1.6.8`、`pyjwt 2.11.0`、`cryptography 46.0.5`、`python-multipart 0.0.20`、`starlette 0.47.3`、`urllib3 2.5.0` 等）が検出されました。
+### B. 源码验证与误报（False Positive）剔除
+* 一方 Python 源码无严重或高危 SAST 漏洞，3 项中危告警均为本地 JADX 插件通信辅助代码。
+* `uv.lock` 中包含 **6 项严重、26 项高危 SCA 依赖记录**（涉及 `authlib 1.6.8`、`pyjwt 2.11.0`、`cryptography 46.0.5`、`python-multipart 0.0.20`、`starlette 0.47.3`、`urllib3 2.5.0` 等）。
 
-### D. コード内でどのように発生し脆弱性へ変化するのか（平易な解説）
-JADX MCP は、リバースエンジニアリングツール JADX で開いている Android アプリのコードを AI アシスタントへ渡すブリッジサーバーです。ユーザーが `uv sync` で環境を構築すると、`uv.lock` に記載された脆弱な旧バージョンの HTTP/認証フレームワークがそのまま導入されます。JADX MCP をリモート解析サーバー上で HTTP/SSE モードで稼働させた場合、ファーストパーティコードに問題がなくても、基盤となる `starlette` や `authlib`、`urllib3` の既知の脆弱性を突かれるリスクが生じます。
+### D. 代码中如何产生并转化为安全漏洞（通俗讲解）
+当用户使用 `uv sync --frozen` 安装 JADX MCP 时，会精确安装 `uv.lock` 中锁定的旧版库。若将 JADX MCP 从本地 `stdio` 模式切换为通过网络访问的 HTTP/SSE 服务（例如供团队远程连接分析服务器上的 JADX 实例），底层的 `authlib`/`pyjwt` 算法混淆或 `python-multipart` 拒绝服务漏洞便可能被网络攻击者利用。
 
-### E. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — リモートリバースエンジニアリングサーバー上の `authlib 1.6.8` / `pyjwt 2.11.0` を介した認証回避:**
-  1. モバイルセキュリティチームが、高性能サーバー上で JADX MCP を HTTP/SSE モードで起動し、OAuth/JWT で保護して共有利用する。
-  2. `uv.lock` 内の古い `authlib` / `pyjwt` の既知のアルゴリズム・クレーム検証の欠陥により、細工されたトークンで非公開アプリの逆コンパイル結果が読み取られる。
-* **シナリオ B — `python-multipart 0.0.20` および `starlette 0.47.3` を突いたマルチパート解析 DoS:**
-  1. HTTP モードで公開されている MCP ポートに対し、不正な形式の `multipart/form-data` ペイロードが送信される。
-  2. パーサーのバックトラッキングやメモリ消費により、JADX MCP ブリッジが応答不能になる。
-* **シナリオ C — `urllib3 2.5.0` / `cryptography 46.0.5` におけるリダイレクト時のヘッダー漏洩・証明書解析リスク:**
-  1. JADX MCP が外部シンボルサーバーやプラグインエンドポイントへ `urllib3` で通信した際、クロスオリジンリダイレクト時に認証ヘッダーが保持されたまま外部へ転送される。
+### E. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — 远程逆向分析服务器上通过 `authlib 1.6.8` / `pyjwt 2.11.0` 绕过 OAuth/JWT 校验：**
+  1. 移动安全团队在高性能服务器上以 HTTP/SSE 模式运行 JADX MCP，并配置 JWT 鉴权保护正在逆向的商业 APK 代码。
+  2. 由于锁文件中旧版 `authlib` 与 `pyjwt` 的已知验证缺陷，攻击者使用篡改后的令牌绕过校验并读取反编译源码。
+* **场景 B — 通过 `python-multipart 0.0.20` 与 `starlette 0.47.3` 触发多部分请求 CPU/内存耗尽：**
+  1. 向 HTTP 模式运行的 MCP 服务发送带有畸形 boundary 的 `multipart/form-data` 请求，导致 JADX MCP 桥接进程阻塞。
+* **场景 C — `urllib3 2.5.0` 与 `cryptography 46.0.5` 依赖中的跨域重定向敏感头泄露：**
+  1. 当 JADX MCP 通过 `urllib3` 请求远程符号或资源服务器并遇到跨域重定向时，未清理的认证头可能泄露至重定向目标。
 
-### F. 単独および連鎖（Chaining）時の深刻度分析
-* **単独・連鎖深刻度:** **Low / Medium（SCA）**。ファーストパーティコードの攻撃チェーンはなく、`uv.lock` の更新のみで解消可能です。
+### F. 独立与组合（攻击链 Chaining）严重度分析
+* **独立与组合严重度：** **低危 / 中危（SCA）**。无一方代码攻击链，建议执行依赖升级。
 
-### G. 実行・検証コマンド例
+### G. 示例执行与验证命令
 ```bash
-# 1. JADX MCP に対する Sniper 監査の実行
+# 1. 对 JADX MCP 运行 VulKill 安全审计
 python3 scripts/sniper-project-audit "$HOME/audit-targets/jadx-mcp" --format json --output "$HOME/audit-targets/reports/jadx-mcp-audit.json"
 
-# 2. uv.lock 内の脆弱な依存関係バージョンの確認
+# 2. 检查 uv.lock 中的受影响依赖版本
 grep -n -A 2 -E 'name = "(authlib|cryptography|pyjwt|python-multipart|starlette|urllib3)"' "$HOME/audit-targets/jadx-mcp/uv.lock"
 
-# 3. Sniper CLI で High 以上の SCA 検出項目をフィルタリング表示
+# 3. 通过 VulKill CLI 筛选并列出高危及以上 SCA 记录
 python3 cli_reports.py --input "$HOME/audit-targets/reports/jadx-mcp-audit.json" --min-severity high
 ```
 
 ---
 
-## 比較一覧表：単独 vs. 連鎖（Chaining）深刻度および証拠ステータス
+## 汇总对比表：独立 vs. 组合（攻击链 Chaining）严重度与证据状态
 
-| リポジトリ | Sniper SAST / IaC / SCA 概要 | ソースコード検証結果（実在 vs. 誤検知） | 単独深刻度 | 検出項目は連鎖するか？（Chaining） | 連鎖時の深刻度と公開ステータス |
+| 仓库 | VulKill SAST / IaC / SCA 摘要 | 已验证源码证据（真实 vs. 误报） | 独立严重度 | 发现项是否串联成攻击链？（Chaining） | 组合（攻击链）严重度与披露状态 |
 | :--- | :--- | :--- | :---: | :--- | :--- |
-| **1. `autogpt`** | 閾値超過 `93` 件（`2C / 39H`）; トリアージ `142` 件 | **Critical SQLi 2件（`obj.execute`）、JWT、FastAPI `Security()` はすべて誤検知**; `jobstore_backfill.py` の `pickle.loads` + Compose デフォルトパスワード + Root Dockerfile は実在 | **Low / Medium** | **条件付き仮説:** 攻撃者が DB の `apscheduler_jobs` テーブルへの書き込み権限を得た場合のみ `pickle.loads` + Root コンテナが連鎖 | **MEDIUM / HIGH（条件付き）** *（直接の未認証脆弱性なし；多層防御の強化対象）* |
-| **2. `zitadel`** | 閾値超過 `67` 件（`8C / 42H`）; トリアージ `286` 件 | **Critical SQLi/`exec` 8件はすべて誤検知**; `deploy/compose/` 配下の3つの `docker.sock` マウントとドキュメント内の `TLS_REJECT=0` は実在 | **Low / Medium** | **いいえ（別々のサンプル）:** `docker.sock`（`deploy/compose/`）と `TLS_REJECT=0`（`apps/docs/...`）は別ファイル | **LOW / MEDIUM** *（開発・サンプル構成のハードニング；製品 CVE ではない）* |
-| **3. `nextcloud-mcp`** | 閾値超過 `59` 件（`SAST 1C/6H`, `IaC 7H`, `SCA 5C/40H`） | **`login_flow.py:192` の SSRF（`initiate()` 内に `_rewrite_to_nextcloud_host` あり）と `token_utils.py` の JWT は誤検知**; `pact.yml` は `same-repo` 保護あり | **Low** | **いいえ:** `pact.yml` は外部フォーク PR を遮断しており、`poll_endpoint` も `self.nextcloud_host` に固定されている | **LOW** *（検証済み SAST 脆弱性なし；内部 CI のハードニング）* |
-| **4. `mcpjam-inspector`** | 閾値超過 `122` 件（`SAST 12C/8H`, `SCA 6C/96H`） | **Critical/High SAST 20件中18件は明確な誤検知**（コメント内の `eval (` / `exec (` 14件、`.d.ts` 2件、UI ラベル 2件）; `pr-preview.yml` は `same-repo` 保護あり | **Low** | **いいえ:** 外部フォーク PR は遮断されており、同一リポジトリ内ブランチ展開のハードニング対象 | **LOW / MEDIUM** *（内部 CI ハードニングおよび SCA 更新）* |
-| **5. `codebase-memory-mcp`** | 閾値超過 `32` 件（`SAST 17C/7H`, `SCA 8H`） | **`store.c:2864` SQLi、`c_lsp.h:54` コメント、`kotlin_lsp.c`/`py_lsp.c`/`store.c:4482` 境界付きバッファ、`xmalloc.c`、`mcp.c` はすべて誤検知**; `http_server.c` は `localhost` CORS + `Host`（403）保護あり | **Low** | **いいえ:** `http_server.c` は外部オリジンに CORS ヘッダーを返さず、DNS Rebinding も拒否する | **LOW** *（ブラウザ経由のコード漏洩チェーンは不成立）* |
-| **6. `gitlab-mcp-server`** | 閾値超過 `5` 件（`0C / 4H`） | `recorder.go` と `make.go` は誤検知; `GITLAB_MCP_SKIP_TLS_VERIFY=true` はユーザーが明示設定した時のみ有効 | **Low** | **いいえ:** 連鎖する検出項目は存在しない | **LOW** *（オプトイン設定）* |
-| **7. `apktool-mcp`** | 閾値超過 `16` 件（`SAST 1 Medium`, `SCA 4C / 12H`） | SAST 警告は誤検知; **`uv.lock` 内に Critical 4件、High 12件の SCA 依存関係レコードが存在** | **Low / Medium (SCA)** | **いいえ:** ファーストパーティのコード連鎖はなし；依存関係の更新が必要 | **LOW / MEDIUM (SCA)** *（SAST はクリーン、SCA レコードあり）* |
-| **8. `jadx-mcp`** | 閾値超過 `32` 件（`SAST 3 Medium`, `SCA 6C / 26H`） | Critical/High SAST 脆弱性なし; **`uv.lock` 内に Critical 6件、High 26件の SCA 依存関係レコードが存在** | **Low / Medium (SCA)** | **いいえ:** ファーストパーティのコード連鎖はなし；依存関係の更新が必要 | **LOW / MEDIUM (SCA)** *（Critical/High SAST なし、SCA レコードあり）* |
+| **1. `autogpt`** | `93` 项超阈值（`2C / 39H`）；`142` 项分诊 | **2 项严重 SQLi（`obj.execute`）、JWT 与 FastAPI `Security()` 均为误报**；`jobstore_backfill.py` `pickle.loads` + Compose 硬编码密码 + Root Dockerfile 真实存在 | **低危 / 中危** | **条件性假设：** 仅当攻击者获取数据库 `apscheduler_jobs` 表写权限时，`pickle.loads` + Root 容器才会串联 | **中危 / 高危（条件性）** *（无直接未授权漏洞；属于纵深防御加固）* |
+| **2. `zitadel`** | `67` 项超阈值（`8C / 42H`）；`286` 项分诊 | **全部 8 项严重 SQLi/`exec` 均为误报**；`deploy/compose/` 下 3 处 `docker.sock` 挂载与文档示例中的 `TLS_REJECT=0` 真实存在 | **低危 / 中危** | **否（位于不同示例）：** `docker.sock`（`deploy/compose/`）与 `TLS_REJECT=0`（`apps/docs/...`）位于不同文件 | **低危 / 中危** *（开发/示例部署加固；非产品 CVE）* |
+| **3. `nextcloud-mcp`** | `59` 项超阈值（`SAST 1C/6H`, `IaC 7H`, `SCA 5C/40H`） | **`login_flow.py:192` SSRF（`initiate()` 内有 `_rewrite_to_nextcloud_host`）与 `token_utils.py` JWT 均为误报**；`pact.yml` 受 `same-repo` 保护 | **低危** | **否：** `pact.yml` 对外部 Fork PR 关闭；`poll_endpoint` 在 `initiate()` 中已绑定至 `self.nextcloud_host` | **低危** *（无已验证 SAST 漏洞；内部 CI 加固）* |
+| **4. `mcpjam-inspector`** | `122` 项超阈值（`SAST 12C/8H`, `SCA 6C/96H`） | **20 项严重/高危 SAST 中 18 项为确认误报**（14 处注释 `eval (` / `exec (`、2 处 `.d.ts`、2 处 UI 字符串）；`pr-preview.yml` 受 `same-repo` 保护 | **低危** | **否：** 外部 Fork PR 已拦截；同仓库分支名插值建议加固 | **低危 / 中危** *（内部 CI 加固与 SCA 升级）* |
+| **5. `codebase-memory-mcp`** | `32` 项超阈值（`SAST 17C/7H`, `SCA 8H`） | **`store.c:2864` SQLi、`c_lsp.h:54` 注释、`kotlin_lsp.c`/`py_lsp.c`/`store.c:4482` 定长缓冲区、`xmalloc.c` 与 `mcp.c` 均为误报**；`http_server.c` 具 `localhost` CORS + `Host`（403）保护 | **低危** | **否：** `http_server.c` 不向外部源返回 CORS 头并拒绝 DNS 重绑定 | **低危** *（浏览器远程代码泄露链不成立）* |
+| **6. `gitlab-mcp-server`** | `5` 项超阈值（`0C / 4H`） | `recorder.go` 与 `make.go` 为误报；`GITLAB_MCP_SKIP_TLS_VERIFY=true` 仅在用户主动设置时生效 | **低危** | **否：** 无可串联发现项 | **低危** *（可选配置项）* |
+| **7. `apktool-mcp`** | `16` 项超阈值（`SAST 1 中危`, `SCA 4C / 12H`） | SAST 告警为误报；**`uv.lock` 中存在 4 项严重、12 项高危 SCA 依赖记录** | **低危 / 中危 (SCA)** | **否：** 无已验证一方代码攻击链；需升级依赖包 | **低危 / 中危 (SCA)** *（SAST 干净，存在 SCA 记录）* |
+| **8. `jadx-mcp`** | `32` 项超阈值（`SAST 3 中危`, `SCA 6C / 26H`） | 无严重/高危 SAST 漏洞；**`uv.lock` 中存在 6 项严重、26 项高危 SCA 依赖记录** | **低危 / 中危 (SCA)** | **否：** 无已验证一方代码攻击链；需升级依赖包 | **低危 / 中危 (SCA)** *（无严重/高危 SAST，存在 SCA 记录）* |
 
 ---
 
-## 第 III 部 — Sniper スキャンで発見された11件の検証済み脆弱性（コードから脆弱性への変化、日常業務シナリオ、および実行・検証コマンド）
+## 第三部分 — VulKill 扫描发现的 11 项已验证安全漏洞（代码漏洞形成机制、日常场景与示例执行命令）
 
-以下では、**Sniper** 静的・動的解析エンジンを用いたセキュリティスキャンで発見され、**段階的な日常業務の重大シナリオ（`シナリオ A / B / C`）**、**エンドツーエンドのランタイム証明（`RED -> GREEN + BENIGN`）**、および **検証済み防御パッチ（`git diff`）** によって実証された **11件のセキュリティ脆弱性**（[advisories/README.ja.md](advisories/README.ja.md)）について、まず一覧表を示し、続いて **各バグがソースコード内でどのように発生し、どのように悪用可能な脆弱性へと変化するのか、3つの日常業務シナリオ、および実行・検証コマンド例** を網羅した11個の詳細技術セクション（`III.01` ～ `III.11`）を掲載します。
+以下为我们通过 **VulKill** 静态/动态分析引擎发现并经 **分步日常关键场景（`场景 A / B / C`）**、**端到端运行时证明（`RED -> GREEN + BENIGN`）** 与 **已验证防御补丁（`git diff`）** 证实的 **11 项安全漏洞**（[advisories/README.zh-CN.md](advisories/README.zh-CN.md)）。首先展示汇总表，随后是包含 **每个漏洞在源码中如何产生、如何一步步演变为可利用漏洞、3 个日常关键场景以及示例执行/验证命令** 的 11 个深度技术章节（`III.01` – `III.11`）：
 
-| # | アドバイザリ & Upstream GHSA ID | 対象プロジェクト & コンポーネント | CWE & CVSS v3.1 | 日常業務における3つの重大影響シナリオ（`シナリオ A / B / C`） | ランタイム証明（`RED -> GREEN`） |
+| # | 安全公告 & 上游 GHSA ID | 目标项目 & 组件 | CWE & CVSS v3.1 | 日常环境中引发的关键风险场景（`场景 A / B / C`） | 运行时证明（`RED -> GREEN`） |
 | :-: | :--- | :--- | :--- | :--- | :--- |
-| **01** | [`01-STIRLING-CAND-02-SYMLINK.md`](advisories/ja/01-STIRLING-CAND-02-SYMLINK.md)<br/>`GHSA-hpc7-xx5r-gc44` | **Stirling-Tools/Stirling-PDF** (`v3.2.2`)<br/>`FolderInputSource.java:337-377`<br/>`FolderOutputSink.java:338-345` | `CWE-59` / `CWE-61`<br/>**7.1 High** | **A)** 社内共有 SMB/NFS スキャナーフォルダに置かれた `invoice.pdf -> /configs/settings.yml` シンボリックリンクが、デフォルト `recursive=false` モードで `FolderAccessGuard` をバイパスし、管理者/OAuth/SMTP 秘密情報を出力フォルダへ流出させます。<br/>**B)** 自動 SFTP/Nextcloud 文書取込パイプラインで置かれたシンボリックリンクにより、`FolderOutputSink.archiveOriginal()` がホスト SSH 鍵や `.env` をアーカイブへコピー・移動させます。<br/>**C)** マルチテナント部門別フォルダ間で、ある部門が他部門の機密契約・給与ディレクトリへシンボリックリンクを張り、無断閲覧・削除を行います。 | `RED`: `symlink_accepted: true, protected_settings_exfiltrated: true`<br/>`GREEN`: `symlink_accepted: false, regular_file_processed: true` |
-| **02** | [`02-STIRLING-CAND-01-WEASYPRINT-SSRF.md`](advisories/ja/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md)<br/>`GHSA-ff6j-8xch-j8r6`<br/>*(`CVE-2026-71270` の修正漏れ)* | **Stirling-Tools/Stirling-PDF** (`v3.2.2`)<br/>`ConvertWebsiteToPDF.java:116-143` | `CWE-918`<br/>**8.6 High** | **A)** `/api/v1/convert/url/pdf` に `<link rel="stylesheet" href="http://127.0.0.1:.../secrets.css">` やクラウドメタデータ（`169.254.169.254`）を含む外部ページを渡すと、WeasyPrint が内部応答を取得して生成 PDF 内に直接埋め込みます。<br/>**B)** Java 側の `SsrfProtectionService` はトップレベル URL しか検査しないため、WeasyPrint サブプロセスが `@import url("http://10.0.0.12:9090/metrics")` で Kubernetes/Docker 内部網を探索します。<br/>**C)** HTTP `302` リダイレクトを使う `<img src="...">` / `<link>` サブリソースにより、ファイアウォール内側の管理画面を生成 PDF として外部流出させます。 | `RED`: `weasyprint_allowed_protocols: "data,http,https", internal_data_embedded_in_pdf: true`<br/>`GREEN`: `weasyprint_allowed_protocols: "data", internal_loopback_hit_count: 0` |
-| **03** | [`03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md`](advisories/ja/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md)<br/>`GHSA-cp36-x5hg-3gg8` | **trycua/cua** (`npm: cuabot <= 1.0.16`)<br/>`libs/cuabot/src/cuabotd.ts` | `CWE-306` / `CWE-942`<br/>**9.6 Critical** | **A)** 開発者が `npx cuabot` 起動中に任意の Web サイトを開くと、ページ内の JS が `fetch("http://localhost:7842/bash")`（`Access-Control-Allow-Origin: *`）を実行し、マウントされた `~/.cuabot/user/.claude/.credentials.json` OAuth トークンを窃取します。<br/>**B)** クロスオリジン `POST /bash` または `ws://localhost:7842/?command=...`（CSWSH）経由で、書き込み可能な `/home/community-user/.claude/settings.json` に永続的な `PreToolUse` フックを注入します。<br/>**C)** `0.0.0.0:7842` バインドのため、カフェやオフィスの同一 Wi-Fi 上の端末が認証なしで `/bash` と `/screenshot` を呼び出し、画面監視とコマンド実行を行います。 | `RED`: `http_status: 200, mounted_host_claude_credentials_exfiltrated: true`<br/>`GREEN`: `http_status: 403`<br/>`BENIGN`: `http_status: 200` |
-| **04** | [`04-CUA-CAND-02-WORKER-SERVER-RCE.md`](advisories/ja/04-CUA-CAND-02-WORKER-SERVER-RCE.md)<br/>`GHSA-xm8w-gj3g-4f25` | **trycua/cua** (`pip: cua-bench-rl <= 0.1.0`)<br/>`worker_server.py:79-108, 338-360`<br/>`cua_bench/core.py:25-51` | `CWE-94` / `CWE-942`<br/>**8.8 High** | **A)** ML 研究者がローカルで RL ワーカーを実行中に閲覧した Web ページが `http://127.0.0.1:8001/reset`（`allow_origins=["*"]`）を呼び出し、`ip_filter_middleware` を通過して `spec.loader.exec_module` で任意の `<env_path>/main.py` をホスト上で実行します。<br/>**B)** Kubernetes/Docker Compose で `OSGYM_ALLOWED_IPS=""` が空の場合、`if allowed_ips:` がフェイルオープンし、`0.0.0.0:8001` が全ネットワークに認証なし RCE を公開します。<br/>**C)** クロスオリジンページや LAN 端末が `GET /screenshot` と `POST /step` を呼び出し、デスクトップ画面の盗み見とマウス・キーボード操作注入を行います。 | `RED`: `cross_origin_reset_status: 200, arbitrary_env_path_exec_module_rce: true`<br/>`GREEN`: `403 / 400, rce: false`<br/>`BENIGN`: `200` |
-| **05** | [`05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md`](advisories/ja/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md)<br/>`GHSA-3x8g-6h2v-8qx9` | **trycua/cua** (`cargo: cua-compat <= 0.8.0`)<br/>`daytona/objectstore.rs:320-422` | `CWE-22`<br/>**8.1 High** | **A)** 1つのサンドボックステナントがマルチパートアップロードを開始せずに `DELETE /daytona/dummy?uploadId=../objects` を送信するだけで、無条件の `tokio::fs::remove_dir_all` が発火し、組織全体の `objects/` スナップショットストアを消去します。<br/>**B)** `?uploadId=../../state` や `?uploadId=../../db` により `d.objects.root` の上位へ脱出し、`cua-spacesd` が書き込み可能なホストディレクトリを削除します。<br/>**C)** `PUT /daytona/key?partNumber=1&uploadId=../stage` により、マルチパートチャンクを `uploads/` 外の隣接ディレクトリへ書き込みます。 | `RED`: `delete_traversal_status: 204, objects_store_wiped_without_prior_upload: true`<br/>`GREEN`: `400 / 404, objects_store_preserved: true` |
-| **06** | [`06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md`](advisories/ja/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md)<br/>`GHSA-54v9-fxw3-36mm` | **trycua/cua** (`cargo: cua-media-codec <= 0.8.0`)<br/>`videotoolbox/mod.rs:308-420` | `CWE-125` / `CWE-190`<br/>**5.5 Medium** | **A)** macOS リモートデスクトップ配信の解像度変更時に届いた短い `FrameData::Nv12` スライスが境界未検査の `unsafe { std::ptr::copy_nonoverlapping }` で読み取られ、隣接ヒープ上の `960` バイト（セッショントークン・秘密鍵）が H.264 映像フレームにコピーされ配信されます。<br/>**B)** Safe Rust の `VtEncoder::encode` に空または短い `NV12`/`BGRA` スライスを渡すと未マップ領域を参照し、`cua-spacesd` メディアデーモンが `SIGSEGV` でクラッシュします。<br/>**C)** 不正な `y_stride` / `uv_stride` または `stride * (h - 1)` 演算によりバッファ境界を超え、マルチテナント配信プロセスでメモリ破壊を引き起こします。 | `RED`: `oob_bytes_read: 960, adjacent_heap_secret_copied_to_video_frame: true`<br/>`GREEN`: `oob_bytes_read: 0, CodecError::InvalidArgument` |
-| **07** | [`07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md`](advisories/ja/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md)<br/>`GHSA-hvhg-6x47-cq96` | **trycua/cua** (`pip: cua-bench <= 0.3.1`)<br/>`winarena_adapter/cli.py:262-265`<br/>`infra/vm/setup/server/main.py` | `CWE-668` / `CWE-732`<br/>**8.6 High** | **A)** 大学や企業のラボ LAN 上で動作する WinArena ワークステーションの `0.0.0.0:8006`（認証なし noVNC）および `0.0.0.0:3390`（パスワードなし RDP）に同一 LAN の第三者が接続し、Windows VM デスクトップと API キーを乗っ取ります。<br/>**B)** 侵害した VM 内から書き込み可能な `-v {setup_path}:/shared` マウントを悪用し、ホスト側の `winarena_adapter/infra/vm/setup` スクリプトを汚染します。<br/>**C)** VM 内の `0.0.0.0:5000` 制御サーバーにある未認証の `POST /execute_windows`（`exec()`）と `POST /setup/launch`（`shell=True`）を通じて任意の OS コマンドが実行されます。 | `RED`: `lan_exposed_ports: ["8006:8006", "3390:3389"], host_setup_dir_mounted_writable: true`<br/>`GREEN`: `lan_exposed_ports: [], host_setup_dir_mounted_writable: false` |
-| **08** | [`08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md`](advisories/ja/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md)<br/>`GHSA-qwv8-hh9r-cqrf` | **openziti/ziti** (`github.com/openziti/ziti/v2`)<br/>`ziti/util/certs.go:91-103, 199-208` | `CWE-295`<br/>**7.4 High** | **A)** DevOps エンジニアが Wi-Fi/VPN 経由で `ziti edge login` を実行した際、`AreCertsTrusted` -> `InsecureClient` 内の無条件 `InsecureSkipVerify: true` により偽 MITM 証明書が *"Verified that server supplied certificates are trusted"* と承認され、管理者パスワードが攻撃者へ送信されます。<br/>**B)** 自動 CI/CD や Kubernetes ブートストラップ処理で `ziti edge login` が偽の Edge Controller を信頼し、ID とルーターポリシーを攻撃者へ登録します。<br/>**C)** 期限切れ・失効済み・別 CA 署名のコントローラ証明書が警告なしで信頼され、Zero-Trust PKI チェーンが崩壊します。 | `RED`: `rogue_mitm_cert_accepted_as_trusted: true, admin_credentials_sent_to_mitm: true`<br/>`GREEN`: `x509.UnknownAuthorityError` |
-| **09** | [`09-N8N-CAND-01-WEBHOOK-REDOS.md`](advisories/ja/09-N8N-CAND-01-WEBHOOK-REDOS.md)<br/>`n8n-workflow <= 2.45.0` | **n8n-io/n8n** (`npm: n8n-workflow <= 2.45.0`)<br/>`string-extensions.ts:59, 94, 326, 375, 383` | `CWE-1333`<br/>**5.3 Medium** | **A)** 公開問い合わせフォームの n8n Webhook（`{{$json.body.contact.isEmail()}}`）へ 20 KB の `"a.a.a...a@!"` リクエストを1つ送ると Node.js メインイベントループが約 832 ms 停止し、10並列リクエストで全 Stripe/Slack Webhook と UI が凍結します。<br/>**B)** サポートメールやチャットを解析する `{{$json.text.extractEmail()}}` フローがドット連続文字列を含む1通のメッセージでハングし、コンテナのヘルスチェック再起動ループに陥ります。<br/>**C)** CRM データ拡充ワークフローで `{{$json.url.extractDomain()}}`（`DOMAIN_EXTRACT_REGEXP`）が評価されると、長いドット付き URL 入力でシングルスレッド V8 ランタイムが枯渇します。 | `RED`: `regex_stall_ms: 165.035 (831.78ms @ 20KB), concurrent_webhook_starved: true`<br/>`GREEN`: `regex_stall_ms: 0.017 (0.0029ms)` |
-| **10** | [`10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md`](advisories/ja/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md)<br/>`GHSA-cc9f-m5vr-pm75` | **gotify/server** (`v2.9.1`)<br/>`router/router.go:52-73, 93-102` | `CWE-601`<br/>**4.7 Medium** | **A)** `SSL.RedirectToHTTPS=true` 有効時、偽装した `Host: attacker-gotify.example.com` ヘッダー付きリクエストが `HTTP/1.1 308 Permanent Redirect` で攻撃者ドメインへリダイレクトされ、ブラウザキャッシュ汚染と URL 内の `?token=` 漏洩を引き起こします。<br/>**B)** HTTP エンドポイントへ `?token=<app-token>` 付きで通知を送る監視スクリプト（`curl -L`、Python `requests`、Uptime Kuma）が `308` リダイレクトを追跡し、アプリトークンを攻撃者サーバーへ引き渡します。<br/>**C)** `Host` ヘッダーをそのまま転送するリバースプロキシや共有キャッシュ配下でキャッシュポイズニングが発生し、全クライアントが偽ログイン画面へ誘導されます。 | `RED`: `status_code: 308, redirected_to_untrusted_host: true`<br/>`GREEN`: `redirected_to_untrusted_host: false, bound_to_configured_ssl_host: true` |
-| **11** | [`11-XROAD-CAND-01-RUNNER-INJECTION.md`](advisories/ja/11-XROAD-CAND-01-RUNNER-INJECTION.md)<br/>`GHSA-4fcw-7xqx-fjv5` | **nordic-institute/X-Road** (`38cd99ec0ebb`)<br/>`.github/workflows/build.yaml`<br/>`_build-and-package.yml:84-91` | `CWE-78`<br/>**8.5 High** | **A)** `feat";<cmd>;#` 形式の PR ブランチ名が、コードレビューや `actions/checkout` 実行前に永続セルフホストランナー `xrd-runner-8c` 上の `_build-and-package.yml` の bash スクリプト内で任意コマンドを実行します。<br/>**B)** `build.yaml` が `permissions: contents: write, packages: write` と `secrets: inherit` 付きで `_build-and-package.yml` を呼ぶため、注入されたコマンドが GHCR パッケージ書き込み・リポジトリ書き込み権限付き `GITHUB_TOKEN` を掌握します。<br/>**C)** `xrd-runner-8c` は一時 VM ではなく永続セルフホストサーバーであるため、後続の公式 X-Road リリースビルドを汚染する永続バックグラウンドプロセスや Gradle/Docker キャッシュ改ざんが可能です。 | `RED`: `direct_yaml_interpolation: true, arbitrary_command_executed_on_self_hosted_runner: true`<br/>`GREEN`: `env_var_parameterized: true, arbitrary_command_executed_on_self_hosted_runner: false` |
-| **12** | [`12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md`](advisories/ja/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md)<br/>`GITLAB-CAND-02`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`app/controllers/oauth/device_authorizations_controller.rb:4-50`<br/>`app/controllers/oauth/tokens_controller.rb:42-75` | `CWE-863 / CWE-285`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N` | **How It Happens in Code:** `Oauth::DeviceAuthorizationsController` (`device_authorizations_controller.rb:4-50`) and `Oauth::TokensController` (`tokens_controller.rb:42-75`) omit `verify_admin_allowed!`, `verify_confirmed_email!`, `set_current_organization`, and `enforce_organization_maintenance_mode` (all enforced in sibling `Oauth::AuthorizationsController`).<br/>**Scenario A (Full Instance Admin Takeover):** A regular user creates an untrusted OAuth app (`trusted: false`); when an admin enters its `user_code` on `/oauth/device`, GitLab bypasses `disable_admin_oauth_scopes=true` and mints a full `api admin_mode` token allowing complete server takeover, private repo theft, and CI secret extraction.<br/>**Scenario B (Unverified Account API Backdoor):** An unconfirmed account (`confirmed_at: nil`) blocked on `/oauth/authorize` (`403`) mints persistent API & refresh tokens via `/oauth/device`.<br/>**Scenario C (Backdoor Commit During Legal/Migration Freeze):** Attackers mint tokens and push commits (`201 Created`) into frozen repositories while an organization is locked in `migration` (`503`) or `legal` (`403`) maintenance mode. | `RED`: `token_minted_admin_mode: true, post_token_admin_action_succeeded: true`<br/>`GREEN`: `503 / 403, token_minted_admin_mode: false`<br/>`pytest -k test_report1_cand02` |
-| **13** | [`13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md`](advisories/ja/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md)<br/>`GITLAB-CAND-05`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`ee/app/services/ai/catalog/mcp_servers/callback_service.rb:17-50, 87-129`<br/>`refresh_token_service.rb:18-70`<br/>`dynamic_registration_client.rb:104-136` | `CWE-918 / CWE-209`<br/>**8.5 High**<br/>`AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N` | **How It Happens in Code:** `CallbackService`, `RefreshTokenService`, `RevokeTokenService`, and `DynamicRegistrationClient` accept unvalidated RFC 8414 `token_endpoint`/`revocation_endpoint` URLs and use `OAuth2::Client` (`max_redirects: 5`, no `UrlBlocker`), reflecting raw `OAuth2::Error` bodies into `flash[:alert]`.<br/>**Scenario A (Stealing Cloud IAM Keys via `flash[:alert]`):** A `307 Temporary Redirect` on `token_endpoint` hits `169.254.169.254` or `127.0.0.1` and prints cloud IAM credentials / internal API responses directly into the user's `flash[:alert]` banner.<br/>**Scenario B (Internal `POST` SSRF & Secret Replay):** `OAuth2::Client` replays `POST` requests with `client_secret` and `refresh_token` to firewalled internal `127.0.0.1` services.<br/>**Scenario C (`RevokeTokenService` SSRF):** Disconnecting an MCP server posts Basic Auth credentials to unvalidated internal/external `revocation_endpoint` targets. | `RED`: `canary_b_request_count: 5, iam_role_credentials_exposed: true`<br/>`GREEN`: `canary_b_request_count: 0, iam_role_credentials_exposed: false`<br/>`pytest -k test_report2_cand05` |
-| **14** | [`14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md`](advisories/ja/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md)<br/>`GITLAB-CAND-06`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`ee/app/controllers/oauth/mcp_connectors_auth_controller.rb:16-78`<br/>`ee/app/services/ai/catalog/mcp_servers/connect_service.rb:16-79`<br/>`ee/lib/gitlab/oauth/client_state.rb:17-23` | `CWE-639 / CWE-862`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N` | **How It Happens in Code:** `Oauth::McpConnectorsAuthController` calls global `Ai::Catalog::McpServer.find(params[:id])` without `.in_organization(Current.organization)`, `ConnectService` overwrites DCR credentials without checking `update_ai_catalog_mcp_server`, and `ClientState.from_state` discards `data` binding.<br/>**Scenario A (Cross-Organization AI Connector Hijack):** A user in Organization A overwrites `oauth_client_id` / `oauth_client_secret` on an `McpServer` belonging to Organization B.<br/>**Scenario B (Read-Only User Overwrites Production Connector):** A non-maintainer with read-only access overwrites company MCP OAuth credentials via DCR.<br/>**Scenario C (Cross-Session Account Binding / Login CSRF):** Replaying an unbound `ClientState` token binds a victim developer's GitLab session to the attacker's external MCP account. | `RED`: `cross_org_server_mutated: true`<br/>`GREEN`: `cross_org_server_mutated: false (404 RecordNotFound)`<br/>`pytest -k test_report2_cand05` |
-| **15** | [`15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md`](advisories/ja/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md)<br/>`GITLAB-CAND-01`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`workhorse/internal/ai_assist/duoworkflow/mcp.go:25-60, 101-112, 220-239` | `CWE-918 / CWE-522`<br/>**8.2 High**<br/>`AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N` | **How It Happens in Code:** `externalMcpTransport` in `workhorse/internal/ai_assist/duoworkflow/mcp.go:41-44` omits `transport.WithSSRFFilter()`, and `roundTripper.RoundTrip` (`mcp.go:101-104`) re-injects `Authorization: Bearer` headers on every redirect hop.<br/>**Scenario A (Bearer Token Theft & Account Takeover):** A `302` redirect from an external MCP server sends the victim's live `Authorization: Bearer` token to a cross-origin attacker server.<br/>**Scenario B (Workhorse Internal & Cloud Metadata SSRF):** Redirects reach `127.0.0.1` internal services or `169.254.169.254` from the Workhorse process.<br/>**Scenario C (DNS Rebinding into Corporate Intranet):** DNS rebinding bypasses initial URL validation because Workhorse's dialer lacks `WithSSRFFilter`. | `RED`: `bearer_token_leaked_to_canary: true`<br/>`GREEN`: `bearer_token_leaked_to_canary: false, ssrfFilterError: disallowlist`<br/>`pytest -k test_report2_cand05` |
-| **16** | [`16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md`](advisories/ja/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md)<br/>`GITLAB-CAND-08`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`ee/app/services/ai/duo_workflows/mcp_config_service.rb:131-135`<br/>`ee/lib/api/ai/duo_workflows/workflows.rb:341-344, 1065`<br/>`connection_config_service.rb:220-228` | `CWE-862 / CWE-639`<br/>**7.7 High**<br/>`AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N` | **How It Happens in Code:** `McpConfigService#item_version` (`mcp_config_service.rb:134`) omits `Ability.allowed?(current_user, :read_ai_catalog_item, item_version)` (enforced at line 334), and `workflows.rb:1065` (`GET /ws`) allows overriding `workflow_definition` and `ai_catalog_item_version_id`.<br/>**Scenario A (Escalating Read-Only `chat` to Write-Capable Agent):** Overriding `workflow_definition` and `ai_catalog_item_version_id` on `/ws` injects withheld write tools (`create_issue`) into a restricted `chat` session.<br/>**Scenario B (Stealing Private `public: false` Agent Toolsets):** Enumerating `ai_catalog_item_version_id` discloses the confidential toolset of foreign private AI Catalog agents.<br/>**Scenario C (Unauthorized Private Agent Binding):** `POST /workflows` binds private cross-organization `ItemVersion` records without `:read_ai_catalog_item` checks. | `RED`: `unapproved_write_tool_injected: true, workflow_definition_overridden: true`<br/>`GREEN`: `unapproved_write_tool_injected: false`<br/>`pytest -k test_report3_cand08` |
-| **17** | [`17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md`](advisories/ja/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md)<br/>`GITLAB-CAND-07`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`ee/app/services/ai/duo_workflows/mcp_config_service.rb:57-64`<br/>`ee/app/services/ai/catalog/mcp_servers/list_service.rb:14-24`<br/>`workhorse/internal/ai_assist/duoworkflow/mcp.go:254` | `CWE-863 / CWE-639`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:L` | **How It Happens in Code:** `McpConfigService#execute` (`mcp_config_service.rb:61`) calls `.merge(ai_catalog_mcp_servers.except(:orbit))` without excluding `:gitlab`, and `ListService`/`Agent::Create` omit `.in_organization`.<br/>**Scenario A (Unlocking All Prohibited Built-in GitLab MCP Tools):** An `Ai::Catalog::McpServer` named `"GitLab"` (`:gitlab`, `Tools: nil`) overwrites the built-in `:gitlab` entry so Workhorse (`mcp.go:254`) sets `allToolsAvailable = true`, disabling all `withheld_server_tools` restrictions.<br/>**Scenario B (Cross-Org MCP Server Binding):** GraphQL `aiCatalogAgentCreate`/`Update` binds foreign-organization `McpServer` Global IDs.<br/>**Scenario C (Duo Workflow `401` DoS):** Overwriting `Headers` on `:gitlab` strips `X-Gitlab-Oauth-Token` and breaks `/api/v4/mcp`. | `RED`: `builtin_gitlab_overwritten: true, workhorse_all_tools_available: true`<br/>`GREEN`: `builtin_gitlab_overwritten: false, workhorse_all_tools_available: false`<br/>`pytest -k test_report4_cand07` |
-| **18** | [`18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md`](advisories/ja/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md)<br/>`GITLAB-CAND-04`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`app/controllers/projects/integrations/slash_commands_controller.rb:21-48`<br/>`app/models/concerns/integrations/base/slash_commands.rb:6-10, 68-76` | `CWE-601 / CWE-863`<br/>**5.4 Medium**<br/>`AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:L/A:N` | **How It Happens in Code:** `SlashCommandsController#confirm` (`slash_commands_controller.rb:23-48`) redirects to unvalidated `request_params[:redirect_url]`, passes `request_params[:response_url]` to `VerifyRequest`, and keys Redis `CACHE_KEY` only by `command_id` without `project_id`/`integration_id`.<br/>**Scenario A (Corporate SSO Phishing After Slash Command Confirm):** Confirming a slash command on the trusted GitLab domain redirects (`302 Found`) the developer to an external credential-harvesting page.<br/>**Scenario B (Cross-Project ChatOps Account Binding):** A `command_id` minted in Project B is accepted on Project A's `/slash_commands/confirm` endpoint.<br/>**Scenario C (ChatOps Callback Hijack):** `request_params[:response_url]` overrides the cached `response_url` during `VerifyRequest#approve!`. | `RED`: `http_status: 302, open_redirect_triggered: true, cross_project_cache_collision_accepted: true`<br/>`GREEN`: `404, open_redirect_triggered: false`<br/>`pytest -k test_report5_cand04` |
-| **19** | [`19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md`](advisories/ja/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md)<br/>Upstream Duplicate: `CVE-2026-40295`<br/>*(GitHub Only — Not Submitted to MITRE)* | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`lib/gitlab/devise_failure.rb:4-18`<br/>`lib/gitlab/auth/session_expire_from_init_enforcer.rb:44-62`<br/>`app/controllers/oauth/authorizations_controller.rb:316-330` | `CWE-601 / CWE-345`<br/>**5.4 Medium (Upstream CVE-2026-40295 Duplicate)**<br/>`AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N` | **[UPSTREAM DUPLICATE: `CVE-2026-40295` — Published on GitHub Only, Not Submitted to MITRE]**<br/>**How It Happens in Code:** `Gitlab::DeviseFailure` inherits `Devise 5.0.3` `redirect_url` (`CVE-2026-40295`), which redirects to an unsanitized external `Referer` on non-GET `:timeout` failures; `AuthorizationsController#validate_pkce_for_dynamic_applications` (`CAND-03`) has an early return on `nil` `code_challenge_method` (mitigated at runtime by `Doorkeeper 5.9.3`).<br/>**Scenario A/B/C:** Product-level `extract_path_from_location(request.referrer)` override in `lib/gitlab/devise_failure.rb` and controller-level PKCE defense-in-depth patch. | `DUPLICATE OF CVE-2026-40295` *(Not submitted to MITRE)*<br/>`RED`: `external_referer_redirect: true`<br/>`GREEN`: `path_extracted_only: true` |
-| **20** | [`20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md`](advisories/ja/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md)<br/>`CHIA-WLC-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/wallet/wallet_node.py:926-995` (`_add_block_from_header`) | `CWE-345 / CWE-347`<br/>**9.1 Critical**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H` | **How It Happens in Code:** `WalletNode._add_block_from_header` (`wallet_node.py:926-995`) ingests `header_block.foliage_transaction_block` without verifying `foliage_transaction_block.get_hash() == header_block.foliage.foliage_transaction_block_hash`.<br/>**Scenario A (0-XCH Capital Fake Deposit):** With zero XCH capital and no counterparty approval, an attacker sends a real header with a swapped transaction block to credit `+0.5 XCH` (`500,000,000,000 mojo`) as confirmed and cash out real USDT/BTC.<br/>**Scenario B (Persistent SQLite Poisoning):** Counterfeit coins persist across `WalletCoinStore` cold restarts (`Err.UNKNOWN_UNSPENT` on spend).<br/>**Scenario C (`CONS-SP-01` + `WLC-01`):** FullNode sync lockout followed by light-wallet fake deposit injection. | `RED`: `fake_merchant_deposit_increase_mojo: 500000000000, spend_err: UNKNOWN_UNSPENT`<br/>`GREEN`: `rejected_forged_foliage_tx_block: true, fake_increase: 0`<br/>`pytest -k test_wlc01` |
-| **21** | [`21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md`](advisories/ja/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md)<br/>`CHIA-WLC-02`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/wallet/wallet_node.py:725-777`<br/>`chia/wallet/wallet_state_manager.py:1735-1778` | `CWE-345 / CWE-400`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H` | **How It Happens in Code:** `wallet_node.py:725-777` and `wallet_state_manager.py:1735-1778` persist unverified `RespondRemovals(proofs=None)` / `spent_height` transitions into SQLite `WalletCoinStore`.<br/>**Scenario A (Clawback Cancel Lockout):** Victim cannot cancel a `0.5 XCH` Clawback coin (`tx_count: 0`); attacker claims on-chain after timelock expiry (`33361e6b...`).<br/>**Scenario B (`WLC-02` + `VR-01` Unified Chain):** Simultaneously locks live wallet cancellation and emergency `chia-vault-recover` CLI on one timeline (`t0..t4`).<br/>**Scenario C (UTXO Freeze DoS):** Freezes unspent coins across cold SQLite restarts. | `RED`: `t1_cold_reloaded_sqlite_spent: true, t2_sender_cancel_tx_count: 0, t4_recipient_claim_succeeded: true`<br/>`GREEN`: `t1_spent: false, t2_sender_cancel_tx_count: 1`<br/>`pytest -k test_wlc02` |
-| **22** | [`22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md`](advisories/ja/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md)<br/>`CHIA-GUI-WC-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain-gui** (`<= 2.6.1-rc2.dev60`)<br/>`packages/gui/src/components/walletConnect/WalletConnectContext.tsx:314-441`<br/>`constants/WalletConnectCommands.ts` | `CWE-367 / CWE-285`<br/>**8.8 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H` | **How It Happens in Code:** `WalletConnectContext.tsx:314-441` exposes all 29 commands on connect, lacks a FIFO confirmation queue, and fails to re-verify `(requestId, fingerprint, network, pairing)` in `sendCommand`.<br/>**Scenario A (Modal Overwrite Drain):** A dApp overwrites a benign `chia_getCurrentAddress` prompt with `chia_sendTransaction`, draining `0.5 XCH` (`SpendBundle d2ce2264...`).<br/>**Scenario B (Fingerprint TOCTOU):** Approval on burner key `111111` executes on main key `999999`.<br/>**Scenario C (Post-Disconnect Execution):** Pending request executes after pairing/network change. | `RED`: `modal_overwritten: true, unauthorized_spend_bundle_sha256: d2ce22645a9a23b1...`<br/>`GREEN`: `6/6 distinct WSS packets blocked`<br/>`pytest -k gui_wc01` |
-| **23** | [`23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md`](advisories/ja/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md)<br/>`CHIA-DL-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/rpc/wallet_rpc_api.py:4066-4120` (`dl_verify_proof`)<br/>`chia/data_layer/data_layer_util.py` | `CWE-347 / CWE-345`<br/>**9.1 Critical**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:H/A:N` | **How It Happens in Code:** `WalletRpcApi.dl_verify_proof` (`wallet_rpc_api.py:4066-4120`) verifies coin existence and Merkle hashes without checking `match_dl_singleton` or `launcher_id == store_id`.<br/>**Scenario A (`100,000 CAT` On-Chain Mint):** A 1-mojo non-singleton coin (`86ec0dd7...`) forges `store_id` `806a6c73...`, passing `dl_verify_proof` and minting `100,000 CAT` on-chain (`dc3f0bba...`).<br/>**Scenario B (Intrinsic RPC Bypass):** Side-by-side canonical vs. counterfeit `DLProof` both return `verified: true` in `RED`.<br/>**Scenario C (Registry Spoofing):** Forges audit proofs for any official DataLayer `store_id`. | `RED`: `counterfeit_verified: true, attacker_cat_balance_mojo: 100000000`<br/>`GREEN`: `counterfeit_verified: false, attacker_cat_balance_mojo: 0`<br/>`pytest -k dl01` |
-| **24** | [`24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md`](advisories/ja/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md)<br/>`CHIA-CS-01 (POC-1 & POC-2)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs`<br/>`crates/chia-sdk-driver/src/clear_signing/tests.rs` | `CWE-451 / CWE-345`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H` | **How It Happens in Code:** `clear_signing.rs` ignores `Condition::Other` CLVM conditions (such as overlong `RESERVE_FEE` opcode `52`) that consensus CLVM executes.<br/>**Scenario A (`750 XCH` Hidden Fee Drain):** `SpendBundle` `b9b614d0...` displays `reserved_fee: 0` in Clear-Signing while draining `750 XCH` (`750,000,000,000,000 mojo`) in consensus.<br/>**Scenario B (NFT State Spoofing):** `SpendBundle` `17d2796f...` alters NFT state invisibly.<br/>**Scenario C (Fail-Closed Patch):** `GREEN` rejects non-canonical conditions before signing. | `RED`: `displayed_fee_mojo: 0, consensus_fee_drained_mojo: 750000000000000`<br/>`GREEN`: `rejected_non_canonical_condition: true`<br/>`cargo test clear_signing::tests` |
-| **25** | [`25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md`](advisories/ja/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md)<br/>`CHIA-CS-02 (POC-3)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (`NEW_METADATA_INFO` evaluation) | `CWE-451 / CWE-345`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `clear_signing.rs` ignores extra consensus conditions (`RESERVE_FEE`) emitted by an NFT `NEW_METADATA_INFO` updater program.<br/>**Scenario A (`500 XCH` Hidden NFT Fee):** `SpendBundle` `b314b6d7...` (`3,300B`) shows `reserved_fee = 0` in Clear-Signing while draining `500 XCH` on-chain.<br/>**Scenario B (Trojan NFT Updater):** Custom updater triggers hidden fee during vault NFT operations.<br/>**Scenario C (`GREEN` Patch):** Rejects non-pure metadata updater conditions. | `RED`: `displayed_fee_mojo: 0, consensus_fee_drained_mojo: 500000000000000`<br/>`GREEN`: `rejected_impure_metadata_updater: true`<br/>`cargo test clear_signing::tests` |
-| **26** | [`26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md`](advisories/ja/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md)<br/>`CHIA-CS-03 (POC-4)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (dependent offer leg aggregation) | `CWE-682 / CWE-451`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `clear_signing.rs` merges dependent offer settlement legs via set intersection, dropping disjoint payment legs.<br/>**Scenario A (`500 XCH` Omitted Offer Leg):** Vault spend `3c55638a...` + settlement spend `7c05b725...` transfers `500 XCH` (`500,000,000,000,000 mojo`) omitted from Clear-Signing.<br/>**Scenario B (Treasury Swap Drain):** Disjoint notarized payment drains treasury funds.<br/>**Scenario C (`GREEN` Patch):** Enforces full union accounting across all legs. | `RED`: `omitted_settlement_outflow_mojo: 500000000000000`<br/>`GREEN`: `full_outflow_accounted_or_rejected: true`<br/>`cargo test clear_signing::tests` |
-| **27** | [`27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md`](advisories/ja/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md)<br/>`CHIA-CS-04 (POC-5)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (unrevealed settlement output handling) | `CWE-345 / CWE-451`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `clear_signing.rs` allows creating a `SETTLEMENT_PAYMENT_HASH` coin without revealing its spend in the signing bundle.<br/>**Scenario A (`600 XCH` Unrevealed Settlement):** Victim signs `a9eeda2c...` (`1,303B`); attacker attaches settlement spend `e0b876fb...` (`388B`) and drains `600 XCH`.<br/>**Scenario B (Air-Gapped Signer Bypass):** Hardware preview shows zero external recipient.<br/>**Scenario C (`GREEN` Patch):** Rejects unrevealed settlement outputs. | `RED`: `unrevealed_settlement_accepted: true, hidden_outflow_mojo: 600000000000000`<br/>`GREEN`: `rejected_unrevealed_settlement: true`<br/>`cargo test clear_signing::tests` |
-| **28** | [`28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md`](advisories/ja/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md)<br/>`CHIA-CS-05 (POC-6)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.38.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs`<br/>`crates/chia-sdk-bindings/src/clear_signing.rs:62` (`parse_vault_transaction`) | `CWE-682 / CWE-451`<br/>**9.1 Critical**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H` | **How It Happens in Code:** `clear_signing.rs` and `chia_sdk_bindings::parse_vault_transaction` credit outputs from external non-vault `DropCoin` spends as vault change.<br/>**Scenario A (`1,000 XCH` FFI Vault Drain):** `SpendBundle` `aa651822...` (`1,477B`) drains `1,000 XCH` (`1,000,000,000,000,000 mojo`) while reporting `0` net vault loss across the FFI boundary.<br/>**Scenario B (Multi-Sig Deception):** All cosigners see the spoofed change summary.<br/>**Scenario C (`GREEN` FFI Test):** Rejects with `Error::NonStandardInnerSpend`. | `RED`: `ffi_parse_vault_tx_accepted: true, masked_vault_drain_mojo: 1000000000000000`<br/>`GREEN`: `Err(NonStandardInnerSpend)`<br/>`cargo test --test clear_signing_ffi_proof` |
-| **29** | [`29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md`](advisories/ja/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md)<br/>`CHIA-CS-06 (POC-7)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (offer pre-split coin destination binding) | `CWE-347 / CWE-451`<br/>**9.1 Critical**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H` | **How It Happens in Code:** `clear_signing.rs` accepts offer pre-split child spends that are not cryptographically bound by an announcement to the signed vault spend.<br/>**Scenario A (`1,000 XCH` Post-Signature Splicing):** Victim signs `476b8e83...` (`1,994B`); attacker splices `5b3a3b21...` (`1,701B`) and redirects `1,000 XCH` under the same BLS signature.<br/>**Scenario B (Mempool Replacement):** Unbound child spend replaced in transit.<br/>**Scenario C (`GREEN` Patch):** Enforces cryptographic announcement binding. | `RED`: `pre_split_sha256: 476b8e83..., spliced_sha256: 5b3a3b21..., redirected_mojo: 1000000000000000`<br/>`GREEN`: `rejected_unbound_presplit: true`<br/>`cargo test clear_signing::tests` |
-| **30** | [`30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md`](advisories/ja/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md)<br/>`CHIA-CS-07 (POC-8)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (Clawback `sender_puzzle_hash` ownership check) | `CWE-345 / CWE-451`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `clear_signing.rs` does not verify that a Clawback output's `sender_puzzle_hash` belongs to the signing vault.<br/>**Scenario A (`1,000 XCH` Reverse Clawback):** `SpendBundle` `6897c10e...` (`1,218B`) sets the attacker as `sender_puzzle_hash`, letting the attacker immediately claw back `1,000 XCH`.<br/>**Scenario B (Self-Transfer Illusion):** Victim is set as receiver while attacker holds instant clawback rights.<br/>**Scenario C (`GREEN` Patch):** Enforces `sender_puzzle_hash` ownership. | `RED`: `attacker_set_as_clawback_sender: true, hijacked_mojo: 1000000000000000`<br/>`GREEN`: `rejected_foreign_clawback_sender: true`<br/>`cargo test clear_signing::tests` |
-| **31** | [`31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md`](advisories/ja/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md)<br/>`CHIA-CS-08 (POC-9)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (external CAT ring TAIL melt/issuance accounting) | `CWE-682 / CWE-451`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `clear_signing.rs` omits external CAT ring `RUN_TAIL` melt/issuance deltas funded by the vault's CAT spend.<br/>**Scenario A (`750 XCH`-Scale CAT Ring Drain):** `SpendBundle` `e48c3171...` (`2,541B`) drains `750,000,000,000,000` mojos via an external CAT ring melt.<br/>**Scenario B (Redemption Hijack):** External ring member absorbs vault CAT delta.<br/>**Scenario C (`GREEN` Patch):** Enforces full CAT ring conservation. | `RED`: `poc9_spend_bundle_sha256: e48c3171..., omitted_cat_ring_delta_mojo: 750000000000000`<br/>`GREEN`: `rejected_unbalanced_external_cat_ring: true`<br/>`cargo test clear_signing::tests` |
-| **32** | [`32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md`](advisories/ja/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md)<br/>`CHIA-VR-01 (POC-10)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-vault-recover** (`<= 1.0.0-rc9`)<br/>`src/locate.rs:148-219` (`find_launcher_id`) | `CWE-345 / CWE-400`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` | **How It Happens in Code:** `find_launcher_id` (`src/locate.rs:148-219`) returns the first `SINGLETON_LAUNCHER_HASH` child found at the user's address without verifying vault custody/recovery key match.<br/>**Scenario A (1-Mojo CLI Lockout):** Decoy launcher `2de44601...` causes `chia-vault-recover` (`1.0.0-rc9`) to abort with `recovery phrase does not match`.<br/>**Scenario B (`WLC-02` + `VR-01` Chain):** Blocks both GUI and CLI recovery.<br/>**Scenario C (`GREEN` Release Binary):** Recovers true launcher `e53d0c41...` (`45/45` tests pass). | `RED`: `selected_launcher: 2de44601... (decoy), cli_exit_code: 1`<br/>`GREEN`: `selected_launcher: e53d0c41... (victim), cli_exit_code: 0`<br/>`pytest -k poc10` |
-| **33** | [`33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md`](advisories/ja/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md)<br/>`CHIA-CONS-SP-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/full_node/full_node.py:2220-2310` (`new_peak` / `sync_from_fork_point`) | `CWE-400 / CWE-345`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H` | **How It Happens in Code:** `full_node.py:2220-2310` aborts `sync_from_fork_point` on invalid sub-epoch/weight-proof responses without disconnecting the peer.<br/>**Scenario A (Port `8444` Sync Lockout):** 3-node mTLS proof keeps victim `peak` at `None` despite an honest peer at `height=5`.<br/>**Scenario B (`10,000 XCH` Reorg Double-Spend):** `Branch A` (`26afe149...`) credits exchange `+10,000 XCH`; `Branch B` (`ad2eba4d...`) reorgs exchange balance to `0`.<br/>**Scenario C (`GREEN` Patch):** Disconnects offending peer & enforces `min_confirmations=32`. | `RED`: `victim_peak: None, reorg_exchange_loss_mojo: 10000000000000000`<br/>`GREEN`: `victim_synced_height: 5, exchange_loss_mojo: 0`<br/>`pytest -k reorg` |
-| **34** | [`34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md`](advisories/ja/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md)<br/>`CHIA-WLT-OFFER-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/rpc/wallet_rpc_api.py` (`take_offer`)<br/>`chia/wallet/trade_manager.py` (`respond_to_offer`) | `CWE-863`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `take_offer` / `respond_to_offer` selects and signs wallet coins for requested offer payments without enforcing a per-asset `max_authorized_amount` cap.<br/>**Scenario A (Taker Bot Excess Spend):** External Offer induces coin selection above expected quote.<br/>**Scenario B (Hidden Multi-Asset Leg):** CAT/NFT offer silently pulls XCH from wallet.<br/>**Scenario C (`GREEN` Patch):** Enforces explicit per-asset spend cap. | `RED`: `unbounded_implicit_coin_spend_signed: true`<br/>`GREEN`: `exceeded_max_authorized_amount_rejected: true`<br/>`pytest -k wallet` |
-| **35** | [`35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md`](advisories/ja/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md)<br/>`CHIA-POS-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/farmer/farmer_api.py:85-185` (`FarmerAPI.new_proof_of_space`)<br/>`chiapos` Rust FFI (`size_v2` / `get_quality_string`) | `CWE-248 / CWE-20`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` | **How It Happens in Code:** `FarmerAPI.new_proof_of_space` (`farmer_api.py:85-185`) calls Rust FFI `size_v2()` / `get_quality_string()` before validating pool key XOR exclusivity and `check_plot_param`.<br/>**Scenario A (4/4 Farmer Cluster Crash):** Single 445-byte wire packet (`30a0e918...`) triggers `pyo3_runtime.PanicException` and terminates all 4 Farmer processes (`exit_code=1`).<br/>**Scenario B (Slice OOB Panic):** Truncated proof triggers `range end index 36 out of range for slice of length 32`.<br/>**Scenario C (`GREEN` Patch):** `4/4` Farmers survive (`exit_code=0`). | `RED`: `packet_bytes: 445, crashed_farmers: 4/4, PanicException`<br/>`GREEN`: `crashed_farmers: 0/4, alive_farmers: 4`<br/>`pytest -k farmer` |
-| **36** | [`36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md`](advisories/ja/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md)<br/>`CHIA-POS-02..04`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chiapos** (`<= 2.0.11`)<br/>`src/verifier.hpp:48-108` (`Verifier::ValidateProof`)<br/>`src/bits.hpp:184`<br/>`src/prover_disk.hpp:254-322` (`DiskProver`) | `CWE-190 / CWE-787 / CWE-125`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H` | **How It Happens in Code:** `Verifier::ValidateProof` (`src/verifier.hpp`, `src/bits.hpp:184`) overflows bit offsets at `k=50` (Table 4) and `k>=60`, and `DiskProver` (`src/prover_disk.hpp`) truncates 64-bit plot table sizes to 32-bit.<br/>**Scenario A (Crafted `.plot` Heap Overflow):** Loading a crafted `.plot` file triggers 64-to-32-bit truncation heap corruption.<br/>**Scenario B (`k=50` / `k=60` Stack OOB):** Verified via ASan/UBSan `chiapos_k_probe` (`exit_code=1`).<br/>**Scenario C (`GREEN` Patch):** Bounds-checked (`exit_code=0`). | `RED`: `k50_table4_asan_exit: 1, k60_asan_exit: 1 (src/bits.hpp:184 OOB)`<br/>`GREEN`: `exit_code: 0, rejected_cleanly: true`<br/>`pytest -k chiapos` |
-| **37** | [`37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md`](advisories/ja/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md)<br/>`CHIA-VDF-02`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chiavdf** (`<= 1.1.11`)<br/>`src/verifier.cpp` (`CheckProofOfTimeNWesolowski`)<br/>`src/prover_slow.h` | `CWE-125 / CWE-416`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` | **How It Happens in Code:** `CheckProofOfTimeNWesolowski` (`src/verifier.cpp`) slices `proof_blob` without validating `proof_blob_len` or `num_iterations > 0`.<br/>**Scenario A (Verifier OOB Crash):** Truncated VDF proof triggers native C++ out-of-bounds read.<br/>**Scenario B (Teardown UAF):** Worker thread accesses freed state in `prover_slow.h`.<br/>**Scenario C (`GREEN` Patch):** Returns `false` cleanly on malformed VDF proofs. | `RED`: `asan_oob_or_segv: true, exit_code: 1`<br/>`GREEN`: `asan_oob_or_segv: false, verified: false`<br/>`chiavdf ASan harness` |
-| **38** | [`38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md`](advisories/ja/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md)<br/>`CHIA-DL-02`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/data_layer/download_data.py`<br/>`chia/data_layer/data_layer.py` | `CWE-918`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N` | **How It Happens in Code:** `download_data.py` fetches DataLayer mirror URLs with `allow_redirects=True` and no loopback/private IP validation on redirect hops.<br/>**Scenario A (Internal Loopback/Metadata SSRF):** A `302` redirect on an announced mirror URL hits `127.0.0.1` / `169.254.169.254`.<br/>**Scenario B (Replica Fleet Scanning):** Subscribed nodes poll redirected internal hosts.<br/>**Scenario C (`GREEN` Patch):** Blocks redirects to private/loopback IPs. | `RED`: `redirect_to_loopback_followed: true, internal_hit_count: 1`<br/>`GREEN`: `redirect_to_loopback_followed: false, internal_hit_count: 0`<br/>`pytest -k dl02` |
-| **39** | [`39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md`](advisories/ja/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md)<br/>`VERCEL-NEXT-15`<br/>MITRE CNA-LR & HackerOne #4152250 (+2 Follow-Up Comments Mounted) | **vercel/next.js** (`next <= 16.4.3`)<br/>`packages/next/src/server/app-render/action-handler.ts:363-411, 962-1166`<br/>`packages/next/src/client/components/router-reducer/reducers/server-action-reducer.ts:154-201` | `CWE-200 / CWE-918 / CWE-345`<br/>**8.2 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:L/A:N` | **How It Happens in Code:** `createRedirectRenderResult()` (`action-handler.js:278-303`) fetches Server Action redirect targets without `redirect: 'manual'`, following external `302` hops with `x-next-revalidate-tag-token` (`previewModeId`) and piping external RSC Flight streams back under a same-origin `x-action-redirect`. Omitting `"b"` in Flight data bypasses `server-action-reducer.js:161` Build ID checks (`UXSS`).<br/>**Scenario A (SSO/OIDC `previewModeId` Theft):** Multi-tenant SSO login Server Action leaks `previewModeId` to tenant IdP.<br/>**Scenario B (Global ISR Cache Wiping):** Stolen `previewModeId` authorizes `x-prerender-revalidate` cache purging.<br/>**Scenario C (Same-Origin RSC Flight UXSS):** OAuth bounce `302` injects forged RSC Virtual DOM (`response.b === undefined`) and CORS headers into `victim-app.com`. | `RED`: `leaked_previewModeId: f5dbbd8f6a6a51a6aa8ff1443f7090dd, client_build_id_check_bypassed: true, flight_uxss: true`<br/>`GREEN`: `redirect: 'manual', external_hop_followed: false`<br/>HackerOne `#4152250` (+2 Comments) |
-| **40** | [`40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md`](advisories/ja/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md)<br/>`VERCEL-NEXT-09`<br/>MITRE CNA-LR & HackerOne #4152265 (+2 Follow-Up Comments Mounted) | **vercel/next.js** (`next <= 16.4.3`)<br/>`packages/next/src/server/image-optimizer.ts:696-729`<br/>`packages/next/src/server/lib/find-root.ts` / `validate-url.ts` (`isPrivateIp`) | `CWE-918 / CWE-863`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N` | **How It Happens in Code:** `fetchExternalImage()` (`image-optimizer.js:586-615`) checks `remotePatterns` only on hop 1, not on `3xx` redirects (`09A`). In `validateUrl()`, `isPrivateIp(ip)` fails open (`if (!ipaddr.isValid(ip)) return false`) on Linux hyphenated IPv6 zone indices (`::ffff:127.0.0.1%br-...`) and classifies `::7f00:1` and `64:ff9b:1::/48` as `unicast` (`09B`).<br/>**Scenario A (Same-Host Pathname Bypass):** `/public-avatars/**` redirects to `/private-kyc-docs/passport-scan.png`.<br/>**Scenario B (Cross-Host Allowlist Pivot):** Allowlisted CDN/avatar service redirects to unapproved internal host.<br/>**Scenario C (`09A -> 09B` Direct `127.0.0.1` TCP Loopback SSRF):** Redirects to `::ffff:127.0.0.1%br-...` / `::7f00:1` to read `127.0.0.1` services. | `RED`: `remotePatterns_bypassed: true, loopback_server_hit: true, remote_addr: ::ffff:127.0.0.1`<br/>`GREEN`: `redirect_rechecked: true, fail_closed: true`<br/>HackerOne `#4152265` (+2 Comments) |
-| **41** | [`41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md`](advisories/ja/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md)<br/>`VERCEL-CLI-07`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/vercel** (`vercel <= 65.4.0`)<br/>`packages/cli/src/commands/curl/utils.ts:34-42, 74-96, 179-216`<br/>`packages/cli/src/commands/http-cli/index.ts` | `CWE-200 / CWE-436`<br/>**8.2 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N` | **How It Happens in Code:** `constructFullUrl()` (`packages/cli/src/commands/curl/utils.ts:179-216`) checks `new URL(normalizedPath, baseUrl).origin === baseUrl` but returns raw `${baseUrl}${normalizedPath}`. For `\\@attacker.com`, WHATWG `URL` keeps `origin === baseUrl`, whereas `libcurl` treats `baseUrl\\` as userinfo and `attacker.com` as host.<br/>**Scenario A (CI/CD Token Exfiltration):** `vercel curl` sends `Authorization: Bearer` and `x-vercel-protection-bypass` to `attacker.com`.<br/>**Scenario B (Developer/Agent CLI Leak):** Malicious path steals live CLI session token.<br/>**Scenario C (Auto-Minted Bypass Leak):** `PATCH /v10/projects/{id}/protection-bypass` mints and leaks project secret. | `RED`: `whatwg_origin_check_passed: true, curl_connected_to_attacker: true, leaked_bearer: true`<br/>`GREEN`: `rejected_backslash_and_globoff: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
-| **42** | [`42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md`](advisories/ja/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md)<br/>`VERCEL-FLAGS-CORE-06`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/flags** (`@vercel/flags-core <= 1.10.2`)<br/>`packages/flags-core/src/controller.ts:555-615`<br/>`packages/flags-core/dist/index.js:465-516` (`streamResponse` / `readBundledDefinitions`) | `CWE-400 / CWE-345`<br/>**6.5 Medium**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H` | **How It Happens in Code:** `Controller.streamResponse()` (`controller.ts:555-615`) updates `datafileUpdatedAtWatermark` from the unprefixed `x-datafile-Updated-At` header even on non-`200` responses before validating the datafile payload.<br/>**Scenario A (Kill-Switch Lockout):** Poisoning `x-datafile-Updated-At: 9999999999999` makes the SDK ignore all subsequent legitimate flag updates.<br/>**Scenario B (Missing `redirect: 'manual'`):** Stream fetch follows `3xx` redirects.<br/>**Scenario C (Worker State Drift):** Long-lived Node workers remain permanently frozen on stale flags. | `RED`: `poisoned_watermark: 9999999999999, bundled_update_ignored: true`<br/>`GREEN`: `requires_res_ok_and_bounded_skew: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
-| **43** | [`43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md`](advisories/ja/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md)<br/>`VERCEL-FLAGS-05`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/flags** (`flags <= 4.4.0`)<br/>`packages/flags/src/next/precompute.ts:206-214`<br/>`packages/flags/dist/next/index.js:119-125` (`deserialize`) | `CWE-347`<br/>**6.5 Medium**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `deserialize(flags, code, secret)` (`precompute.ts:206-214`) returns `{}` when `code === '__no_flags__'` before verifying the Compact JWS signature, even when `flags.length > 0`.<br/>**Scenario A (Edge Gate Bypass):** Requesting `/__no_flags__/page` skips JWS verification and forces fallback `flag.decide()` execution.<br/>**Scenario B (Cohort Manipulation):** Unauthenticated clients reset signed Edge precomputed cohorts.<br/>**Scenario C (Origin Re-Decide Load):** Forces asynchronous `decide()` execution on precomputed routes. | `RED`: `deserialize('__no_flags__'): {}, getPrecomputed_bypassed_edge_false_to_true: true`<br/>`GREEN`: `requires_flags_length_zero_for_sentinel: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
-| **44** | [`44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md`](advisories/ja/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md)<br/>`VERCEL-FIREWALL-01`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/firewall** (`@vercel/firewall <= 1.2.6`)<br/>`packages/firewall/src/rate-limit.ts:138-183, 211-285`<br/>`cmd/ipc-proxy/client.go:34-41, 79-97` | `CWE-918 / CWE-200 / CWE-636`<br/>**7.2 High**<br/>`AV:N/AC:H/PR:N/UI:N/S:C/C:L/I:L/A:N` | **How It Happens in Code:** `resolveFirewallHost()` (`rate-limit.ts:138-167`) uses the untrusted `Host` header as the outbound HTTPS target when `VERCEL_ENV !== 'production'`, leaking `x-vercel-rate-limit-secret` and `x-vercel-oidc-token`, and fails open (`{ rateLimited: false }`) on errors.<br/>**Scenario A (Secret Exfiltration):** Forged `Host` header steals `VF_RATE_LIMIT_SECRET`.<br/>**Scenario B (Fail-Open Brute-Force):** Malformed `Host` triggers `{ rateLimited: false }` on login/OTP endpoints.<br/>**Scenario C (Go `ipc-proxy` `%s` Bug):** `client.go:38` leaves literal `%s` in `api-%s.vercel.com`. | `RED`: `leaked_rate_limit_secret: rl_secret_LIVE_99887766, fail_open_rateLimited: false`<br/>`GREEN`: `strict_hostname_regex_and_sprintf_fixed: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
-| **45** | [`45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md`](advisories/ja/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md)<br/>`VERCEL-CLIENT-08A`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/vercel** (`@vercel/client <= 18.10.0`)<br/>`packages/client/src/utils/hashes.ts:115-167`<br/>`packages/client/src/deploy.ts:127-195` (`filesFromFilePathMap`) | `CWE-200 / CWE-706`<br/>**5.0 Medium**<br/>`AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N` | **How It Happens in Code:** `filesFromFilePathMap()` (`packages/client/src/utils/hashes.ts:115-167`) resolves `.vc-config.json` `filePathMap` entries via `path.resolve(cwd, filePath)` without root confinement or `.vercelignore` filtering.<br/>**Scenario A (`.next/required-server-files.json` Leak):** Uploads local `.env` secrets despite `.vercelignore`.<br/>**Scenario B (CI Prebuilt Artifact Traversal):** `../../` entries in `filePathMap` upload host secrets to `/v2/files`.<br/>**Scenario C (Build Cache Poisoning):** Restored `.vc-config.json` exfiltrates runner files. | `RED`: `outside_host_secret_uploaded: true, dotnext_env_secret_uploaded: true`<br/>`GREEN`: `path_confined_to_cwd: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
-| **46** | [`46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md`](advisories/ja/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md)<br/>`VERCEL-CLIENT-08B`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/vercel** (`@vercel/client <= 18.10.0`)<br/>`packages/client/src/utils/index.ts:116-148`<br/>`packages/client/src/deploy.ts:145-195` (`buildFileTree` / `bulkRedirectsPath`) | `CWE-59 / CWE-200`<br/>**5.0 Medium**<br/>`AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N` | **How It Happens in Code:** `buildFileTree()` (`packages/client/src/utils/index.ts:116-148`) resolves `config.bulkRedirectsPath` without `fs.realpath()` root confinement or `.vercelignore` filtering, following symlinks outside `cwd`.<br/>**Scenario A (Symlink Host Read):** Symlink inside `bulkRedirectsPath` uploads `/etc/hostname` or `~/.ssh/id_rsa`.<br/>**Scenario B (`../` Directory Walk):** Parent traversal enumerates and uploads outside directories.<br/>**Scenario C (`.vercelignore` Bypass):** Ignored secret files are uploaded in prebuilt mode. | `RED`: `symlink_target_outside_cwd_uploaded: true`<br/>`GREEN`: `realpath_confinement_and_lstat_enforced: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
+| **01** | [`01-STIRLING-CAND-02-SYMLINK.md`](advisories/zh-CN/01-STIRLING-CAND-02-SYMLINK.md)<br/>`GHSA-hpc7-xx5r-gc44` | **Stirling-Tools/Stirling-PDF** (`v3.2.2`)<br/>`FolderInputSource.java:337-377`<br/>`FolderOutputSink.java:338-345` | `CWE-59` / `CWE-61`<br/>**7.1 High** | **A)** 放入共享 SMB/NFS 扫描仪监控目录的符号链接 `invoice.pdf -> /configs/settings.yml` 在默认 `recursive=false` 模式下绕过 `FolderAccessGuard`，将管理员密码、OAuth 与 SMTP 密钥泄露至输出目录。<br/>**B)** 在自动化 SFTP/Nextcloud 文档接入流水线中，植入的符号链接令 `FolderOutputSink.archiveOriginal()` 将宿主机 SSH 密钥或 `.env` 文件复制/移动至归档目录。<br/>**C)** 在多租户部门监控目录间，某一部门通过符号链接指向兄弟部门的机密合同/薪资目录，实现越权读取与删除。 | `RED`: `symlink_accepted: true, protected_settings_exfiltrated: true`<br/>`GREEN`: `symlink_accepted: false, regular_file_processed: true` |
+| **02** | [`02-STIRLING-CAND-01-WEASYPRINT-SSRF.md`](advisories/zh-CN/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md)<br/>`GHSA-ff6j-8xch-j8r6`<br/>*(`CVE-2026-71270` 修复不完整)* | **Stirling-Tools/Stirling-PDF** (`v3.2.2`)<br/>`ConvertWebsiteToPDF.java:116-143` | `CWE-918`<br/>**8.6 High** | **A)** 向 `/api/v1/convert/url/pdf` 提交包含 `<link rel="stylesheet" href="http://127.0.0.1:.../secrets.css">` 或云元数据（`169.254.169.254`）的外部网页时，WeasyPrint 会拉取内部响应并直接渲染进生成的 PDF。<br/>**B)** Java 层 `SsrfProtectionService` 仅检查顶层 URL，而 WeasyPrint 子进程通过 `@import url("http://10.0.0.12:9090/metrics")` 扫描 Kubernetes/Docker 内网微服务。<br/>**C)** 利用多跳 HTTP `302` 重定向的 `<img src="...">` 或 `<link>` 子资源，将防火墙后的内部管理面板导出为 PDF。 | `RED`: `weasyprint_allowed_protocols: "data,http,https", internal_data_embedded_in_pdf: true`<br/>`GREEN`: `weasyprint_allowed_protocols: "data", internal_loopback_hit_count: 0` |
+| **03** | [`03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md`](advisories/zh-CN/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md)<br/>`GHSA-cp36-x5hg-3gg8` | **trycua/cua** (`npm: cuabot <= 1.0.16`)<br/>`libs/cuabot/src/cuabotd.ts` | `CWE-306` / `CWE-942`<br/>**9.6 Critical** | **A)** 当开发者运行 `npx cuabot` 并浏览任意网页时，页面 JS 通过 `fetch("http://localhost:7842/bash")`（`Access-Control-Allow-Origin: *`）执行任意命令并窃取挂载的 `~/.cuabot/user/.claude/.credentials.json` OAuth 令牌。<br/>**B)** 通过跨域 `POST /bash` 或 `ws://localhost:7842/?command=...`（CSWSH）向可写的 `/home/community-user/.claude/settings.json` 注入持久化 `PreToolUse` 钩子。<br/>**C)** 因绑定在 `0.0.0.0:7842`，咖啡馆/办公室 Wi-Fi 上的任意设备无需密码即可调用 `/bash` 与 `/screenshot` 监控屏幕并执行命令。 | `RED`: `http_status: 200, mounted_host_claude_credentials_exfiltrated: true`<br/>`GREEN`: `http_status: 403`<br/>`BENIGN`: `http_status: 200` |
+| **04** | [`04-CUA-CAND-02-WORKER-SERVER-RCE.md`](advisories/zh-CN/04-CUA-CAND-02-WORKER-SERVER-RCE.md)<br/>`GHSA-xm8w-gj3g-4f25` | **trycua/cua** (`pip: cua-bench-rl <= 0.1.0`)<br/>`worker_server.py:79-108, 338-360`<br/>`cua_bench/core.py:25-51` | `CWE-94` / `CWE-942`<br/>**8.8 High** | **A)** 强化学习研究员在浏览网页时，页面调用 `http://127.0.0.1:8001/reset`（`allow_origins=["*"]`）绕过 `ip_filter_middleware`，通过 `spec.loader.exec_module` 在宿主机上执行任意 `<env_path>/main.py`。<br/>**B)** 在 Kubernetes/Docker Compose 部署中若将 `OSGYM_ALLOWED_IPS=""` 设为空字符串，`if allowed_ips:` 检查失效放行（Fail-Open），使 `0.0.0.0:8001` 对全网开放无认证 RCE。<br/>**C)** 局域网或浏览器攻击者调用 `GET /screenshot` 与 `POST /step` 窃取活动桌面截图并注入键鼠指令。 | `RED`: `cross_origin_reset_status: 200, arbitrary_env_path_exec_module_rce: true`<br/>`GREEN`: `403 / 400, rce: false`<br/>`BENIGN`: `200` |
+| **05** | [`05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md`](advisories/zh-CN/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md)<br/>`GHSA-3x8g-6h2v-8qx9` | **trycua/cua** (`cargo: cua-compat <= 0.8.0`)<br/>`daytona/objectstore.rs:320-422` | `CWE-22`<br/>**8.1 High** | **A)** 单个沙箱租户无需预先发起分片上传，直接发送 `DELETE /daytona/dummy?uploadId=../objects`，触发无条件 `tokio::fs::remove_dir_all`，瞬间清空整个组织的 `objects/` 镜像库。<br/>**B)** 利用 `?uploadId=../../state` 或 `?uploadId=../../db` 跳出 `d.objects.root`，删除 `cua-spacesd` 进程可写的宿主机应用目录。<br/>**C)** 发送 `PUT /daytona/key?partNumber=1&uploadId=../stage` 将分片数据写入 `uploads/` 之外的相邻应用目录。 | `RED`: `delete_traversal_status: 204, objects_store_wiped_without_prior_upload: true`<br/>`GREEN`: `400 / 404, objects_store_preserved: true` |
+| **06** | [`06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md`](advisories/zh-CN/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md)<br/>`GHSA-54v9-fxw3-36mm` | **trycua/cua** (`cargo: cua-media-codec <= 0.8.0`)<br/>`videotoolbox/mod.rs:308-420` | `CWE-125` / `CWE-190`<br/>**5.5 Medium** | **A)** macOS 远程桌面推流在窗口/分辨率切换时传入过短的 `FrameData::Nv12` 切片，无边界检查的 `unsafe { std::ptr::copy_nonoverlapping }` 将相邻堆内存中的 `960` 字节（会话密钥/令牌）复制进 H.264 视频帧并推流给观看者。<br/>**B)** 向 Safe Rust 方法 `VtEncoder::encode` 传入空或截断的 `NV12`/`BGRA` 切片会读取未映射内存，导致 `cua-spacesd` 媒体服务 `SIGSEGV` 崩溃。<br/>**C)** 畸形的 `y_stride` / `uv_stride` 或 `stride * (h - 1)` 算术越过缓冲区边界，引发多租户媒体进程内存损坏。 | `RED`: `oob_bytes_read: 960, adjacent_heap_secret_copied_to_video_frame: true`<br/>`GREEN`: `oob_bytes_read: 0, CodecError::InvalidArgument` |
+| **07** | [`07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md`](advisories/zh-CN/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md)<br/>`GHSA-hvhg-6x47-cq96` | **trycua/cua** (`pip: cua-bench <= 0.3.1`)<br/>`winarena_adapter/cli.py:262-265`<br/>`infra/vm/setup/server/main.py` | `CWE-668` / `CWE-732`<br/>**8.6 High** | **A)** 在大学/企业实验室局域网中运行的 WinArena 工作站将 `0.0.0.0:8006`（无认证 noVNC）与 `0.0.0.0:3390`（免密 RDP）暴露给整个局域网，任何人均可接管 Windows VM 桌面并窃取其中的 API 密钥。<br/>**B)** 攻击者从受控 VM 内部利用可写的 `-v {setup_path}:/shared` 挂载篡改宿主机上的 `winarena_adapter/infra/vm/setup` 脚本。<br/>**C)** VM 内部 `0.0.0.0:5000` 控制服务的无认证 `POST /execute_windows`（`exec()`）与 `POST /setup/launch`（`shell=True`）接口可被代理或局域网流量触发执行任意系统命令。 | `RED`: `lan_exposed_ports: ["8006:8006", "3390:3389"], host_setup_dir_mounted_writable: true`<br/>`GREEN`: `lan_exposed_ports: [], host_setup_dir_mounted_writable: false` |
+| **08** | [`08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md`](advisories/zh-CN/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md)<br/>`GHSA-qwv8-hh9r-cqrf` | **openziti/ziti** (`github.com/openziti/ziti/v2`)<br/>`ziti/util/certs.go:91-103, 199-208` | `CWE-295`<br/>**7.4 High** | **A)** 运维工程师通过 Wi-Fi/VPN 执行 `ziti edge login` 时，因 `AreCertsTrusted` -> `InsecureClient` 中无条件开启 `InsecureSkipVerify: true`，中间人伪造证书被提示 *"Verified that server supplied certificates are trusted"* 并直接将管理员密码发送给攻击者。<br/>**B)** 自动化 CI/CD 与 Kubernetes 引导流程中的 `ziti edge login` 信任伪造或沦陷的 Edge Controller，将身份与路由策略注册给攻击者。<br/>**C)** 在多环境切换中，过期、已吊销或错误 CA 签发的控制器证书在无任何告警的情况下被当作受信任证书接受，破坏零信任 PKI 链。 | `RED`: `rogue_mitm_cert_accepted_as_trusted: true, admin_credentials_sent_to_mitm: true`<br/>`GREEN`: `x509.UnknownAuthorityError` |
+| **09** | [`09-N8N-CAND-01-WEBHOOK-REDOS.md`](advisories/zh-CN/09-N8N-CAND-01-WEBHOOK-REDOS.md)<br/>`n8n-workflow <= 2.45.0` | **n8n-io/n8n** (`npm: n8n-workflow <= 2.45.0`)<br/>`string-extensions.ts:59, 94, 326, 375, 383` | `CWE-1333`<br/>**5.3 Medium** | **A)** 向公开线索收集/联系表单 n8n Webhook（`{{$json.body.contact.isEmail()}}`）发送单个 20 KB 的 `"a.a.a...a@!"` 请求即可阻塞 Node.js 主事件循环约 832 ms；10 个并发请求即可冻结所有 Stripe/Slack Webhook 与 n8n 界面。<br/>**B)** 解析客服邮件或聊天记录的 `{{$json.text.extractEmail()}}` 自动化流水线因单条含长点号字符串的消息而卡死，陷入容器健康检查重启循环。<br/>**C)** CRM 数据丰富工作流在评估 `{{$json.url.extractDomain()}}`（`DOMAIN_EXTRACT_REGEXP`）时，长点号 URL 负载会耗尽单线程 V8 运行时。 | `RED`: `regex_stall_ms: 165.035 (831.78ms @ 20KB), concurrent_webhook_starved: true`<br/>`GREEN`: `regex_stall_ms: 0.017 (0.0029ms)` |
+| **10** | [`10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md`](advisories/zh-CN/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md)<br/>`GHSA-cc9f-m5vr-pm75` | **gotify/server** (`v2.9.1`)<br/>`router/router.go:52-73, 93-102` | `CWE-601`<br/>**4.7 Medium** | **A)** 开启 `SSL.RedirectToHTTPS=true` 时，携带伪造 `Host: attacker-gotify.example.com` 头的请求会收到指向攻击者域名的 `HTTP/1.1 308 Permanent Redirect`，污染浏览器缓存并泄露 URL 中的 `?token=`。<br/>**B)** 向 HTTP 端点发送 `?token=<app-token>` 通知且自动跟随重定向的监控脚本（`curl -L`、Python `requests`、Uptime Kuma）会跟随 `308` 跳转将应用密钥交给攻击者服务器。<br/>**C)** 在透传 `Host` 头的反向代理或共享缓存后方运行的 Gotify 服务遭缓存投毒，所有客户端被重定向至钓鱼登录页。 | `RED`: `status_code: 308, redirected_to_untrusted_host: true`<br/>`GREEN`: `redirected_to_untrusted_host: false, bound_to_configured_ssl_host: true` |
+| **11** | [`11-XROAD-CAND-01-RUNNER-INJECTION.md`](advisories/zh-CN/11-XROAD-CAND-01-RUNNER-INJECTION.md)<br/>`GHSA-4fcw-7xqx-fjv5` | **nordic-institute/X-Road** (`38cd99ec0ebb`)<br/>`.github/workflows/build.yaml`<br/>`_build-and-package.yml:84-91` | `CWE-78`<br/>**8.5 High** | **A)** 形如 `feat";<cmd>;#` 的 PR 分支名在代码审查或 `actions/checkout` 运行之前，即在持久化 `xrd-runner-8c` 自托管构建机上的 `_build-and-package.yml` bash 脚本中执行任意命令。<br/>**B)** 由于 `build.yaml` 以 `permissions: contents: write, packages: write` 与 `secrets: inherit` 调用 `_build-and-package.yml`，注入命令可直接窃取具备 GHCR 镜像写权限与仓库写权限的 `GITHUB_TOKEN`。<br/>**C)** 因 `xrd-runner-8c` 是持久化自托管服务器而非临时虚拟机，攻击者可植入持久化后台进程或篡改本地 Gradle/Docker 缓存，污染后续官方 X-Road 发行包构建。 | `RED`: `direct_yaml_interpolation: true, arbitrary_command_executed_on_self_hosted_runner: true`<br/>`GREEN`: `env_var_parameterized: true, arbitrary_command_executed_on_self_hosted_runner: false` |
+| **12** | [`12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md`](advisories/zh-CN/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md)<br/>`GITLAB-CAND-02`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`app/controllers/oauth/device_authorizations_controller.rb:4-50`<br/>`app/controllers/oauth/tokens_controller.rb:42-75` | `CWE-863 / CWE-285`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N` | **How It Happens in Code:** `Oauth::DeviceAuthorizationsController` (`device_authorizations_controller.rb:4-50`) and `Oauth::TokensController` (`tokens_controller.rb:42-75`) omit `verify_admin_allowed!`, `verify_confirmed_email!`, `set_current_organization`, and `enforce_organization_maintenance_mode` (all enforced in sibling `Oauth::AuthorizationsController`).<br/>**Scenario A (Full Instance Admin Takeover):** A regular user creates an untrusted OAuth app (`trusted: false`); when an admin enters its `user_code` on `/oauth/device`, GitLab bypasses `disable_admin_oauth_scopes=true` and mints a full `api admin_mode` token allowing complete server takeover, private repo theft, and CI secret extraction.<br/>**Scenario B (Unverified Account API Backdoor):** An unconfirmed account (`confirmed_at: nil`) blocked on `/oauth/authorize` (`403`) mints persistent API & refresh tokens via `/oauth/device`.<br/>**Scenario C (Backdoor Commit During Legal/Migration Freeze):** Attackers mint tokens and push commits (`201 Created`) into frozen repositories while an organization is locked in `migration` (`503`) or `legal` (`403`) maintenance mode. | `RED`: `token_minted_admin_mode: true, post_token_admin_action_succeeded: true`<br/>`GREEN`: `503 / 403, token_minted_admin_mode: false`<br/>`pytest -k test_report1_cand02` |
+| **13** | [`13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md`](advisories/zh-CN/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md)<br/>`GITLAB-CAND-05`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`ee/app/services/ai/catalog/mcp_servers/callback_service.rb:17-50, 87-129`<br/>`refresh_token_service.rb:18-70`<br/>`dynamic_registration_client.rb:104-136` | `CWE-918 / CWE-209`<br/>**8.5 High**<br/>`AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N` | **How It Happens in Code:** `CallbackService`, `RefreshTokenService`, `RevokeTokenService`, and `DynamicRegistrationClient` accept unvalidated RFC 8414 `token_endpoint`/`revocation_endpoint` URLs and use `OAuth2::Client` (`max_redirects: 5`, no `UrlBlocker`), reflecting raw `OAuth2::Error` bodies into `flash[:alert]`.<br/>**Scenario A (Stealing Cloud IAM Keys via `flash[:alert]`):** A `307 Temporary Redirect` on `token_endpoint` hits `169.254.169.254` or `127.0.0.1` and prints cloud IAM credentials / internal API responses directly into the user's `flash[:alert]` banner.<br/>**Scenario B (Internal `POST` SSRF & Secret Replay):** `OAuth2::Client` replays `POST` requests with `client_secret` and `refresh_token` to firewalled internal `127.0.0.1` services.<br/>**Scenario C (`RevokeTokenService` SSRF):** Disconnecting an MCP server posts Basic Auth credentials to unvalidated internal/external `revocation_endpoint` targets. | `RED`: `canary_b_request_count: 5, iam_role_credentials_exposed: true`<br/>`GREEN`: `canary_b_request_count: 0, iam_role_credentials_exposed: false`<br/>`pytest -k test_report2_cand05` |
+| **14** | [`14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md`](advisories/zh-CN/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md)<br/>`GITLAB-CAND-06`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`ee/app/controllers/oauth/mcp_connectors_auth_controller.rb:16-78`<br/>`ee/app/services/ai/catalog/mcp_servers/connect_service.rb:16-79`<br/>`ee/lib/gitlab/oauth/client_state.rb:17-23` | `CWE-639 / CWE-862`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N` | **How It Happens in Code:** `Oauth::McpConnectorsAuthController` calls global `Ai::Catalog::McpServer.find(params[:id])` without `.in_organization(Current.organization)`, `ConnectService` overwrites DCR credentials without checking `update_ai_catalog_mcp_server`, and `ClientState.from_state` discards `data` binding.<br/>**Scenario A (Cross-Organization AI Connector Hijack):** A user in Organization A overwrites `oauth_client_id` / `oauth_client_secret` on an `McpServer` belonging to Organization B.<br/>**Scenario B (Read-Only User Overwrites Production Connector):** A non-maintainer with read-only access overwrites company MCP OAuth credentials via DCR.<br/>**Scenario C (Cross-Session Account Binding / Login CSRF):** Replaying an unbound `ClientState` token binds a victim developer's GitLab session to the attacker's external MCP account. | `RED`: `cross_org_server_mutated: true`<br/>`GREEN`: `cross_org_server_mutated: false (404 RecordNotFound)`<br/>`pytest -k test_report2_cand05` |
+| **15** | [`15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md`](advisories/zh-CN/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md)<br/>`GITLAB-CAND-01`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`workhorse/internal/ai_assist/duoworkflow/mcp.go:25-60, 101-112, 220-239` | `CWE-918 / CWE-522`<br/>**8.2 High**<br/>`AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N` | **How It Happens in Code:** `externalMcpTransport` in `workhorse/internal/ai_assist/duoworkflow/mcp.go:41-44` omits `transport.WithSSRFFilter()`, and `roundTripper.RoundTrip` (`mcp.go:101-104`) re-injects `Authorization: Bearer` headers on every redirect hop.<br/>**Scenario A (Bearer Token Theft & Account Takeover):** A `302` redirect from an external MCP server sends the victim's live `Authorization: Bearer` token to a cross-origin attacker server.<br/>**Scenario B (Workhorse Internal & Cloud Metadata SSRF):** Redirects reach `127.0.0.1` internal services or `169.254.169.254` from the Workhorse process.<br/>**Scenario C (DNS Rebinding into Corporate Intranet):** DNS rebinding bypasses initial URL validation because Workhorse's dialer lacks `WithSSRFFilter`. | `RED`: `bearer_token_leaked_to_canary: true`<br/>`GREEN`: `bearer_token_leaked_to_canary: false, ssrfFilterError: disallowlist`<br/>`pytest -k test_report2_cand05` |
+| **16** | [`16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md`](advisories/zh-CN/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md)<br/>`GITLAB-CAND-08`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`ee/app/services/ai/duo_workflows/mcp_config_service.rb:131-135`<br/>`ee/lib/api/ai/duo_workflows/workflows.rb:341-344, 1065`<br/>`connection_config_service.rb:220-228` | `CWE-862 / CWE-639`<br/>**7.7 High**<br/>`AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N` | **How It Happens in Code:** `McpConfigService#item_version` (`mcp_config_service.rb:134`) omits `Ability.allowed?(current_user, :read_ai_catalog_item, item_version)` (enforced at line 334), and `workflows.rb:1065` (`GET /ws`) allows overriding `workflow_definition` and `ai_catalog_item_version_id`.<br/>**Scenario A (Escalating Read-Only `chat` to Write-Capable Agent):** Overriding `workflow_definition` and `ai_catalog_item_version_id` on `/ws` injects withheld write tools (`create_issue`) into a restricted `chat` session.<br/>**Scenario B (Stealing Private `public: false` Agent Toolsets):** Enumerating `ai_catalog_item_version_id` discloses the confidential toolset of foreign private AI Catalog agents.<br/>**Scenario C (Unauthorized Private Agent Binding):** `POST /workflows` binds private cross-organization `ItemVersion` records without `:read_ai_catalog_item` checks. | `RED`: `unapproved_write_tool_injected: true, workflow_definition_overridden: true`<br/>`GREEN`: `unapproved_write_tool_injected: false`<br/>`pytest -k test_report3_cand08` |
+| **17** | [`17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md`](advisories/zh-CN/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md)<br/>`GITLAB-CAND-07`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`ee/app/services/ai/duo_workflows/mcp_config_service.rb:57-64`<br/>`ee/app/services/ai/catalog/mcp_servers/list_service.rb:14-24`<br/>`workhorse/internal/ai_assist/duoworkflow/mcp.go:254` | `CWE-863 / CWE-639`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:L` | **How It Happens in Code:** `McpConfigService#execute` (`mcp_config_service.rb:61`) calls `.merge(ai_catalog_mcp_servers.except(:orbit))` without excluding `:gitlab`, and `ListService`/`Agent::Create` omit `.in_organization`.<br/>**Scenario A (Unlocking All Prohibited Built-in GitLab MCP Tools):** An `Ai::Catalog::McpServer` named `"GitLab"` (`:gitlab`, `Tools: nil`) overwrites the built-in `:gitlab` entry so Workhorse (`mcp.go:254`) sets `allToolsAvailable = true`, disabling all `withheld_server_tools` restrictions.<br/>**Scenario B (Cross-Org MCP Server Binding):** GraphQL `aiCatalogAgentCreate`/`Update` binds foreign-organization `McpServer` Global IDs.<br/>**Scenario C (Duo Workflow `401` DoS):** Overwriting `Headers` on `:gitlab` strips `X-Gitlab-Oauth-Token` and breaks `/api/v4/mcp`. | `RED`: `builtin_gitlab_overwritten: true, workhorse_all_tools_available: true`<br/>`GREEN`: `builtin_gitlab_overwritten: false, workhorse_all_tools_available: false`<br/>`pytest -k test_report4_cand07` |
+| **18** | [`18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md`](advisories/zh-CN/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md)<br/>`GITLAB-CAND-04`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`app/controllers/projects/integrations/slash_commands_controller.rb:21-48`<br/>`app/models/concerns/integrations/base/slash_commands.rb:6-10, 68-76` | `CWE-601 / CWE-863`<br/>**5.4 Medium**<br/>`AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:L/A:N` | **How It Happens in Code:** `SlashCommandsController#confirm` (`slash_commands_controller.rb:23-48`) redirects to unvalidated `request_params[:redirect_url]`, passes `request_params[:response_url]` to `VerifyRequest`, and keys Redis `CACHE_KEY` only by `command_id` without `project_id`/`integration_id`.<br/>**Scenario A (Corporate SSO Phishing After Slash Command Confirm):** Confirming a slash command on the trusted GitLab domain redirects (`302 Found`) the developer to an external credential-harvesting page.<br/>**Scenario B (Cross-Project ChatOps Account Binding):** A `command_id` minted in Project B is accepted on Project A's `/slash_commands/confirm` endpoint.<br/>**Scenario C (ChatOps Callback Hijack):** `request_params[:response_url]` overrides the cached `response_url` during `VerifyRequest#approve!`. | `RED`: `http_status: 302, open_redirect_triggered: true, cross_project_cache_collision_accepted: true`<br/>`GREEN`: `404, open_redirect_triggered: false`<br/>`pytest -k test_report5_cand04` |
+| **19** | [`19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md`](advisories/zh-CN/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md)<br/>Upstream Duplicate: `CVE-2026-40295`<br/>*(GitHub Only — Not Submitted to MITRE)* | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`lib/gitlab/devise_failure.rb:4-18`<br/>`lib/gitlab/auth/session_expire_from_init_enforcer.rb:44-62`<br/>`app/controllers/oauth/authorizations_controller.rb:316-330` | `CWE-601 / CWE-345`<br/>**5.4 Medium (Upstream CVE-2026-40295 Duplicate)**<br/>`AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N` | **[UPSTREAM DUPLICATE: `CVE-2026-40295` — Published on GitHub Only, Not Submitted to MITRE]**<br/>**How It Happens in Code:** `Gitlab::DeviseFailure` inherits `Devise 5.0.3` `redirect_url` (`CVE-2026-40295`), which redirects to an unsanitized external `Referer` on non-GET `:timeout` failures; `AuthorizationsController#validate_pkce_for_dynamic_applications` (`CAND-03`) has an early return on `nil` `code_challenge_method` (mitigated at runtime by `Doorkeeper 5.9.3`).<br/>**Scenario A/B/C:** Product-level `extract_path_from_location(request.referrer)` override in `lib/gitlab/devise_failure.rb` and controller-level PKCE defense-in-depth patch. | `DUPLICATE OF CVE-2026-40295` *(Not submitted to MITRE)*<br/>`RED`: `external_referer_redirect: true`<br/>`GREEN`: `path_extracted_only: true` |
+| **20** | [`20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md`](advisories/zh-CN/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md)<br/>`CHIA-WLC-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/wallet/wallet_node.py:926-995` (`_add_block_from_header`) | `CWE-345 / CWE-347`<br/>**9.1 Critical**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H` | **How It Happens in Code:** `WalletNode._add_block_from_header` (`wallet_node.py:926-995`) ingests `header_block.foliage_transaction_block` without verifying `foliage_transaction_block.get_hash() == header_block.foliage.foliage_transaction_block_hash`.<br/>**Scenario A (0-XCH Capital Fake Deposit):** With zero XCH capital and no counterparty approval, an attacker sends a real header with a swapped transaction block to credit `+0.5 XCH` (`500,000,000,000 mojo`) as confirmed and cash out real USDT/BTC.<br/>**Scenario B (Persistent SQLite Poisoning):** Counterfeit coins persist across `WalletCoinStore` cold restarts (`Err.UNKNOWN_UNSPENT` on spend).<br/>**Scenario C (`CONS-SP-01` + `WLC-01`):** FullNode sync lockout followed by light-wallet fake deposit injection. | `RED`: `fake_merchant_deposit_increase_mojo: 500000000000, spend_err: UNKNOWN_UNSPENT`<br/>`GREEN`: `rejected_forged_foliage_tx_block: true, fake_increase: 0`<br/>`pytest -k test_wlc01` |
+| **21** | [`21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md`](advisories/zh-CN/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md)<br/>`CHIA-WLC-02`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/wallet/wallet_node.py:725-777`<br/>`chia/wallet/wallet_state_manager.py:1735-1778` | `CWE-345 / CWE-400`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H` | **How It Happens in Code:** `wallet_node.py:725-777` and `wallet_state_manager.py:1735-1778` persist unverified `RespondRemovals(proofs=None)` / `spent_height` transitions into SQLite `WalletCoinStore`.<br/>**Scenario A (Clawback Cancel Lockout):** Victim cannot cancel a `0.5 XCH` Clawback coin (`tx_count: 0`); attacker claims on-chain after timelock expiry (`33361e6b...`).<br/>**Scenario B (`WLC-02` + `VR-01` Unified Chain):** Simultaneously locks live wallet cancellation and emergency `chia-vault-recover` CLI on one timeline (`t0..t4`).<br/>**Scenario C (UTXO Freeze DoS):** Freezes unspent coins across cold SQLite restarts. | `RED`: `t1_cold_reloaded_sqlite_spent: true, t2_sender_cancel_tx_count: 0, t4_recipient_claim_succeeded: true`<br/>`GREEN`: `t1_spent: false, t2_sender_cancel_tx_count: 1`<br/>`pytest -k test_wlc02` |
+| **22** | [`22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md`](advisories/zh-CN/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md)<br/>`CHIA-GUI-WC-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain-gui** (`<= 2.6.1-rc2.dev60`)<br/>`packages/gui/src/components/walletConnect/WalletConnectContext.tsx:314-441`<br/>`constants/WalletConnectCommands.ts` | `CWE-367 / CWE-285`<br/>**8.8 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H` | **How It Happens in Code:** `WalletConnectContext.tsx:314-441` exposes all 29 commands on connect, lacks a FIFO confirmation queue, and fails to re-verify `(requestId, fingerprint, network, pairing)` in `sendCommand`.<br/>**Scenario A (Modal Overwrite Drain):** A dApp overwrites a benign `chia_getCurrentAddress` prompt with `chia_sendTransaction`, draining `0.5 XCH` (`SpendBundle d2ce2264...`).<br/>**Scenario B (Fingerprint TOCTOU):** Approval on burner key `111111` executes on main key `999999`.<br/>**Scenario C (Post-Disconnect Execution):** Pending request executes after pairing/network change. | `RED`: `modal_overwritten: true, unauthorized_spend_bundle_sha256: d2ce22645a9a23b1...`<br/>`GREEN`: `6/6 distinct WSS packets blocked`<br/>`pytest -k gui_wc01` |
+| **23** | [`23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md`](advisories/zh-CN/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md)<br/>`CHIA-DL-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/rpc/wallet_rpc_api.py:4066-4120` (`dl_verify_proof`)<br/>`chia/data_layer/data_layer_util.py` | `CWE-347 / CWE-345`<br/>**9.1 Critical**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:H/A:N` | **How It Happens in Code:** `WalletRpcApi.dl_verify_proof` (`wallet_rpc_api.py:4066-4120`) verifies coin existence and Merkle hashes without checking `match_dl_singleton` or `launcher_id == store_id`.<br/>**Scenario A (`100,000 CAT` On-Chain Mint):** A 1-mojo non-singleton coin (`86ec0dd7...`) forges `store_id` `806a6c73...`, passing `dl_verify_proof` and minting `100,000 CAT` on-chain (`dc3f0bba...`).<br/>**Scenario B (Intrinsic RPC Bypass):** Side-by-side canonical vs. counterfeit `DLProof` both return `verified: true` in `RED`.<br/>**Scenario C (Registry Spoofing):** Forges audit proofs for any official DataLayer `store_id`. | `RED`: `counterfeit_verified: true, attacker_cat_balance_mojo: 100000000`<br/>`GREEN`: `counterfeit_verified: false, attacker_cat_balance_mojo: 0`<br/>`pytest -k dl01` |
+| **24** | [`24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md`](advisories/zh-CN/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md)<br/>`CHIA-CS-01 (POC-1 & POC-2)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs`<br/>`crates/chia-sdk-driver/src/clear_signing/tests.rs` | `CWE-451 / CWE-345`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H` | **How It Happens in Code:** `clear_signing.rs` ignores `Condition::Other` CLVM conditions (such as overlong `RESERVE_FEE` opcode `52`) that consensus CLVM executes.<br/>**Scenario A (`750 XCH` Hidden Fee Drain):** `SpendBundle` `b9b614d0...` displays `reserved_fee: 0` in Clear-Signing while draining `750 XCH` (`750,000,000,000,000 mojo`) in consensus.<br/>**Scenario B (NFT State Spoofing):** `SpendBundle` `17d2796f...` alters NFT state invisibly.<br/>**Scenario C (Fail-Closed Patch):** `GREEN` rejects non-canonical conditions before signing. | `RED`: `displayed_fee_mojo: 0, consensus_fee_drained_mojo: 750000000000000`<br/>`GREEN`: `rejected_non_canonical_condition: true`<br/>`cargo test clear_signing::tests` |
+| **25** | [`25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md`](advisories/zh-CN/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md)<br/>`CHIA-CS-02 (POC-3)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (`NEW_METADATA_INFO` evaluation) | `CWE-451 / CWE-345`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `clear_signing.rs` ignores extra consensus conditions (`RESERVE_FEE`) emitted by an NFT `NEW_METADATA_INFO` updater program.<br/>**Scenario A (`500 XCH` Hidden NFT Fee):** `SpendBundle` `b314b6d7...` (`3,300B`) shows `reserved_fee = 0` in Clear-Signing while draining `500 XCH` on-chain.<br/>**Scenario B (Trojan NFT Updater):** Custom updater triggers hidden fee during vault NFT operations.<br/>**Scenario C (`GREEN` Patch):** Rejects non-pure metadata updater conditions. | `RED`: `displayed_fee_mojo: 0, consensus_fee_drained_mojo: 500000000000000`<br/>`GREEN`: `rejected_impure_metadata_updater: true`<br/>`cargo test clear_signing::tests` |
+| **26** | [`26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md`](advisories/zh-CN/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md)<br/>`CHIA-CS-03 (POC-4)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (dependent offer leg aggregation) | `CWE-682 / CWE-451`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `clear_signing.rs` merges dependent offer settlement legs via set intersection, dropping disjoint payment legs.<br/>**Scenario A (`500 XCH` Omitted Offer Leg):** Vault spend `3c55638a...` + settlement spend `7c05b725...` transfers `500 XCH` (`500,000,000,000,000 mojo`) omitted from Clear-Signing.<br/>**Scenario B (Treasury Swap Drain):** Disjoint notarized payment drains treasury funds.<br/>**Scenario C (`GREEN` Patch):** Enforces full union accounting across all legs. | `RED`: `omitted_settlement_outflow_mojo: 500000000000000`<br/>`GREEN`: `full_outflow_accounted_or_rejected: true`<br/>`cargo test clear_signing::tests` |
+| **27** | [`27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md`](advisories/zh-CN/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md)<br/>`CHIA-CS-04 (POC-5)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (unrevealed settlement output handling) | `CWE-345 / CWE-451`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `clear_signing.rs` allows creating a `SETTLEMENT_PAYMENT_HASH` coin without revealing its spend in the signing bundle.<br/>**Scenario A (`600 XCH` Unrevealed Settlement):** Victim signs `a9eeda2c...` (`1,303B`); attacker attaches settlement spend `e0b876fb...` (`388B`) and drains `600 XCH`.<br/>**Scenario B (Air-Gapped Signer Bypass):** Hardware preview shows zero external recipient.<br/>**Scenario C (`GREEN` Patch):** Rejects unrevealed settlement outputs. | `RED`: `unrevealed_settlement_accepted: true, hidden_outflow_mojo: 600000000000000`<br/>`GREEN`: `rejected_unrevealed_settlement: true`<br/>`cargo test clear_signing::tests` |
+| **28** | [`28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md`](advisories/zh-CN/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md)<br/>`CHIA-CS-05 (POC-6)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.38.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs`<br/>`crates/chia-sdk-bindings/src/clear_signing.rs:62` (`parse_vault_transaction`) | `CWE-682 / CWE-451`<br/>**9.1 Critical**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H` | **How It Happens in Code:** `clear_signing.rs` and `chia_sdk_bindings::parse_vault_transaction` credit outputs from external non-vault `DropCoin` spends as vault change.<br/>**Scenario A (`1,000 XCH` FFI Vault Drain):** `SpendBundle` `aa651822...` (`1,477B`) drains `1,000 XCH` (`1,000,000,000,000,000 mojo`) while reporting `0` net vault loss across the FFI boundary.<br/>**Scenario B (Multi-Sig Deception):** All cosigners see the spoofed change summary.<br/>**Scenario C (`GREEN` FFI Test):** Rejects with `Error::NonStandardInnerSpend`. | `RED`: `ffi_parse_vault_tx_accepted: true, masked_vault_drain_mojo: 1000000000000000`<br/>`GREEN`: `Err(NonStandardInnerSpend)`<br/>`cargo test --test clear_signing_ffi_proof` |
+| **29** | [`29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md`](advisories/zh-CN/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md)<br/>`CHIA-CS-06 (POC-7)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (offer pre-split coin destination binding) | `CWE-347 / CWE-451`<br/>**9.1 Critical**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H` | **How It Happens in Code:** `clear_signing.rs` accepts offer pre-split child spends that are not cryptographically bound by an announcement to the signed vault spend.<br/>**Scenario A (`1,000 XCH` Post-Signature Splicing):** Victim signs `476b8e83...` (`1,994B`); attacker splices `5b3a3b21...` (`1,701B`) and redirects `1,000 XCH` under the same BLS signature.<br/>**Scenario B (Mempool Replacement):** Unbound child spend replaced in transit.<br/>**Scenario C (`GREEN` Patch):** Enforces cryptographic announcement binding. | `RED`: `pre_split_sha256: 476b8e83..., spliced_sha256: 5b3a3b21..., redirected_mojo: 1000000000000000`<br/>`GREEN`: `rejected_unbound_presplit: true`<br/>`cargo test clear_signing::tests` |
+| **30** | [`30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md`](advisories/zh-CN/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md)<br/>`CHIA-CS-07 (POC-8)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (Clawback `sender_puzzle_hash` ownership check) | `CWE-345 / CWE-451`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `clear_signing.rs` does not verify that a Clawback output's `sender_puzzle_hash` belongs to the signing vault.<br/>**Scenario A (`1,000 XCH` Reverse Clawback):** `SpendBundle` `6897c10e...` (`1,218B`) sets the attacker as `sender_puzzle_hash`, letting the attacker immediately claw back `1,000 XCH`.<br/>**Scenario B (Self-Transfer Illusion):** Victim is set as receiver while attacker holds instant clawback rights.<br/>**Scenario C (`GREEN` Patch):** Enforces `sender_puzzle_hash` ownership. | `RED`: `attacker_set_as_clawback_sender: true, hijacked_mojo: 1000000000000000`<br/>`GREEN`: `rejected_foreign_clawback_sender: true`<br/>`cargo test clear_signing::tests` |
+| **31** | [`31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md`](advisories/zh-CN/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md)<br/>`CHIA-CS-08 (POC-9)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (external CAT ring TAIL melt/issuance accounting) | `CWE-682 / CWE-451`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `clear_signing.rs` omits external CAT ring `RUN_TAIL` melt/issuance deltas funded by the vault's CAT spend.<br/>**Scenario A (`750 XCH`-Scale CAT Ring Drain):** `SpendBundle` `e48c3171...` (`2,541B`) drains `750,000,000,000,000` mojos via an external CAT ring melt.<br/>**Scenario B (Redemption Hijack):** External ring member absorbs vault CAT delta.<br/>**Scenario C (`GREEN` Patch):** Enforces full CAT ring conservation. | `RED`: `poc9_spend_bundle_sha256: e48c3171..., omitted_cat_ring_delta_mojo: 750000000000000`<br/>`GREEN`: `rejected_unbalanced_external_cat_ring: true`<br/>`cargo test clear_signing::tests` |
+| **32** | [`32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md`](advisories/zh-CN/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md)<br/>`CHIA-VR-01 (POC-10)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-vault-recover** (`<= 1.0.0-rc9`)<br/>`src/locate.rs:148-219` (`find_launcher_id`) | `CWE-345 / CWE-400`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` | **How It Happens in Code:** `find_launcher_id` (`src/locate.rs:148-219`) returns the first `SINGLETON_LAUNCHER_HASH` child found at the user's address without verifying vault custody/recovery key match.<br/>**Scenario A (1-Mojo CLI Lockout):** Decoy launcher `2de44601...` causes `chia-vault-recover` (`1.0.0-rc9`) to abort with `recovery phrase does not match`.<br/>**Scenario B (`WLC-02` + `VR-01` Chain):** Blocks both GUI and CLI recovery.<br/>**Scenario C (`GREEN` Release Binary):** Recovers true launcher `e53d0c41...` (`45/45` tests pass). | `RED`: `selected_launcher: 2de44601... (decoy), cli_exit_code: 1`<br/>`GREEN`: `selected_launcher: e53d0c41... (victim), cli_exit_code: 0`<br/>`pytest -k poc10` |
+| **33** | [`33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md`](advisories/zh-CN/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md)<br/>`CHIA-CONS-SP-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/full_node/full_node.py:2220-2310` (`new_peak` / `sync_from_fork_point`) | `CWE-400 / CWE-345`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H` | **How It Happens in Code:** `full_node.py:2220-2310` aborts `sync_from_fork_point` on invalid sub-epoch/weight-proof responses without disconnecting the peer.<br/>**Scenario A (Port `8444` Sync Lockout):** 3-node mTLS proof keeps victim `peak` at `None` despite an honest peer at `height=5`.<br/>**Scenario B (`10,000 XCH` Reorg Double-Spend):** `Branch A` (`26afe149...`) credits exchange `+10,000 XCH`; `Branch B` (`ad2eba4d...`) reorgs exchange balance to `0`.<br/>**Scenario C (`GREEN` Patch):** Disconnects offending peer & enforces `min_confirmations=32`. | `RED`: `victim_peak: None, reorg_exchange_loss_mojo: 10000000000000000`<br/>`GREEN`: `victim_synced_height: 5, exchange_loss_mojo: 0`<br/>`pytest -k reorg` |
+| **34** | [`34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md`](advisories/zh-CN/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md)<br/>`CHIA-WLT-OFFER-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/rpc/wallet_rpc_api.py` (`take_offer`)<br/>`chia/wallet/trade_manager.py` (`respond_to_offer`) | `CWE-863`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `take_offer` / `respond_to_offer` selects and signs wallet coins for requested offer payments without enforcing a per-asset `max_authorized_amount` cap.<br/>**Scenario A (Taker Bot Excess Spend):** External Offer induces coin selection above expected quote.<br/>**Scenario B (Hidden Multi-Asset Leg):** CAT/NFT offer silently pulls XCH from wallet.<br/>**Scenario C (`GREEN` Patch):** Enforces explicit per-asset spend cap. | `RED`: `unbounded_implicit_coin_spend_signed: true`<br/>`GREEN`: `exceeded_max_authorized_amount_rejected: true`<br/>`pytest -k wallet` |
+| **35** | [`35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md`](advisories/zh-CN/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md)<br/>`CHIA-POS-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/farmer/farmer_api.py:85-185` (`FarmerAPI.new_proof_of_space`)<br/>`chiapos` Rust FFI (`size_v2` / `get_quality_string`) | `CWE-248 / CWE-20`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` | **How It Happens in Code:** `FarmerAPI.new_proof_of_space` (`farmer_api.py:85-185`) calls Rust FFI `size_v2()` / `get_quality_string()` before validating pool key XOR exclusivity and `check_plot_param`.<br/>**Scenario A (4/4 Farmer Cluster Crash):** Single 445-byte wire packet (`30a0e918...`) triggers `pyo3_runtime.PanicException` and terminates all 4 Farmer processes (`exit_code=1`).<br/>**Scenario B (Slice OOB Panic):** Truncated proof triggers `range end index 36 out of range for slice of length 32`.<br/>**Scenario C (`GREEN` Patch):** `4/4` Farmers survive (`exit_code=0`). | `RED`: `packet_bytes: 445, crashed_farmers: 4/4, PanicException`<br/>`GREEN`: `crashed_farmers: 0/4, alive_farmers: 4`<br/>`pytest -k farmer` |
+| **36** | [`36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md`](advisories/zh-CN/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md)<br/>`CHIA-POS-02..04`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chiapos** (`<= 2.0.11`)<br/>`src/verifier.hpp:48-108` (`Verifier::ValidateProof`)<br/>`src/bits.hpp:184`<br/>`src/prover_disk.hpp:254-322` (`DiskProver`) | `CWE-190 / CWE-787 / CWE-125`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H` | **How It Happens in Code:** `Verifier::ValidateProof` (`src/verifier.hpp`, `src/bits.hpp:184`) overflows bit offsets at `k=50` (Table 4) and `k>=60`, and `DiskProver` (`src/prover_disk.hpp`) truncates 64-bit plot table sizes to 32-bit.<br/>**Scenario A (Crafted `.plot` Heap Overflow):** Loading a crafted `.plot` file triggers 64-to-32-bit truncation heap corruption.<br/>**Scenario B (`k=50` / `k=60` Stack OOB):** Verified via ASan/UBSan `chiapos_k_probe` (`exit_code=1`).<br/>**Scenario C (`GREEN` Patch):** Bounds-checked (`exit_code=0`). | `RED`: `k50_table4_asan_exit: 1, k60_asan_exit: 1 (src/bits.hpp:184 OOB)`<br/>`GREEN`: `exit_code: 0, rejected_cleanly: true`<br/>`pytest -k chiapos` |
+| **37** | [`37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md`](advisories/zh-CN/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md)<br/>`CHIA-VDF-02`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chiavdf** (`<= 1.1.11`)<br/>`src/verifier.cpp` (`CheckProofOfTimeNWesolowski`)<br/>`src/prover_slow.h` | `CWE-125 / CWE-416`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` | **How It Happens in Code:** `CheckProofOfTimeNWesolowski` (`src/verifier.cpp`) slices `proof_blob` without validating `proof_blob_len` or `num_iterations > 0`.<br/>**Scenario A (Verifier OOB Crash):** Truncated VDF proof triggers native C++ out-of-bounds read.<br/>**Scenario B (Teardown UAF):** Worker thread accesses freed state in `prover_slow.h`.<br/>**Scenario C (`GREEN` Patch):** Returns `false` cleanly on malformed VDF proofs. | `RED`: `asan_oob_or_segv: true, exit_code: 1`<br/>`GREEN`: `asan_oob_or_segv: false, verified: false`<br/>`chiavdf ASan harness` |
+| **38** | [`38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md`](advisories/zh-CN/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md)<br/>`CHIA-DL-02`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/data_layer/download_data.py`<br/>`chia/data_layer/data_layer.py` | `CWE-918`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N` | **How It Happens in Code:** `download_data.py` fetches DataLayer mirror URLs with `allow_redirects=True` and no loopback/private IP validation on redirect hops.<br/>**Scenario A (Internal Loopback/Metadata SSRF):** A `302` redirect on an announced mirror URL hits `127.0.0.1` / `169.254.169.254`.<br/>**Scenario B (Replica Fleet Scanning):** Subscribed nodes poll redirected internal hosts.<br/>**Scenario C (`GREEN` Patch):** Blocks redirects to private/loopback IPs. | `RED`: `redirect_to_loopback_followed: true, internal_hit_count: 1`<br/>`GREEN`: `redirect_to_loopback_followed: false, internal_hit_count: 0`<br/>`pytest -k dl02` |
+| **39** | [`39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md`](advisories/zh-CN/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md)<br/>`VERCEL-NEXT-15`<br/>MITRE CNA-LR & HackerOne #4152250 (+2 Follow-Up Comments Mounted) | **vercel/next.js** (`next <= 16.4.3`)<br/>`packages/next/src/server/app-render/action-handler.ts:363-411, 962-1166`<br/>`packages/next/src/client/components/router-reducer/reducers/server-action-reducer.ts:154-201` | `CWE-200 / CWE-918 / CWE-345`<br/>**8.2 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:L/A:N` | **How It Happens in Code:** `createRedirectRenderResult()` (`action-handler.js:278-303`) fetches Server Action redirect targets without `redirect: 'manual'`, following external `302` hops with `x-next-revalidate-tag-token` (`previewModeId`) and piping external RSC Flight streams back under a same-origin `x-action-redirect`. Omitting `"b"` in Flight data bypasses `server-action-reducer.js:161` Build ID checks (`UXSS`).<br/>**Scenario A (SSO/OIDC `previewModeId` Theft):** Multi-tenant SSO login Server Action leaks `previewModeId` to tenant IdP.<br/>**Scenario B (Global ISR Cache Wiping):** Stolen `previewModeId` authorizes `x-prerender-revalidate` cache purging.<br/>**Scenario C (Same-Origin RSC Flight UXSS):** OAuth bounce `302` injects forged RSC Virtual DOM (`response.b === undefined`) and CORS headers into `victim-app.com`. | `RED`: `leaked_previewModeId: f5dbbd8f6a6a51a6aa8ff1443f7090dd, client_build_id_check_bypassed: true, flight_uxss: true`<br/>`GREEN`: `redirect: 'manual', external_hop_followed: false`<br/>HackerOne `#4152250` (+2 Comments) |
+| **40** | [`40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md`](advisories/zh-CN/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md)<br/>`VERCEL-NEXT-09`<br/>MITRE CNA-LR & HackerOne #4152265 (+2 Follow-Up Comments Mounted) | **vercel/next.js** (`next <= 16.4.3`)<br/>`packages/next/src/server/image-optimizer.ts:696-729`<br/>`packages/next/src/server/lib/find-root.ts` / `validate-url.ts` (`isPrivateIp`) | `CWE-918 / CWE-863`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N` | **How It Happens in Code:** `fetchExternalImage()` (`image-optimizer.js:586-615`) checks `remotePatterns` only on hop 1, not on `3xx` redirects (`09A`). In `validateUrl()`, `isPrivateIp(ip)` fails open (`if (!ipaddr.isValid(ip)) return false`) on Linux hyphenated IPv6 zone indices (`::ffff:127.0.0.1%br-...`) and classifies `::7f00:1` and `64:ff9b:1::/48` as `unicast` (`09B`).<br/>**Scenario A (Same-Host Pathname Bypass):** `/public-avatars/**` redirects to `/private-kyc-docs/passport-scan.png`.<br/>**Scenario B (Cross-Host Allowlist Pivot):** Allowlisted CDN/avatar service redirects to unapproved internal host.<br/>**Scenario C (`09A -> 09B` Direct `127.0.0.1` TCP Loopback SSRF):** Redirects to `::ffff:127.0.0.1%br-...` / `::7f00:1` to read `127.0.0.1` services. | `RED`: `remotePatterns_bypassed: true, loopback_server_hit: true, remote_addr: ::ffff:127.0.0.1`<br/>`GREEN`: `redirect_rechecked: true, fail_closed: true`<br/>HackerOne `#4152265` (+2 Comments) |
+| **41** | [`41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md`](advisories/zh-CN/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md)<br/>`VERCEL-CLI-07`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/vercel** (`vercel <= 65.4.0`)<br/>`packages/cli/src/commands/curl/utils.ts:34-42, 74-96, 179-216`<br/>`packages/cli/src/commands/http-cli/index.ts` | `CWE-200 / CWE-436`<br/>**8.2 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N` | **How It Happens in Code:** `constructFullUrl()` (`packages/cli/src/commands/curl/utils.ts:179-216`) checks `new URL(normalizedPath, baseUrl).origin === baseUrl` but returns raw `${baseUrl}${normalizedPath}`. For `\\@attacker.com`, WHATWG `URL` keeps `origin === baseUrl`, whereas `libcurl` treats `baseUrl\\` as userinfo and `attacker.com` as host.<br/>**Scenario A (CI/CD Token Exfiltration):** `vercel curl` sends `Authorization: Bearer` and `x-vercel-protection-bypass` to `attacker.com`.<br/>**Scenario B (Developer/Agent CLI Leak):** Malicious path steals live CLI session token.<br/>**Scenario C (Auto-Minted Bypass Leak):** `PATCH /v10/projects/{id}/protection-bypass` mints and leaks project secret. | `RED`: `whatwg_origin_check_passed: true, curl_connected_to_attacker: true, leaked_bearer: true`<br/>`GREEN`: `rejected_backslash_and_globoff: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
+| **42** | [`42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md`](advisories/zh-CN/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md)<br/>`VERCEL-FLAGS-CORE-06`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/flags** (`@vercel/flags-core <= 1.10.2`)<br/>`packages/flags-core/src/controller.ts:555-615`<br/>`packages/flags-core/dist/index.js:465-516` (`streamResponse` / `readBundledDefinitions`) | `CWE-400 / CWE-345`<br/>**6.5 Medium**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H` | **How It Happens in Code:** `Controller.streamResponse()` (`controller.ts:555-615`) updates `datafileUpdatedAtWatermark` from the unprefixed `x-datafile-Updated-At` header even on non-`200` responses before validating the datafile payload.<br/>**Scenario A (Kill-Switch Lockout):** Poisoning `x-datafile-Updated-At: 9999999999999` makes the SDK ignore all subsequent legitimate flag updates.<br/>**Scenario B (Missing `redirect: 'manual'`):** Stream fetch follows `3xx` redirects.<br/>**Scenario C (Worker State Drift):** Long-lived Node workers remain permanently frozen on stale flags. | `RED`: `poisoned_watermark: 9999999999999, bundled_update_ignored: true`<br/>`GREEN`: `requires_res_ok_and_bounded_skew: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
+| **43** | [`43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md`](advisories/zh-CN/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md)<br/>`VERCEL-FLAGS-05`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/flags** (`flags <= 4.4.0`)<br/>`packages/flags/src/next/precompute.ts:206-214`<br/>`packages/flags/dist/next/index.js:119-125` (`deserialize`) | `CWE-347`<br/>**6.5 Medium**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `deserialize(flags, code, secret)` (`precompute.ts:206-214`) returns `{}` when `code === '__no_flags__'` before verifying the Compact JWS signature, even when `flags.length > 0`.<br/>**Scenario A (Edge Gate Bypass):** Requesting `/__no_flags__/page` skips JWS verification and forces fallback `flag.decide()` execution.<br/>**Scenario B (Cohort Manipulation):** Unauthenticated clients reset signed Edge precomputed cohorts.<br/>**Scenario C (Origin Re-Decide Load):** Forces asynchronous `decide()` execution on precomputed routes. | `RED`: `deserialize('__no_flags__'): {}, getPrecomputed_bypassed_edge_false_to_true: true`<br/>`GREEN`: `requires_flags_length_zero_for_sentinel: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
+| **44** | [`44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md`](advisories/zh-CN/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md)<br/>`VERCEL-FIREWALL-01`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/firewall** (`@vercel/firewall <= 1.2.6`)<br/>`packages/firewall/src/rate-limit.ts:138-183, 211-285`<br/>`cmd/ipc-proxy/client.go:34-41, 79-97` | `CWE-918 / CWE-200 / CWE-636`<br/>**7.2 High**<br/>`AV:N/AC:H/PR:N/UI:N/S:C/C:L/I:L/A:N` | **How It Happens in Code:** `resolveFirewallHost()` (`rate-limit.ts:138-167`) uses the untrusted `Host` header as the outbound HTTPS target when `VERCEL_ENV !== 'production'`, leaking `x-vercel-rate-limit-secret` and `x-vercel-oidc-token`, and fails open (`{ rateLimited: false }`) on errors.<br/>**Scenario A (Secret Exfiltration):** Forged `Host` header steals `VF_RATE_LIMIT_SECRET`.<br/>**Scenario B (Fail-Open Brute-Force):** Malformed `Host` triggers `{ rateLimited: false }` on login/OTP endpoints.<br/>**Scenario C (Go `ipc-proxy` `%s` Bug):** `client.go:38` leaves literal `%s` in `api-%s.vercel.com`. | `RED`: `leaked_rate_limit_secret: rl_secret_LIVE_99887766, fail_open_rateLimited: false`<br/>`GREEN`: `strict_hostname_regex_and_sprintf_fixed: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
+| **45** | [`45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md`](advisories/zh-CN/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md)<br/>`VERCEL-CLIENT-08A`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/vercel** (`@vercel/client <= 18.10.0`)<br/>`packages/client/src/utils/hashes.ts:115-167`<br/>`packages/client/src/deploy.ts:127-195` (`filesFromFilePathMap`) | `CWE-200 / CWE-706`<br/>**5.0 Medium**<br/>`AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N` | **How It Happens in Code:** `filesFromFilePathMap()` (`packages/client/src/utils/hashes.ts:115-167`) resolves `.vc-config.json` `filePathMap` entries via `path.resolve(cwd, filePath)` without root confinement or `.vercelignore` filtering.<br/>**Scenario A (`.next/required-server-files.json` Leak):** Uploads local `.env` secrets despite `.vercelignore`.<br/>**Scenario B (CI Prebuilt Artifact Traversal):** `../../` entries in `filePathMap` upload host secrets to `/v2/files`.<br/>**Scenario C (Build Cache Poisoning):** Restored `.vc-config.json` exfiltrates runner files. | `RED`: `outside_host_secret_uploaded: true, dotnext_env_secret_uploaded: true`<br/>`GREEN`: `path_confined_to_cwd: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
+| **46** | [`46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md`](advisories/zh-CN/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md)<br/>`VERCEL-CLIENT-08B`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/vercel** (`@vercel/client <= 18.10.0`)<br/>`packages/client/src/utils/index.ts:116-148`<br/>`packages/client/src/deploy.ts:145-195` (`buildFileTree` / `bulkRedirectsPath`) | `CWE-59 / CWE-200`<br/>**5.0 Medium**<br/>`AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N` | **How It Happens in Code:** `buildFileTree()` (`packages/client/src/utils/index.ts:116-148`) resolves `config.bulkRedirectsPath` without `fs.realpath()` root confinement or `.vercelignore` filtering, following symlinks outside `cwd`.<br/>**Scenario A (Symlink Host Read):** Symlink inside `bulkRedirectsPath` uploads `/etc/hostname` or `~/.ssh/id_rsa`.<br/>**Scenario B (`../` Directory Walk):** Parent traversal enumerates and uploads outside directories.<br/>**Scenario C (`.vercelignore` Bypass):** Ignored secret files are uploaded in prebuilt mode. | `RED`: `symlink_target_outside_cwd_uploaded: true`<br/>`GREEN`: `realpath_confinement_and_lstat_enforced: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
 
 ---
 
-### III.01 — Stirling-PDF (`v3.2.2`) — 監視フォルダ（`Watched Folder`）のシンボリックリンク（`Symlink`）脱出による `FolderAccessGuard` バイパス（`GHSA-hpc7-xx5r-gc44`、`CWE-59`/`CWE-61`、CVSS `7.1 High`）
+### III.01 — Stirling-PDF (`v3.2.2`) — 监控文件夹（`Watched Folder`）符号链接（`Symlink`）逃逸绕过 `FolderAccessGuard`（`GHSA-hpc7-xx5r-gc44`，`CWE-59`/`CWE-61`，CVSS `7.1 High`）
 
-#### 1. メタデータ & 開示ステータス
-* **対象リポジトリ & パッケージ:** `Stirling-Tools/Stirling-PDF`（`Maven: stirling.software:stirling-pdf`）
-* **影響を受けるバージョン & コンポーネント:** `<= v3.2.2`（`commit 684608d143779bf3a8ffc67639f077a1202c62ff`）— `FolderInputSource.java`（`listFiles`、`337-377` 行）、`ProcessingFolderController.java`（`374-380` 行）、`FolderOutputSink.java`（`archiveOriginal`、`338-345` 行）
-* **脆弱性分類 & スコア:** `CWE-59`（ファイルアクセス前の不適切なリンク解決）/ `CWE-61`（UNIX シンボリックリンクの追跡）— **CVSS v3.1: `7.1 High`**（`CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N`）
-* **GitHub GHSA リンク:** `GHSA-hpc7-xx5r-gc44`（`https://github.com/Stirling-Tools/Stirling-PDF/security/advisories/GHSA-hpc7-xx5r-gc44`）
-* **Sniper 個別アドバイザリ:** [`docs/advisories/ja/01-STIRLING-CAND-02-SYMLINK.md`](advisories/ja/01-STIRLING-CAND-02-SYMLINK.md)
+#### 1. 元数据与披露状态
+* **目标仓库与软件包：** `Stirling-Tools/Stirling-PDF`（`Maven: stirling.software:stirling-pdf`）
+* **受影响版本与组件：** `<= v3.2.2`（`commit 684608d143779bf3a8ffc67639f077a1202c62ff`）— `FolderInputSource.java`（`listFiles`，第 `337-377` 行）、`ProcessingFolderController.java`（第 `374-380` 行）、`FolderOutputSink.java`（`archiveOriginal`，第 `338-345` 行）
+* **漏洞类型与评分：** `CWE-59`（文件访问前链接解析不当）/ `CWE-61`（UNIX 符号链接跟随）— **CVSS v3.1: `7.1 High`**（`CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N`）
+* **GitHub GHSA 链接：** `GHSA-hpc7-xx5r-gc44`（`https://github.com/Stirling-Tools/Stirling-PDF/security/advisories/GHSA-hpc7-xx5r-gc44`）
+* **VulKill 独立安全公告：** [`docs/advisories/zh-CN/01-STIRLING-CAND-02-SYMLINK.md`](advisories/zh-CN/01-STIRLING-CAND-02-SYMLINK.md)
 
-#### 2. コード内でどのように発生し脆弱性へ変化するのか（ステップバイステップの平易な解説）
-Stirling-PDF の **自動処理監視フォルダ（Watched Folder）** 機能は、社内ネットワークの共有フォルダ（例: `/mnt/scanner-incoming`）に置かれた文書を自動的に読み取って処理し、出力フォルダ（`/mnt/scanner-processed`）へ保存するために使われます。開発者は、この機能がサーバー自身の機密設定ファイル（`/configs/settings.yml` など）を読み取らないよう、`FolderAccessGuard.isProtected(path)` というセキュリティガードを実装しました。
+#### 2. 漏洞如何在代码中产生并转化为安全风险（通俗易懂的分步讲解）
+Stirling-PDF 的 **自动监控文件夹（Watched Folder）** 功能用于自动读取企业共享目录（例如 `/mnt/scanner-incoming`）中的文档，处理后输出至结果目录（`/mnt/scanner-processed`）。为了防止该功能读取服务器自身的敏感配置文件（如 `/configs/settings.yml`），开发者编写了名为 `FolderAccessGuard.isProtected(path)` 的安全守卫。
 
-ところが、Java 標準のファイル判定メソッド `Files.isRegularFile(path)` には重大な落とし穴があります。**第2引数に `LinkOption.NOFOLLOW_LINKS` を指定しない限り、シンボリックリンク（ショートカット）を自動的に追跡し、リンク先が通常ファイルであれば `true` を返してしまう** のです。一方で `FolderAccessGuard.isProtected(path)` は実体パス（`toRealPath()`）ではなく見かけ上の字句パス（`path.toAbsolutePath().normalize()`）しかチェックしません。
+然而，Java 标准库的文件判断方法 `Files.isRegularFile(path)` 有一个极易被忽视的特性：**如果不传入第二个参数 `LinkOption.NOFOLLOW_LINKS`，它会自动跟随符号链接（快捷方式 / symlink）**，只要目标文件是普通文件就会返回 `true`！与此同时，`FolderAccessGuard.isProtected(path)` 仅检查文件在监控目录中的表面字面路径（`path.toAbsolutePath().normalize()`），而不解析符号链接指向的真实物理路径（`toRealPath()`）。
 
-`FolderInputSource.java:337-350` にある実際の脆弱なコードは以下の通りです。
+`FolderInputSource.java:337-350` 中的漏洞源码如下：
 ```java
 private static List<Path> listFiles(
         Path inputDir, boolean recursive, FolderAccessGuard accessGuard) throws IOException {
     List<Path> files = new ArrayList<>();
-    if (!recursive) { // デフォルトモード: recursive = false
+    if (!recursive) { // 默认模式：recursive = false
         try (Stream<Path> entries = Files.list(inputDir)) {
-            entries.filter(Files::isRegularFile) // バグ 1: LinkOption.NOFOLLOW_LINKS がないためシンボリックリンクを追跡する！
-                    .filter(file -> !hidden(file)) // バグ 2: accessGuard.isProtected(file) すらここで呼ばれていない！
+            entries.filter(Files::isRegularFile) // 缺陷 1：未传入 LinkOption.NOFOLLOW_LINKS，自动跟随符号链接！
+                    .filter(file -> !hidden(file)) // 缺陷 2：此处甚至未调用 accessGuard.isProtected(file)！
                     .forEach(files::add);
         }
         return files;
     }
 ```
-さらに `ProcessingFolderController.java:374` が後続で `accessGuard.isProtected(path)` を呼んでも、見かけ上の名前は `/mnt/scanner-incoming/invoice.pdf` であるためガードを素通りします。そして最後に `FolderOutputSink.java:342` の `Files.move(originalFile, archiveTarget)` または `Files.copy` がリンク先の実体ファイルを読み取り・移動させてしまいます。
+随后，即便 `ProcessingFolderController.java:374` 调用了 `accessGuard.isProtected(path)`，由于传入的表面路径是 `/mnt/scanner-incoming/invoice.pdf`，守卫会判定为安全并放行。最终 `FolderOutputSink.java:342` 执行 `Files.move(originalFile, archiveTarget)` 或 `Files.copy` 时，会把符号链接指向的受保护文件复制到所有人可读的输出/归档目录中。
 
-#### 3. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — オフィス複合機・スキャナー共有フォルダ（SMB/NFS）経由での管理者・OAuth 秘密情報の窃取:**
-  1. 企業内で Stirling-PDF が `/mnt/office-scanner/incoming` フォルダを監視し、処理済み文書を `/mnt/office-scanner/processed` に出力している。
-  2. 共有フォルダへの書き込み権限を持つ一般社員または侵害された端末が、`ln -s /configs/settings.yml /mnt/office-scanner/incoming/invoice_2026.pdf` というシンボリックリンクを作成する。
-  3. Stirling-PDF のポーリング処理がこのリンクを通常ファイルと誤認して処理・アーカイブし、`/configs/settings.yml` 内の初期管理者パスワード、OAuth2 クライアントシークレット、SMTP 認証情報、API キーが共有出力フォルダへそのままコピーされ、全社員から閲覧可能になる。
-* **シナリオ B — SFTP / Nextcloud 自動取込パイプラインにおける `archiveOriginal()` での設定破壊とサービス停止（DoS）:**
-  1. 外部取引先が請求書をアップロードする SFTP ディレクトリが Stirling-PDF の監視フォルダに接続されており、処理後に元ファイルをアーカイブする設定になっている。
-  2. アップロードされたアーカイブまたは SFTP セッション経由で、アプリケーションのデータファイルや `.env` / 設定ファイルへのシンボリックリンクが配置される。
-  3. `FolderOutputSink.archiveOriginal()` が元ファイルを移動（`Files.move`）または上書きし、Stirling-PDF サーバーの設定やデータベースが破損して業務が停止する。
-* **シナリオ C — マルチテナント部門別フォルダ間での機密人事・財務文書の横断窃取:**
-  1. 同一サーバー上で複数部門（人事部 `/watched/hr`、営業部 `/watched/sales`）の監視フォルダが運用されている。
-  2. 営業部フォルダへのアクセス権を持つ攻撃者が、`ln -s /watched/hr/payroll_2026.pdf /watched/sales/scan01.pdf` を配置する。
-  3. `staysWithinCanonicalRoot` による正規化ルート境界チェックがないため、営業部の出力フォルダに人事部の給与明細 PDF が複製される。
+#### 3. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — 通过办公复合机/扫描仪共享文件夹（SMB/NFS）窃取管理员口令与 OAuth 密钥：**
+  1. 企业部署 Stirling-PDF 监控 `/mnt/office-scanner/incoming` 共享目录，并将处理结果输出至 `/mnt/office-scanner/processed`。
+  2. 拥有共享目录写入权限的普通员工或受控终端创建符号链接 `ln -s /configs/settings.yml /mnt/office-scanner/incoming/invoice_2026.pdf`。
+  3. Stirling-PDF 轮询任务将该符号链接当作普通文件处理并归档，导致 `/configs/settings.yml` 中的管理员密码哈希、OAuth2 客户端密钥、SMTP 凭据及 API 密钥被直接复制到公共输出目录。
+* **场景 B — SFTP / Nextcloud 自动文档接入流水线中 `archiveOriginal()` 移走线上配置文件导致服务崩溃（DoS）：**
+  1. 外部合作方通过 SFTP 投递目录向 Stirling-PDF 传输待处理单据，且系统开启了处理后归档原文件功能。
+  2. 攻击者上传指向应用数据文件或 `.env` / 配置文件的符号链接。
+  3. `FolderOutputSink.archiveOriginal()` 调用 `Files.move` 将真实配置文件移入归档目录，导致 Stirling-PDF 服务因配置丢失而中断。
+* **场景 C — 多租户部门文件夹之间跨目录窃取机密人事与财务文档：**
+  1. 同一实例监控多个部门目录（如人事部 `/watched/hr` 与销售部 `/watched/sales`）。
+  2. 销售部目录访问者放入 `ln -s /watched/hr/payroll_2026.pdf /watched/sales/scan01.pdf`。
+  3. 因缺少 `staysWithinCanonicalRoot` 真实根目录边界检查，人事部的机密薪资 PDF 被复制到了销售部的输出目录。
 
-#### 4. 実行・再現・検証コマンド例
+#### 4. 示例执行、复现与验证命令
 ```bash
-# 1. Sniper SAST エンジンによる Stirling-PDF 監視フォルダの監査
+# 1. 使用 VulKill SAST 引擎审计 Stirling-PDF 监控目录模块
 python3 scripts/sniper-project-audit /path/to/Stirling-PDF --format json --output stirling-audit.json
 
-# 2. ローカル隔離テスト環境での RED -> GREEN ランタイム証明の実行
+# 2. 在本地隔离测试环境中运行 RED -> GREEN 运行时证明
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_stirling_cand02 -v
 
-# 3. ランタイム証明 JSON 出力の確認
+# 3. 查看运行时证明 JSON 输出
 python3 -c 'import json; d=json.load(open("docs/advisories/other-repos-and-cua-real-world-impact-e2e-20261029.json")); print(json.dumps(d["results"]["STIRLING-CAND-02"], indent=2))'
 ```
-**実測ランタイム証明（`RED -> GREEN`）:**
+**实测运行时证明输出（`RED -> GREEN`）：**
 ```json
 {
   "RED": {
@@ -497,23 +495,23 @@ python3 -c 'import json; d=json.load(open("docs/advisories/other-repos-and-cua-r
 
 ---
 
-### III.02 — Stirling-PDF (`v3.2.2`) — `ConvertWebsiteToPDF.java` における `CVE-2026-71270` の修正漏れと WeasyPrint サブリソース SSRF（`GHSA-ff6j-8xch-j8r6`、`CWE-918`、CVSS `8.6 High`）
+### III.02 — Stirling-PDF (`v3.2.2`) — `ConvertWebsiteToPDF.java` 中 `CVE-2026-71270` 修复不完整导致 WeasyPrint 子资源 SSRF（`GHSA-ff6j-8xch-j8r6`，`CWE-918`，CVSS `8.6 High`）
 
-#### 1. メタデータ & 開示ステータス
-* **対象リポジトリ & パッケージ:** `Stirling-Tools/Stirling-PDF`（`Maven: stirling.software:stirling-pdf`）
-* **影響を受けるバージョン & コンポーネント:** `<= v3.2.2`（`commit 684608d143779bf3a8ffc67639f077a1202c62ff`）— `ConvertWebsiteToPDF.java`（`urlToPdf`、`116-143` 行 — `POST /api/v1/convert/url/pdf`）
-* **脆弱性分類 & スコア:** `CWE-918`（サーバーサイド・リクエスト・フォージェリ / SSRF）— **CVSS v3.1: `8.6 High`**（`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N`）
-* **GitHub GHSA リンク:** `GHSA-ff6j-8xch-j8r6`（`https://github.com/Stirling-Tools/Stirling-PDF/security/advisories/GHSA-ff6j-8xch-j8r6` — `CVE-2026-71270` / `GHSA-j5rg-wh78-9f2q` の修正漏れ）
-* **Sniper 個別アドバイザリ:** [`docs/advisories/ja/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md`](advisories/ja/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md)
+#### 1. 元数据与披露状态
+* **目标仓库与软件包：** `Stirling-Tools/Stirling-PDF`（`Maven: stirling.software:stirling-pdf`）
+* **受影响版本与组件：** `<= v3.2.2`（`commit 684608d143779bf3a8ffc67639f077a1202c62ff`）— `ConvertWebsiteToPDF.java`（`urlToPdf`，第 `116-143` 行 — `POST /api/v1/convert/url/pdf`）
+* **漏洞类型与评分：** `CWE-918`（服务端请求伪造 / SSRF）— **CVSS v3.1: `8.6 High`**（`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N`）
+* **GitHub GHSA 链接：** `GHSA-ff6j-8xch-j8r6`（`https://github.com/Stirling-Tools/Stirling-PDF/security/advisories/GHSA-ff6j-8xch-j8r6` — `CVE-2026-71270` / `GHSA-j5rg-wh78-9f2q` 的不完整修复）
+* **VulKill 独立安全公告：** [`docs/advisories/zh-CN/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md`](advisories/zh-CN/02-STIRLING-CAND-01-WEASYPRINT-SSRF.md)
 
-#### 2. コード内でどのように発生し脆弱性へ変化するのか（ステップバイステップの平易な解説）
-Stirling-PDF には以前に **WeasyPrint が HTML 内の外部リンク（`<link>`、`<img>`、`@import`）を自動的に取得してしまうことで内部ネットワークの情報を盗み出せる SSRF 脆弱性（`CVE-2026-71270` / `GHSA-j5rg-wh78-9f2q`）** が報告されました。開発チームは HTML ファイルアップロード用の `FileToPdf.java` にサニタイザと `--allowed-protocols data`（外部 HTTP 通信の禁止）を追加して修正しました。
+#### 2. 漏洞如何在代码中产生并转化为安全风险（通俗易懂的分步讲解）
+此前 Stirling-PDF 曾修复过编号为 `CVE-2026-71270`（`GHSA-j5rg-wh78-9f2q`）的漏洞：当使用 WeasyPrint 将 HTML 渲染为 PDF 时，WeasyPrint 会自动请求 HTML 内部的 `<link>`、`<img>`、`@import` 子链接，从而引发内网 SSRF。当时官方在上传 HTML 文件的 `FileToPdf.java` 中加上了 HTML 净化器并将 WeasyPrint 限制为 `--allowed-protocols data`。
 
-しかし、隣のファイルである URL から PDF への変換エンドポイント `ConvertWebsiteToPDF.java`（`POST /api/v1/convert/url/pdf`）には同じ修正が適用されませんでした。
+然而，紧邻的“网页 URL 转 PDF”接口 `ConvertWebsiteToPDF.java`（`POST /api/v1/convert/url/pdf`）却遗漏了这两项关键修复：
 ```java
 // app/core/src/main/java/stirling/software/SPDF/controller/api/converters/ConvertWebsiteToPDF.java:116-143
-String htmlContent = fetchRemoteHtml(URL); // トップレベル URL のみ SsrfProtectionService で検査される
-// バグ 1: customHtmlSanitizer.sanitize(htmlContent) が呼ばれていない！
+String htmlContent = fetchRemoteHtml(URL); // 仅对顶层 URL 执行了 SsrfProtectionService 检查
+// 缺陷 1：未调用 customHtmlSanitizer.sanitize(htmlContent) 清洗 HTML 内的子资源链接！
 Files.writeString(tempHtmlInput, htmlContent, StandardCharsets.UTF_8);
 
 List<String> command = new ArrayList<>();
@@ -523,31 +521,30 @@ command.add("--base-url");
 command.add(URL);
 command.add("--pdf-forms");
 command.add("--allowed-protocols");
-command.add("data,http,https"); // バグ 2: WeasyPrint サブプロセスに任意の http/https 通信を許可している！
+command.add("data,http,https"); // 缺陷 2：允许 WeasyPrint 原生子进程任意发起 http/https 请求！
 ```
-この結果、攻撃者が用意した公開 Web ページ（`https://example-attacker.com/page.html`）自体は最初のチェックを通過しますが、その HTML の中に `<link rel="stylesheet" href="http://127.0.0.1:8080/internal-secrets.css">` や `<img src="http://169.254.169.254/...">` を書いておくと、**Java の SSRF 防御を一切通らないネイティブの WeasyPrint プロセスが直接内部サーバーへアクセスし、その結果を生成された PDF の中に書き込んで攻撃者へ返してしまう** のです。
+因此，攻击者只需提交一个合法的公网网页 URL（从而通过顶层 `fetchRemoteHtml` 检查），并在该网页 HTML 内嵌入指向 `http://127.0.0.1:...` 或云元数据 `http://169.254.169.254/...` 的 `<link rel="stylesheet">` 或 `<img>`，**完全脱离 Java 安全管控的 WeasyPrint 子进程就会直接拉取内网敏感数据，并将其渲染进生成的 PDF 文件返回给攻击者**。
 
-#### 3. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — クラウド環境（AWS/GCP/Azure）で稼働する PDF 変換サービスからの IAM 認証情報・メタデータ窃取:**
-  1. 社内ポータルや SaaS バックエンドが「Web ページを PDF 保存」機能として Stirling-PDF の `/api/v1/convert/url/pdf` を提供している。
-  2. 攻撃者が自前の公開 URL を入力する。そのページの HTML には CSS `content` プロパティや `<object>` / `<link>` でクラウドメタデータ API またはローカル設定エンドポイントへの参照が含まれている。
-  3. WeasyPrint が `--allowed-protocols data,http,https` で内部エンドポイントを取得し、返却された PDF ファイルのページ内に内部シークレットが印字されてダウンロードされる。
-* **シナリオ B — Kubernetes / Docker 内部ネットワーク上の未認証マイクロサービス（`127.0.0.1` / `10.x.x.x`）の探索とデータ抽出:**
-  1. Stirling-PDF コンテナと同一 Pod または同一内部サブネット上で、Spring Boot Actuator（`http://127.0.0.1:8080/actuator/env`）や Prometheus（`http://10.0.0.12:9090/metrics`）が稼働している。
-  2. Java の `SsrfProtectionService` は直接 `http://127.0.0.1` を入力すると拒否するが、外部 URL 内の `@import url("http://127.0.0.1:8080/...")` は WeasyPrint が直接取得するため、内部 API レスポンスが PDF 経由で流出する。
-* **シナリオ C — HTTP `302` リダイレクトを利用した内部管理画面のレンダリングとファイアウォール回避:**
-  1. 攻撃者の公開サーバー上の画像/スタイルシート URL が、初回アクセス時に HTTP `302 Found` で社内イントラネットの管理画面（`http://intranet-admin.local/`）へリダイレクトする。
-  2. WeasyPrint の HTTP クライアントがリダイレクトを追跡し、社内管理画面の内容を PDF 化して攻撃者に返す。
+#### 3. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — 云端部署的发票/网页归档 PDF 服务泄露云主机 IAM 临时凭据：**
+  1. 企业 SaaS 平台调用 Stirling-PDF 的 `/api/v1/convert/url/pdf` 将用户提交的外部账单网页转换为 PDF。
+  2. 攻击者提交的公网页面中包含指向云元数据端点（`169.254.169.254`）或本地配置接口的样式表与内联框架子资源。
+  3. WeasyPrint 拉取内网响应并将其直接印在返回的 PDF 页面上，攻击者下载 PDF 即可读取云 IAM 密钥。
+* **场景 B — 穿透 `SsrfProtectionService` 扫描并读取 Kubernetes / Docker 内网微服务：**
+  1. Stirling-PDF 所在容器的同一 Pod 或内网网段运行着未鉴权的管理接口（如 `http://127.0.0.1:8080/actuator/env` 或 `http://10.0.0.12:9090/metrics`）。
+  2. 直接向接口提交 `127.0.0.1` 会被 Java 拦截，但通过公网 HTML 内的 `@import url("http://127.0.0.1:8080/...")` 即可由 WeasyPrint 绕过检查读取内网响应。
+* **场景 C — 利用 HTTP `302` 跳转将防火墙后的内部管理后台截图渲染为 PDF：**
+  1. 外部网页中的 `<img src="https://attacker.example/redirect">` 返回 `302 Found` 指向企业内网后台地址，WeasyPrint 跟随重定向并将内网页面内容渲染进 PDF。
 
-#### 4. 実行・再現・検証コマンド例
+#### 4. 示例执行、复现与验证命令
 ```bash
-# 1. ConvertWebsiteToPDF.java 内の --allowed-protocols 設定をソースコードで確認
+# 1. 在源码中核查 ConvertWebsiteToPDF.java 的 --allowed-protocols 参数
 grep -n -C 12 "allowed-protocols" /path/to/Stirling-PDF/app/core/src/main/java/stirling/software/SPDF/controller/api/converters/ConvertWebsiteToPDF.java
 
-# 2. ローカルループバック（127.0.0.1）を用いた隔離 E2E 検証テストの実行
+# 2. 运行基于本地环回（127.0.0.1）的隔离端到端验证测试
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_stirling_cand01 -v
 ```
-**実測ランタイム証明（`RED -> GREEN`）:**
+**实测运行时证明输出（`RED -> GREEN`）：**
 ```json
 {
   "RED": {
@@ -567,19 +564,19 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 
 ---
 
-### III.03 — TryCua `cuabot` (`<= 1.0.16`) — 未認証 `0.0.0.0:7842` デーモン + `POST /bash` のワイルドカード CORS + オリジン未検証 WebSocket + 書き込み可能なホスト `.claude` マウント（`GHSA-cp36-x5hg-3gg8`、`CWE-306`/`CWE-942`、CVSS `9.6 Critical`）
+### III.03 — TryCua `cuabot` (`<= 1.0.16`) — 无认证 `0.0.0.0:7842` 守护进程 + `POST /bash` 通配符 CORS + 无源校验 WebSocket + 可写宿主机 `.claude` 挂载（`GHSA-cp36-x5hg-3gg8`，`CWE-306`/`CWE-942`，CVSS `9.6 Critical`）
 
-#### 1. メタデータ & 開示ステータス
-* **対象リポジトリ & パッケージ:** `trycua/cua`（`npm: cuabot <= 1.0.16`）
-* **影響を受けるバージョン & コンポーネント:** `>= 1.0.1, <= 1.0.16`（`commit e754cfec69c41400eb2aabde716c27d15607b2f0`）— `libs/cuabot/src/cuabotd.ts`（`34-36, 259-260, 741-743, 969-1002, 1018-1063, 1120` 行）
-* **脆弱性分類 & スコア:** `CWE-306`（重要機能における認証の欠如）/ `CWE-942`（過度なクロスドメイン許可リスト）— **CVSS v3.1: `9.6 Critical`**（`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:H`）
-* **GitHub GHSA リンク:** `GHSA-cp36-x5hg-3gg8`（`https://github.com/trycua/cua/security/advisories/GHSA-cp36-x5hg-3gg8`）
-* **Sniper 個別アドバイザリ:** [`docs/advisories/ja/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md`](advisories/ja/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md)
+#### 1. 元数据与披露状态
+* **目标仓库与软件包：** `trycua/cua`（`npm: cuabot <= 1.0.16`）
+* **受影响版本与组件：** `>= 1.0.1, <= 1.0.16`（`commit e754cfec69c41400eb2aabde716c27d15607b2f0`）— `libs/cuabot/src/cuabotd.ts`（第 `34-36, 259-260, 741-743, 969-1002, 1018-1063, 1120` 行）
+* **漏洞类型与评分：** `CWE-306`（关键功能缺少身份验证）/ `CWE-942`（过度宽松的跨域白名单）— **CVSS v3.1: `9.6 Critical`**（`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:H`）
+* **GitHub GHSA 链接：** `GHSA-cp36-x5hg-3gg8`（`https://github.com/trycua/cua/security/advisories/GHSA-cp36-x5hg-3gg8`）
+* **VulKill 独立安全公告：** [`docs/advisories/zh-CN/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md`](advisories/zh-CN/03-CUA-CAND-01-CUABOTD-GHSA-cp36-x5hg-3gg8.md)
 
-#### 2. コード内でどのように発生し脆弱性へ変化するのか（ステップバイステップの平易な解説）
-`cuabot` は開発者のマシン上で動作する AI エージェント補助ツールです。そのバックグラウンドデーモンである `cuabotd.ts` には、4つの致命的な設計ミスが同時に重なっています。
-1. **全ネットワークインターフェースでの未認証公開:** `server.listen(port, ...)`（`1120` 行）にホスト指定がないため、デフォルトの `0.0.0.0:7842` で待受け、パスワードやトークン認証が一切ありません。
-2. **すべての Web サイトに API 呼び出しと応答読み取りを許可するワイルドカード CORS:**
+#### 2. 漏洞如何在代码中产生并转化为安全风险（通俗易懂的分步讲解）
+`cuabot` 的后台守护进程 `cuabotd.ts` 同时叠加了 4 个致命缺陷：
+1. **在全网卡 `0.0.0.0:7842` 上无认证监听：** `server.listen(port, ...)`（第 `1120` 行）未指定绑定地址，默认对整个局域网和本地环回开放且没有任何 Token 校验。
+2. **对所有接口返回 `Access-Control-Allow-Origin: *`：**
    ```typescript
    // libs/cuabot/src/cuabotd.ts:967-974
    res.setHeader('Access-Control-Allow-Origin', '*');
@@ -591,36 +588,35 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
      return;
    }
    ```
-3. **`POST /bash` とオリジン未検証の WebSocket PTY による任意コマンド実行:** `/bash` エンドポイントは送られた JSON の `command` をそのままシェル実行して標準出力を返し、`WebSocketServer`（`741` 行）は `Origin` ヘッダーを確認せずに対話型ターミナルを起動します。
-4. **ホストの `.claude` 認証ディレクトリの読み書きマウント:** コンテナ起動時にホスト側の `~/.cuabot/user/.claude` を `/home/community-user/.claude` として読み書き可能でバインドマウントしています（`259-260` 行）。
+3. **直接执行 Shell 命令的 `POST /bash` 与不校验 `Origin` 的 WebSocket 终端：** `/bash` 接收 JSON `{"command": "..."}` 后直接执行并返回输出；`WebSocketServer`（第 `741` 行）允许任意网页建立交互式 PTY 会话。
+4. **可写挂载宿主机的 `.claude` 凭据目录：** 容器将宿主机 `~/.cuabot/user/.claude` 以读写模式挂载到 `/home/community-user/.claude`（第 `259-260` 行）。
 
-これにより、開発者が `cuabot` を起動したままブラウザで任意の Web ページ（広告やブログ記事など）を開いた瞬間、そのページ内の JavaScript が `fetch("http://localhost:7842/bash", ...)` を叩いて任意のコマンドを実行し、Claude Code の OAuth トークンを盗み出したり設定を書き換えたりできます。
+这意味着只要开发者运行了 `cuabot`，当其在浏览器中打开任何普通网页或恶意广告时，网页中的 JavaScript 就能直接请求 `http://localhost:7842/bash` 执行任意命令并读走 Claude OAuth 凭据。
 
-#### 3. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — ブラウザで一般の Web ページを開いた瞬間に発生するドライブバイ RCE と Claude OAuth 認証情報の窃取:**
-  1. 開発者がローカルで `npx cuabot` を起動して作業しながら、ブラウザで技術ブログやドキュメントサイトを閲覧する。
-  2. ページ内のスクリプトが `fetch("http://localhost:7842/bash", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({command: "cat /home/community-user/.claude/.credentials.json"})})` を送信する。
-  3. `Access-Control-Allow-Origin: *` のためブラウザはプリフライト（`OPTIONS`）を通過させ、レスポンス本文（Claude OAuth アクセストークン・リフレッシュトークン）を攻撃者のスクリプトへそのまま渡す。
-* **シナリオ B — 書き込み可能な `/home/community-user/.claude/settings.json` への永続的 `PreToolUse` フック注入によるホスト OS 侵害:**
-  1. ドライブバイ要求またはクロスサイト WebSocket ハイジャック（`new WebSocket("ws://localhost:7842/?command=bash")`）によって、マウントされた `/home/community-user/.claude/settings.json` が書き換えられる。
-  2. 攻撃者が Claude Code の `hooks.PreToolUse` に悪意あるシェルコマンドを登録する。
-  3. 以降、開発者がホスト OS 上で Claude Code を使うたびに、ホスト OS 権限でバックドアコマンドが自動実行される。
-* **シナリオ C — カフェ・コワーキングスペース・社内 Wi-Fi（`0.0.0.0:7842`）からの直接侵入と画面盗撮:**
-  1. 開発者がカフェやオフィス LAN に接続している間、`cuabotd` は `0.0.0.0:7842` で待機している。
-  2. 同一 Wi-Fi 上の攻撃者が `curl http://<開発者IP>:7842/screenshot` で開発者の作業画面をリアルタイムに盗撮し、`POST /bash` でワークステーションを完全に制御する。
+#### 3. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — 开发者浏览网页时遭路过式（Drive-By）跨域 RCE 并被窃取 Claude OAuth 凭据：**
+  1. 开发者在本地运行 `npx cuabot`，同时使用浏览器查阅技术文章。
+  2. 网页脚本发起 `fetch("http://localhost:7842/bash", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({command: "cat /home/community-user/.claude/.credentials.json"})})`。
+  3. 浏览器因 `Access-Control-Allow-Origin: *` 放行预检请求并将响应体（Claude OAuth 访问令牌与刷新令牌）直接交给网页脚本。
+* **场景 B — 向可写挂载的 `/home/community-user/.claude/settings.json` 注入持久化 `PreToolUse` 钩子穿透宿主机：**
+  1. 恶意网页通过 `POST /bash` 或跨站 WebSocket 劫持（`ws://localhost:7842/?command=bash`）修改 `/home/community-user/.claude/settings.json`。
+  2. 攻击者在配置文件中写入恶意的 `hooks.PreToolUse` 命令。
+  3. 此后开发者在宿主机上运行 Claude Code 时，恶意的宿主机命令被自动触发执行。
+* **场景 C — 咖啡馆、共享办公或办公室 Wi-Fi（`0.0.0.0:7842`）局域网内的设备直接接管电脑并截取屏幕：**
+  1. 同一无线网络中的攻击者扫描发现 `7842` 端口开放，无需认证即可调用 `GET /screenshot` 实时窥探开发者屏幕，并调用 `POST /bash` 远程控制工作站。
 
-#### 4. 実行・再現・検証コマンド例
+#### 4. 示例执行、复现与验证命令
 ```bash
-# 1. ローカル隔離ハーネスにおけるクロスオリジン（Origin: https://evil.example）再現コマンド例
+# 1. 在本地隔离验证环境中模拟浏览器跨域请求（Origin: https://evil.example）
 curl -i -X POST http://127.0.0.1:7842/bash \
   -H "Origin: https://evil.example" \
   -H "Content-Type: application/json" \
   -d '{"command":"id && cat /home/community-user/.claude/.credentials.json"}'
 
-# 2. Sniper 自動検証テスト（RED -> GREEN + BENIGN）の実行
+# 2. 运行 VulKill 自动化端到端验证测试（RED -> GREEN + BENIGN）
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_cua_cand01 -v
 ```
-**実測ランタイム証明（`RED -> GREEN + BENIGN`）:**
+**实测运行时证明输出（`RED -> GREEN + BENIGN`）：**
 ```json
 {
   "RED": {
@@ -644,22 +640,22 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 
 ---
 
-### III.04 — TryCua `cua-bench-rl` (`<= 0.1.0`) — `0.0.0.0:8001` ワーカーサーバーのワイルドカード CORS + フェイルオープン `OSGYM_ALLOWED_IPS` + 未認証 `POST /reset` による任意モジュール実行（`GHSA-xm8w-gj3g-4f25`、`CWE-94`/`CWE-942`、CVSS `8.8 High`）
+### III.04 — TryCua `cua-bench-rl` (`<= 0.1.0`) — `0.0.0.0:8001` Worker Server 通配符 CORS + 失效放行 `OSGYM_ALLOWED_IPS` + 无认证 `POST /reset` 任意模块执行（`GHSA-xm8w-gj3g-4f25`，`CWE-94`/`CWE-942`，CVSS `8.8 High`）
 
-#### 1. メタデータ & 開示ステータス
-* **対象リポジトリ & パッケージ:** `trycua/cua`（`pip: cua-bench-rl <= 0.1.0` および `cua-bench <= 0.3.1`）
-* **影響を受けるバージョン & コンポーネント:** `<= 0.1.0`（`commit e754cfec69c41400eb2aabde716c27d15607b2f0`）— `libs/cua-bench-rl/cua_bench_rl/workers/worker_server.py`（`79-108, 338-360, 499` 行）および `libs/cua-bench/cua_bench/core.py`（`make`、`25-51` 行）
-* **脆弱性分類 & スコア:** `CWE-94`（コード生成の不適切な制御）/ `CWE-942`（過度なクロスドメイン許可リスト）— **CVSS v3.1: `8.8 High`**（`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`）
-* **GitHub GHSA リンク:** `GHSA-xm8w-gj3g-4f25`（`https://github.com/trycua/cua/security/advisories/GHSA-xm8w-gj3g-4f25`）
-* **Sniper 個別アドバイザリ:** [`docs/advisories/ja/04-CUA-CAND-02-WORKER-SERVER-RCE.md`](advisories/ja/04-CUA-CAND-02-WORKER-SERVER-RCE.md)
+#### 1. 元数据与披露状态
+* **目标仓库与软件包：** `trycua/cua`（`pip: cua-bench-rl <= 0.1.0` 与 `cua-bench <= 0.3.1`）
+* **受影响版本与组件：** `<= 0.1.0`（`commit e754cfec69c41400eb2aabde716c27d15607b2f0`）— `libs/cua-bench-rl/cua_bench_rl/workers/worker_server.py`（第 `79-108, 338-360, 499` 行）及 `libs/cua-bench/cua_bench/core.py`（`make`，第 `25-51` 行）
+* **漏洞类型与评分：** `CWE-94`（代码生成控制不当）/ `CWE-942`（过度宽松的跨域白名单）— **CVSS v3.1: `8.8 High`**（`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`）
+* **GitHub GHSA 链接：** `GHSA-xm8w-gj3g-4f25`（`https://github.com/trycua/cua/security/advisories/GHSA-xm8w-gj3g-4f25`）
+* **VulKill 独立安全公告：** [`docs/advisories/zh-CN/04-CUA-CAND-02-WORKER-SERVER-RCE.md`](advisories/zh-CN/04-CUA-CAND-02-WORKER-SERVER-RCE.md)
 
-#### 2. コード内でどのように発生し脆弱性へ変化するのか（ステップバイステップの平易な解説）
-強化学習（RL）ワーカーサーバー `worker_server.py` は、クライアントから送られた環境パス（`env_path`）を読み込んでタスクを初期化する `POST /reset` API を提供しています。開発者はアクセス制限のために `ip_filter_middleware` を書きましたが、以下の3つのバグが重なっています。
+#### 2. 漏洞如何在代码中产生并转化为安全风险（通俗易懂的分步讲解）
+在强化学习工作节点 `worker_server.py` 中，开发者编写了 `ip_filter_middleware` 试图限制访问来源，但由于以下 3 处逻辑失误导致防线完全失效：
 ```python
 # libs/cua-bench-rl/cua_bench_rl/workers/worker_server.py:79-105
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # バグ 1: 任意の外部 Web サイトからのブラウザ Fetch を許可！
+    allow_origins=["*"], # 缺陷 1：允许任意外部网站通过浏览器发起跨域请求！
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -670,37 +666,37 @@ async def ip_filter_middleware(request: Request, call_next):
     allowed_ips = os.environ.get("OSGYM_ALLOWED_IPS", "127.0.0.1").split(",")
     allowed_ips = [ip.strip() for ip in allowed_ips if ip.strip()]
     client_ip = request.client.host if request.client else None
-    # バグ 2: ブラウザから http://127.0.0.1:8001 へ送られたリクエストは client_ip == "127.0.0.1" になる！
-    # バグ 3: OSGYM_ALLOWED_IPS="" (空文字) の場合、allowed_ips が [] となり `if allowed_ips:` が False に評価され全 IP を素通りさせる！
+    # 缺陷 2：本地浏览器访问 http://127.0.0.1:8001 时，client_ip 恒为 "127.0.0.1"，直接绕过 IP 过滤！
+    # 缺陷 3：当 OSGYM_ALLOWED_IPS="" 为空字符串时，allowed_ips 列表为空，`if allowed_ips:` 为 False，对全网所有 IP 失效放行！
     if allowed_ips and client_ip not in allowed_ips:
         return JSONResponse(status_code=403, content={"detail": f"Access denied for IP: {client_ip}"})
     return await call_next(request)
 ```
-そして `POST /reset` が呼ばれると、`cua_bench/core.py:38-51` の `make(req.env_path)` が渡されたディレクトリ内の `main.py` を探して **そのまま Python プロセス内で動的ロード・実行（`spec.loader.exec_module(module)`）** します。つまり、`env_path` に任意のフォルダを指定するだけで、その中の `main.py` が無条件で実行されます。
+而 `POST /reset` 接口会将请求体中的 `env_path` 传给 `cua_bench.core.make(req.env_path)`（`core.py:38-51`），该函数直接在宿主机 Python 进程中查找 `<env_path>/main.py` 并调用 **`spec.loader.exec_module(module)`** 执行任意 Python 代码。
 
-#### 3. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — ローカルで RL ワーカーを起動中の研究者が Web ページを開いた際のドライブバイ RCE:**
-  1. AI 研究者がワークステーション上で `worker_server.py` を起動したままブラウザで論文サイトやフォーラムを開く。
-  2. ブラウザが自動的にファイルを `~/Downloads` へ保存した上で、ページ内の JS が `fetch("http://127.0.0.1:8001/reset", {method: "POST", body: JSON.stringify({env_path: "/tmp/untrusted_env", task_index: 0})})` を呼び出す。
-  3. リクエスト元 IP は `127.0.0.1` であるため `ip_filter_middleware` を通過し、`spec.loader.exec_module` によってホスト上で任意の Python コードが実行され、GPU サーバーの SSH 鍵や HuggingFace / WandB トークンが窃取される。
-* **シナリオ B — Docker Compose / Kubernetes 環境で `OSGYM_ALLOWED_IPS=""` が空設定されたことによる全ネットワーク RCE:**
-  1. デプロイテンプレートや Helm チャートで `OSGYM_ALLOWED_IPS: ""` が未設定（空文字）のまま渡される。
-  2. Python の `if allowed_ips:` が `False` となって IP フィルタが完全に無効化（フェイルオープン）され、クラスタ内や LAN 上の任意のホストから `http://<worker-ip>:8001/reset` でリモートコード実行が可能になる。
-* **シナリオ C — 未認証の `/screenshot` と `/step` によるデスクトップ画面監視と操作注入:**
-  1. 攻撃者がクロスオリジンリクエストまたは LAN 経由で `GET /screenshot` をポーリングしてデスクトップ画面を監視し、`POST /step` でキーボード・マウスイベントを注入して画面上の別アプリケーションを操作する。
+#### 3. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — AI 研究员在本地运行 RL Worker 时浏览网页触发跨域 `exec_module` RCE：**
+  1. 研究员在工作站启动 `worker_server.py` 后使用浏览器查阅网页。
+  2. 网页触发浏览器自动下载包含 `main.py` 的文件夹至本地目录，并调用 `fetch("http://127.0.0.1:8001/reset", {method: "POST", body: JSON.stringify({env_path: "/tmp/untrusted_env", task_index: 0})})`。
+  3. 请求通过 `127.0.0.1` IP 检查并在宿主机 Python 进程中执行 `main.py`，窃取 GPU 节点的 SSH 密钥与模型训练凭据。
+* **场景 B — Kubernetes / Docker Compose 部署中将 `OSGYM_ALLOWED_IPS=""` 留空导致集群全网无认证 RCE：**
+  1. 运维人员在容器编排配置中将 `OSGYM_ALLOWED_IPS` 留空以为会禁用外部访问，实则触发 `if allowed_ips:` 失效放行（Fail-Open）。
+  2. 集群或局域网内的任何节点均可直接请求 `0.0.0.0:8001/reset` 在宿主机或容器内执行任意 Python 模块。
+* **场景 C — 未授权调用 `/screenshot` 与 `/step` 窃取桌面画面并注入键鼠操作：**
+  1. 攻击者通过跨域脚本或局域网轮询 `GET /screenshot` 获取实时桌面图像，并通过 `POST /step` 模拟鼠标点击与键盘输入。
 
-#### 4. 実行・再現・検証コマンド例
+#### 4. 示例执行、复现与验证命令
 ```bash
-# 1. ローカル隔離環境でのクロスオリジン POST /reset 再現コマンド例
+# 1. 在本地隔离验证环境中复现跨域 POST /reset
 curl -i -X POST http://127.0.0.1:8001/reset \
   -H "Origin: https://evil.example" \
   -H "Content-Type: application/json" \
   -d '{"env_path":"/tmp/poc_env","task_index":0}'
 
-# 2. Sniper E2E 検証テスト（RED -> GREEN + BENIGN）の実行
+# 2. 运行 VulKill E2E 验证测试（RED -> GREEN + BENIGN）
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_cua_cand02 -v
 ```
-**実測ランタイム証明（`RED -> GREEN + BENIGN`）:**
+**实测运行时证明输出（`RED -> GREEN + BENIGN`）：**
 ```json
 {
   "RED": {
@@ -722,24 +718,24 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 
 ---
 
-### III.05 — TryCua `cua-compat` (`<= 0.8.0`) — Daytona S3 マルチパート `uploadId` パストラバーサルと無条件の `tokio::fs::remove_dir_all` によるディレクトリ削除（`GHSA-3x8g-6h2v-8qx9`、`CWE-22`、CVSS `8.1 High`）
+### III.05 — TryCua `cua-compat` (`<= 0.8.0`) — Daytona S3 分片上传 `uploadId` 路径遍历与无条件 `tokio::fs::remove_dir_all` 任意目录删除（`GHSA-3x8g-6h2v-8qx9`，`CWE-22`，CVSS `8.1 High`）
 
-#### 1. メタデータ & 開示ステータス
-* **対象リポジトリ & パッケージ:** `trycua/cua`（`Cargo: cua-compat <= 0.8.0` / `cua-spacesd <= 0.8.0`）
-* **影響を受けるバージョン & コンポーネント:** `<= 0.8.0`（`commit e754cfec69c41400eb2aabde716c27d15607b2f0`）— `libs/cua/crates/cua-compat/src/daytona/objectstore.rs`（`handle`、`320-325, 360-422` 行）
-* **脆弱性分類 & スコア:** `CWE-22`（パストラバーサル）— **CVSS v3.1: `8.1 High`**（`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:H`）
-* **GitHub GHSA リンク:** `GHSA-3x8g-6h2v-8qx9`（`https://github.com/trycua/cua/security/advisories/GHSA-3x8g-6h2v-8qx9`）
-* **Sniper 個別アドバイザリ:** [`docs/advisories/ja/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md`](advisories/ja/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md)
+#### 1. 元数据与披露状态
+* **目标仓库与软件包：** `trycua/cua`（`Cargo: cua-compat <= 0.8.0` / `cua-spacesd <= 0.8.0`）
+* **受影响版本与组件：** `<= 0.8.0`（`commit e754cfec69c41400eb2aabde716c27d15607b2f0`）— `libs/cua/crates/cua-compat/src/daytona/objectstore.rs`（`handle`，第 `320-325, 360-422` 行）
+* **漏洞类型与评分：** `CWE-22`（路径遍历）— **CVSS v3.1: `8.1 High`**（`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:H`）
+* **GitHub GHSA 链接：** `GHSA-3x8g-6h2v-8qx9`（`https://github.com/trycua/cua/security/advisories/GHSA-3x8g-6h2v-8qx9`）
+* **VulKill 独立安全公告：** [`docs/advisories/zh-CN/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md`](advisories/zh-CN/05-CUA-CAND-03-DAYTONA-UPLOADID-GHSA-3x8g-6h2v-8qx9.md)
 
-#### 2. コード内でどのように発生し脆弱性へ変化するのか（ステップバイステップの平易な解説）
-Daytona 互換の S3 オブジェクトストア実装（`objectstore.rs`）では、URL パスに含まれるオブジェクトキー（`key`）に対しては `object_path(&key)` 関数で `..` が含まれないよう丁寧にチェックしています。ところが、URL クエリ文字列から取り出される **`?uploadId=` パラメータには一切のバリデーションがありません**。
+#### 2. 漏洞如何在代码中产生并转化为安全风险（通俗易懂的分步讲解）
+在 Daytona 兼容 S3 对象存储服务（`objectstore.rs`）中，开发者编写了 `object_path(&key)` 来拦截对象键名中的 `..`。然而对于 URL 查询参数中的 **`?uploadId=`，代码没有任何字符或路径校验**。
 
-さらに深刻なことに、マルチパートアップロードを中断する `HTTP DELETE` ハンドラ（`415-421` 行）は次のようになっています。
+更严重的是，处理中止分片上传的 `HTTP DELETE` 分支（第 `415-421` 行）存在如下逻辑：
 ```rust
 // libs/cua/crates/cua-compat/src/daytona/objectstore.rs:415-421
 (Method::DELETE, Some(id), _, _) => {
-    d.objects.uploads.lock().await.remove(&id); // バグ 1: その uploadId が実在したかどうか（戻り値 Option）を無視している！
-    // バグ 2: 未検証の `id` をそのままパス結合し、無条件で再帰削除 remove_dir_all を実行！
+    d.objects.uploads.lock().await.remove(&id); // 缺陷 1：完全忽略了该 uploadId 是否真实存在于内存表中！
+    // 缺陷 2：将未经校验的 `id` 直接拼接到路径中，并无条件执行 remove_dir_all 递归删除！
     let _ = tokio::fs::remove_dir_all(d.objects.root.join("uploads").join(&id)).await;
     Response::builder()
         .status(StatusCode::NO_CONTENT)
@@ -747,29 +743,28 @@ Daytona 互換の S3 オブジェクトストア実装（`objectstore.rs`）で�
         .unwrap()
 }
 ```
-これにより、事前にアップロードを開始する必要すらなく、たった1回の `DELETE /daytona/anykey?uploadId=../objects` リクエストを送るだけで、`root.join("uploads").join("../objects")` すなわち **オブジェクトストア全体の保存ディレクトリ（`<root>/objects`）が再帰的に完全削除** されます。
+因此，攻击者甚至不需要先发起分片上传，只需发送一次 `DELETE /daytona/anykey?uploadId=../objects`，`root.join("uploads").join("../objects")` 就会解析为 `<root>/objects`，**直接递归删除整个对象存储库中的所有镜像与快照文件**。
 
-#### 3. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — マルチテナント AI サンドボックス基盤における全テナントのイメージ・スナップショット一括消去:**
-  1. 複数のチームや顧客テナントが共有する `cua-spacesd` サーバー上で、1つの低権限サンドボックステナントが `DELETE /daytona/x?uploadId=../objects` を送信する。
-  2. `tokio::fs::remove_dir_all` が `<root>/objects/daytona` を即座に削除し、全テナントの保存済み VM/コンテナスナップショットが消失して全サービスが停止する。
-* **シナリオ B — 深いパストラバーサル（`?uploadId=../../...`）によるホスト側アプリケーションデータ・DB の破壊:**
-  1. 攻撃者が `?uploadId=../../state` や `?uploadId=../../../home/community-user/.cua` を指定して `DELETE` リクエストを送る。
-  2. `d.objects.root` の親ディレクトリへ脱出し、`cua-spacesd` プロセス権限で書き込み可能なホスト側のデータベースや設定ディレクトリが再帰削除される。
-* **シナリオ C — `PUT` マルチパートチャンク書き込み（`?partNumber=1&uploadId=../stage`）による隣接ディレクトリの汚染:**
-  1. `Method::PUT` ハンドラ（`360-383` 行）でも同様に `root.join("uploads").join(&id)` が使われているため、攻撃者が `?partNumber=1&uploadId=../stage` を指定して任意のバイナリチャンクをアップロードする。
-  2. 本来の `uploads/` ではなく隣接する `stage/` や `objects/` 配下に不正なファイルが作成・上書きされる。
+#### 3. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — 多租户沙箱平台中单个低权限租户一键清空全组织沙箱镜像库：**
+  1. 在共享 `cua-spacesd` 对象存储的多租户环境中，某租户发送 `DELETE /daytona/x?uploadId=../objects`。
+  2. `tokio::fs::remove_dir_all` 立即清空 `<root>/objects/daytona`，导致所有租户的沙箱快照丢失、新建沙箱全部失败。
+* **场景 B — 利用多层 `../` 遍历删除 `d.objects.root` 之外的宿主机应用目录：**
+  1. 攻击者发送 `DELETE /daytona/x?uploadId=../../state` 或指向其他可写目录的相对路径。
+  2. `remove_dir_all` 跳出对象存储根目录，将 `cua-spacesd` 进程拥有写权限的宿主机配置或数据库目录一并删除。
+* **场景 C — 利用 `PUT ?partNumber=1&uploadId=../stage` 向相邻目录写入污染文件：**
+  1. 在 `Method::PUT` 分支（第 `360-383` 行）中，攻击者通过 `?partNumber=1&uploadId=../stage` 将任意分片数据写入 `uploads/` 之外的相邻目录。
 
-#### 4. 実行・再現・検証コマンド例
+#### 4. 示例执行、复现与验证命令
 ```bash
-# 1. ローカル隔離テスト環境での DELETE ?uploadId=../objects 再現コマンド例
+# 1. 在本地隔离测试环境中复现 DELETE ?uploadId=../objects
 curl -i -X DELETE "http://127.0.0.1:9000/daytona/dummy-key?uploadId=../objects" \
   -H "Authorization: Bearer <push-token>"
 
-# 2. Sniper E2E 検証テスト（RED -> GREEN + BENIGN）の実行
+# 2. 运行 VulKill E2E 验证测试（RED -> GREEN + BENIGN）
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_cua_cand03 -v
 ```
-**実測ランタイム証明（`RED -> GREEN + BENIGN`）:**
+**实测运行时证明输出（`RED -> GREEN + BENIGN`）：**
 ```json
 {
   "RED": {
@@ -790,26 +785,24 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 
 ---
 
-### III.06 — TryCua `cua-media-codec` (`<= 0.8.0`) — Safe Rust `VtEncoder::encode` におけるスライス長未検証の `unsafe { copy_nonoverlapping }` によるヒープ境界外読み取り（`GHSA-54v9-fxw3-36mm`、`CWE-125`/`CWE-190`、CVSS `5.5 Medium`）
+### III.06 — TryCua `cua-media-codec` (`<= 0.8.0`) — Safe Rust `VtEncoder::encode` 未校验切片长度直接调用 `unsafe { copy_nonoverlapping }` 导致堆越界读取（`GHSA-54v9-fxw3-36mm`，`CWE-125`/`CWE-190`，CVSS `5.5 Medium`）
 
-#### 1. メタデータ & 開示ステータス
-* **対象リポジトリ & パッケージ:** `trycua/cua`（`Cargo: cua-media-codec <= 0.8.0`）
-* **影響を受けるバージョン & コンポーネント:** `<= 0.8.0`（`commit e754cfec69c41400eb2aabde716c27d15607b2f0`）— `libs/cua/crates/cua-media-codec/src/videotoolbox/mod.rs`（`VtEncoder::encode` -> `pixel_buffer_for`、`308-420` 行）
-* **脆弱性分類 & スコア:** `CWE-125`（境界外読み取り / Out-of-Bounds Read）/ `CWE-190`（整数オーバーフローまたはラップアラウンド）— **CVSS v3.1: `5.5 Medium`**（`CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:H`）
-* **GitHub GHSA リンク:** `GHSA-54v9-fxw3-36mm`（`https://github.com/trycua/cua/security/advisories/GHSA-54v9-fxw3-36mm`）
-* **Sniper 個別アドバイザリ:** [`docs/advisories/ja/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md`](advisories/ja/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md)
+#### 1. 元数据与披露状态
+* **目标仓库与软件包：** `trycua/cua`（`Cargo: cua-media-codec <= 0.8.0`）
+* **受影响版本与组件：** `<= 0.8.0`（`commit e754cfec69c41400eb2aabde716c27d15607b2f0`）— `libs/cua/crates/cua-media-codec/src/videotoolbox/mod.rs`（`VtEncoder::encode` -> `pixel_buffer_for`，第 `308-420` 行）
+* **漏洞类型与评分：** `CWE-125`（越界读取）/ `CWE-190`（整数溢出或回绕）— **CVSS v3.1: `5.5 Medium`**（`CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:H`）
+* **GitHub GHSA 链接：** `GHSA-54v9-fxw3-36mm`（`https://github.com/trycua/cua/security/advisories/GHSA-54v9-fxw3-36mm`）
+* **VulKill 独立安全公告：** [`docs/advisories/zh-CN/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md`](advisories/zh-CN/06-CUA-CAND-04-VIDEOTOOLBOX-GHSA-54v9-fxw3-36mm.md)
 
-#### 2. コード内でどのように発生し脆弱性へ変化するのか（ステップバイステップの平易な解説）
-Rust では `unsafe` キーワードを付けない公開関数（`pub fn encode(&mut self, frame: &VideoFrame)`）は、どのような入力が渡されても未定義動作（メモリ破壊や境界外アクセス）を起こさないことが言語の安全性契約（Soundness Contract）として求められます。
-
-ところが macOS VideoToolbox ハードウェアエンコーダ実装の `pixel_buffer_for`（`308-420` 行）は、渡された画像フレーム `frame.data` の実際のスライス長（`y.len()`、`uv.len()`、`data.len()`）を確認しないまま、生ポインタ演算と `unsafe { std::ptr::copy_nonoverlapping }` を実行しています。
+#### 2. 漏洞如何在代码中产生并转化为安全风险（通俗易懂的分步讲解）
+在 Rust 语言中，未标记 `unsafe` 的公开函数（`pub fn encode(&mut self, frame: &VideoFrame)`）必须保证对任何传入参数都是内存安全的。然而在 macOS VideoToolbox 硬件编码器的 `pixel_buffer_for` 函数（第 `308-420` 行）中，代码从未检查 `FrameData::Nv12`（`y` 与 `uv` 切片）或 `FrameData::Bgra`（`data` 切片）的实际字节长度是否足够，便直接执行指针偏移与 `unsafe { std::ptr::copy_nonoverlapping }`：
 ```rust
 // libs/cua/crates/cua-media-codec/src/videotoolbox/mod.rs:344-367
 unsafe {
     let y_dst = CVPixelBufferGetBaseAddressOfPlane(pb, 0) as *mut u8;
     let y_dst_stride = CVPixelBufferGetBytesPerRowOfPlane(pb, 0);
     for row in 0..h {
-        // バグ: y.len() が row * (*y_stride as usize) + w 以上であるか全くチェックしていない！
+        // 缺陷：未检查 y.len() 是否大于等于 row * (*y_stride as usize) + w！
         std::ptr::copy_nonoverlapping(
             y.as_ptr().add(row * (*y_stride as usize)),
             y_dst.add(row * y_dst_stride),
@@ -817,27 +810,26 @@ unsafe {
         );
     }
 ```
-もし解像度切り替えのタイミングや異常なフレーム入力によって、本来の `w * h` より短い `y` / `uv` バッファが渡されると、`copy_nonoverlapping` はバッファの終端を飛び越えて **隣接するヒープメモリ領域（セッショントークン、API キー、他テナントのメモリなど）を読み取り、そのまま H.264 映像ピクセルとしてエンコードしてリモート視聴者へ送信** してしまいます。
+当传入的图像缓冲区长度小于 `stride * height` 时，`copy_nonoverlapping` 会越过切片末尾，**直接读取相邻堆内存中的机密数据（如会话令牌、私钥或其他租户内存），并将其编码进 H.264 视频帧发送给远程客户端**，或者因读取未映射内存页而触发 `SIGSEGV` 崩溃。
 
-#### 3. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — macOS リモートデスクトップ配信のウィンドウ・解像度変更時におけるヒープメモリ（`960` バイト）の映像ストリーム漏洩:**
-  1. リモートエージェントセッション中にキャプチャ解像度が変更され、古いサイズのまま切り詰められた `FrameData::Nv12` バッファが `VtEncoder::encode` に渡される。
-  2. `pixel_buffer_for` がスライス境界を超えて隣接ヒープ領域の `960` バイトを `CVPixelBuffer` にコピーし、クライアントが受信する映像フレーム内にプロセス内の機密ヒープデータが混入する。
-* **シナリオ B — 不正またはゼロ長の `VideoFrame` 入力による `cua-spacesd` メディアデーモンの即時クラッシュ（`SIGSEGV`）:**
-  1. IPC またはネットワーク経由で空の `y: &[]` を持つ `VideoFrame`（例: `w=1920, h=1080`）が送られる。
-  2. Safe Rust 関数であるにもかかわらず未マップのメモリページを読みに行き、`cua-spacesd` プロセス全体がセグメンテーション違反（`SIGSEGV`）で異常終了し、稼働中の全エージェントセッションが切断される。
-* **シナリオ C — マルチセッション macOS ホストにおける不整合な `stride` 値での他セッションデータ混入:**
-  1. `y_stride` または `Bgra` の `stride` が `w` より小さい、あるいは極端に大きい値で渡された際、行ごとのポインタ加算がアロケーション境界を大きく飛び越え、同一プロセス内の別セッションのメモリを読み取る。
+#### 3. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — macOS 远程桌面推流分辨率动态切换时将相邻堆内存机密（`960` 字节）编码进视频流：**
+  1. 远程桌面窗口大小调整瞬间，采集端传入了一个截断的 `FrameData::Nv12` 切片。
+  2. `pixel_buffer_for` 越界读取相邻堆内存中的 `960` 字节并写入 `CVPixelBuffer`，导致进程堆内的敏感凭据混入视频流发往客户端。
+* **场景 B — 畸形或空 `VideoFrame` 触发 `cua-spacesd` 媒体守护进程 `SIGSEGV` 崩溃：**
+  1. 传入空的 `y: &[]` 或截断的 `BGRA` 帧时，Safe Rust 调用直接解引用越界指针，导致整个 `cua-spacesd` 媒体服务崩溃，所有活动远程桌面连接中断。
+* **场景 C — 多会话 macOS 代理主机中畸形 `stride` 跨缓冲区读取其他会话内存：**
+  1. 当 `y_stride` / `uv_stride` 与帧宽高不匹配时，指针步进越过当前缓冲区边界，在多会话共享进程中造成跨会话信息泄露。
 
-#### 4. 実行・再現・検証コマンド例
+#### 4. 示例执行、复现与验证命令
 ```bash
-# 1. videotoolbox/mod.rs 内の copy_nonoverlapping 実装箇所の確認
+# 1. 查看 videotoolbox/mod.rs 中的 copy_nonoverlapping 源码实现
 sed -n '335,415p' /path/to/cua/libs/cua/crates/cua-media-codec/src/videotoolbox/mod.rs
 
-# 2. Sniper E2E 検証テスト（RED -> GREEN + BENIGN）の実行
+# 2. 运行 VulKill E2E 验证测试（RED -> GREEN + BENIGN）
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_cua_vt01 -v
 ```
-**実測ランタイム証明（`RED -> GREEN + BENIGN`）:**
+**实测运行时证明输出（`RED -> GREEN + BENIGN`）：**
 ```json
 {
   "RED": {
@@ -857,48 +849,47 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 
 ---
 
-### III.07 — TryCua `cua-bench` WinArena (`<= 0.3.1`) — 未認証 `0.0.0.0:8006`（noVNC）およびパスワードなし `0.0.0.0:3390`（RDP）の LAN 公開 + 書き込み可能なホスト `/shared` マウント（`GHSA-hvhg-6x47-cq96`、`CWE-668`/`CWE-732`、CVSS `8.6 High`）
+### III.07 — TryCua `cua-bench` WinArena (`<= 0.3.1`) — 无认证 `0.0.0.0:8006`（noVNC）与免密 `0.0.0.0:3390`（RDP）局域网暴露 + 可写宿主机 `/shared` 挂载（`GHSA-hvhg-6x47-cq96`，`CWE-668`/`CWE-732`，CVSS `8.6 High`）
 
-#### 1. メタデータ & 開示ステータス
-* **対象リポジトリ & パッケージ:** `trycua/cua`（`pip: cua-bench <= 0.3.1`）
-* **影響を受けるバージョン & コンポーネント:** `<= 0.3.1`（`commit e754cfec69c41400eb2aabde716c27d15607b2f0`）— `libs/cua-bench/tasks/winarena_adapter/cli.py`（`cmd_vm_setup`, `cmd_vm_start`, `cmd_task_run`、`262-265, 421-424, 646-649` 行）および `infra/vm/setup/server/main.py`（`180-248, 290-321` 行）
-* **脆弱性分類 & スコア:** `CWE-668`（誤った領域へのリソース露出）/ `CWE-732`（重要リソースに対する不適切な権限割り当て）— **CVSS v3.1: `8.6 High`**（`CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H`）
-* **GitHub GHSA リンク:** `GHSA-hvhg-6x47-cq96`（`https://github.com/trycua/cua/security/advisories/GHSA-hvhg-6x47-cq96`）
-* **Sniper 個別アドバイザリ:** [`docs/advisories/ja/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md`](advisories/ja/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md)
+#### 1. 元数据与披露状态
+* **目标仓库与软件包：** `trycua/cua`（`pip: cua-bench <= 0.3.1`）
+* **受影响版本与组件：** `<= 0.3.1`（`commit e754cfec69c41400eb2aabde716c27d15607b2f0`）— `libs/cua-bench/tasks/winarena_adapter/cli.py`（`cmd_vm_setup`, `cmd_vm_start`, `cmd_task_run`，第 `262-265, 421-424, 646-649` 行）及 `infra/vm/setup/server/main.py`（第 `180-248, 290-321` 行）
+* **漏洞类型与评分：** `CWE-668`（资源暴露于错误范围）/ `CWE-732`（关键资源权限分配不当）— **CVSS v3.1: `8.6 High`**（`CVSS:3.1/AV:A/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H`）
+* **GitHub GHSA 链接：** `GHSA-hvhg-6x47-cq96`（`https://github.com/trycua/cua/security/advisories/GHSA-hvhg-6x47-cq96`）
+* **VulKill 独立安全公告：** [`docs/advisories/zh-CN/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md`](advisories/zh-CN/07-CUA-CAND-06-WINARENA-GHSA-hvhg-6x47-cq96.md)
 
-#### 2. コード内でどのように発生し脆弱性へ変化するのか（ステップバイステップの平易な解説）
-Docker でコンテナを起動する際、`127.0.0.1:` プレフィックスを付けずに `-p 8006:8006` と指定すると、Docker は **`0.0.0.0`（ホストのすべての Wi-Fi / Ethernet ネットワークインターフェース）** にポートを公開し、さらに Linux の `iptables` `DOCKER` チェーンによって通常のホストファイアウォール（`ufw` 等）の入力制限をバイパスしてしまいます。
+#### 2. 漏洞如何在代码中产生并转化为安全风险（通俗易懂的分步讲解）
+在 Docker 启动命令中，不带 `127.0.0.1:` 前缀的 `-p 8006:8006` 会将端口绑定在 **`0.0.0.0`（宿主机所有无线与有线网卡）** 上，并经由 Linux `iptables` 的 `DOCKER` 转发链绕过常规 `ufw` 入站防火墙规则。
 
-WinArena オーケストレータ（`cli.py:262-265, 421-424, 646-649`）では、3つの起動コマンドすべてが以下のオプションを渡しています。
+在 WinArena 编排脚本（`cli.py:262-265, 421-424, 646-649`）中，全部三个启动命令均使用了如下配置：
 ```python
-# libs/cua-bench/tasks/winarena_adapter/cli.py:261-266 (および 421-424, 646-649)
-"-p", f"{args.browser_port}:8006", # バグ 1: 0.0.0.0:8006 -> 認証なし noVNC Web デスクトップを LAN 全体に公開！
-"-p", f"{args.rdp_port}:3389",     # バグ 2: 0.0.0.0:3390 -> パスワードなし Windows RDP を LAN 全体に公開！
+# libs/cua-bench/tasks/winarena_adapter/cli.py:261-266 (及 421-424, 646-649)
+"-p", f"{args.browser_port}:8006", # 缺陷 1：0.0.0.0:8006 -> 将无密码认证的 noVNC Web 桌面暴露给整个局域网！
+"-p", f"{args.rdp_port}:3389",     # 缺陷 2：0.0.0.0:3390 -> 将免密 Windows RDP 暴露给整个局域网！
 "-v", f"{storage_path}:/storage",
-"-v", f"{setup_path}:/shared",     # バグ 3: ホスト側のパッケージソースディレクトリを読み書き可能(:rw)でマウント！
+"-v", f"{setup_path}:/shared",     # 缺陷 3：将宿主机 Python 包内的 setup 源码目录以可写模式(:rw)挂载进容器！
 ```
-この結果、同じネットワーク上の誰でもパスワードなしで Windows VM の画面を開いて操作でき、さらに VM の中から `/shared` フォルダ（ホストの Python パッケージ内の `setup` ディレクトリ）にあるスクリプトを書き換えることで、ホスト OS 側へ侵入を拡大できてしまいます。
+这导致同一局域网内的任何人都能直接在浏览器中打开 Windows VM 桌面，并可通过容器/VM 内可写的 `/shared` 挂载目录反向篡改宿主机上的脚本文件。
 
-#### 3. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — 大学研究室・社内 LAN 上での `0.0.0.0:8006`（noVNC）/ `3390`（RDP）経由の Windows VM と API キー乗っ取り:**
-  1. AI 研究者が研究室やオフィスの LAN に接続されたマシンで `cua-bench` の WinArena 評価を実行する。
-  2. 同一ネットワーク上の第三者がブラウザで `http://<ワークステーションIP>:8006` を開くだけで、認証なしで Windows VM のデスクトップ画面に直接接続し、ベンチマーク用に環境へ注入された OpenAI / Anthropic API キーや評価データを窃取する。
-* **シナリオ B — 書き込み可能な `-v {setup_path}:/shared` マウントを悪用した VM からホスト OS への逆侵害（コンテナ/VM エスケープ経路）:**
-  1. 攻撃者が `8006`（noVNC）または `3390`（RDP）から Windows VM に入り、共有マウント `/shared`（ホスト上の `winarena_adapter/infra/vm/setup`）内のスクリプトやバイナリを改ざんする。
-  2. ホスト側の Python CLI や別プロセスがそのセットアップディレクトリを参照・再実行した際に、ホスト OS 上で攻撃者のコードが実行される。
-* **シナリオ C — VM 内の未認証 `0.0.0.0:5000` エージェントサーバー（`POST /execute_windows` -> `exec()`）による任意コマンド実行:**
-  1. VM 内部で動く `infra/vm/setup/server/main.py`（`180-248` 行）は認証なしで `POST /execute_windows`（Python `exec()`）および `POST /setup/launch`（`subprocess.Popen(..., shell=True)`）を公開している。
-  2. エージェントがタスク実行中に外部 Web ページを開いた際、またはコンテナネットワーク経由でリクエストが送られた際、VM 内で任意の OS コマンドが実行される。
+#### 3. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — 大学实验室或企业办公局域网内通过 `0.0.0.0:8006`（noVNC）/ `3390`（RDP）接管 Windows VM 与 API 密钥：**
+  1. 研究人员在实验室局域网工作站上启动 WinArena 基准测试。
+  2. 同一局域网内的攻击者在浏览器访问 `http://<工作站IP>:8006`，无需任何密码即进入实时 Windows 桌面，窃取评测环境中注入的 OpenAI / Anthropic API 密钥。
+* **场景 B — 通过可写的 `-v {setup_path}:/shared` 挂载从受控 VM 反向污染宿主机文件系统：**
+  1. 攻击者进入 VM 后，修改 `/shared`（对应宿主机上的 `winarena_adapter/infra/vm/setup` 目录）中的 Python 与批处理安装脚本。
+  2. 当宿主机再次运行相关命令或导入该目录文件时，恶意代码直接在宿主机操作系统上执行。
+* **场景 C — 利用 VM 内部 `0.0.0.0:5000` 控制服务的无认证 `POST /execute_windows`（`exec()`）执行任意命令：**
+  1. VM 内运行的 `infra/vm/setup/server/main.py`（第 `180-248` 行）无认证暴露了直接调用 Python `exec()` 的 `/execute_windows` 与开启 `shell=True` 的 `/setup/launch`，任何能够访问该端口的流量或网页均可执行任意系统指令。
 
-#### 4. 実行・再現・検証コマンド例
+#### 4. 示例执行、复现与验证命令
 ```bash
-# 1. cli.py 内の Docker ポートバインドとボリュームマウントのソース確認
+# 1. 查看 cli.py 中的 Docker 端口映射与挂载源码
 sed -n '255,272p' /path/to/cua/libs/cua-bench/tasks/winarena_adapter/cli.py
 
-# 2. Sniper E2E 検証テスト（RED -> GREEN + BENIGN）の実行
+# 2. 运行 VulKill E2E 验证测试（RED -> GREEN + BENIGN）
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_cua_cand06 -v
 ```
-**実測ランタイム証明（`RED -> GREEN + BENIGN`）:**
+**实测运行时证明输出（`RED -> GREEN + BENIGN`）：**
 ```json
 {
   "RED": {
@@ -917,27 +908,27 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 
 ---
 
-### III.08 — OpenZiti (`ziti` CLI) — `AreCertsTrusted` -> `InsecureClient` における無条件 `InsecureSkipVerify: true` による TLS 証明書検証バイパス（`GHSA-qwv8-hh9r-cqrf`、`CWE-295`、CVSS `7.4 High`）
+### III.08 — OpenZiti (`ziti` CLI) — `AreCertsTrusted` -> `InsecureClient` 无条件设置 `InsecureSkipVerify: true` 导致 TLS 证书验证绕过（`GHSA-qwv8-hh9r-cqrf`，`CWE-295`，CVSS `7.4 High`）
 
-#### 1. メタデータ & 開示ステータス
-* **対象リポジトリ & パッケージ:** `openziti/ziti`（`Go: github.com/openziti/ziti/v2`）
-* **影響を受けるバージョン & コンポーネント:** `v2.0.0-pre6` 以下（`commit 08f09c510bb2673d3632419ba8d6e10002d5eb00`）— `ziti/util/certs.go`（`AreCertsTrusted` `91-103` 行、`InsecureClient` `199-208` 行）および `ziti/cmd/edge/login.go`（`319-390` 行）
-* **脆弱性分類 & スコア:** `CWE-295`（不適切な証明書検証）— **CVSS v3.1: `7.4 High`**（`CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N`）
-* **GitHub GHSA リンク:** `GHSA-qwv8-hh9r-cqrf`（`https://github.com/openziti/ziti/security/advisories/GHSA-qwv8-hh9r-cqrf`）
-* **Sniper 個別アドバイザリ:** [`docs/advisories/ja/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md`](advisories/ja/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md)
+#### 1. 元数据与披露状态
+* **目标仓库与软件包：** `openziti/ziti`（`Go: github.com/openziti/ziti/v2`）
+* **受影响版本与组件：** `v2.0.0-pre6` 及更早版本（`commit 08f09c510bb2673d3632419ba8d6e10002d5eb00`）— `ziti/util/certs.go`（`AreCertsTrusted` 第 `91-103` 行、`InsecureClient` 第 `199-208` 行）及 `ziti/cmd/edge/login.go`（第 `319-390` 行）
+* **漏洞类型与评分：** `CWE-295`（证书验证不当）— **CVSS v3.1: `7.4 High`**（`CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:N`）
+* **GitHub GHSA 链接：** `GHSA-qwv8-hh9r-cqrf`（`https://github.com/openziti/ziti/security/advisories/GHSA-qwv8-hh9r-cqrf`）
+* **VulKill 独立安全公告：** [`docs/advisories/zh-CN/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md`](advisories/zh-CN/08-ZITI-CAND-01-CERTS-GHSA-qwv8-hh9r-cqrf.md)
 
-#### 2. コード内でどのように発生し脆弱性へ変化するのか（ステップバイステップの平易な解説）
-Zero-Trust ネットワーク基盤である OpenZiti の CLI で管理者が `ziti edge login` を実行すると、まず接続先コントローラの TLS 証明書が信頼できるかどうかを確認するために `AreCertsTrusted(host)`（`certs.go:91-103`）が呼ばれます。
+#### 2. 漏洞如何在代码中产生并转化为安全风险（通俗易懂的分步讲解）
+当管理员运行 `ziti edge login` 登录 OpenZiti 零信任控制器时，CLI 会调用 `AreCertsTrusted(host)`（`certs.go:91-103`）来检查服务器证书是否受信任。开发者原本希望在遇到不受信任证书时捕获 `x509.UnknownAuthorityError` 并提示用户确认。
 
-この関数は、「もし偽の証明書であれば Go の TLS ライブラリが `x509.UnknownAuthorityError` を返すはずだから、それをキャッチしてユーザーに警告しよう」という意図で書かれています。ところが、内部で呼び出している `InsecureClient(&client, certs)`（`199-208` 行）に致命的なバグがありました。
+然而，`AreCertsTrusted` 内部调用的辅助函数 `InsecureClient(&client, certs)`（第 `199-208` 行）无条件设置了 `InsecureSkipVerify: true`：
 ```go
 // ziti/util/certs.go:91-103, 199-208
 func AreCertsTrusted(host string, certs []*x509.Certificate) (bool, error) {
     client := resty.New()
-    InsecureClient(client, certs) // <--- ここで TLS 設定を行う
+    InsecureClient(client, certs) // <--- 配置 TLS 客户端
     _, err := client.R().Get(host)
     if err != nil {
-        if errors.Is(err, &x509.UnknownAuthorityError{}) { // デッドコード！絶対に到達しない！
+        if errors.Is(err, &x509.UnknownAuthorityError{}) { // 死代码！永远不可能触发！
             return false, nil
         }
         return false, err
@@ -947,40 +938,40 @@ func AreCertsTrusted(host string, certs []*x509.Certificate) (bool, error) {
 
 func InsecureClient(client *resty.Client, certs []*x509.Certificate) {
     tlsCfg := &tls.Config{
-        InsecureSkipVerify: true, // バグ: 無条件で true が設定されている！
+        InsecureSkipVerify: true, // 缺陷：无条件设置为 true！
     }
     if len(certs) > 0 {
         tlsCfg.RootCAs = x509.NewCertPool()
         for _, c := range certs {
             tlsCfg.RootCAs.AddCert(c)
         }
-        // ここでも InsecureSkipVerify は true のまま！
+        // 即使填充了 RootCAs，InsecureSkipVerify 依然为 true！
     }
     client.SetTLSClientConfig(tlsCfg)
 }
 ```
-Go の標準ライブラリ `crypto/tls` では、**`InsecureSkipVerify: true` が設定されていると、`RootCAs` に何が入っていようとサーバー証明書の署名チェーン・有効期限・ホスト名の検証をすべてスキップ** します。その結果、`AreCertsTrusted()` は攻撃者が勝手に作った自己署名証明書に対しても常に `true, nil` を返し、CLI は **`"Verified that server supplied certificates are trusted"`（サーバー証明書が信頼できることを確認しました）** という誤ったメッセージを表示した上で、管理者の ID・パスワードを攻撃者へ送信してしまいます。
+在 Go 标准库 `crypto/tls` 中，**只要 `InsecureSkipVerify: true` 开启，TLS 握手就会完全跳过所有证书链、CA 签名和主机名校验**，永远不会返回 `x509.UnknownAuthorityError`。结果，无论中间人（MITM）提供任何伪造的自签名证书，`AreCertsTrusted()` 都会返回 `true, nil`，CLI 还会打印 **`"Verified that server supplied certificates are trusted"`（已验证服务器提供的证书受信任）**，紧接着把管理员账号和密码直接发送给中间人攻击者！
 
-#### 3. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — リモートワークや出張中のインフラ管理者が `ziti edge login` を実行した際の MITM による管理者パスワード窃取:**
-  1. インフラ管理者がカフェやホテルの Wi-Fi、あるいは侵害されたネットワーク経路から `ziti edge login https://ziti-controller.corp.example:1280 -u admin -p <password>` を実行する。
-  2. 経路上の攻撃者が完全に無関係な自己署名証明書を提示して TLS 接続をインターセプトする。
-  3. `AreCertsTrusted()` が `true` を返すため、確認プロンプトすら出ずに信頼済みと判定され、`POST /edge/management/v1/authenticate?method=password` で管理者クレデンシャルが攻撃者へ直接送信される。
-* **シナリオ B — CI/CD パイプラインや Kubernetes 自動ブートストラップにおける偽コントローラへのゼロトラスト登録:**
-  1. 自動デプロイジョブが `--yes` なしで安全に証明書検証を行うつもりで `ziti edge login` を実行する。
-  2. DNS スプーフィングや BGP ハイジャックにより接続先が攻撃者のサーバーへ向いた際、エラーで停止せずにそのまま認証トークンやサービスポリシーを攻撃者へ送信する。
-* **シナリオ C — 期限切れ・失効済み・誤った CA のコントローラ証明書のサイレント受け入れ:**
-  1. 本番環境で誤ってテスト用 CA の証明書や期限切れ証明書がデプロイされた場合でも、`ziti edge login` が「信頼済み」と報告し続けるため、PKI ガバナンス違反が検知されない。
+#### 3. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — 运维工程师通过 Wi-Fi/VPN 执行 `ziti edge login` 时遭遇中间人劫持并泄露管理员密码：**
+  1. 工程师在外部网络执行 `ziti edge login https://ziti-controller.corp.example:1280 -u admin -p <password>`。
+  2. 网络中间人拦截连接并返回伪造的自签名证书。
+  3. `AreCertsTrusted()` 错误判定伪造证书受信任，不弹出任何确认提示即向攻击者发送 `POST /edge/management/v1/authenticate?method=password` 请求，泄露管理员凭据。
+* **场景 B — 自动化 CI/CD 与 Kubernetes 节点引导脚本向伪造的 Edge Controller 注册身份：**
+  1. 自动化部署流水线调用 `ziti edge login` 配置零信任网格策略。
+  2. 当遭遇 DNS 欺骗或路由劫持时，CLI 毫无告警地信任恶意控制器并上传生产服务令牌。
+* **场景 C — 生产环境中过期、吊销或错误 CA 签发的控制器证书被静默接受：**
+  1. 即使控制器证书已过期或由非授权 CA 签发，`ziti edge login` 依然报告证书受信任，导致零信任 PKI 边界形同虚设。
 
-#### 4. 実行・再現・検証コマンド例
+#### 4. 示例执行、复现与验证命令
 ```bash
-# 1. ziti/util/certs.go 内の AreCertsTrusted と InsecureClient のソースコード確認
+# 1. 查看 ziti/util/certs.go 中 AreCertsTrusted 与 InsecureClient 的源码
 sed -n '90,105p;198,210p' /path/to/ziti/ziti/util/certs.go
 
-# 2. Sniper E2E 検証テスト（RED -> GREEN + BENIGN）の実行
+# 2. 运行 VulKill E2E 验证测试（RED -> GREEN + BENIGN）
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_ziti_cand01 -v
 ```
-**実測ランタイム証明（`RED -> GREEN + BENIGN`）:**
+**实测运行时证明输出（`RED -> GREEN + BENIGN`）：**
 ```json
 {
   "RED": {
@@ -1000,18 +991,18 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 
 ---
 
-### III.09 — n8n (`n8n-workflow <= 2.45.0`) — `string-extensions.ts` における入力長無制限の `EMAIL_REGEXP` / `DOMAIN_EXTRACT_REGEXP`（`isEmail` / `extractEmail` / `extractDomain`）による Webhook イベントループ凍結（`ReDoS`、`CWE-1333`、CVSS `5.3 Medium`）
+### III.09 — n8n (`n8n-workflow <= 2.45.0`) — `string-extensions.ts` 中无长度限制的 `EMAIL_REGEXP` 与 `DOMAIN_EXTRACT_REGEXP`（`isEmail` / `extractEmail` / `extractDomain`）引发 Webhook 事件循环阻塞（`ReDoS`，`CWE-1333`，CVSS `5.3 Medium`）
 
-#### 1. メタデータ & 開示ステータス
-* **対象リポジトリ & パッケージ:** `n8n-io/n8n`（`npm: n8n-workflow <= 2.45.0`）
-* **影響を受けるバージョン & コンポーネント:** `<= 2.45.0`（`commit 976c80c63ba38fffe1ffde1fb6fb6fb4edbe8b51`）— `packages/workflow/src/extensions/string-extensions.ts`（`59, 94, 326, 375, 383` 行）
-* **脆弱性分類 & スコア:** `CWE-1333`（非効率な正規表現の複雑性 / ReDoS）— **CVSS v3.1: `5.3 Medium`**（`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L`）
-* **Sniper 個別アドバイザリ:** [`docs/advisories/ja/09-N8N-CAND-01-WEBHOOK-REDOS.md`](advisories/ja/09-N8N-CAND-01-WEBHOOK-REDOS.md)
+#### 1. 元数据与披露状态
+* **目标仓库与软件包：** `n8n-io/n8n`（`npm: n8n-workflow <= 2.45.0`）
+* **受影响版本与组件：** `<= 2.45.0`（`commit 976c80c63ba38fffe1ffde1fb6fb6fb4edbe8b51`）— `packages/workflow/src/extensions/string-extensions.ts`（第 `59, 94, 326, 375, 383` 行）
+* **漏洞类型与评分：** `CWE-1333`（低效正则表达式复杂度 / ReDoS）— **CVSS v3.1: `5.3 Medium`**（`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L`）
+* **VulKill 独立安全公告：** [`docs/advisories/zh-CN/09-N8N-CAND-01-WEBHOOK-REDOS.md`](advisories/zh-CN/09-N8N-CAND-01-WEBHOOK-REDOS.md)
 
-#### 2. コード内でどのように発生し脆弱性へ変化するのか（ステップバイステップの平易な解説）
-ワークフロー自動化基盤 `n8n` では、Webhook 等で受け取った文字列に対して `{{ $json.body.email.isEmail() }}` や `{{ $json.body.text.extractEmail() }}`、`{{ $json.body.url.extractDomain() }}` といった組み込みメソッドが日常的に使われます。
+#### 2. 漏洞如何在代码中产生并转化为安全风险（通俗易懂的分步讲解）
+在 `n8n` 自动化工作流中，用户经常在 Webhook 表达式里调用 `.isEmail()`、`.extractEmail()` 或 `.extractDomain()` 来校验或提取外部输入。
 
-ところが `string-extensions.ts` に定義されている正規表現には、**入力文字列の長さ制限（RFC 5321 の 254 文字制限など）が一切なく、さらに先頭アンカー（`^`）のない部分一致パターンに入れ子量指定子（`(\.[^...]+)*`）が含まれている** という問題があります。
+然而在 `string-extensions.ts` 中，这些辅助方法在调用正则表达式前 **没有对输入字符串做任何长度上限检查**，且所使用的正则表达式既没有起始锚点（`^`），又包含嵌套重复量词（`(\.[^<>()[\]\\.,;:\s@"]+)*`）：
 ```typescript
 // packages/workflow/src/extensions/string-extensions.ts:59, 94
 const EMAIL_REGEXP =
@@ -1019,28 +1010,28 @@ const EMAIL_REGEXP =
 
 const DOMAIN_EXTRACT_REGEXP = /^(?:https?:\/\/)?(?:www\.)?((?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,})(?:\/|$)/;
 ```
-Node.js はシングルスレッドのイベントループで全ての HTTP Webhook リクエストと UI 操作を処理します。そこへ `"a.a.a.a..."`（約 10〜20 KB のドット区切り文字列の末尾に `@!` を付けたもの）を1つ送ると、V8 正規表現エンジンが全開始位置でバックトラッキングを繰り返し、**1リクエストあたり数百ミリ秒〜1秒近くイベントループを完全に停止** させます。
+由于 Node.js 采用单线程事件循环处理所有并发 HTTP 请求，当攻击者发送一个仅 20 KB 的 `"a.a.a...a@!"` 字符串时，V8 正则引擎会在每一个字符偏移位置重复回溯，导致 **单次请求阻塞 Node.js 主线程约 832 毫秒**，使同一实例上的所有其他工作流与 Web 界面陷入停顿。
 
-#### 3. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — 公開リード獲得・問い合わせ Webhook への軽量リクエスト送信による全社 Stripe/Slack Webhook の凍結:**
-  1. 企業が Web サイトの問い合わせフォームやユーザー登録の受け口として n8n Webhook を公開し、`IF` ノードで `{{ $json.body.email.isEmail() }}` を評価している。
-  2. 攻撃者が 20 KB の `"a.a.a...a@!"` ペイロードを毎秒数回 POST する。
-  3. 1リクエストで約 `832 ms` イベントループがブロックされるため、同じ n8n インスタンス上で動いている無関係な決済 Webhook（Stripe）や社内通知（Slack）、管理画面 UI まで全てタイムアウトする。
-* **シナリオ B — カスタマーサポート自動取り込みフロー（`extractEmail()`）におけるコンテナ再起動ループ:**
-  1. 受信メールやチャットメッセージを `{{ $json.text.extractEmail() }}` で解析するワークフローが稼働している。
-  2. 長いドット区切り文字列を含む1通のスパム/悪意あるメッセージが処理されるとワーカーがフリーズし、Kubernetes の Liveness Probe が失敗してコンテナが再起動ループに陥る。
-* **シナリオ C — CRM URL ドメイン抽出（`extractDomain()`）における V8 イベントループ枯渇:**
-  1. 外部フォームやスクレイピング結果の URL から `{{ $json.url.extractDomain() }}` でドメインを抽出するワークフローに、末尾がスラッシュでない長いドット付きホスト名文字列が入力され、CPU コアが 100% 張り付く。
+#### 3. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — 向公开表单 Webhook 发送轻量级请求冻结整台服务器的 Stripe 支付与 Slack Webhook：**
+  1. 企业公开了一个用于接收网站注册或咨询表单的 n8n Webhook，并在节点表达式中使用 `{{ $json.body.email.isEmail() }}`。
+  2. 攻击者发送 10 个并发的 20 KB JSON 请求。
+  3. Node.js 主事件循环被持续阻塞数秒，导致同一 n8n 服务器上正在处理的 Stripe 支付回调、Slack 告警通知以及管理后台全部超时无响应。
+* **场景 B — 自动解析客服邮件或工单的 `extractEmail()` 流程触发容器健康检查重启循环：**
+  1. 自动化工单工作流对收到的邮件正文调用 `{{ $json.text.extractEmail() }}`。
+  2. 一封包含长串点号文本的垃圾邮件即可卡死 Worker 线程，导致 Kubernetes 存活探针（Liveness Probe）超时并不断重启容器。
+* **场景 C — CRM 数据清洗工作流调用 `extractDomain()` 耗尽单核 V8 CPU：**
+  1. 处理外部 URL 列表的工作流调用 `{{ $json.url.extractDomain() }}` 时遇到长点号主机名字符串，引发灾难性回溯。
 
-#### 4. 実行・再現・検証コマンド例
+#### 4. 示例执行、复现与验证命令
 ```bash
-# 1. Node.js ワンライナーによる string-extensions.ts の EMAIL_REGEXP 停止時間の計測
+# 1. 使用 Node.js 单行命令实测 EMAIL_REGEXP 在 20KB 输入下的事件循环阻塞耗时
 node -e 'const re = /(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))/; const s = "a.".repeat(10000) + "a@!"; const t0 = performance.now(); re.test(s); console.log("Elapsed ms:", (performance.now() - t0).toFixed(2));'
 
-# 2. Sniper E2E 検証テスト（RED -> GREEN + BENIGN）の実行
+# 2. 运行 VulKill E2E 验证测试（RED -> GREEN + BENIGN）
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_n8n_cand01 -v
 ```
-**実測ランタイム証明（`RED -> GREEN + BENIGN`）:**
+**实测运行时证明输出（`RED -> GREEN + BENIGN`）：**
 ```json
 {
   "RED": {
@@ -1061,24 +1052,24 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 
 ---
 
-### III.10 — Gotify Server (`<= v2.9.1`) — 組み込み `SSL.RedirectToHTTPS` ミドルウェア（`router.go`）における未検証 `ctx.Request.Host` ヘッダーによる `308 Permanent Redirect` オープンリダイレクトとトークン漏洩（`GHSA-cc9f-m5vr-pm75`、`CWE-601`、CVSS `4.7 Medium`）
+### III.10 — Gotify Server (`<= v2.9.1`) — 内置 `SSL.RedirectToHTTPS` 中间件（`router.go`）未校验 `ctx.Request.Host` 头导致 `308 Permanent Redirect` 开放重定向与令牌泄露（`GHSA-cc9f-m5vr-pm75`，`CWE-601`，CVSS `4.7 Medium`）
 
-#### 1. メタデータ & 開示ステータス
-* **対象リポジトリ & パッケージ:** `gotify/server`（`Go: github.com/gotify/server/v2`）
-* **影響を受けるバージョン & コンポーネント:** `<= v2.9.1`（`commit 97685e2a6f9c02b92263ef0df9831371a79d150b`）— `router/router.go`（`52-73, 93-102` 行）
-* **脆弱性分類 & スコア:** `CWE-601`（信頼できないサイトへの URL リダイレクト / オープンリダイレクト）— **CVSS v3.1: `4.7 Medium`**（`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:N/A:N`）
-* **GitHub GHSA リンク:** `GHSA-cc9f-m5vr-pm75`（`https://github.com/gotify/server/security/advisories/GHSA-cc9f-m5vr-pm75`）
-* **Sniper 個別アドバイザリ:** [`docs/advisories/ja/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md`](advisories/ja/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md)
+#### 1. 元数据与披露状态
+* **目标仓库与软件包：** `gotify/server`（`Go: github.com/gotify/server/v2`）
+* **受影响版本与组件：** `<= v2.9.1`（`commit 97685e2a6f9c02b92263ef0df9831371a79d150b`）— `router/router.go`（第 `52-73, 93-102` 行）
+* **漏洞类型与评分：** `CWE-601`（URL 重定向至不受信任站点 / 开放重定向）— **CVSS v3.1: `4.7 Medium`**（`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:N/A:N`）
+* **GitHub GHSA 链接：** `GHSA-cc9f-m5vr-pm75`（`https://github.com/gotify/server/security/advisories/GHSA-cc9f-m5vr-pm75`）
+* **VulKill 独立安全公告：** [`docs/advisories/zh-CN/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md`](advisories/zh-CN/10-GOTIFY-CAND-01-SSL-HOST-REDIRECT.md)
 
-#### 2. コード内でどのように発生し脆弱性へ変化するのか（ステップバイステップの平易な解説）
-Gotify Server で組み込み TLS（`SSL.Enabled: true`）と HTTPS 自動リダイレクト（`SSL.RedirectToHTTPS: true`）を有効にすると、`router/router.go` が HTTP リクエストを HTTPS へ転送するミドルウェアを登録します。
+#### 2. 漏洞如何在代码中产生并转化为安全风险（通俗易懂的分步讲解）
+当 Gotify Server 开启内置 TLS（`SSL.Enabled: true`）并启用 HTTP 自动跳转 HTTPS（`SSL.RedirectToHTTPS: true`）时，`router/router.go` 会注册一个重定向中间件。
 
-しかし、このミドルウェアはサーバーの設定ファイルに書かれた正規ドメイン（`conf.SSL.LetsEncrypt.Hosts`）を参照せず、**クライアントが送ってきた HTTP リクエストの `Host` ヘッダー（`ctx.Request.Host`）をそのまま信頼して `Location: https://<Host>/<Path>` を組み立て、HTTP `308 Permanent Redirect` を返してしまいます**。
+然而，该中间件既未配置 `AllowedHosts` 白名单，也未使用配置文件中的 `LetsEncrypt.Hosts`，而是 **直接读取客户端请求头中的 `ctx.Request.Host` 构造 `Location` 头，并返回 `HTTP 308 Permanent Redirect`**：
 ```go
 // router/router.go:93-102
 httpRouter.Use(func(ctx *gin.Context) {
     if ctx.Request.TLS == nil {
-        // バグ: 攻撃者が自由に書き換え可能な ctx.Request.Host をそのままリダイレクト先に使っている！
+        // 缺陷：直接使用客户端可控的 ctx.Request.Host 构造永久重定向目标！
         location := url.URL{
             Scheme:   "https",
             Host:     ctx.Request.Host,
@@ -1090,29 +1081,29 @@ httpRouter.Use(func(ctx *gin.Context) {
     }
 })
 ```
-さらにステータスコードが `308 Permanent Redirect` であるため、HTTP メソッド（`POST` 等）とクエリ文字列（`?token=<app-token>`）およびリクエストボディを変更せずにそのまま攻撃者のサーバーへ再送信するようクライアントに指示してしまいます。
+由于返回的是 `308 Permanent Redirect`，HTTP 客户端与脚本在跟随重定向时会原封不动地保留原始请求方法（如 `POST`）、完整查询参数（`?token=<app-token>`）以及消息正文，直接发往攻击者控制的服务器。
 
-#### 3. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — 自動監視・通知スクリプト（`curl -L` / Python `requests` / Uptime Kuma）からの `?token=` アプリケーショントークン窃取:**
-  1. サーバー監視ツールや CI/CD 通知スクリプトが `http://gotify.internal/message?token=AgSecretToken123` に対してリダイレクト追従有効で POST リクエストを送っている。
-  2. ネットワーク境界またはプロキシ経由で `Host: attacker-collector.example` が注入されると、Gotify は `308 Permanent Redirect` で `Location: https://attacker-collector.example/message?token=AgSecretToken123` を返す。
-  3. クライアントが自動的にリダイレクト先へ POST を再送し、秘密のアプリケーショントークンと通知本文が攻撃者サーバーへそのまま渡される。
-* **シナリオ B — 共有 HTTP キャッシュ / CDN / キャプティブポータルにおける `308` キャッシュポイズニングとフィッシング誘導:**
-  1. 共有キャッシュやリバースプロキシの背後に置かれた Gotify に対し、攻撃者が `Host: fake-gotify-login.example` ヘッダー付きリクエストを送る。
-  2. キャッシュされた `308 Permanent Redirect` により、後続の正規ユーザーのブラウザが永続的に偽のログイン画面へ転送される。
-* **シナリオ C — ブラウザ永続リダイレクトキャッシュを利用した WebSocket / Web UI セッションの誘導:**
-  1. ユーザーが一度でも悪意ある `Host` ヘッダーを伴うレスポンスを受け取ると、`308` がブラウザにキャッシュされ、次回以降のアクセスも攻撃者ホストへ向かう。
+#### 3. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — 监控告警脚本（`curl -L` / Python `requests` / Uptime Kuma）跟随 `308` 跳转泄露 `?token=` 应用密钥：**
+  1. 运维通知脚本通过 HTTP 请求 `http://gotify.internal/message?token=AgSecretToken123` 发送告警，并开启了自动跟随重定向。
+  2. 当请求被注入 `Host: attacker-collector.example` 时，Gotify 返回 `308` 指向 `https://attacker-collector.example/message?token=AgSecretToken123`。
+  3. 客户端自动向攻击者服务器重发携带 `?token=` 与告警正文的 POST 请求，导致应用令牌泄露。
+* **场景 B — 共享 HTTP 缓存 / 反向代理下的 `308` 缓存投毒与钓鱼劫持：**
+  1. 攻击者向位于共享缓存或代理后的 Gotify 发送 `Host: fake-gotify-login.example`。
+  2. 被缓存的 `308 Permanent Redirect` 响应会将后续访问的所有正常用户持久重定向到钓鱼登录页面。
+* **场景 C — 浏览器永久缓存 `308` 跳转导致后续访问持续被劫持：**
+  1. 用户浏览器一旦收到被篡改 `Host` 的 `308` 响应，便会永久缓存该跳转规则，导致后续访问持续发往恶意域名。
 
-#### 4. 実行・再現・検証コマンド例
+#### 4. 示例执行、复现与验证命令
 ```bash
-# 1. ローカル隔離テスト環境での Host ヘッダーインジェクション再現コマンド例
+# 1. 在本地隔离测试环境中复现 Host 头重定向与 ?token= 泄露
 curl -i "http://127.0.0.1:18080/message?token=secret-app-token" \
   -H "Host: evil-phish.example.com"
 
-# 2. Sniper E2E 検証テスト（RED -> GREEN + BENIGN）の実行
+# 2. 运行 VulKill E2E 验证测试（RED -> GREEN + BENIGN）
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_gotify_cand01 -v
 ```
-**実測ランタイム証明（`RED -> GREEN + BENIGN`）:**
+**实测运行时证明输出（`RED -> GREEN + BENIGN`）：**
 ```json
 {
   "RED": {
@@ -1131,19 +1122,19 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 
 ---
 
-### III.11 — Nordic Institute X-Road (`develop`) — 永続セルフホストランナー `xrd-runner-8c` 上で動作する `_build-and-package.yml` 内の `${{ github.head_ref }}` シェルコマンドインジェクション（`GHSA-4fcw-7xqx-fjv5`、`CWE-78`、CVSS `8.5 High`）
+### III.11 — Nordic Institute X-Road (`develop`) — 持久化自托管节点 `xrd-runner-8c` 上 `_build-and-package.yml` 中的 `${{ github.head_ref }}` Shell 命令注入（`GHSA-4fcw-7xqx-fjv5`，`CWE-78`，CVSS `8.5 High`）
 
-#### 1. メタデータ & 開示ステータス
-* **対象リポジトリ & パッケージ:** `nordic-institute/X-Road`（GitHub Actions CI/CD パイプライン — `commit 38cd99ec0ebba0bd68a2581ca3c92be2e5f5843f`）
-* **影響を受けるバージョン & コンポーネント:** `develop` ブランチ — `.github/workflows/build.yaml`（`1-55` 行）および `.github/workflows/_build-and-package.yml`（`Determine target branch` ステップ、`84-91` 行）
-* **脆弱性分類 & スコア:** `CWE-78`（OS コマンドインジェクション）— **CVSS v3.1: `8.5 High`**（`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:N`）
-* **GitHub GHSA リンク:** `GHSA-4fcw-7xqx-fjv5`（`https://github.com/nordic-institute/X-Road/security/advisories/GHSA-4fcw-7xqx-fjv5`）
-* **Sniper 個別アドバイザリ:** [`docs/advisories/ja/11-XROAD-CAND-01-RUNNER-INJECTION.md`](advisories/ja/11-XROAD-CAND-01-RUNNER-INJECTION.md)
+#### 1. 元数据与披露状态
+* **目标仓库与软件包：** `nordic-institute/X-Road`（GitHub Actions CI/CD 流水线 — `commit 38cd99ec0ebba0bd68a2581ca3c92be2e5f5843f`）
+* **受影响版本与组件：** `develop` 分支 — `.github/workflows/build.yaml`（第 `1-55` 行）及 `.github/workflows/_build-and-package.yml`（`Determine target branch` 步骤，第 `84-91` 行）
+* **漏洞类型与评分：** `CWE-78`（OS 命令注入）— **CVSS v3.1: `8.5 High`**（`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:H/A:N`）
+* **GitHub GHSA 链接：** `GHSA-4fcw-7xqx-fjv5`（`https://github.com/nordic-institute/X-Road/security/advisories/GHSA-4fcw-7xqx-fjv5`）
+* **VulKill 独立安全公告：** [`docs/advisories/zh-CN/11-XROAD-CAND-01-RUNNER-INJECTION.md`](advisories/zh-CN/11-XROAD-CAND-01-RUNNER-INJECTION.md)
 
-#### 2. コード内でどのように発生し脆弱性へ変化するのか（ステップバイステップの平易な解説）
-GitHub Actions の YAML ファイル内で `${{ github.head_ref }}`（プルリクエストのブランチ名）を書くと、GitHub は **bash を起動する前の文字列置換としてその値をそのままスクリプト内に埋め込みます**。
+#### 2. 漏洞如何在代码中产生并转化为安全风险（通俗易懂的分步讲解）
+在 GitHub Actions 工作流中，`${{ github.head_ref }}`（Pull Request 的源分支名称）会在 **生成 bash 脚本之前作为纯文本直接替换进 `run:` 块中**。
 
-X-Road のメインビルドワークフロー `build.yaml` は、`pull_request` イベントで発火し、**書き込み権限（`contents: write`, `packages: write`）と全シークレット継承（`secrets: inherit`）** を付けた状態で再利用ワークフロー `_build-and-package.yml` を呼び出します。そして `_build-and-package.yml` は **永続的なセルフホストランナー（`runs-on: xrd-runner-8c`）** 上で、最初のステップ（`actions/checkout` より前）として以下のスクリプトを実行します。
+X-Road 的主构建工作流 `build.yaml` 在 `pull_request` 事件触发时，以 **`contents: write`、`packages: write` 权限以及 `secrets: inherit`（继承全部机密）** 调用复用工作流 `_build-and-package.yml`。而 `_build-and-package.yml` 运行在 **持久化自托管运行器（`runs-on: xrd-runner-8c`）** 上，并在第一个步骤中直接拼接了 `${{ github.head_ref }}`：
 ```yaml
 # .github/workflows/_build-and-package.yml:84-91
 jobs:
@@ -1158,29 +1149,28 @@ jobs:
             echo "TARGET_BRANCH=${{ github.ref_name }}" >> "$GITHUB_ENV"
           fi
 ```
-Git のブランチ名には二重引用符（`"`）やセミコロン（`;`）を含めることができます。そのため、ブランチ名を `feat";id;env;#` にして PR を作成すると、展開後の bash スクリプトは `echo "TARGET_BRANCH=feat";id;env;#" >> "$GITHUB_ENV"` となり、**コードレビューが始まる前にセルフホストランナー上で任意の OS コマンドが実行** されます。
+由于 Git 分支名允许包含双引号（`"`）和分号（`;`），攻击者只需创建名为 `feat";id;env;#` 的分支并发起 PR，生成的 bash 脚本就会变成 `echo "TARGET_BRANCH=feat";id;env;#" >> "$GITHUB_ENV"`，从而在代码审查开始前直接在 `xrd-runner-8c` 自托管构建机上执行任意命令。
 
-#### 3. 日常業務で発生し得る3つの重大シナリオ（`シナリオ A / B / C`）
-* **シナリオ A — 細工されたブランチ名による PR 作成時のセルフホストランナー `xrd-runner-8c` 上での即時コマンド実行:**
-  1. ブランチ作成権限を持つアカウントまたは侵害された開発者トークンから、`feat";<任意コマンド>;#` というブランチ名で PR が作成される。
-  2. コードのチェックアウトやレビュアーの承認を待たずに、`Determine target branch` ステップで bash コマンドが即座に実行される。
-* **シナリオ B — `secrets: inherit` と `packages: write` 権限を悪用した公式コンテナレジストリ（GHCR）・リポジトリ改ざん:**
-  1. 親ワークフロー `build.yaml` が `permissions: contents: write, packages: write` と `secrets: inherit` を渡しているため、注入されたコマンドは書き込み権限を持つ `GITHUB_TOKEN` と継承された CI シークレットにアクセスできる。
-  2. 攻撃者はこれらを用いて公式パッケージレジストリへ改ざんイメージをプッシュしたり、リポジトリのブランチやタグを書き換えたりできる。
-* **シナリオ C — 永続セルフホストランナー（`xrd-runner-8c`）のキャッシュ汚染による後続の公式 X-Road パッケージへのバックドア混入:**
-  1. GitHub ホストランナーと異なり、`xrd-runner-8c` はビルド間で環境が破棄されない永続セルフホストサーバーである。
-  2. 攻撃者がランナー上のローカル Gradle キャッシュ、Docker レイヤーキャッシュ、またはバックグラウンドプロセスを汚染することで、後続の正規リリースビルドで生成される `.deb` / `.rpm` パッケージにバックドアを混入させる。
+#### 3. 日常环境中可能引发的 3 个关键场景（`场景 A / B / C`）
+* **场景 A — 通过恶意分支名发起 PR 在自托管运行器 `xrd-runner-8c` 上未审先执行任意命令：**
+  1. 拥有分支创建权限的账号或失陷的开发者凭据创建分支 `feat";<恶意命令>;#` 并打开 PR。
+  2. 无需等待代码审查或 `actions/checkout`，`Determine target branch` 步骤立即在 `xrd-runner-8c` 主机上执行注入的 Shell 命令。
+* **场景 B — 利用继承的 `secrets: inherit` 与 `packages: write` 权限窃取 GHCR 发布令牌与仓库机密：**
+  1. 由于 `build.yaml` 授予了 `contents: write`、`packages: write` 与 `secrets: inherit`，注入的命令可直接读取高权限 `GITHUB_TOKEN` 与仓库机密，进而向官方容器镜像库推送被篡改的镜像。
+* **场景 C — 污染持久化自托管节点 `xrd-runner-8c` 的本地构建缓存以在后续官方 X-Road 发行包中植入后门：**
+  1. `xrd-runner-8c` 是持久化自托管服务器，构建结束后本地文件系统与缓存不会销毁。
+  2. 攻击者通过篡改本地 Gradle/Docker 缓存或植入驻留进程，污染后续正常分支构建出的官方 `.deb` / `.rpm` 软件包。
 
-#### 4. 実行・再現・検証コマンド例
+#### 4. 示例执行、复现与验证命令
 ```bash
-# 1. _build-and-package.yml と build.yaml の該当行をソースコードで確認
+# 1. 在源码中核查 build.yaml 与 _build-and-package.yml 的配置
 sed -n '1,55p' /path/to/X-Road/.github/workflows/build.yaml
 sed -n '80,95p' /path/to/X-Road/.github/workflows/_build-and-package.yml
 
-# 2. Sniper E2E 検証テスト（RED -> GREEN + BENIGN）の実行
+# 2. 运行 VulKill E2E 验证测试（RED -> GREEN + BENIGN）
 python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_and_cua_real_world_impact_e2e.py -k test_xroad_cand01 -v
 ```
-**実測ランタイム証明（`RED -> GREEN + BENIGN`）:**
+**实测运行时证明输出（`RED -> GREEN + BENIGN`）：**
 ```json
 {
   "RED": {
@@ -1209,7 +1199,7 @@ python3 -m pytest pre-submission-verification-20261026/tests/test_other_repos_an
 * **Target Repository & Package:** `gitlab-org/gitlab` (`RubyGems / GitLab CE & EE: gitlab-ce / gitlab-ee`)
 * **Affected Versions & Components:** `<= 19.6.0-pre (verified on live 19.5.1-ce.0 & 19.6.0-pre commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `app/controllers/oauth/device_authorizations_controller.rb:4-50`, `app/controllers/oauth/tokens_controller.rb:42-75`
 * **Vulnerability Class & Score:** `CWE-863 / CWE-285` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md`](advisories/ja/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md`](advisories/zh-CN/12-GITLAB-CAND-02-DEVICE-GRANT-POLICY-BYPASS.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Missing `verify_admin_allowed!` Bypasses Default `disable_admin_oauth_scopes` (`CAND-02A`, `device_authorizations_controller.rb:4-42`):** In `Oauth::AuthorizationsController` (`authorizations_controller.rb:18, 274-296`), `before_action :verify_admin_allowed!` blocks any untrusted OAuth application (`trusted: false`) from connecting to an administrator account with dangerous scopes (`api`, `read_api`, `admin_mode`, `sudo`, `write_repository`) whenever `Gitlab::CurrentSettings.disable_admin_oauth_scopes` is `true` (the default GitLab security setting). Because `Oauth::DeviceAuthorizationsController` inherits directly from `Doorkeeper::DeviceAuthorizationGrant::DeviceAuthorizationsController` without adding `before_action :verify_admin_allowed!`, any regular user can create an untrusted OAuth app (`trusted: false, device_code_enabled: true, scopes: 'api admin_mode'`) and obtain a full-privilege admin access token when an admin approves a `user_code` on `/oauth/device`.
@@ -1294,7 +1284,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Target Repository & Package:** `gitlab-org/gitlab` (`RubyGems / GitLab EE: gitlab-ee`)
 * **Affected Versions & Components:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `ee/app/services/ai/catalog/mcp_servers/callback_service.rb:17-50, 87-129`, `refresh_token_service.rb:18-70`, `dynamic_registration_client.rb:104-136`
 * **Vulnerability Class & Score:** `CWE-918 / CWE-209` — **CVSS v3.1: `8.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md`](advisories/ja/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md`](advisories/zh-CN/13-GITLAB-CAND-05-MCP-OAUTH-307-REDIRECT-SSRF.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unvalidated RFC 8414 `token_endpoint`, `revocation_endpoint`, and `authorization_servers` (`dynamic_registration_client.rb:104-136`):** `DynamicRegistrationClient#discover_auth_server_url` and `#discover_metadata` validate only the initial discovery URL via `UrlBlocker`, but return `resource_metadata['authorization_servers'].first` and `response.parsed_response` (`token_endpoint`, `revocation_endpoint`, `issuer`) without running `Gitlab::HTTP_V2::UrlBlocker.validate!` on the discovered endpoints.
@@ -1380,7 +1370,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Target Repository & Package:** `gitlab-org/gitlab` (`RubyGems / GitLab EE: gitlab-ee`)
 * **Affected Versions & Components:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `ee/app/controllers/oauth/mcp_connectors_auth_controller.rb:16-78`, `ee/app/services/ai/catalog/mcp_servers/connect_service.rb:16-79`, `ee/lib/gitlab/oauth/client_state.rb:17-23`
 * **Vulnerability Class & Score:** `CWE-639 / CWE-862` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md`](advisories/ja/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md`](advisories/zh-CN/14-GITLAB-CAND-06-MCP-CONNECTORS-CROSS-ORG-IDOR.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unscoped Global `Ai::Catalog::McpServer.find` Across Organizations (`mcp_connectors_auth_controller.rb:19, 38, 63, 71-73`):** `Oauth::McpConnectorsAuthController` checks `can?(current_user, :read_ai_catalog_mcp_server, Current.organization)` against the caller's own organization, and then calls `::Ai::Catalog::McpServer.find(mcp_server_params[:id])` without `.in_organization(Current.organization)`. Any user in Organization A can target an `McpServer` belonging to Organization B by ID.
@@ -1454,7 +1444,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Target Repository & Package:** `gitlab-org/gitlab` (`Go / GitLab Workhorse: gitlab.com/gitlab-org/gitlab/workhorse`)
 * **Affected Versions & Components:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `workhorse/internal/ai_assist/duoworkflow/mcp.go:25-60, 101-112, 220-239`
 * **Vulnerability Class & Score:** `CWE-918 / CWE-522` — **CVSS v3.1: `8.2 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md`](advisories/ja/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md`](advisories/zh-CN/15-GITLAB-CAND-01-WORKHORSE-MCP-SSRF-TOKEN-LEAK.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — `externalMcpTransport` Omits `transport.WithSSRFFilter` (`workhorse/internal/ai_assist/duoworkflow/mcp.go:41-44`):** In GitLab Workhorse's `transport` package, `transport.NewRestrictedTransport` only blocks loopback (`127.0.0.1`), link-local metadata (`169.254.169.254`), and RFC1918 private IPs when `transport.WithSSRFFilter(...)` is explicitly passed (as done in `workhorse/internal/sendurl/sendurl.go:365-374`). `externalMcpTransport` in `mcp.go:41-44` omits `transport.WithSSRFFilter`, leaving external MCP connections completely unfiltered at the dialer/transport layer.
@@ -1530,7 +1520,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Target Repository & Package:** `gitlab-org/gitlab` (`RubyGems / GitLab EE: gitlab-ee`)
 * **Affected Versions & Components:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `ee/app/services/ai/duo_workflows/mcp_config_service.rb:131-135`, `ee/lib/api/ai/duo_workflows/workflows.rb:341-344, 1065`, `connection_config_service.rb:220-228`
 * **Vulnerability Class & Score:** `CWE-862 / CWE-639` — **CVSS v3.1: `7.7 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:C/C:H/I:L/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md`](advisories/ja/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md`](advisories/zh-CN/16-GITLAB-CAND-08-DUO-WORKFLOW-UNVALIDATED-ITEM-VERSION.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — In-File Authorization Inconsistency in `McpConfigService` (`mcp_config_service.rb:134` vs. `334`):** In `ee/app/services/ai/duo_workflows/mcp_config_service.rb`, `ai_catalog_mcp_servers` (line 334) explicitly enforces `return {} unless Ability.allowed?(current_user, :read_ai_catalog_item, item_version)`. However, in the exact same file, `item_version` (line 134), `agent_mcp_tools` (line 297), and `built_in_tool_ids` (line 318) call `::Ai::Catalog::ItemVersion.find_by_id(ai_catalog_item_version_id)` without any `Ability.allowed?` check.
@@ -1607,7 +1597,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Target Repository & Package:** `gitlab-org/gitlab` (`RubyGems & Go / GitLab EE & Workhorse: gitlab-ee`)
 * **Affected Versions & Components:** `<= 19.6.0-pre (commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `ee/app/services/ai/duo_workflows/mcp_config_service.rb:57-64`, `ee/app/services/ai/catalog/mcp_servers/list_service.rb:14-24`, `workhorse/internal/ai_assist/duoworkflow/mcp.go:254`
 * **Vulnerability Class & Score:** `CWE-863 / CWE-639` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:L`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md`](advisories/ja/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md`](advisories/zh-CN/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — `McpConfigService#execute` Protects `:orbit` with `.except(:orbit)` But Forgets `:gitlab` (`mcp_config_service.rb:59-63`):** `McpConfigService#execute` builds the Workhorse MCP configuration hash via `gitlab_mcp_server(denied).merge(orbit_mcp_server).merge(ai_catalog_mcp_servers.except(:orbit))`. Because `.except(:orbit)` omits `:gitlab`, any `Ai::Catalog::McpServer` named `"GitLab"` (which normalizes to `server_key => :gitlab`) overwrites the built-in `:gitlab` entry produced by `gitlab_mcp_server(denied)`.
@@ -1676,7 +1666,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Target Repository & Package:** `gitlab-org/gitlab` (`RubyGems / GitLab CE & EE: gitlab-ce / gitlab-ee`)
 * **Affected Versions & Components:** `<= 19.6.0-pre (verified on live 19.5.1-ce.0 & 19.6.0-pre commit 06cc52e0bc0c1bd96affa9c3bec857ccf754938f)` — `app/controllers/projects/integrations/slash_commands_controller.rb:21-48`, `app/models/concerns/integrations/base/slash_commands.rb:6-10, 68-76`
 * **Vulnerability Class & Score:** `CWE-601 / CWE-863` — **CVSS v3.1: `5.4 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:L/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md`](advisories/ja/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md`](advisories/zh-CN/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unvalidated `redirect_to request_params[:redirect_url]` with `raise_on_open_redirects = false` (`slash_commands_controller.rb:26`, `config/application.rb:63`):** While `SlashCommandsController#show` (line 11) safely computes `@redirect_url = integration_redirect_url`, `#confirm` (line 26) calls `redirect_to request_params[:redirect_url]` directly on the user-controlled parameter. Because `config.action_controller.raise_on_open_redirects = false` is set globally in `config/application.rb:63`, Rails issues a `302 Found` redirect to any arbitrary external `https://` URL.
@@ -1746,7 +1736,7 @@ python3 -m unittest pre-submission-verification-20261026/tests/test_gitlab_real_
 * **Target Repository & Package:** `gitlab-org/gitlab` (`RubyGems / GitLab CE & EE (Devise 5.0.3): gitlab-ce / gitlab-ee (devise 5.0.3)`)
 * **Affected Versions & Components:** `<= 19.6.0-pre (Devise 5.0.3 CVE-2026-40295 upstream dependency & Oauth::AuthorizationsController defense-in-depth)` — `lib/gitlab/devise_failure.rb:4-18`, `lib/gitlab/auth/session_expire_from_init_enforcer.rb:44-62`, `app/controllers/oauth/authorizations_controller.rb:316-330`
 * **Vulnerability Class & Score:** `CWE-601 / CWE-345` — **CVSS v3.1: `5.4 Medium (Upstream CVE-2026-40295 Duplicate)`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md`](advisories/ja/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md`](advisories/zh-CN/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Important Duplicate & Non-Submission Disclosure:** During our pre-submission duplicate and runtime verification gate, we identified that the `Gitlab::DeviseFailure#redirect_url` open redirect is the product-level manifestation of upstream **Devise `5.0.3` `CVE-2026-40295`**, and that `GITLAB-CAND-03` (`validate_pkce_for_dynamic_applications`) is mitigated at runtime by `Doorkeeper 5.9.3` (`pkce_code_challenge_methods ['S256']` at `config/initializers/doorkeeper.rb:158`). Therefore, **this advisory is published on GitHub for full engineering transparency and remediation, and was deliberately NOT submitted to MITRE for a duplicate CVE ID**.
@@ -1806,7 +1796,7 @@ sed -n '316,330p' /home/community-user/targets/gitlab/app/controllers/oauth/auth
 * **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/wallet/wallet_node.py:926-995` (`_add_block_from_header`)
 * **Vulnerability Class & Score:** `CWE-345 / CWE-347` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md`](advisories/ja/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md`](advisories/zh-CN/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Header-Body Cryptographic Binding Omission (`chia/wallet/wallet_node.py:926-995`):** In Chia's block structure, the signed `HeaderBlock.foliage` commits to the transaction payload via the 32-byte SHA-256 digest `header_block.foliage.foliage_transaction_block_hash`. However, when `WalletNode._add_block_from_header` ingests a `RespondBlockHeader` message from a P2P peer, it reads `header_block.foliage_transaction_block` and extracts coin additions without verifying `header_block.foliage_transaction_block.get_hash() == header_block.foliage.foliage_transaction_block_hash`.
@@ -1870,7 +1860,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/wallet/wallet_node.py:725-777`, `chia/wallet/wallet_state_manager.py:1735-1778`
 * **Vulnerability Class & Score:** `CWE-345 / CWE-400` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md`](advisories/ja/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md`](advisories/zh-CN/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unverified `RespondRemovals(..., proofs=None)` & `spent_height` Acceptance (`wallet_node.py:725-777` & `wallet_state_manager.py:1735-1778`):** When a wallet synchronizes coin removals or receives a `RespondRemovals` message with `proofs=None` (or an unverified `CoinState` with `spent_height` set), `_add_coin_states` updates the coin's `spent_height` in SQLite `WalletCoinStore` without verifying a Merkle removal proof against a validated peak header.
@@ -1933,7 +1923,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Target Repository & Package:** `Chia-Network/chia-blockchain-gui` (`npm / TypeScript (Electron Desktop GUI): chia-blockchain-gui`)
 * **Affected Versions & Components:** `<= 2.6.1-rc2.dev60 (verified on commit 2f6ee83a23ac8b0370b96111e02f8edfb81fa1f3)` — `packages/gui/src/components/walletConnect/WalletConnectContext.tsx:314-441`, `constants/WalletConnectCommands.ts`
 * **Vulnerability Class & Score:** `CWE-367 / CWE-285` — **CVSS v3.1: `8.8 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md`](advisories/ja/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md`](advisories/zh-CN/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — All 29 WalletConnect Commands Exposed Upon Pairing (`constants/WalletConnectCommands.ts`):** When a user connects their Chia desktop wallet to any website/dApp (even one claiming to only check an address or NFT eligibility), the WalletConnect session namespace grants access to all 29 RPC commands, including `chia_sendTransaction`, `chia_spendCAT`, and `chia_takeOffer`.
@@ -2001,7 +1991,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/rpc/wallet_rpc_api.py:4066-4120` (`dl_verify_proof`), `chia/data_layer/data_layer_util.py`
 * **Vulnerability Class & Score:** `CWE-347 / CWE-345` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md`](advisories/ja/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md`](advisories/zh-CN/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Missing Singleton Top-Layer & Launcher Lineage Check in `WalletRpcApi.dl_verify_proof` (`chia/rpc/wallet_rpc_api.py:4066-4120`):** When verifying a `DLProof` (`ProofOfInclusion`), `dl_verify_proof` confirms that the referenced coin (`coin_id`) was spent on-chain and that its inner puzzle announcement matches the Merkle root of the key/value pairs, plus checks `dl_wallet.get_latest_singleton(store_id)` for existence. However, it **never calls `match_dl_singleton`** on the proof's parent coin spend to verify that the coin is actually the canonical DataLayer singleton for `store_id`!
@@ -2066,7 +2056,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs`, `crates/chia-sdk-driver/src/clear_signing/tests.rs`
 * **Vulnerability Class & Score:** `CWE-451 / CWE-345` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md`](advisories/ja/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md`](advisories/zh-CN/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Parser Divergence Between Consensus CLVM (`chia_rs`) and `cni-wallet-sdk` (`clear_signing.rs`):** Chia's consensus CLVM engine ignores extra trailing arguments on condition opcodes such as `RESERVE_FEE` (`(52 amount extra_atom)`), executing the full fee reservation on-chain. However, `cni-wallet-sdk` parses conditions using strict fixed-arity structs and silently wraps any condition with trailing atoms into `Condition::Other(NodePtr)` instead of rejecting it.
@@ -2124,7 +2114,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (`NEW_METADATA_INFO` evaluation)
 * **Vulnerability Class & Score:** `CWE-451 / CWE-345` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md`](advisories/ja/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md`](advisories/zh-CN/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — NFT State Layer Executes Conditions Returned by the Metadata Updater Program:** Under Chia's CHIP-0007 NFT standard, when an inner spend emits a `NEW_METADATA_INFO` (`-24`) condition, the NFT state layer executes the metadata updater puzzle and merges any returned conditions into the spend's output conditions.
@@ -2175,7 +2165,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (dependent offer leg aggregation)
 * **Vulnerability Class & Score:** `CWE-682 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md`](advisories/ja/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md`](advisories/zh-CN/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Set-Intersection Filtering Across Dependent Settlement Legs (`clear_signing.rs`):** When a Vault transaction participates in a multi-leg Offer settlement (`POC-4`), `cni-wallet-sdk` correlates notarized payments across legs using set intersection rather than union/full conservation.
@@ -2225,7 +2215,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (unrevealed settlement output handling)
 * **Vulnerability Class & Score:** `CWE-345 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md`](advisories/ja/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md`](advisories/zh-CN/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Settlement Coins Require No Signature to Spend Once Created:** Any coin created at `SETTLEMENT_PAYMENT_HASH` can be spent by anyone who supplies a matching notarized payment solution (unless constrained by a signed announcement in the parent vault spend).
@@ -2277,7 +2267,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (`chia-sdk-driver` & `chia-sdk-bindings` FFI): chia-sdk-bindings`)
 * **Affected Versions & Components:** `chia-sdk-bindings <= 0.38.0 / chia-sdk-driver <= 0.36.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs`, `crates/chia-sdk-bindings/src/clear_signing.rs:62` (`parse_vault_transaction`)
 * **Vulnerability Class & Score:** `CWE-682 / CWE-451` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md`](advisories/ja/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md`](advisories/zh-CN/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — External `DropCoin` Output Credited as Vault Change (`clear_signing.rs` & `chia-sdk-bindings/src/clear_signing.rs:62`):** When `parse_vault_transaction` computes the net outflow of a Vault transaction, it credits outputs sent to the vault's puzzle hash as vault change without verifying that the parent coin creating that output actually belonged to the vault (`DropCoin` parent lineage).
@@ -2332,7 +2322,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (offer pre-split coin destination binding)
 * **Vulnerability Class & Score:** `CWE-347 / CWE-451` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md`](advisories/ja/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md`](advisories/zh-CN/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Pre-Split Intermediate Coin Spent Without Cryptographic Destination Binding (`clear_signing.rs`):** In an Offer pre-split transaction (`POC-7`), the user signs a bundle (`476b8e836e435eecb16fb924b8d8b8532fb6872fda3f9d50030d98231fff7833`, `1,994 bytes`) that splits `1,000 XCH` (`1,000,000,000,000,000 mojo`) into an intermediate settlement/pre-split coin whose downstream spend is not pinned by an `ASSERT_PUZZLE_ANNOUNCEMENT` signed by the vault.
@@ -2385,7 +2375,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (Clawback `sender_puzzle_hash` ownership check)
 * **Vulnerability Class & Score:** `CWE-345 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md`](advisories/ja/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md`](advisories/zh-CN/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Missing Verification That `sender_puzzle_hash` Belongs to the Signing Vault (`clear_signing.rs`):** When a Vault creates a Clawback-protected output (`POC-8`), `cni-wallet-sdk` inspects the Clawback parameters and memo/hint without verifying that the Clawback `sender_puzzle_hash` (the party authorized to claw back the coin before the timelock expires) is owned by the signing vault.
@@ -2436,7 +2426,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
 * **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (external CAT ring TAIL melt/issuance accounting)
 * **Vulnerability Class & Score:** `CWE-682 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md`](advisories/ja/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md`](advisories/zh-CN/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Chia CAT Ring Conservation Balances Across All Spends in the Ring:** In Chia's CAT2 standard, multiple CAT coin spends form a ring where a negative `extra_delta` (`RUN_TAIL` melt, opcode `51 0 -113`) in an external ring member is funded by the excess input of the victim vault's CAT spend.
@@ -2486,7 +2476,7 @@ cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.tom
 * **Target Repository & Package:** `Chia-Network/chia-vault-recover` (`Cargo / Rust (Chia Emergency Vault Recovery CLI): chia-vault-recover`)
 * **Affected Versions & Components:** `<= 1.0.0-rc9 (verified on commit 75e3a8efe02a131adbf3059afc20852de183ca82)` — `src/locate.rs:148-219` (`find_launcher_id`)
 * **Vulnerability Class & Score:** `CWE-345 / CWE-400` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md`](advisories/ja/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md`](advisories/zh-CN/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unverified First-Match `SINGLETON_LAUNCHER_HASH` Return in `find_launcher_id` (`src/locate.rs:148-219`):** To locate a user's Vault singleton, `find_launcher_id` fetches all coins at the user's address via `get_coin_records_by_puzzle_hash`, inspects each coin's parent spend, and immediately returns the **first** child coin whose puzzle hash equals `SINGLETON_LAUNCHER_HASH`.
@@ -2545,7 +2535,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/full_node/full_node.py:2220-2310` (`new_peak` / `sync_from_fork_point`)
 * **Vulnerability Class & Score:** `CWE-400 / CWE-345` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md`](advisories/ja/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md`](advisories/zh-CN/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Repeated `sync_from_fork_point` Aborts Without Peer Disconnection (`chia/full_node/full_node.py:2220-2310`):** When an unauthenticated mTLS 1.3 P2P peer on port `8444` advertises a higher `NewPeak` and supplies invalid or empty sub-epoch/weight-proof responses during `sync_from_fork_point`, `FullNode` aborts the sync attempt without disconnecting or banning the malicious peer.
@@ -2608,7 +2598,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/rpc/wallet_rpc_api.py` (`take_offer`), `chia/wallet/trade_manager.py` (`respond_to_offer`)
 * **Vulnerability Class & Score:** `CWE-863` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md`](advisories/ja/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md`](advisories/zh-CN/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Implicit Coin Selection From Requested Notarized Payments (`trade_manager.py` & `wallet_rpc_api.py`):** When fulfilling an Offer via `take_offer`, `respond_to_offer` computes the deficit of requested notarized payments and invokes `select_coins` + `sign_coin_spends` for every requested asset.
@@ -2629,7 +2619,7 @@ async def respond_to_offer(self, offer: Offer, peer: WSChiaConnection, ...):
 
 #### 4. Example Execution, Reproduction & Verification Commands
 ```bash
-# 1. Run Sniper's Cryptographic Wallet Signing Auditor & Offer Cap Verification
+# 1. Run VulKill's Cryptographic Wallet Signing Auditor & Offer Cap Verification
 python3 -m unittest /home/community-user/targets/sniper/tests/test_wave5_orchestrator_and_wallet.py
 ```
 **Observed Runtime Proof (`RED -> GREEN`):**
@@ -2658,7 +2648,7 @@ python3 -m unittest /home/community-user/targets/sniper/tests/test_wave5_orchest
 * **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python & Rust FFI (`chia-blockchain` & `chiapos`): chia-blockchain`)
 * **Affected Versions & Components:** `chia-blockchain <= 2.7.5 (commit bdb7be2a45fc459b0672656166701ac4f46e0cfc) / chiapos <= 2.0.11` — `chia/farmer/farmer_api.py:85-185` (`FarmerAPI.new_proof_of_space`), `chiapos` Rust FFI (`size_v2` / `get_quality_string`)
 * **Vulnerability Class & Score:** `CWE-248 / CWE-20` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md`](advisories/ja/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md`](advisories/zh-CN/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Missing Pre-Validation in `FarmerAPI.new_proof_of_space` (`chia/farmer/farmer_api.py:85-185`) vs. `FullNode` (`8444`):** While `FullNode` on port `8444` calls `ProofOfSpace.verify_and_get_quality_string` (which checks pool public key / pool contract puzzle hash XOR exclusivity and `check_plot_param` before touching native code), `FarmerAPI.new_proof_of_space` on port `8447` immediately calls `new_proof_of_space.proof.size_v2()` and `get_quality_string(...)` on the raw wire-deserialized message.
@@ -2720,7 +2710,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Target Repository & Package:** `Chia-Network/chiapos` (`PyPI / C++17 Native Extension (`chiapos`): chiapos`)
 * **Affected Versions & Components:** `<= 2.0.11 (upstream main)` — `src/verifier.hpp:48-108` (`Verifier::ValidateProof`), `src/bits.hpp:184`, `src/prover_disk.hpp:254-322` (`DiskProver`)
 * **Vulnerability Class & Score:** `CWE-190 / CWE-787 / CWE-125` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md`](advisories/ja/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md`](advisories/zh-CN/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — `Verifier::ValidateProof` Out-of-Bounds Stack Access at Consensus-Permitted `k=50` (`src/verifier.hpp:48-108` & `src/bits.hpp:184`):** Chia's Python consensus pre-filter `check_plot_param` allows `k` up to `50` (`size <= 50`). However, inside native C++ `Verifier::ValidateProof`, evaluating Table 4 at `k=50` (and Table 1 at `k=60`) overflows 32/64-bit bit-slice offsets in `src/bits.hpp:184` (`AddressSanitizer: stack-buffer-overflow` / `runtime error: load of address ... with insufficient space`, verified in compiled ASan/UBSan binary `chiapos_k_probe`, `exit_code=1`).
@@ -2775,7 +2765,7 @@ CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pyt
 * **Target Repository & Package:** `Chia-Network/chiavdf` (`PyPI / C++17 Native Extension (`chiavdf`): chiavdf`)
 * **Affected Versions & Components:** `<= 1.1.11 (upstream main)` — `src/verifier.cpp` (`CheckProofOfTimeNWesolowski`), `src/prover_slow.h`
 * **Vulnerability Class & Score:** `CWE-125 / CWE-416` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md`](advisories/ja/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md`](advisories/zh-CN/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unchecked `proof_blob` Length and Segment Slicing in `CheckProofOfTimeNWesolowski` (`src/verifier.cpp`):** When verifying an N-Wesolowski VDF proof, `CheckProofOfTimeNWesolowski` indexes directly into `proof_blob` at fixed `2 * B_bytes` offsets per segment without verifying that `proof_blob.size()` is an exact multiple of the serialized quadratic form length or that `num_iterations > 0`.
@@ -2826,7 +2816,7 @@ grep -n -C 12 "CheckProofOfTimeNWesolowski" /home/community-user/targets/chiavdf
 * **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
 * **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/data_layer/download_data.py`, `chia/data_layer/data_layer.py`
 * **Vulnerability Class & Score:** `CWE-918` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md`](advisories/ja/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md`](advisories/zh-CN/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Public On-Chain DataLayer Mirror URLs Automatically Fetched by Subscribers (`chia/data_layer/download_data.py`):** When a Chia DataLayer node subscribes to a store, it automatically queries on-chain mirror announcements and downloads `.dat` generation files over HTTP/HTTPS using `aiohttp.ClientSession.get(...)`.
@@ -2880,7 +2870,7 @@ grep -n -C 10 "session.get" /home/community-user/targets/chia-blockchain/chia/da
 * **Target Repository & Package:** `vercel/next.js` (`npm / Node.js: next`)
 * **Affected Versions & Components:** `<= 16.4.3 (verified on published npm next@16.4.3 & canary)` — `packages/next/src/server/app-render/action-handler.ts:363-411, 962-1166`, `packages/next/src/client/components/router-reducer/reducers/server-action-reducer.ts:154-201`
 * **Vulnerability Class & Score:** `CWE-200 / CWE-918 / CWE-345` — **CVSS v3.1: `8.2 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:L/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md`](advisories/ja/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md`](advisories/zh-CN/39-VERCEL-NEXT-15-SERVER-ACTION-REDIRECT-TOKEN-LEAK-AND-FLIGHT-UXSS.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Scheme-Relative URL Acceptance & Missing `redirect: 'manual'` in `createRedirectRenderResult()` (`action-handler.js:270-303`):** While `forwardActionToWorker()` explicitly sets `redirect: 'manual'` (line 175), `createRedirectRenderResult()` calls `await fetch(fetchUrl, { method: 'GET', headers: head, next: { internal: 1 } })` with Undici's default `redirect: 'follow'`. Furthermore, `getAppRelativeRedirectUrl()` checks `redirectUrl.startsWith('/')` without rejecting scheme-relative URLs (`//attacker.example/collect`).
@@ -2993,7 +2983,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Target Repository & Package:** `vercel/next.js` (`npm / Node.js: next`)
 * **Affected Versions & Components:** `<= 16.4.3 (verified on published npm next@16.4.3 & canary)` — `packages/next/src/server/image-optimizer.ts:696-729`, `packages/next/src/server/lib/find-root.ts` / `validate-url.ts` (`isPrivateIp`)
 * **Vulnerability Class & Score:** `CWE-918 / CWE-863` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md`](advisories/ja/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md`](advisories/zh-CN/40-VERCEL-NEXT-09-IMAGE-OPTIMIZER-REDIRECT-ALLOWLIST-AND-PRIVATE-IP-FAIL-OPEN-SSRF.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Initial-Hop-Only `remotePatterns` Verification (`image-optimizer.js:586-615`):** `validateParams()` checks `hasMatch(domains, remotePatterns, href)` only once on the initial `/_next/image?url=...` parameter. When the allowlisted origin returns a `301`/`302`/`307`/`308` redirect, `fetchExternalImage()` resolves the new `Location` URL and calls `validateUrl(parsedRedirectUrl)` without re-evaluating `hasMatch(domains, remotePatterns, parsedRedirectUrl)`. This bypasses both **same-host pathname/search restrictions** (`/public-avatars/**` -> `/private-kyc-docs/passport-scan.png`) and **cross-host domain restrictions**.
@@ -3096,7 +3086,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Target Repository & Package:** `vercel/vercel` (`npm / Node.js: vercel`)
 * **Affected Versions & Components:** `<= 65.4.0 (verified on published npm vercel@65.4.0)` — `packages/cli/src/commands/curl/utils.ts:34-42, 74-96, 179-216`, `packages/cli/src/commands/http-cli/index.ts`
 * **Vulnerability Class & Score:** `CWE-200 / CWE-436` — **CVSS v3.1: `8.2 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md`](advisories/ja/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md`](advisories/zh-CN/41-VERCEL-CLI-07-CURL-PARSER-DIFFERENTIAL-AND-AUTO-MINT-BYPASS-SECRET-LEAK.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — WHATWG `new URL()` vs. `libcurl` (`curl_url_set`) Authority Differential (`packages/cli/src/commands/curl/utils.ts:179-216`):** `constructFullUrl(baseUrl, path)` checks `const url = new URL(path, baseUrl); if (url.origin !== baseUrl) throw ...`, and then returns the **raw string concatenation** `return \`${baseUrl}${normalizedPath}\`` instead of `url.href`. When `path` is `\\@attacker.example/collect` (or `/\\@attacker.example`), WHATWG `new URL()` normalizes `\\` to `/`, seeing `https://my-app.vercel.app/%5C@attacker.example/collect` (`url.origin === baseUrl`). However, the raw string passed to `/usr/bin/curl` is `https://my-app.vercel.app\\@attacker.example/collect`, which `libcurl` parses as username `my-app.vercel.app\\` authenticating to host **`attacker.example`**!
@@ -3164,7 +3154,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Target Repository & Package:** `vercel/flags` (`npm / Node.js: @vercel/flags-core`)
 * **Affected Versions & Components:** `<= 1.10.2 (verified on published npm @vercel/flags-core@1.10.2)` — `packages/flags-core/src/controller.ts:555-615`, `packages/flags-core/dist/index.js:465-516` (`streamResponse` / `readBundledDefinitions`)
 * **Vulnerability Class & Score:** `CWE-400 / CWE-345` — **CVSS v3.1: `6.5 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md`](advisories/ja/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md`](advisories/zh-CN/42-VERCEL-FLAGS-CORE-06-UNPREFIXED-HEADER-WATERMARK-POISONING.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unvalidated Header Watermark Update Before Body Verification (`packages/flags-core/src/controller.ts:555-615`):** In `streamResponse()` and `readBundledDefinitions()`, `@vercel/flags-core` reads `res.headers.get('x-datafile-Updated-At')`, parses it with `Number(updatedAtHeader)`, and immediately sets `this.datafileUpdatedAtWatermark = Math.max(this.datafileUpdatedAtWatermark, updatedAt)` BEFORE verifying `res.ok` (`200 OK`) or validating the JSON datafile body.
@@ -3229,7 +3219,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Target Repository & Package:** `vercel/flags` (`npm / Node.js: flags`)
 * **Affected Versions & Components:** `<= 4.4.0 (verified on published npm flags@4.4.0)` — `packages/flags/src/next/precompute.ts:206-214`, `packages/flags/dist/next/index.js:119-125` (`deserialize`)
 * **Vulnerability Class & Score:** `CWE-347` — **CVSS v3.1: `6.5 Medium`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md`](advisories/ja/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md`](advisories/zh-CN/43-VERCEL-FLAGS-05-PRECOMPUTE-NO-FLAGS-SENTINEL-JWS-BYPASS.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unconditional Early Return Before JWS Verification (`packages/flags/src/next/precompute.ts:206-214`):** `serialize()` returns `'__no_flags__'` only when `flags.length === 0`. However, `deserialize(flags, code, secret)` checks `if (code === '__no_flags__') return {};` at the very top of the function WITHOUT checking `if (flags.length === 0)` and BEFORE invoking `compactVerify(code, encodedSecret)`.
@@ -3294,7 +3284,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Target Repository & Package:** `vercel/firewall` (`npm / Node.js & Go: @vercel/firewall`)
 * **Affected Versions & Components:** `<= 1.2.6 (verified on published npm @vercel/firewall@1.2.6 & Go ipc-proxy)` — `packages/firewall/src/rate-limit.ts:138-183, 211-285`, `cmd/ipc-proxy/client.go:34-41, 79-97`
 * **Vulnerability Class & Score:** `CWE-918 / CWE-200 / CWE-636` — **CVSS v3.1: `7.2 High`** (`CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:L/I:L/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md`](advisories/ja/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md`](advisories/zh-CN/44-VERCEL-FIREWALL-01-CHECKRATELIMIT-HOST-SSRF-SECRET-LEAK-AND-FAIL-OPEN.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unvalidated `Host` Header Interpolation Into Outbound HTTPS Authority (`packages/firewall/src/rate-limit.ts:138-167, 224`):** When `process.env.VERCEL_ENV !== 'production'` (such as staging, preview, self-hosted Kubernetes/Docker, or custom reverse-proxy deployments where `request` or `headers` is passed to `checkRateLimit()`), `resolveFirewallHost()` extracts `request.headers.get('host')` and constructs `const endpoint = \`https://${firewallHost}${pathPrefix}/.well-known/vercel/rate-limit/check\``.
@@ -3362,7 +3352,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Target Repository & Package:** `vercel/vercel` (`npm / Node.js: @vercel/client`)
 * **Affected Versions & Components:** `<= 18.10.0 (verified on published npm @vercel/client@18.10.0)` — `packages/client/src/utils/hashes.ts:115-167`, `packages/client/src/deploy.ts:127-195` (`filesFromFilePathMap`)
 * **Vulnerability Class & Score:** `CWE-200 / CWE-706` — **CVSS v3.1: `5.0 Medium`** (`CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md`](advisories/ja/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md`](advisories/zh-CN/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unconfined `path.resolve(cwd, filePath)` in `filesFromFilePathMap()` (`packages/client/src/utils/hashes.ts:115-167`):** When `prebuilt: true` (`vercel deploy --prebuilt`), `@vercel/client` parses `.vercel/output/functions/**/.vc-config.json` and iterates over `Object.entries(vcConfig.filePathMap)`. For each entry, it computes `const fsPath = path.resolve(cwd, filePath)` and reads the file (`fs.readFile(fsPath)`) without checking that `fsPath` is inside `cwd` or filtering against `.vercelignore`.
@@ -3386,7 +3376,7 @@ export async function filesFromFilePathMap(
 
 #### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
 * **Scenario A — Default `vercel build && vercel deploy --prebuilt` `.env.local` Secret Leakage:** A developer adds `.env*` to `.vercelignore` expecting local secrets to stay off the deployment server, but `filePathMap` pulls `.next/required-server-files.json` containing `DATABASE_URL` and `STRIPE_SECRET_KEY` into the uploaded function bundle.
-* **Scenario B — Split CI/CD Pipeline (`build` PR Artifact -> `deploy --prebuilt` Privileged Job) Host Credential Exfiltration:** An unprivileged PR build job outputs `.vercel/output` as a workflow artifact with `filePathMap: { "leaked.txt": "/home/runner/.npmrc" }`. The privileged deploy job runs `vercel deploy --prebuilt`, uploading the runner's credentials into the deployed function.
+* **Scenario B — Split CI/CD Pipeline (`build` PR Artifact -> `deploy --prebuilt` Privileged Job) Host Credential Exfiltration:** An unprivileged PR build job outputs `.vercel/output` as a workflow artifact with `filePathMap: { "leaked.txt": "${HOME}/.npmrc" }`. The privileged deploy job runs `vercel deploy --prebuilt`, uploading the runner's credentials into the deployed function.
 * **Scenario C — Monorepo Shared Cache / Turborepo Remote Cache Poisoning:** A poisoned `.vc-config.json` restored from a shared build cache exfiltrates CI environment files during prebuilt deployment.
 
 #### 4. Example Execution, Reproduction & Verification Commands
@@ -3425,7 +3415,7 @@ git apply --check /home/community-user/targets/vercel-bounty-audit-20261027/patc
 * **Target Repository & Package:** `vercel/vercel` (`npm / Node.js: @vercel/client`)
 * **Affected Versions & Components:** `<= 18.10.0 (verified on published npm @vercel/client@18.10.0)` — `packages/client/src/utils/index.ts:116-148`, `packages/client/src/deploy.ts:145-195` (`buildFileTree` / `bulkRedirectsPath`)
 * **Vulnerability Class & Score:** `CWE-59 / CWE-200` — **CVSS v3.1: `5.0 Medium`** (`CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N`)
-* **Standalone Sniper Advisory:** [`docs/advisories/ja/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md`](advisories/ja/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md)
+* **Standalone VulKill Advisory:** [`docs/advisories/zh-CN/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md`](advisories/zh-CN/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md)
 
 #### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
 1. **Step 1 — Unvalidated `config.bulkRedirectsPath` & Symlink Following in `buildFileTree()` (`packages/client/src/utils/index.ts:116-148`):** In `buildFileTree()`, when `prebuilt` is `true`, `@vercel/client` reads `.vercel/output/config.json` and resolves `const bulkRedirectsRoot = join(cwd, config.bulkRedirectsPath)`. It then recursively walks `bulkRedirectsRoot` using `fs.stat()` (which transparently dereferences symlinks to files/directories outside `cwd`) without checking `fs.realpath()` confinement.
@@ -3444,7 +3434,7 @@ if (config?.bulkRedirectsPath) {
 ```
 
 #### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
-* **Scenario A — Symlink inside `bulkRedirectsPath` Exfiltrating Host SSH/Cloud Credentials During `vercel deploy --prebuilt`:** A prebuilt output directory sets `"bulkRedirectsPath": ".vercel/output/redirects"` containing a symlink `leak.json -> /home/runner/.ssh/id_rsa`. `buildFileTree()` follows the symlink via `fs.stat()` and uploads the private key to the deployment.
+* **Scenario A — Symlink inside `bulkRedirectsPath` Exfiltrating Host SSH/Cloud Credentials During `vercel deploy --prebuilt`:** A prebuilt output directory sets `"bulkRedirectsPath": ".vercel/output/redirects"` containing a symlink `leak.json -> ${HOME}/.ssh/id_rsa`. `buildFileTree()` follows the symlink via `fs.stat()` and uploads the private key to the deployment.
 * **Scenario B — Relative Path Traversal in `.vercel/output/config.json` (`"bulkRedirectsPath": "../../secrets"`):** Setting `bulkRedirectsPath` to a parent directory walks and uploads all files in that host directory.
 * **Scenario C — `.vercelignore` Bypass for Local Secret Files:** Files explicitly excluded by `.vercelignore` are still packaged when referenced via `bulkRedirectsPath`.
 

@@ -120,7 +120,7 @@ class CiArtifactTrustGraphTests(unittest.TestCase):
         self.assertGreater(edge["evidence"]["upload_line"], 0)
         self.assertGreater(edge["evidence"]["download_line"], 0)
         self.assertGreater(edge["evidence"]["execution_line"], edge["evidence"]["download_line"])
-        graph_findings = [f for f in report["findings"] if f.get("control_id") == "SNIPER-SLSA-ARTIFACT-GRAPH-04"]
+        graph_findings = [f for f in report["findings"] if f.get("control_id") == "VULKILL-SLSA-ARTIFACT-GRAPH-04"]
         self.assertEqual(len(graph_findings), 1)
         self.assertIn("pr-build.yml", graph_findings[0]["evidence"])
         self.assertIn("publish.yml", graph_findings[0]["evidence"])
@@ -151,7 +151,7 @@ class CiArtifactTrustGraphTests(unittest.TestCase):
                 self.assertEqual(edge["status"], status)
                 self.assertEqual(report["artifact_trust_graph"]["summary"]["review_edges"], status == "review")
                 self.assertEqual(any(
-                    f.get("control_id") in {"SNIPER-SLSA-ARTIFACT-GRAPH-04", "SNIPER-SLSA-ARTIFACT-03"}
+                    f.get("control_id") in {"VULKILL-SLSA-ARTIFACT-GRAPH-04", "VULKILL-SLSA-ARTIFACT-03"}
                     for f in report["findings"]
                 ), status == "review")
 

@@ -1,7 +1,7 @@
 """HTML raporları PDF'e çevirme (17. tur): pinli Chromium + playwright-core, bwrap yalıtımında, ağsız.
 
 Akış (tool_sandbox.py ile aynı katmanlar, aktarıcı yok):
-1. Arayan: HTML'i (Sniper'ın kendi rapor üreticisinden; boyut sınırlı) veri dizinindeki özel iş dizinine yazar,
+1. Arayan: HTML'i (VulKill'ın kendi rapor üreticisinden; boyut sınırlı) veri dizinindeki özel iş dizinine yazar,
    yardımcıyı başlatır (servis kullanıcı ad alanındaysa kısıtlı geçici systemd kullanıcı birimi).
 2. Yardımcı (``--helper``): pinli bwrap, Node, Chromium ve playwright-core'u doğrular; seccomp filtresini kurar.
 3. Sandbox (bwrap): ayrı user/pid/net/ipc/uts/cgroup ad alanları, yeteneksiz; ağ ad alanında yalnız ``lo`` ve

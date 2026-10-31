@@ -1,4 +1,4 @@
-"""Sniper öz sağlık raporu (salt okunur).
+"""VulKill öz sağlık raporu (salt okunur).
 
 Disk ve veri dizini, veritabanı boyutu ve ``PRAGMA quick_check``, en son veritabanı yedeğinin yaşı, çevrimdışı OSV
 veritabanı tazeliği, servis çalışma/otomatik başlama durumu, zamanlanmış taramaların son durumu, iş kuyruğu birikmesi, denetim zinciri, araç pinleri,
@@ -95,7 +95,7 @@ def check_disk(data_dir: Path) -> list[dict[str, Any]]:
                   else "warn" if free_pct < THRESHOLDS["disk_free_warn_pct"] else "ok")
         out.append(_check("disk_free", "Disk boş alanı", status, f"%{free_pct:.1f} boş ({usage.free / 1073741824:.1f} GB)",
                           "Veri dizininin bulunduğu dosya sistemi.",
-                          "" if status == "ok" else "Eski rapor/yedekleri gözden geçirin ya da diski genişletin; Sniper "
+                          "" if status == "ok" else "Eski rapor/yedekleri gözden geçirin ya da diski genişletin; VulKill "
                                                     "kendiliğinden hiçbir şey silmez."))
     except OSError:
         out.append(_check("disk_free", "Disk boş alanı", "unknown", "okunamadı"))
@@ -192,7 +192,7 @@ def check_backup_storage(data_dir: Path, environ: dict[str, str] | None = None) 
         names = summary["world_readable"]
         out.append(_check("db_backup_permissions", "Yedek dosya izinleri", "warn",
                           f"{len(names)} yedek başkalarınca okunabilir", ", ".join(names[:5]) + (" …" if len(names) > 5 else ""),
-                          "Bu yedeklerin izinlerini 0600 yapın (chmod 600); Sniper izinleri kendisi değiştirmez."))
+                          "Bu yedeklerin izinlerini 0600 yapın (chmod 600); VulKill izinleri kendisi değiştirmez."))
     return out
 
 
@@ -380,7 +380,7 @@ def check_service_autostart(*,
     state = _cached("sniper_service", 300, lambda: show(
         "sniper.service", ("LoadState", "ActiveState", "SubState", "UnitFileState")), refresh)
     if state is None:
-        return [_check("sniper_service", "Sniper servisi ve otomatik başlatma", "unknown", "systemd okunamadı",
+        return [_check("sniper_service", "VulKill servisi ve otomatik başlatma", "unknown", "systemd okunamadı",
                        "systemctl --user durumu bu ortamda kullanılamıyor.")]
     loaded = state.get("LoadState") or "?"
     active = state.get("ActiveState") or "?"
@@ -388,16 +388,16 @@ def check_service_autostart(*,
     enabled = state.get("UnitFileState") or "?"
     value = f"{active}/{sub} · otomatik başlatma {enabled}"
     if loaded in {"masked", "not-found", "error"} or enabled == "masked":
-        return [_check("sniper_service", "Sniper servisi ve otomatik başlatma", "fail", value,
+        return [_check("sniper_service", "VulKill servisi ve otomatik başlatma", "fail", value,
                        f"birim yükleme durumu: {loaded}", "Kullanıcı servisinin kurulumunu ve maskelenme durumunu inceleyin.")]
     if active != "active":
-        return [_check("sniper_service", "Sniper servisi ve otomatik başlatma", "fail", value,
+        return [_check("sniper_service", "VulKill servisi ve otomatik başlatma", "fail", value,
                        f"birim yükleme durumu: {loaded}", "systemctl --user status sniper.service ile servis hatasını inceleyin.")]
     if enabled != "enabled":
-        return [_check("sniper_service", "Sniper servisi ve otomatik başlatma", "warn", value,
+        return [_check("sniper_service", "VulKill servisi ve otomatik başlatma", "warn", value,
                        "Servis şu anda çalışıyor ancak sonraki kullanıcı oturumunda otomatik başlamayabilir.",
                        "systemctl --user enable sniper.service")]
-    return [_check("sniper_service", "Sniper servisi ve otomatik başlatma", "ok", value)]
+    return [_check("sniper_service", "VulKill servisi ve otomatik başlatma", "ok", value)]
 
 
 def check_osv_timer(now_dt: dt.datetime, root: Path | None = None, *,
@@ -574,7 +574,7 @@ def check_auth(data_dir: Path, home: Path | None) -> list[dict[str, Any]]:
         return [_check("auth", "Giriş", "unknown", type(exc).__name__)]
     if not enabled:
         out.append(_check("auth", "Arayüz girişi", "warn", "kapalı",
-                          "Sniper yalnız yerel/tünel erişimiyle korunuyor.",
+                          "VulKill yalnız yerel/tünel erişimiyle korunuyor.",
                           "Girişi açın: cli_reports.py users create-admin --username <ad>."))
     else:
         admins = [u for u in users if u.get("role") == "admin" and not u.get("disabled")]
@@ -586,7 +586,7 @@ def check_auth(data_dir: Path, home: Path | None) -> list[dict[str, Any]]:
     initial = (home or Path.home()) / INITIAL_PASSWORD_FILE
     if initial.exists():
         out.append(_check("initial_password", "İlk yönetici parola dosyası", "warn", "duruyor", str(initial),
-                          "İlk girişte parolayı değiştirin ve bu dosyayı silin (Sniper dosyayı kendisi silmez)."))
+                          "İlk girişte parolayı değiştirin ve bu dosyayı silin (VulKill dosyayı kendisi silmez)."))
     return out
 
 
@@ -636,7 +636,7 @@ def build_report(*, data_dir: Path, app_root: Path | None = None, store: Any = N
         "counts": counts,
         "checks": checks,
         "read_only": True,
-        "note": "Salt okunur rapor: Sniper hiçbir dosyayı silmez ya da düzeltmez; yalnız öneri verir.",
+        "note": "Salt okunur rapor: VulKill hiçbir dosyayı silmez ya da düzeltmez; yalnız öneri verir.",
     }
 
 
@@ -677,7 +677,7 @@ def notify_if_needed(report: dict[str, Any], *, environ: dict[str, str] | None =
         return None
     worst = "high" if any(c["status"] == "fail" for c in current) else "medium"
     return notifications.emit(
-        "system_health", worst, f"Sniper öz sağlık: {len(current)} sorun",
+        "system_health", worst, f"VulKill öz sağlık: {len(current)} sorun",
         "Öz sağlık panosunda uyarı/sorun var; ayrıntı İşlem geçmişi › Sistem sağlığı kartında.",
         details=[f"{c['label']}: {c['value']}" for c in current[:10]],
         data={"checks": [c["id"] for c in current]}, now=now, environ=environ)

@@ -1,7 +1,7 @@
 'use strict';
-// Sniper PDF rapor sürücüsü: bwrap sandbox'ında (ağ ad alanında yalnız lo, hiçbir dinleyici yok) çalışır.
+// VulKill PDF rapor sürücüsü: bwrap sandbox'ında (ağ ad alanında yalnız lo, hiçbir dinleyici yok) çalışır.
 // Yalnız /job/report.html dosyasını açar (JavaScript kapalı, ağ istekleri reddedilir) ve /out/report.pdf yazar.
-// Kullanıcı kodu çalıştırmaz; HTML Sniper'ın kendi rapor üreticisinden gelir.
+// Kullanıcı kodu çalıştırmaz; HTML VulKill'ın kendi rapor üreticisinden gelir.
 const fs = require('node:fs');
 const { chromium } = require('/opt/playwright-core');
 

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <title>Sniper — Giriş</title>
+  <title>VulKill — Giriş</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/app.css?v=13">
   <link rel="stylesheet" href="/auth.css?v=1">
@@ -14,7 +14,7 @@
 </head>
 <body class="auth-login-page">
   <main class="auth-login-card" aria-labelledby="auth-login-title">
-    <p class="eyebrow">SNIPER 1.0</p>
+    <p class="eyebrow">VULKILL 1.0</p>
     <label class="lang-switch" translate="no"><span class="lang-switch-label ui-icon" aria-hidden="true"><svg><use href="/static/ui-icons.svg#globe"></use></svg></span><select data-i18n-lang-select aria-label="Dil / Language"><option value="tr">Türkçe</option><option value="en">English</option><option value="ja">日本語</option><option value="zh-CN">简体中文</option><option value="ko">한국어</option></select></label>
     <h1 id="auth-login-title">Oturum aç</h1>
     <p id="auth-login-message" class="auth-message" role="status" aria-live="polite"></p>
@@ -23,6 +23,7 @@
       <label>Parola<input name="password" id="auth-password" type="password" autocomplete="current-password" maxlength="256" required></label>
       <button class="button primary" type="submit">Giriş yap</button>
     </form>
+    <a id="auth-oidc-login" class="button hidden" href="/api/auth/oidc/start">Kurumsal hesapla giriş yap</a>
     <form id="auth-totp-form" class="hidden" autocomplete="off">
       <label>Doğrulama kodu (6 hane)<input name="code" id="auth-totp-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6"></label>
       <label>ya da kurtarma kodu<input name="recovery_code" id="auth-recovery-code" autocomplete="off" maxlength="16" placeholder="xxxxx-xxxxx"></label>

@@ -40,8 +40,8 @@ test('lisans bölümü textContent ile çizilir; kötü amaçlı paket adı meti
   assert.ok(all.includes('<img src=x onerror=alert(1)>@1.0.0'));
   assert.ok(all.some((t) => t.startsWith('Proje lisansı: MIT')));
   assert.ok(all.includes('Dikkat'));
-  assert.deepEqual([...window.SniperLicense.policyLines('MIT, Apache-2.0\nGPL-*\n\n')], ['MIT', 'Apache-2.0', 'GPL-*']);
-  assert.equal(window.SniperLicense.summaryLine(audit.licenses), 'Yasak 0 · Dikkat 1 · İnceleme 1 · İzinli 1');
+  assert.deepEqual([...window.VulKillLicense.policyLines('MIT, Apache-2.0\nGPL-*\n\n')], ['MIT', 'Apache-2.0', 'GPL-*']);
+  assert.equal(window.VulKillLicense.summaryLine(audit.licenses), 'Yasak 0 · Dikkat 1 · İnceleme 1 · İzinli 1');
 });
 
 test('öz sağlık kartı yalnız GET ile okur ve satırları textContent ile yazar', async () => {

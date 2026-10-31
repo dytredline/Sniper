@@ -54,7 +54,7 @@ In `Stirling-Tools/Stirling-PDF` (`v3.2.2`, commit `684608d143779bf3a8ffc67639f0
 
 ## 3. Example Execution & Verification Commands
 
-### 1. Auditing the Component with Sniper CLI
+### 1. Auditing the Component with VulKill CLI
 ```bash
 python3 scripts/sniper-project-audit \
   --repo-path /home/community-user/targets/Stirling-PDF \

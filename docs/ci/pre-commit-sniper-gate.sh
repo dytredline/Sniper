@@ -1,5 +1,5 @@
 #!/bin/sh
-# Sniper pre-commit kancası (çevrimdışı): yalnız hazırlanmış değişikliklerin getirdiği yeni bulgularda durdurur.
+# VulKill pre-commit kancası (çevrimdışı): yalnız hazırlanmış değişikliklerin getirdiği yeni bulgularda durdurur.
 # Kurulum: cp pre-commit-sniper-gate.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
 # Politika: depo kökünde .sniper-policy.json ("new_only": true önerilir).
 set -eu

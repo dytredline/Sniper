@@ -22,9 +22,9 @@ MAX_FINDINGS_PER_FILE = 200
 MAX_GENERIC_LINE_CHARS = 4_000
 
 SECRET_CONTROLS_EVALUATED: list[str] = [
-    "SNIPER-CRYP-04",
-    "SNIPER-CRYP-06",
-    "SNIPER-DATA-09",
+    "VULKILL-CRYP-04",
+    "VULKILL-CRYP-06",
+    "VULKILL-DATA-09",
 ]
 
 SECRET_EXTENSIONS: set[str] = {
@@ -651,7 +651,7 @@ def _make_secret_finding(
     fingerprint = _fingerprint(value)
     entropy = round(shannon_entropy(value), 2)
 
-    if control_id == "SNIPER-CRYP-06":
+    if control_id == "VULKILL-CRYP-06":
         title = "Zayıf veya tahmin edilebilir JWT HMAC imzalama anahtarı"
         description = (
             "JWT imzalama anahtarı kaynak kodda sabit ve zayıf (bilinen değer, 32 karakterden kısa "
@@ -662,7 +662,7 @@ def _make_secret_finding(
             "ve anahtarı döndürün."
         )
         reference = f"OWASP ASVS V3.5 / V6.4 · RFC 8725 · {cwe}"
-    elif control_id == "SNIPER-DATA-09":
+    elif control_id == "VULKILL-DATA-09":
         title = f"İstemci paketinde sunucu tarafı {display} sırrı"
         description = (
             f"Tarayıcıya gönderilebilecek bir dosyada sunucu tarafında kalması gereken {display} sırrı "
@@ -732,7 +732,7 @@ def _scan_secret_content(content: str, filename: str) -> list[dict[str, Any]]:
         severity: str,
         server_side: bool,
         *,
-        control_id: str = "SNIPER-CRYP-04",
+        control_id: str = "VULKILL-CRYP-04",
         cwe: str = "CWE-798",
     ) -> None:
         if len(findings) >= MAX_FINDINGS_PER_FILE or not value:
@@ -744,8 +744,8 @@ def _scan_secret_content(content: str, filename: str) -> list[dict[str, Any]]:
         if fingerprint in seen_fingerprints:
             return
         seen_fingerprints.add(fingerprint)
-        if control_id == "SNIPER-CRYP-04" and is_client and server_side:
-            control_id = "SNIPER-DATA-09"
+        if control_id == "VULKILL-CRYP-04" and is_client and server_side:
+            control_id = "VULKILL-DATA-09"
         line = bisect.bisect_right(line_starts, start)
         findings.append(
             _make_secret_finding(
@@ -791,7 +791,7 @@ def _scan_secret_content(content: str, filename: str) -> list[dict[str, Any]]:
                 server_side,
             )
 
-    # 3. Zayıf JWT HMAC anahtarı (SNIPER-CRYP-06)
+    # 3. Zayıf JWT HMAC anahtarı (VULKILL-CRYP-06)
     for pattern, allow_empty in ((_WEAK_JWT_ASSIGN_RE, False), (_WEAK_JWT_CALL_RE, True)):
         for match in pattern.finditer(content):
             raw_value = match.group("v")
@@ -820,7 +820,7 @@ def _scan_secret_content(content: str, filename: str) -> list[dict[str, Any]]:
                 end,
                 "high",
                 True,
-                control_id="SNIPER-CRYP-06",
+                control_id="VULKILL-CRYP-06",
                 cwe="CWE-1391",
             )
 
