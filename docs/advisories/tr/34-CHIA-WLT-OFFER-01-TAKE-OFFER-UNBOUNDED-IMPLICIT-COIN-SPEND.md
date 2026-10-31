@@ -35,7 +35,7 @@ Kullanıcı yalnızca token takası yaptığını sanırken teklifin içindeki e
 ## 3. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
 
 ```bash
-# 1. Run Sniper's Cryptographic Wallet Signing Auditor & Offer Cap Verification
+# 1. Run VulKill's Cryptographic Wallet Signing Auditor & Offer Cap Verification
 python3 -m unittest /home/community-user/targets/sniper/tests/test_wave5_orchestrator_and_wallet.py
 ```
 

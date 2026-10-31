@@ -1,4 +1,4 @@
-"""Sniper 5'li Burp Suite eşdeğeri modüllerin (Repeater/Comparer, Autorize, Race Runner,
+"""VulKill 5'li Burp Suite eşdeğeri modüllerin (Repeater/Comparer, Autorize, Race Runner,
 Token Sequencer, Traffic Decoder/Inspector) çalışma zamanı ve API/CLI regresyon testleri.
 """
 from __future__ import annotations

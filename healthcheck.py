@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sniper 2.0 için yalnız yerel, veri değiştirmeyen sağlık tanısı."""
+"""VulKill 2.0 için yalnız yerel, veri değiştirmeyen sağlık tanısı."""
 
 from __future__ import annotations
 

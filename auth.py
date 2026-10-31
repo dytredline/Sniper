@@ -1,6 +1,6 @@
 """İsteğe bağlı arayüz girişi, oturumlar, roller ve iki adımlı doğrulama (TOTP).
 
-Varsayılan: kapalı. Kapalıyken hiçbir dosya oluşturulmaz, Sniper eskisi gibi yalnız yerel (127.0.0.1 / SSH tüneli)
+Varsayılan: kapalı. Kapalıyken hiçbir dosya oluşturulmaz, VulKill eskisi gibi yalnız yerel (127.0.0.1 / SSH tüneli)
 çalışır. Etkinleştirme tek seferlik kurulumla olur: CLI (``cli_reports.py users create-admin``) ya da yerel arayüz
 + veri dizinine 0600 yazılan kurulum belirteci dosyası. Durum ``$SNIPER_DATA_DIR/auth.db`` (0600) içinde tutulur;
 ana ``sniper.db`` şemasına dokunulmaz. Kurtarma yolu her zaman yerel işletim sistemi kullanıcısındadır
@@ -12,7 +12,7 @@ Güvenlik kararları:
 * Kilitleme: art arda 5 başarısız girişte 15 dk (her 5'te ikiye katlanır, en çok 24 sa) + IP başına bellek içi sınır.
 * Oturum: ``secrets.token_urlsafe(32)``; veritabanında yalnız SHA-256 özeti. Boşta ve mutlak zaman aşımı; parola
   değişince/kullanıcı kapatılınca eski oturumlar geçersiz.
-* CSRF: oturuma bağlı eşleştirme belirteci (``X-Sniper-CSRF`` başlığı = ``sniper_csrf`` çerezi, sunucuda özeti).
+* CSRF: oturuma bağlı eşleştirme belirteci (``X-VulKill-CSRF`` başlığı = ``sniper_csrf`` çerezi, sunucuda özeti).
 * TOTP: RFC 6238 (SHA-1, 30 sn, 6 hane, ±1 adım), aynı adımın tekrar kullanımı reddedilir; kurtarma kodları özetli.
 * Roller: ``reader`` (okuyucu, yalnız GET), ``analyst`` (analist), ``admin`` (yönetici). Rota → düzey eşlemesi
   :func:`required_level`; eşlenmemiş durum değiştiren istek yöneticiye düşer (güvenli varsayılan).
@@ -41,7 +41,7 @@ AUTH_DB_NAME = "auth.db"
 SETUP_TOKEN_NAME = "auth-setup-token"
 SESSION_COOKIE = "sniper_session"
 CSRF_COOKIE = "sniper_csrf"
-CSRF_HEADER = "X-Sniper-CSRF"
+CSRF_HEADER = "X-VulKill-CSRF"
 
 ROLES = ("reader", "analyst", "admin")
 ROLE_LABELS = {"reader": "okuyucu", "analyst": "analist", "admin": "yönetici"}
@@ -199,7 +199,7 @@ def totp_match(secret: str, code: Any, *, now: float | None = None, last_step: i
     return None
 
 
-def otpauth_uri(secret: str, username: str, issuer: str = "Sniper") -> str:
+def otpauth_uri(secret: str, username: str, issuer: str = "VulKill") -> str:
     label = quote(f"{issuer}:{username}")
     return f"otpauth://totp/{label}?secret={secret}&issuer={quote(issuer)}&algorithm=SHA1&digits=6&period=30"
 

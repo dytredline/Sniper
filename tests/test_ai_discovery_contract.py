@@ -142,7 +142,7 @@ class AiDiscoveryContractTests(unittest.TestCase):
     def test_llms_txt_is_a_compact_capability_and_safety_map(self) -> None:
         content = (ROOT / "llms.txt").read_text(encoding="utf-8")
 
-        self.assertTrue(content.startswith("# Sniper Community\n\n> "))
+        self.assertTrue(content.startswith("# VulKill Community\n\n> "))
         self.assertLessEqual(len(content.encode("utf-8")), 12_000)
         for fragment in (
             "local-first defensive application-security toolkit",
@@ -180,7 +180,7 @@ class AiDiscoveryContractTests(unittest.TestCase):
 
         for fragment in (
             "# AI discovery guide",
-            "## Who Sniper Community is for",
+            "## Who VulKill Community is for",
             "Application and source owners",
             "Website and API owners",
             "AI-assisted security review",

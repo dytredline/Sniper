@@ -132,7 +132,7 @@ class LabPublicContractRuntime(unittest.TestCase):
         self.assertEqual(initial['status'], 'planned')
         self.assertEqual(initial['evidence'], 'External control evidence')
         self.assertIn('AUTH-EXT-44', initial['html'])
-        self.assertIn('Sniper tarafından üretilen trafik/istek sayısı 0', initial['html'])
+        self.assertIn('VulKill tarafından üretilen trafik/istek sayısı 0', initial['html'])
         self.assertEqual(viewed['apiCalls'][0], {'url': f'/api/lab-runs/{one_id}', 'method': 'GET', 'body': None})
         self.assertTrue(all(call['method'] == 'GET' for call in viewed['apiCalls']))
 
@@ -171,7 +171,7 @@ class LabPublicContractRuntime(unittest.TestCase):
         self.assertEqual([item['title'] for item in result['views'][:4]],
                          [self.records[run_id]['name'] for run_id in self.order])
         for item in result['views'][:4]:
-            self.assertIn('Sniper tarafından üretilen trafik/istek sayısı 0', item['html'])
+            self.assertIn('VulKill tarafından üretilen trafik/istek sayısı 0', item['html'])
             self.assertEqual(item['status'], 'planned')
             self.assertTrue(item['modals'][-1][0] == 'lab-detail-modal')
         self.assertIn('data-lab-scenario-details="capacity_plan"', cap['html'])

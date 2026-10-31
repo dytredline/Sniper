@@ -1,10 +1,10 @@
-# Sniper Community
+# VulKill Community
 
 [English](../README.md) | **Türkçe** | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [한국어](README.ko.md)
 
 [ConverserAI proje özeti](https://converserai.com/#sniper) · [Yetenekler](CAPABILITIES.md) · [Kurulum](#kaynak-koddan-kurulum) · [Sık sorulan sorular](#sık-sorulan-sorular)
 
-Sniper Community; uygulama, API ve web sitesi geliştiren, sahibi olan veya bunları inceleyen ekipler için açık kaynak,
+VulKill Community; uygulama, API ve web sitesi geliştiren, sahibi olan veya bunları inceleyen ekipler için açık kaynak,
 yerel öncelikli ve savunma amaçlı bir uygulama güvenliği araç setidir. Desteklenen kaynak kodları statik uygulama
 güvenliği testi (SAST) ile, bağımlılık manifestlerini ve SBOM dosyalarını yazılım bileşen analizi (SCA) ile, konteyner
 çıktılarını, kod olarak altyapıyı (IaC), CI yapılandırmasını ve kaydedilmiş güvenlik raporlarını tek bir inceleme
@@ -22,7 +22,7 @@ istemcisiyle, komut satırı (CLI) aracılığıyla veya yerel loopback web aray
 `Çalışma Zamanı Kanıtı` · `Çoklu Depo Analizi` · `Güven Grafikleri` · `Artifact Kökeni` · `Protokol Güvenliği` ·
 `Arşiv ve Sembolik Bağ Güvenliği` · `İkili Sertleştirme` · `DevSecOps` · `Yerel Öncelikli`
 
-Sniper Community v1.1 şu alanlarda daha derin ve incelenebilir kapsam ekler:
+VulKill Community v1.1 şu alanlarda daha derin ve incelenebilir kapsam ekler:
 
 - **Çerçeveler arası erişim denetimi:** Desteklenen Rails kalıtımını, Spring ve ASP.NET rotalarını, GraphQL
   resolver'larını, nesne kimliklerini, yetkilendirme anotasyonlarını, ilkeleri, rolleri, sahipleri ve kiracıya bağlı
@@ -49,7 +49,7 @@ taramalarını yerel kaynak kod ve bağımlılık incelemesiyle birleştirin; bu
 planına dönüştürün. Harici taramalar ilgili motorları, verileri, hazırlık kontrollerini ve açık kapsam onayını
 gerektirir; sınırsız bir tarama servisi değildir. Bkz. [web sitesi ve API inceleme yolu](USE-CASES.md#plan-an-authorized-website-or-api-action).
 
-Yayın öncesinde uygulamanızı incelemesi için bir yapay zekâ asistanından destek alın. Sniper'ın yerel stdio MCP akışı
+Yayın öncesinde uygulamanızı incelemesi için bir yapay zekâ asistanından destek alın. VulKill'ın yerel stdio MCP akışı
 sayesinde yapay zekâ desteklenen güvenlik incelemesine rehberlik edebilir, bulguları kod kanıtlarıyla açıklayabilir ve
 düzeltme önceliklendirmesine yardımcı olabilir; aynı sonuçlar web arayüzünde, CLI'da ve CI çıktılarında da
 kullanılabilir kalır.
@@ -57,11 +57,11 @@ kullanılabilir kalır.
 Android, iOS, Flutter ve React Native projelerinde desteklenen kaynak kodunu, mobil manifestleri, API yollarını,
 sırları, bağımlılıkları, SBOM verilerini ve CI yapılandırmasını tek bir yayın öncesi kontrol görünümünde bir araya
 getirin. İster **App Store veya Google Play gönderimi**, ister **web sitesi veya API lansmanı**, isterse **pull request**
-hazırlıyor olun; Sniper kullanıcılar sürümü almadan önce tamamlanması gereken güvenlik çalışmalarını görünür kılar.
+hazırlıyor olun; VulKill kullanıcılar sürümü almadan önce tamamlanması gereken güvenlik çalışmalarını görünür kılar.
 
-## Sniper neleri incelemenize yardımcı olur?
+## VulKill neleri incelemenize yardımcı olur?
 
-| Alan | Sniper'ın yanıtlamanıza yardımcı olduğu sorular |
+| Alan | VulKill'ın yanıtlamanıza yardımcı olduğu sorular |
 | --- | --- |
 | Kaynak kod ve yapılandırma | Hangi desteklenen kod yolları, güvenlik örüntüleri, sırlar ve yapılandırma tercihleri insan incelemesi gerektiriyor? |
 | Yetkilendirme ve IDOR incelemesi | Desteklenen hangi Python veya JavaScript/TypeScript rotalarında yetkilendirme kontrolü eksik olabilir (CWE-862) veya görünür bir kullanıcı/rol bağlaması olmadan nesne kimliği yüklenerek IDOR incelemesi gerekiyor (CWE-639)? |
@@ -104,7 +104,7 @@ alır. Yapay zekâ sistemleri kompakt [LLM proje dizini](../llms.txt) ile başla
 
 ## IDOR ve manuel sızma testi desteği
 
-Sniper, desteklenen kaynak kodunu yetkilendirilmiş manuel sızma testleri için odaklanmış bir kontrol listesine
+VulKill, desteklenen kaynak kodunu yetkilendirilmiş manuel sızma testleri için odaklanmış bir kontrol listesine
 dönüştürür. Yerleşik rota ve yetkilendirme envanteri, korumasız rota adaylarını (CWE-862) ve olası Güvensiz Doğrudan
 Nesne Referansı (IDOR) yollarını (CWE-639) işaretleyerek incelemeciyi ilgili dosyaya, rotaya ve kod satırına
 yönlendirir. Böylece test uzmanı yapılandırılmamış bir uç nokta listesinden başlamak yerine ayrı test kullanıcıları,
@@ -114,7 +114,7 @@ Her aday kanıt odaklı manuel doğrulama için paketlenir. Yetkilendirilmiş te
 geçidi (gateway), ara katman (middleware), politika servisi ve iş mantığı kontrollerini dikkate alarak farklı
 kullanıcılar ve roller arasındaki çalışma zamanı davranışını doğrulayabilir.
 
-Sniper kaynak ağacında yerleşik analizörleri ve rapor ayrıştırıcılarını içerir. Root yetkisi gerektirmeyen yerel profili
+VulKill kaynak ağacında yerleşik analizörleri ve rapor ayrıştırıcılarını içerir. Root yetkisi gerektirmeyen yerel profili
 ek olarak sürümü sabitlenmiş beş isteğe bağlı üçüncü taraf motoru kurabilir: **Nuclei**, **Trivy**, **Gitleaks**,
 **TruffleHog** ve **Opengrep**. Yerleşik analizler bağımsız olarak kullanılabilir; isteğe bağlı bir motor veya profil
 yalnızca çalışma zamanı, veri ve lisans hazırlık kontrollerini geçtikten sonra kullanılabilir olarak gösterilir.
@@ -130,7 +130,7 @@ olarak dahil edilmemiştir. Ticari hizmetler, barındırılan operasyon, destek 
 
 ## Sürüm durumu
 
-Bu depo Sniper Community v1.1.0 kaynak sürümüdür. `COMMUNITY_VERSION` kaynak sürüm işaretçisidir; yayınlanan etiketler
+Bu depo VulKill Community v1.1.0 kaynak sürümüdür. `COMMUNITY_VERSION` kaynak sürüm işaretçisidir; yayınlanan etiketler
 bununla `v<sürüm>` biçiminde eşleşmelidir. Kaynak kodu Apache License 2.0 altında lisanslanmıştır. Bkz.
 [LICENSE](../LICENSE).
 
@@ -143,7 +143,7 @@ bununla `v<sürüm>` biçiminde eşleşmelidir. Kaynak kodu Apache License 2.0 a
 - Döngüde bir yapay zekâ istemcisi istemeyen kullanıcılar için manuel CLI ve yerel web seçenekleri.
 - Testler, depoya dahil kural/veri varlıkları ve katkıcı belgeleri.
 
-Sniper savunma amaçlı bir yardımcıdır; bir sistemin tamamen güvenli olduğunun kanıtı değildir. Bulgular, temiz sonuçlar
+VulKill savunma amaçlı bir yardımcıdır; bir sistemin tamamen güvenli olduğunun kanıtı değildir. Bulgular, temiz sonuçlar
 ve yapay zekâ önerileri insan incelemesi gerektirir.
 
 ## Kaynak koddan kurulum
@@ -152,11 +152,11 @@ ve yapay zekâ önerileri insan incelemesi gerektirir.
 **beş motorlu Docker Desktop profili (`./scripts/deploy-community-tools --accept-third-party-licenses`)** gerçek macOS
 donanımında test edilmiş, doğrulanmış ve desteklenmektedir (macOS kurulumu deneysel değildir). Kaynak koddan kullanım
 için test edilen yorumlayıcı Python 3.12'dir. Tam yerel Community v1 kurulumu ve kilitli beş isteğe bağlı motoru Linux
-ARM64 ve Linux x86-64 üzerinde desteklenir. **Windows** üzerinde Sniper; yerel `--core-only` kaynak kurulumunu
+ARM64 ve Linux x86-64 üzerinde desteklenir. **Windows** üzerinde VulKill; yerel `--core-only` kaynak kurulumunu
 (`python3 scripts/setup-community --core-only`), WSL2'yi ve Docker Desktop Linux konteynerlerini destekler. Bu kaynak
 sürümü pip ile kurulan bir paket değildir; depoya dahil giriş noktalarını depo kök dizininden çalıştırın. Root yetkisi
 gerektirmeyen kurulum komutu `.venv` oluşturur, tam sürümlü çalışma zamanı bağımlılıklarını ve kilitli yerel araç
-profilini kurar, ardından Sniper'ı veya bir tarayıcıyı başlatmadan gerçek MCP ve proje denetimi yardım giriş noktalarını
+profilini kurar, ardından VulKill'ı veya bir tarayıcıyı başlatmadan gerçek MCP ve proje denetimi yardım giriş noktalarını
 doğrular:
 
 ```bash
@@ -190,7 +190,7 @@ kullanın.
 Kurulumdan sonra MCP yardım giriş noktası doğrudan şu şekilde kullanılabilir:
 
 ```bash
-.venv/bin/python scripts/sniper-mcp --help
+.venv/bin/python scripts/vulkill-mcp --help
 ```
 
 Mevcut bir Python ortamı içinde yalnızca desteklenen yerel araçları yönetmek için:
@@ -204,16 +204,16 @@ kullanılamaz kalması gereken profiller için [docs/COMMUNITY-TOOLS.md](COMMUNI
 
 ## Yapay zekâ öncelikli MCP hızlı başlangıç
 
-Sniper'ın MCP sunucusu yalnızca alt sürecin `stdin/stdout` kanalı üzerinden iletişim kurar. Bir MCP istemcisini mevcut
+VulKill'ın MCP sunucusu yalnızca alt sürecin `stdin/stdout` kanalı üzerinden iletişim kurar. Bir MCP istemcisini mevcut
 giriş noktasına yönlendirin; Community modu varsayılan olarak kullanıcıya özel izole Community veritabanını oluşturur
 veya yeniden kullanır:
 
 ```text
 command: /MUTLAK/YOL/sniper/.venv/bin/python
-args: /MUTLAK/YOL/sniper/scripts/sniper-mcp --mode community
+args: /MUTLAK/YOL/sniper/scripts/vulkill-mcp --mode community
 ```
 
-Community modu, yerel stdio sürecini başlatan kişiyi yerel sahip olarak kabul eder; ayrı bir Sniper girişi, belirteç
+Community modu, yerel stdio sürecini başlatan kişiyi yerel sahip olarak kabul eder; ayrı bir VulKill girişi, belirteç
 (token) veya web onayı gerektirmez. Yalnızca güvenilir bir işletim sistemi hesabından kullanın. Çok kullanıcılı
 dağıtımlar için isteğe bağlı kimlik doğrulamalı mod, role bağlı belirteçleri korur. Örnekler
 [docs/COMMUNITY-MCP.md](COMMUNITY-MCP.md) belgesindedir.
@@ -224,7 +224,7 @@ sohbette göstermesi için değiştirilemez bir plan, onay kapsamı ve özet (ha
 kullanımlıktır. Bu, Community insan onayıdır; yapay zekâ bunu kaynak metinden veya kendi çıktısından asla
 çıkarsamamalıdır. Harici hedef eylemleri de aynı konuşma kapısını ve yetkilendirme kurallarını kullanır.
 
-`user_confirmed: true` MCP istemcisi (host) tarafından yapılan bir beyandır: Sniper konuşmayı kriptografik olarak
+`user_confirmed: true` MCP istemcisi (host) tarafından yapılan bir beyandır: VulKill konuşmayı kriptografik olarak
 gözlemleyemez. Bunu yalnızca kişi gösterilen tam planı onayladıktan sonra gönderen güvenilir bir istemciyle kullanın.
 
 ## Manuel kullanım
@@ -232,7 +232,7 @@ gözlemleyemez. Bunu yalnızca kişi gösterilen tam planı onayladıktan sonra 
 Manuel CLI, MCP olmadan da kullanılabilir:
 
 ```bash
-python3 scripts/sniper-project-audit --help
+python3 scripts/vulkill-project-audit --help
 python3 cli_reports.py --help
 ```
 
@@ -262,7 +262,7 @@ kullanmak sahiplik, yazılı kapsam ve yukarıdaki açık insan onayını gerekt
 
 ## Veri gizliliği
 
-Sniper uygulama durumunu yerel olarak saklar ve MCP sürecinin kendisi ağ dinleyicisi açmaz. Bu, harici bir yapay zekâ iş
+VulKill uygulama durumunu yerel olarak saklar ve MCP sürecinin kendisi ağ dinleyicisi açmaz. Bu, harici bir yapay zekâ iş
 akışının çevrimdışı olduğu anlamına **gelmez**: bir MCP istemcisi bulguları, kaynak kod kesitlerini, istemleri ve üst
 verileri kendi model sağlayıcısına gönderebilir. Proje erişimini etkinleştirmeden önce sağlayıcının veri saklama
 politikasını ve kurumunuzun kaynak paylaşım kurallarını inceleyin. Sorun bildirimlerine (issues) asla belirteç, parola,
@@ -270,7 +270,7 @@ politikasını ve kurumunuzun kaynak paylaşım kurallarını inceleyin. Sorun b
 
 ## Sorumlu güvenlik kullanımı
 
-Sniper'ı yalnızca size ait olan veya değerlendirme için açıkça yetkilendirildiğiniz sistemlerde kullanın. Harici hedef
+VulKill'ı yalnızca size ait olan veya değerlendirme için açıkça yetkilendirildiğiniz sistemlerde kullanın. Harici hedef
 eylemlerinden önce hedef sahipliğini, yazılı kapsamı, zamanlamayı, hız sınırlarını, veri işleme kurallarını ve durdurma
 koşullarını doğrulayın. Bir insan bu gerçekleri doğrulayıp sohbet aracılı onayı verene kadar yapay zekâ tarafından
 oluşturulan istekleri çalıştırmayın.
@@ -282,28 +282,28 @@ güvenlik açığı bildirimi için [SECURITY.md](../SECURITY.md), rol sözleşm
 açık değişiklikler [CHANGELOG.md](../CHANGELOG.md) ve araştırma atıf bilgileri [CITATION.cff](../CITATION.cff)
 içindedir.
 
-### Gökçe Baran Karakamış — macOS Kurulum Doğrulaması ve Sniper ile Taranan Depolar Raporu
+### Gökçe Baran Karakamış — macOS Kurulum Doğrulaması ve VulKill ile Taranan Depolar Raporu
 
-**Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline)) tarafından gerçekleştirilen **macOS (Apple Silicon) gerçek donanım kurulum ve çalışma doğrulaması** (hem yerel kaynak kurulumu `python3 scripts/setup-community --core-only` hem de 5 motorlu Docker Desktop kurulumu `./scripts/deploy-community-tools --accept-third-party-licenses`) ile **Sniper** tarafından taranan **8 açık kaynak deponun** ayrıntılı kanıt denetimi, yanlış pozitif ayrımı ve saldırı zinciri (*chaining*) analizi aşağıda özetlenmiş ve tam rapor olarak [SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md](SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md) ve [VALIDATION.md](../VALIDATION.md) belgelerinde yayınlanmıştır.
+**Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline)) tarafından gerçekleştirilen **macOS (Apple Silicon) gerçek donanım kurulum ve çalışma doğrulaması** (hem yerel kaynak kurulumu `python3 scripts/setup-community --core-only` hem de 5 motorlu Docker Desktop kurulumu `./scripts/deploy-community-tools --accept-third-party-licenses`) ile **VulKill** tarafından taranan **8 açık kaynak deponun** ayrıntılı kanıt denetimi, yanlış pozitif ayrımı ve saldırı zinciri (*chaining*) analizi aşağıda özetlenmiş ve tam rapor olarak [VULKILL-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md](VULKILL-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md) ve [VALIDATION.md](../VALIDATION.md) belgelerinde yayınlanmıştır.
 
 > **Önemli Metodoloji ve Sorumlu Bildirim Notu:** Statik analizde tehlikeli bir fonksiyonun (`exec`, `pickle.loads`, `subprocess.Popen`) veya CI/CD deseninin varlığı tek başına doğrulanmış bir ürün CVE'si anlamına gelmez. Bir bulgunun istismar edilebilir açık sayılması için varsayılan/desteklenen dağıtımda **erişilebilirlik**, **güven sınırı (trust boundary) aşımı** ve **saldırgan önkoşulları** birlikte kanıtlanmalıdır. Koordine güvenlik bildirimi (Coordinated Vulnerability Disclosure / CVE-GHSA) süreci devam eden projelere ait bulgular, sorumlu bildirim ilkeleri gereği yamalar yayınlanana kadar bu halka açık listede paylaşılmamaktadır.
 
-| Repo | Sniper SAST / IaC / SCA Özeti | Doğrulanmış Kaynak Kanıtı & Kodda Zafiyete Dönüşüm Analizi | Günlük Hayat Senaryoları (`Senaryo A / B / C`) & Birleşme (Chaining) | Birlikte Kritiklik & Doğrulama Komutu |
+| Repo | VulKill SAST / IaC / SCA Özeti | Doğrulanmış Kaynak Kanıtı & Kodda Zafiyete Dönüşüm Analizi | Günlük Hayat Senaryoları (`Senaryo A / B / C`) & Birleşme (Chaining) | Birlikte Kritiklik & Doğrulama Komutu |
 | :--- | :--- | :--- | :--- | :--- |
-| **1. `autogpt`** | `93` eşik aşan (`2K / 39Y`); `142` triyaj | **2 kritik SQLi (`obj.execute`), JWT ve FastAPI `Security()` yanlış pozitif**; `jobstore_backfill.py:99` `pickle.loads(row.job_state)` + Compose sabit parola (`RABBITMQ_DEFAULT_PASS`) + Root Dockerfile gerçek | **A)** İç ağda varsayılan Compose parolasıyla DB'ye erişen saldırgan `apscheduler_jobs.job_state` sütununa zararlı pickle yükü yazar ve root konteynerde RCE elde eder.<br/>**B)** Yedek/göç (migration) veritabanı dosyasının değiştirilmesiyle geri yükleme anında `jobstore_backfill.py` üzerinden kod çalıştırılır.<br/>**C)** `:latest` imaj etiketi ve root konteyner birleşimiyle yan kanal sızıntısı büyür. | **ORTA / YÜKSEK (Koşullu — DB Yazma Varsa)**<br/>`python3 scripts/sniper-project-audit ./autogpt` |
-| **2. `zitadel`** | `67` eşik aşan (`8K / 42Y`); `286` triyaj | **8 kritik SQLi/`exec` yanlış pozitif** (`pgx` parametreli sarmalayıcı); `deploy/compose/` altında 3 `docker.sock` bağlaması, dokümantasyon ters vekil örneğinde `NODE_TLS_REJECT_UNAUTHORIZED=0` ve `WithInsecure()` gerçek | **A)** Operatör `deploy/compose/` örneğini üretimde `/var/run/docker.sock` bağlı bırakırsa konteyner ele geçirildiğinde konak makinede root yetkisine çıkılır.<br/>**B)** Ters vekil örneğindeki `NODE_TLS_REJECT_UNAUTHORIZED=0` ayarının üretime kopyalanmasıyla OIDC/OAuth oturum trafiğine MITM yapılır.<br/>**C)** `cfg.Insecure = true` ile açık bırakılan OTLP telemetri hattından iç izleme verileri şifresiz akar. | **DÜŞÜK / ORTA (Örnek Dağıtım Sertleştirmesi)**<br/>`python3 scripts/sniper-project-audit ./zitadel` |
-| **3. `nextcloud-mcp`** | `59` eşik aşan (`SAST 1K/6Y`, `IaC 7Y`, `SCA 5K/40Y`) | **`token_utils.py` JWT ve `login_flow.py:192` `poll_endpoint` SSRF %100 yanlış pozitif** (`initiate()` satır 130 `_rewrite_to_nextcloud_host` ile origin'i sabitler); `pact.yml:93` `--branch "${{ github.head_ref }}"` `same-repo` korumalı | **A)** Depoda dal açma yetkisi olan bir hesap özel karakterli dal adıyla `pact.yml:93` içinde kabuk komutu çalıştırabilir (dış fork'lara kapalıdır).<br/>**B)** Yerel geliştirme ortamındaki sabit Keycloak/Greenmail kurulum sırları dış ağa açılırsa test hesapları ele geçirilir.<br/>**C)** `uv.lock` içindeki eski `pillow`/`cryptography`/`pyjwt` bağımlılıkları üzerinden bilinen CVE'ler tetiklenir. | **DÜŞÜK / ORTA (İç CI & SCA)**<br/>`python3 scripts/sniper-project-audit ./nextcloud-mcp` |
-| **4. `mcpjam-inspector`** | `122` eşik aşan (`SAST 12K/8Y`, `SCA 6K/96Y`) | **20 K/Y SAST bulgusunun 18'i (%90) yanlış pozitif** (14 JSDoc yorumu, 2 `.d.ts`, 2 UI etiketi); `pr-preview.yml:116` `echo "branch=${{ github.event.pull_request.head.ref }}"` `same-repo` korumalı | **A)** Depo içi yazma/dal açma yetkisi olan bir hesap `pr-preview.yml:116` üzerinden `$GITHUB_OUTPUT` ve kabuk ortamını manipüle edebilir (dış fork PR'lar engellidir).<br/>**B)** Değerlendirme (eval) çalıştırıcısındaki dinamik işlevlerin izole edilmemesi halinde kiracı ortamında kod çalışır.<br/>**C)** `package-lock.json` içindeki `handlebars` ve `shell-quote` bağımlılık açıkları zincirlenir. | **DÜŞÜK / ORTA (İç CI & SCA)**<br/>`python3 scripts/sniper-project-audit ./mcpjam-inspector` |
-| **5. `codebase-memory-mcp`** | `32` eşik aşan (`SAST 17K/7Y`, `SCA 8Y`) | **`store.c:2864` SQLi, `c_lsp.h:54` yorum, `kotlin_lsp.c`/`py_lsp.c` boyutlu tampon yanlış pozitif**; `http_server.c:668` `GET /api/browse?path=...` yalnız `localhost` CORS ve `Host` (403) korumalı | **A)** `--ui` modu açıkken aynı makinedeki başka bir yerel süreç `http://127.0.0.1:<port>/api/browse?path=/` ile dizin yapısını listeleyebilir (tarayıcıdan yabancı site erişimi CORS/Host ile engellidir).<br/>**B)** SSH tüneli veya ters vekil ile `--ui` portu yanlışlıkla dış ağa açılırsa sunucu dizin ağacı görünür olur.<br/>**C)** `graph-ui/package-lock.json` içindeki önyüz paketlerinin güncellenmemesi geliştirme ortamı riski oluşturur. | **DÜŞÜK (Yerel Servis Sınırı)**<br/>`python3 scripts/sniper-project-audit ./codebase-memory-mcp` |
-| **6. `gitlab-mcp-server`** | `5` eşik aşan (`0K / 4Y`) | `recorder.go:84` ve `make.go:35` yanlış pozitif (`exec.Command("git", args...)` kabuksuz); `internal/gitlab/client.go:1416` `GITLAB_MCP_SKIP_TLS_VERIFY=true` yalnızca kullanıcı seçerse aktif | **A)** Geliştirici kendi imzalı (self-signed) kurum içi GitLab sunucusu için `GITLAB_MCP_SKIP_TLS_VERIFY=true` açtığında ortak Wi-Fi/VPN ağında MITM ile GitLab PAT token'ı çalınır.<br/>**B)** CI/CD ortamında bu bayrak kalıcı bırakıldığında sahte GitLab API yanıtlarıyla MCP ajanına zararlı veri enjekte edilir.<br/>**C)** PR etiket iş akışında `pull_request_target` yapılandırması ileride `checkout` eklenirse risk oluşturur. | **DÜŞÜK (Opsiyonel Ayar)**<br/>`python3 scripts/sniper-project-audit ./gitlab-mcp-server` |
-| **7. `apktool-mcp`** | `16` eşik aşan (`SAST 1 Orta`, `SCA 4K / 12Y`) | SAST gizlilik uyarıları yanlış pozitif; **`uv.lock` içinde 4 kritik, 12 yüksek SCA bağımlılık kaydı var** (`starlette 0.46.2`, `h11 0.14.0`, `fastmcp 2.2.0`, `mcp 1.6.0`) | **A)** Zararlı/bozuk APK analiz edilirken eski `starlette`/`h11` HTTP ayrıştırıcı açıkları üzerinden MCP sunucusunda hizmet reddi (DoS) veya istek kaçakçılığı yaşanır.<br/>**B)** Eski `mcp`/`fastmcp` sürümlerindeki oturum ve doğrulama eksiklikleri yerel ajan köprüsünü etkiler.<br/>**C)** Güncellenmemiş `certifi`/`anyio` paketleri taşıma katmanı güvenilirliğini düşürür. | **DÜŞÜK / ORTA (SCA Bağımlılık Riski)**<br/>`python3 scripts/sniper-project-audit ./apktool-mcp` |
-| **8. `jadx-mcp`** | `32` eşik aşan (`SAST 3 Orta`, `SCA 6K / 26Y`) | Doğrulanmış kritik/yüksek SAST açığı yok; **`uv.lock` içinde 6 kritik, 26 yüksek SCA bağımlılık kaydı var** (`authlib 1.6.8`, `cryptography 46.0.5`, `pyjwt 2.11.0`, `python-multipart 0.0.20`, `starlette 0.47.3`, `urllib3 2.5.0`) | **A)** Çok parçalı (multipart) dosya/APK yükleme uç noktalarında eski `python-multipart` ve `starlette` sürümleri üzerinden bellek/CPU tükenmesi (DoS) tetiklenir.<br/>**B)** Eski `authlib` ve `pyjwt` sürümlerindeki doğrulama zafiyetleri kimlik doğrulamalı MCP dağıtımlarında token kontrolünü zayıflatır.<br/>**C)** `urllib3` yönlendirme başlığı sızıntısı ve `cryptography` CVE'leri dış bağlantıları riske atar. | **DÜŞÜK / ORTA (SCA Bağımlılık Riski)**<br/>`python3 scripts/sniper-project-audit ./jadx-mcp` |
+| **1. `autogpt`** | `93` eşik aşan (`2K / 39Y`); `142` triyaj | **2 kritik SQLi (`obj.execute`), JWT ve FastAPI `Security()` yanlış pozitif**; `jobstore_backfill.py:99` `pickle.loads(row.job_state)` + Compose sabit parola (`RABBITMQ_DEFAULT_PASS`) + Root Dockerfile gerçek | **A)** İç ağda varsayılan Compose parolasıyla DB'ye erişen saldırgan `apscheduler_jobs.job_state` sütununa zararlı pickle yükü yazar ve root konteynerde RCE elde eder.<br/>**B)** Yedek/göç (migration) veritabanı dosyasının değiştirilmesiyle geri yükleme anında `jobstore_backfill.py` üzerinden kod çalıştırılır.<br/>**C)** `:latest` imaj etiketi ve root konteyner birleşimiyle yan kanal sızıntısı büyür. | **ORTA / YÜKSEK (Koşullu — DB Yazma Varsa)**<br/>`python3 scripts/vulkill-project-audit ./autogpt` |
+| **2. `zitadel`** | `67` eşik aşan (`8K / 42Y`); `286` triyaj | **8 kritik SQLi/`exec` yanlış pozitif** (`pgx` parametreli sarmalayıcı); `deploy/compose/` altında 3 `docker.sock` bağlaması, dokümantasyon ters vekil örneğinde `NODE_TLS_REJECT_UNAUTHORIZED=0` ve `WithInsecure()` gerçek | **A)** Operatör `deploy/compose/` örneğini üretimde `/var/run/docker.sock` bağlı bırakırsa konteyner ele geçirildiğinde konak makinede root yetkisine çıkılır.<br/>**B)** Ters vekil örneğindeki `NODE_TLS_REJECT_UNAUTHORIZED=0` ayarının üretime kopyalanmasıyla OIDC/OAuth oturum trafiğine MITM yapılır.<br/>**C)** `cfg.Insecure = true` ile açık bırakılan OTLP telemetri hattından iç izleme verileri şifresiz akar. | **DÜŞÜK / ORTA (Örnek Dağıtım Sertleştirmesi)**<br/>`python3 scripts/vulkill-project-audit ./zitadel` |
+| **3. `nextcloud-mcp`** | `59` eşik aşan (`SAST 1K/6Y`, `IaC 7Y`, `SCA 5K/40Y`) | **`token_utils.py` JWT ve `login_flow.py:192` `poll_endpoint` SSRF %100 yanlış pozitif** (`initiate()` satır 130 `_rewrite_to_nextcloud_host` ile origin'i sabitler); `pact.yml:93` `--branch "${{ github.head_ref }}"` `same-repo` korumalı | **A)** Depoda dal açma yetkisi olan bir hesap özel karakterli dal adıyla `pact.yml:93` içinde kabuk komutu çalıştırabilir (dış fork'lara kapalıdır).<br/>**B)** Yerel geliştirme ortamındaki sabit Keycloak/Greenmail kurulum sırları dış ağa açılırsa test hesapları ele geçirilir.<br/>**C)** `uv.lock` içindeki eski `pillow`/`cryptography`/`pyjwt` bağımlılıkları üzerinden bilinen CVE'ler tetiklenir. | **DÜŞÜK / ORTA (İç CI & SCA)**<br/>`python3 scripts/vulkill-project-audit ./nextcloud-mcp` |
+| **4. `mcpjam-inspector`** | `122` eşik aşan (`SAST 12K/8Y`, `SCA 6K/96Y`) | **20 K/Y SAST bulgusunun 18'i (%90) yanlış pozitif** (14 JSDoc yorumu, 2 `.d.ts`, 2 UI etiketi); `pr-preview.yml:116` `echo "branch=${{ github.event.pull_request.head.ref }}"` `same-repo` korumalı | **A)** Depo içi yazma/dal açma yetkisi olan bir hesap `pr-preview.yml:116` üzerinden `$GITHUB_OUTPUT` ve kabuk ortamını manipüle edebilir (dış fork PR'lar engellidir).<br/>**B)** Değerlendirme (eval) çalıştırıcısındaki dinamik işlevlerin izole edilmemesi halinde kiracı ortamında kod çalışır.<br/>**C)** `package-lock.json` içindeki `handlebars` ve `shell-quote` bağımlılık açıkları zincirlenir. | **DÜŞÜK / ORTA (İç CI & SCA)**<br/>`python3 scripts/vulkill-project-audit ./mcpjam-inspector` |
+| **5. `codebase-memory-mcp`** | `32` eşik aşan (`SAST 17K/7Y`, `SCA 8Y`) | **`store.c:2864` SQLi, `c_lsp.h:54` yorum, `kotlin_lsp.c`/`py_lsp.c` boyutlu tampon yanlış pozitif**; `http_server.c:668` `GET /api/browse?path=...` yalnız `localhost` CORS ve `Host` (403) korumalı | **A)** `--ui` modu açıkken aynı makinedeki başka bir yerel süreç `http://127.0.0.1:<port>/api/browse?path=/` ile dizin yapısını listeleyebilir (tarayıcıdan yabancı site erişimi CORS/Host ile engellidir).<br/>**B)** SSH tüneli veya ters vekil ile `--ui` portu yanlışlıkla dış ağa açılırsa sunucu dizin ağacı görünür olur.<br/>**C)** `graph-ui/package-lock.json` içindeki önyüz paketlerinin güncellenmemesi geliştirme ortamı riski oluşturur. | **DÜŞÜK (Yerel Servis Sınırı)**<br/>`python3 scripts/vulkill-project-audit ./codebase-memory-mcp` |
+| **6. `gitlab-mcp-server`** | `5` eşik aşan (`0K / 4Y`) | `recorder.go:84` ve `make.go:35` yanlış pozitif (`exec.Command("git", args...)` kabuksuz); `internal/gitlab/client.go:1416` `GITLAB_MCP_SKIP_TLS_VERIFY=true` yalnızca kullanıcı seçerse aktif | **A)** Geliştirici kendi imzalı (self-signed) kurum içi GitLab sunucusu için `GITLAB_MCP_SKIP_TLS_VERIFY=true` açtığında ortak Wi-Fi/VPN ağında MITM ile GitLab PAT token'ı çalınır.<br/>**B)** CI/CD ortamında bu bayrak kalıcı bırakıldığında sahte GitLab API yanıtlarıyla MCP ajanına zararlı veri enjekte edilir.<br/>**C)** PR etiket iş akışında `pull_request_target` yapılandırması ileride `checkout` eklenirse risk oluşturur. | **DÜŞÜK (Opsiyonel Ayar)**<br/>`python3 scripts/vulkill-project-audit ./gitlab-mcp-server` |
+| **7. `apktool-mcp`** | `16` eşik aşan (`SAST 1 Orta`, `SCA 4K / 12Y`) | SAST gizlilik uyarıları yanlış pozitif; **`uv.lock` içinde 4 kritik, 12 yüksek SCA bağımlılık kaydı var** (`starlette 0.46.2`, `h11 0.14.0`, `fastmcp 2.2.0`, `mcp 1.6.0`) | **A)** Zararlı/bozuk APK analiz edilirken eski `starlette`/`h11` HTTP ayrıştırıcı açıkları üzerinden MCP sunucusunda hizmet reddi (DoS) veya istek kaçakçılığı yaşanır.<br/>**B)** Eski `mcp`/`fastmcp` sürümlerindeki oturum ve doğrulama eksiklikleri yerel ajan köprüsünü etkiler.<br/>**C)** Güncellenmemiş `certifi`/`anyio` paketleri taşıma katmanı güvenilirliğini düşürür. | **DÜŞÜK / ORTA (SCA Bağımlılık Riski)**<br/>`python3 scripts/vulkill-project-audit ./apktool-mcp` |
+| **8. `jadx-mcp`** | `32` eşik aşan (`SAST 3 Orta`, `SCA 6K / 26Y`) | Doğrulanmış kritik/yüksek SAST açığı yok; **`uv.lock` içinde 6 kritik, 26 yüksek SCA bağımlılık kaydı var** (`authlib 1.6.8`, `cryptography 46.0.5`, `pyjwt 2.11.0`, `python-multipart 0.0.20`, `starlette 0.47.3`, `urllib3 2.5.0`) | **A)** Çok parçalı (multipart) dosya/APK yükleme uç noktalarında eski `python-multipart` ve `starlette` sürümleri üzerinden bellek/CPU tükenmesi (DoS) tetiklenir.<br/>**B)** Eski `authlib` ve `pyjwt` sürümlerindeki doğrulama zafiyetleri kimlik doğrulamalı MCP dağıtımlarında token kontrolünü zayıflatır.<br/>**C)** `urllib3` yönlendirme başlığı sızıntısı ve `cryptography` CVE'leri dış bağlantıları riske atar. | **DÜŞÜK / ORTA (SCA Bağımlılık Riski)**<br/>`python3 scripts/vulkill-project-audit ./jadx-mcp` |
 
-Her deponun dosya/satır düzeyindeki tam kanıt incelemesi, `Senaryo A / B / C` ayrıntıları, örnek çalıştırma komutları ve macOS doğrulama detayları için: [SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md](SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md).
+Her deponun dosya/satır düzeyindeki tam kanıt incelemesi, `Senaryo A / B / C` ayrıntıları, örnek çalıştırma komutları ve macOS doğrulama detayları için: [VULKILL-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md](VULKILL-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md).
 
-#### Kendi Sniper Taramamızda Bulduğumuz Doğrulanmış Açıklar
+#### Kendi VulKill Taramamızda Bulduğumuz Doğrulanmış Açıklar
 
-**Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü**, **Adım Adım 3 Farklı Günlük Hayat Kritik Senaryosu (`Senaryo A / B / C`)**, **Örnek Çalıştırma Komutları** ve **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ile kanıtlanan **46 güvenlik kaydı (45 özgün açık + 1 üst akış duplicate)** ([advisories/README.tr.md](advisories/README.tr.md) ve [SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md](SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md)) aşağıda yayımlanmıştır:
+**VulKill** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü**, **Adım Adım 3 Farklı Günlük Hayat Kritik Senaryosu (`Senaryo A / B / C`)**, **Örnek Çalıştırma Komutları** ve **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ile kanıtlanan **46 güvenlik kaydı (45 özgün açık + 1 üst akış duplicate)** ([advisories/README.tr.md](advisories/README.tr.md) ve [VULKILL-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md](VULKILL-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md)) aşağıda yayımlanmıştır:
 
 | # | Açık / Advisory & Upstream GHSA | Hedef Proje & Bileşen | CWE & CVSS v3.1 | Açığın Kodda Nasıl Oluştuğu & Günlük Hayatta Yol Açtığı 3 Kritik Senaryo (`Senaryo A / B / C`) | Çalışma Zamanı Kanıtı (`RED -> GREEN`) & Örnek Komut |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -354,9 +354,9 @@ Her deponun dosya/satır düzeyindeki tam kanıt incelemesi, `Senaryo A / B / C`
 | **45** | [`45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md`](advisories/tr/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md)<br/>`VERCEL-CLIENT-08A`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/vercel** (`@vercel/client <= 18.10.0`)<br/>`packages/client/src/utils/hashes.ts:115-167`<br/>`packages/client/src/deploy.ts:127-195` (`filesFromFilePathMap`) | `CWE-200 / CWE-706`<br/>**5.0 Medium**<br/>`AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N` | **Kodda Oluşumu:** `filesFromFilePathMap()` (`packages/client/src/utils/hashes.ts:115-167`), `.vc-config.json` `filePathMap` girdilerini kök dizin veya `.vercelignore` kontrolü yapmadan `path.resolve(cwd, filePath)` ile okur ve yükler.<br/>**Senaryo A (`.next/required-server-files.json` Sızıntısı):** `.vercelignore`'a rağmen yerel `.env` sırları yüklenir.<br/>**Senaryo B (CI Prebuilt Traversal):** `filePathMap` içindeki `../../` yolları konak dosyalarını `/v2/files`'a yükler.<br/>**Senaryo C (Önbellek Zehirlemesi):** `.vc-config.json` ile runner sırları sızdırılır. | `RED`: `outside_host_secret_uploaded: true, dotnext_env_secret_uploaded: true`<br/>`GREEN`: `path_confined_to_cwd: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
 | **46** | [`46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md`](advisories/tr/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md)<br/>`VERCEL-CLIENT-08B`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/vercel** (`@vercel/client <= 18.10.0`)<br/>`packages/client/src/utils/index.ts:116-148`<br/>`packages/client/src/deploy.ts:145-195` (`buildFileTree` / `bulkRedirectsPath`) | `CWE-59 / CWE-200`<br/>**5.0 Medium**<br/>`AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N` | **Kodda Oluşumu:** `buildFileTree()` (`packages/client/src/utils/index.ts:116-148`), `config.bulkRedirectsPath` dizinini `fs.realpath()` sınır kontrolü ve `.vercelignore` filtresi olmadan tarar; sembolik bağları takip eder.<br/>**Senaryo A (Symlink Kaçışı):** Sembolik bağ ile proje dışı konak dosyaları dağıtıma yüklenir.<br/>**Senaryo B (`../` Dizin Tarama):** Üst dizin yolu ile dış klasörler yüklenir.<br/>**Senaryo C (`.vercelignore` Atlaması):** Hariç tutulan sır dosyaları yüklenir. | `RED`: `symlink_target_outside_cwd_uploaded: true`<br/>`GREEN`: `realpath_confinement_and_lstat_enforced: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
 
-#### Kendi Sniper Taramamızda Bulduğumuz Doğrulanmış Açıklar (Vulnerabilities Discovered by Our Sniper Scanner)
+#### Kendi VulKill Taramamızda Bulduğumuz Doğrulanmış Açıklar (Vulnerabilities Discovered by Our VulKill Scanner)
 
-**Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Adım Adım Günlük Hayat Kritik Senaryoları (`Scenario A / B / C`)**, **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ve **Doğrulanmış Savunma Yamaları (`git diff`)** ile kanıtlanan **46 güvenlik kaydı (45 özgün açık + 1 üst akış duplicate)** ([advisories/README.md](advisories/README.md)) aşağıda yayımlanmıştır:
+**VulKill** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Adım Adım Günlük Hayat Kritik Senaryoları (`Scenario A / B / C`)**, **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ve **Doğrulanmış Savunma Yamaları (`git diff`)** ile kanıtlanan **46 güvenlik kaydı (45 özgün açık + 1 üst akış duplicate)** ([advisories/README.md](advisories/README.md)) aşağıda yayımlanmıştır:
 
 | # | Açık / Advisory Bağlantısı | Hedef Proje & Bileşen | CWE & CVSS v3.1 | Günlük Hayatta Yol Açtığı Kritik Senaryolar (`Scenario A / B / C`) | Çalışma Zamanı Kanıtı (`RED -> GREEN`) |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -387,9 +387,9 @@ python3 .github/scripts/validate-community-release.py
 doğrulayın:
 
 ```bash
-python3 scripts/build-community-source.py --output /MUTLAK/YOL/sniper-community-source
+python3 scripts/build-community-source.py --output /MUTLAK/YOL/vulkill-community-source
 python3 .github/scripts/validate-community-release.py \
-  --root /MUTLAK/YOL/sniper-community-source --scan-release-tree
+  --root /MUTLAK/YOL/vulkill-community-source --scan-release-tree
 ```
 
 Deponun tam yerel test çalıştırıcısı:
@@ -404,18 +404,18 @@ entegrasyon, o motorun makinenizde çalıştığının kanıtı değildir.
 
 ## Sık sorulan sorular
 
-### Sniper Community nedir?
+### VulKill Community nedir?
 
-Sniper Community; yetkilendirilmiş kaynak kod, bağımlılık, SBOM, konteyner, altyapı, web sitesi ve API incelemesi için
+VulKill Community; yetkilendirilmiş kaynak kod, bağımlılık, SBOM, konteyner, altyapı, web sitesi ve API incelemesi için
 Apache-2.0 lisanslı açık kaynak bir uygulama güvenliği araç setidir. Yerel analizörleri ve kaydedilmiş rapor iş
 akışlarını bir CLI, yerel loopback web arayüzü ve Model Context Protocol (MCP) üzerinden isteğe bağlı yapay zekâ
 destekli inceleme ile birleştirir. [Yetenek haritası](CAPABILITIES.md) yerleşik kontrolleri isteğe bağlı motorlardan ve
 manuel incelemeden ayırır.
 
-### Yapay zekâ aboneliği olmadan Sniper'ı kullanabilir miyim?
+### Yapay zekâ aboneliği olmadan VulKill'ı kullanabilir miyim?
 
 Evet. CLI ve yerel web arayüzü bir yapay zekâ istemcisi gerektirmez. İsteğe bağlı bir MCP istemcisi kendi model
-sağlayıcısına bağlanabilir; bu sağlayıcının erişilebilirliği, gizlilik kuralları ve ücretleri Sniper'ın kaynak
+sağlayıcısına bağlanabilir; bu sağlayıcının erişilebilirliği, gizlilik kuralları ve ücretleri VulKill'ın kaynak
 lisansından ayrıdır. Yerel donanım ve isteğe bağlı üçüncü taraf araçların da kendi gereksinimleri vardır.
 
 ### Windows, macOS ve Linux üzerinde kullanılabilir mi?
@@ -423,12 +423,12 @@ lisansından ayrıdır. Yerel donanım ve isteğe bağlı üçüncü taraf araç
 Evet. Python 3.12 test edilen yorumlayıcıdır. Tam yerel beş motorlu kurulum Linux ARM64 ve x86-64 üzerinde desteklenir.
 **macOS (Apple Silicon)** üzerinde hem yerel kaynak kurulumu (`python3 scripts/setup-community --core-only`) hem de beş
 motorlu Docker Desktop profili (`./scripts/deploy-community-tools --accept-third-party-licenses`) gerçek macOS
-donanımında test edilmiş, doğrulanmış ve desteklenmektedir (deneysel değildir). **Windows** üzerinde Sniper; yerel
+donanımında test edilmiş, doğrulanmış ve desteklenmektedir (deneysel değildir). **Windows** üzerinde VulKill; yerel
 `--core-only` kaynak kurulumunu (`python3 scripts/setup-community --core-only`), WSL2'yi ve Docker Desktop üzerinden
 Linux konteynerlerini destekler. Ayrıntılar için [dağıtım rehberine](../DEPLOYMENT.md) ve
 [doğrulama kanıtlarına](../VALIDATION.md) bakın.
 
-### Sniper bir web sitesini güvenlik açıklarına karşı tarayabilir mi?
+### VulKill bir web sitesini güvenlik açıklarına karşı tarayabilir mi?
 
 Evet, size ait olan veya değerlendirme için açıkça yetkilendirildiğiniz web siteleri ve API'ler için. Desteklenen iş
 akışları kapsamı sınırlandırılmış harici hedef eylemleri hazırlar, web ve TLS kanıtlarını yerel kaynak analiziyle
@@ -439,14 +439,14 @@ verilerinin, çalışma zamanı hazırlığının ve insan onayının mevcut olm
 
 ### Mobil uygulama güvenlik açıklarını bulup kapatmaya yardımcı olur mu?
 
-Sniper; ekiplerin desteklenen Android, iOS, Flutter ve React Native kodunu, manifestlerini, bağımlılıklarını, API
+VulKill; ekiplerin desteklenen Android, iOS, Flutter ve React Native kodunu, manifestlerini, bağımlılıklarını, API
 yollarını ve yayın yapılandırmasını incelemesine yardımcı olur. Bir App Store veya Google Play sürümünden önce kanıtları
 önceliklendirilmiş düzeltme çalışmalarına dönüştürür. Geliştiriciler değişiklikleri hazırlamak ve incelemek için
 bulguları ve yapay zekâ destekli açıklamaları kullanabilir. Kapsam desteklenen girdilere bağlıdır: bu her mobil ikili
 dosyanın evrensel olarak taranması, her açığın otomatik onarılması veya mağaza onayı garantisi anlamına gelmez. Bkz.
 [mobil yayın öncesi kontrol](#yayına-çıkmadan-önce-inceleyin) ve [yetenek haritası](CAPABILITIES.md).
 
-### Sniper bir sızma testinin yerini alır mı veya güvenli bir sürümü garanti eder mi?
+### VulKill bir sızma testinin yerini alır mı veya güvenli bir sürümü garanti eder mi?
 
 Hayır. Olası yetkilendirme ve IDOR sorunları dahil olmak üzere kanıtlar ve inceleme adayları üretir. Nitelikli bir
 incelemecinin önemli bulguları doğrulaması, yetkilendirilmiş kapsam dahilinde çalışma zamanı kontrollerini test etmesi ve
@@ -455,7 +455,7 @@ nelerin düzeltileceğine karar vermesi gerekir. Temiz bir tarama güvenlik sert
 
 ### Resmi kaynak kod ve kurulum talimatları nerede?
 
-Kaynak deposu [dytredline/Sniper](https://github.com/dytredline/Sniper) adresindedir. Platformunuz için
+Kaynak deposu [dytredline/VulKill](https://github.com/dytredline/VulKill) adresindedir. Platformunuz için
 [kaynak koddan kurulum](#kaynak-koddan-kurulum) ve [dağıtım rehberi](../DEPLOYMENT.md) ile başlayın. Proje
 [ConverserAI](https://converserai.com/#sniper) üzerinde tanıtılmaktadır; yetenekler, platform desteği, lisans koşulları
 ve sürüm kanıtları için doğruluk kaynağı bu depodur. Araştırma veya yayınlanmış çalışmalarda yazılıma atıf yaparken
@@ -463,5 +463,5 @@ ve sürüm kanıtları için doğruluk kaynağı bu depodur. Araştırma veya ya
 
 ## Lisans
 
-Sniper Community, Apache License 2.0 (`Apache-2.0`) altında lisanslanmıştır. Tam koşullar için [LICENSE](../LICENSE)
+VulKill Community, Apache License 2.0 (`Apache-2.0`) altında lisanslanmıştır. Tam koşullar için [LICENSE](../LICENSE)
 dosyasına bakın. Üçüncü taraf bileşenler ve isteğe bağlı araçlar kendi lisanslarına tabidir.

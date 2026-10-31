@@ -597,7 +597,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(len(sarifs), 2, done.stdout)
         self.assertTrue(all(json.loads((sarif_dir / name).read_text())["version"] == "2.1.0" for name in sarifs))
         text = summary.read_text()
-        self.assertIn("Sniper toplu CI", text)
+        self.assertIn("VulKill toplu CI", text)
         self.assertEqual(text.count("| alpha |") + text.count("| beta |"), 2)
         self.assertEqual(len(json.loads(state.read_text())), 2)
         again = self.cli("--no-sca", "--state", str(state))

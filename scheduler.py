@@ -1,4 +1,4 @@
-"""Zamanlanmış yerel taramalar (Sniper süreci içinde; systemd zamanlayıcısı kurulmaz).
+"""Zamanlanmış yerel taramalar (VulKill süreci içinde; systemd zamanlayıcısı kurulmaz).
 
 * Kayıt ``$SNIPER_DATA_DIR/schedules.json`` (0600, flock, atomik). Her değişiklik API'de ``confirm: true`` ister ve
   denetim kaydına yazılır.

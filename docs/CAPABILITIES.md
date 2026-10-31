@@ -1,6 +1,6 @@
-# Sniper Community v1 yetenekleri
+# VulKill Community v1 yetenekleri
 
-Sniper Community, sahibi olduğunuz veya inceleme yetkinizin bulunduğu uygulama, API, web sitesi ve yazılım
+VulKill Community, sahibi olduğunuz veya inceleme yetkinizin bulunduğu uygulama, API, web sitesi ve yazılım
 tedarik zinciri için yerel-öncelikli bir savunma güvenliği araç takımıdır. Kaynak kodunu, yapılandırmayı,
 bağımlılıkları, SBOM dosyalarını, konteyner arşivlerini ve desteklenen kayıtlı araç raporlarını inceler; sonuçları
 CLI, loopback web arayüzü veya stdio MCP üzerinden insan incelemesine sunar.
@@ -12,15 +12,15 @@ makinede hazır olduğu ya da bir dış hedef için izin bulunduğu anlamına ge
 
 | Etiket | Anlamı |
 | --- | --- |
-| **Yerleşik** | Kaynak ağacındaki Sniper kodu ve kurallarıyla çalışır; ayrı bir üçüncü taraf tarayıcı ikilisi gerektirmez. |
+| **Yerleşik** | Kaynak ağacındaki VulKill kodu ve kurallarıyla çalışır; ayrı bir üçüncü taraf tarayıcı ikilisi gerektirmez. |
 | **İsteğe bağlı yerel motor** | `COMMUNITY-TOOLS.lock.json` içindeki beş SHA-256 kontrollü motordan biridir. Kurulum, lisans kabulü ve çalışma zamanı hazırlığı gerekir. |
 | **Önkoşullu** | Yerel OSV veritabanı, Nuclei kataloğu, ayrı bir araç, sentetik hesap, loopback servis veya yazılı hedef yetkisi gibi ek kanıt gerekir. Hazır değilse özellik kullanılabilir gösterilmez. |
 | **Kayıtlı rapor** | Daha önce üretilmiş, desteklenen bir raporu sınırlar içinde ayrıştırır. Kaynak aracı çalıştırmaz ve rapordaki iddiaları bağımsız olarak doğrulamaz. |
-| **İnsan/harici** | Katalog kontrolü uzman incelemesi veya Sniper dışında yürütülen yetkili bir çalışma ister. Otomatik Sniper sonucu değildir. |
+| **İnsan/harici** | Katalog kontrolü uzman incelemesi veya VulKill dışında yürütülen yetkili bir çalışma ister. Otomatik VulKill sonucu değildir. |
 
 ## Kimler için
 
-| Kullanıcı | Sniper ile yapabilecekleri | Uygun başlangıç girdisi |
+| Kullanıcı | VulKill ile yapabilecekleri | Uygun başlangıç girdisi |
 | --- | --- | --- |
 | Uygulama sahipleri | Kaynak kodu, sır kalıpları, veri akışları, kimlik/yetki kontrolleri, bağımlılıklar, lisanslar, IaC ve konteynerleri yerelde incelemek | İnceleme yetkinizin bulunduğu yerel proje klasörü |
 | API sahipleri | Kod rotalarını ve OpenAPI sözleşmesini karşılaştırmak; kimlik doğrulama/yetkilendirme ipuçlarını, API şemasını ve desteklenen kayıtlı test raporlarını değerlendirmek | Kaynak kodu, OpenAPI/GraphQL şeması ve yalnız sentetik test verisi |
@@ -33,7 +33,7 @@ makinede hazır olduğu ya da bir dış hedef için izin bulunduğu anlamına ge
 
 ### Kaynak kodu ve veri akışı
 
-Sniper'ın hızlı veri akışı motorları derleyici gerektirmeden çalışır. Sonuçlar statik analiz önerisidir; çalışma
+VulKill'ın hızlı veri akışı motorları derleyici gerektirmeden çalışır. Sonuçlar statik analiz önerisidir; çalışma
 zamanı davranışının veya güvenliğin kanıtı değildir.
 
 | Tür | Dil ve doğrulanmış çerçeve kapsamı | İncelenen akış ve yüzeyler |
@@ -51,7 +51,7 @@ zamanı davranışının veya güvenliğin kanıtı değildir.
 
 Kaynak-hedef sınıfları SQL ve komut enjeksiyonu, dinamik kod/eval, XSS/HTML, dosya yolu, SSRF, açık yönlendirme,
 güvensiz serileştirme, XXE/ifade dili ve LDAP gibi desteklenen hedefleri kapsar. C/C++ ve Rust için hızlı bellek
-güvenliği kontrolleri de bulunur. Sniper doğrulanmış akışları olası çok çağrılı akışlardan ayırır; akış yolu uygun
+güvenliği kontrolleri de bulunur. VulKill doğrulanmış akışları olası çok çağrılı akışlardan ayırır; akış yolu uygun
 olduğunda SARIF `codeFlows` içinde taşınır. Yetki veya nonce kontrolü görülen yöntemler ayrıca işaretlenir.
 
 Bulgu odaklı fuzz-harness üreticisi C/C++ için LibFuzzer, Rust için cargo-fuzz, Go için yerleşik `testing.F`,
@@ -163,7 +163,7 @@ doğrulama sırasında değerlendirir.
 
 ### App Store ve Google Play öncesi AI destekli uygulama incelemesi
 
-Sniper; desteklenen Android, iOS, Flutter ve React Native kaynaklarını ve mobil manifestleri API yolları, sır
+VulKill; desteklenen Android, iOS, Flutter ve React Native kaynaklarını ve mobil manifestleri API yolları, sır
 ipuçları, bağımlılıklar, SBOM verisi ve CI yapılandırmasıyla aynı yayın-öncesi incelemede birleştirir. MCP üzerinden
 bağlanan yapay zeka bulguları kanıtlarıyla açıklayabilir, ilgili riskleri gruplayabilir ve düzeltme önceliği
 oluşturabilir. Bu akış App Store/Google Play gönderimi, web sitesi veya API yayını ve release pull request'i öncesinde
@@ -225,7 +225,7 @@ Eski BerkeleyDB/NDB RPM veritabanları tam ayrıştırılmıyorsa işletim siste
 
 | Tür | Yetenek | Girdi ve kesin sınır |
 | --- | --- | --- |
-| **Yerleşik + yetkili hedef** | Sniper temel web taraması | TLS, HTTP güvenlik başlıkları, çerezler ve dönen sayfa üzerinde düşük etkili kontroller; yalnız sahip olunan veya açıkça yetkilendirilmiş hedef |
+| **Yerleşik + yetkili hedef** | VulKill temel web taraması | TLS, HTTP güvenlik başlıkları, çerezler ve dönen sayfa üzerinde düşük etkili kontroller; yalnız sahip olunan veya açıkça yetkilendirilmiş hedef |
 | **Yerleşik** | API sözleşme karşılaştırması | Yerel OpenAPI belgesi ile kaynak rotaları arasında gölge uç ve kimlik doğrulama uyuşmazlığı |
 | **Önkoşullu** | Şema tabanlı API kanıtı | Schemathesis için sentetik loopback fixture veya operatörün izin verdiği yerel API'de sınırlandırılmış GET; motor hazır değilse yalnız kayıtlı JUnit özeti |
 | **Yerleşik/önkoşullu** | Loopback TLS/X.509 | Sabitlenmiş CA ile `127.0.0.1` eşini doğrulayan açık onaylı OpenSSL yolu ve kayıtlı X.509 özetleri |
@@ -265,7 +265,7 @@ rapor veya insan incelemesine eşler. Aşağıdaki sayı, metodoloji envanteridi
 
 `python3 scripts/setup-community --accept-third-party-licenses` uygun Linux ARM64/x86-64 sistemlerde aşağıdaki
 kilitli profili kurmayı dener. İndirilen artefakt tam SHA-256 değeriyle doğrulanır; doğrulanmamış veya eksik motor
-“kurulu” gösterilmez. Üçüncü taraf lisansları Sniper'ın Apache-2.0 lisansından bağımsızdır.
+“kurulu” gösterilmez. Üçüncü taraf lisansları VulKill'ın Apache-2.0 lisansından bağımsızdır.
 
 ### Nuclei 3.11.1 — MIT
 
@@ -311,7 +311,7 @@ kilitli profili kurmayı dener. İndirilen artefakt tam SHA-256 değeriyle doğr
 ### Opengrep 1.30.1 — LGPL-2.1-only
 
 - **Tür:** İsteğe bağlı yerel motor.
-- **Görev:** Sniper'ın 39 kurallı yerel paketini kullanarak Python, JavaScript/TypeScript, Go ve Java kaynaklarında
+- **Görev:** VulKill'ın 39 kurallı yerel paketini kullanarak Python, JavaScript/TypeScript, Go ve Java kaynaklarında
   SQL/komut/kod enjeksiyonu, SSTI, yol aşımı, SSRF, açık yönlendirme, XSS, güvensiz serileştirme, zayıf
   hash/şifre, kapalı TLS doğrulaması, JWT imza hatası, sabit sır ve debug modu örüntülerini aramak.
 - **Girdi:** İzinli yerel proje kaynakları.
@@ -343,7 +343,7 @@ kilitli profili kurmayı dener. İndirilen artefakt tam SHA-256 değeriyle doğr
 Bu yolların tamamı **Kayıtlı rapor** türündedir. Dosya şemasını, boyutunu ve kayıt sayısını sınırlar; uygun yerde
 hash, sayım veya maskeli özet üretir. Hedefe bağlanmaz ve aşağıdaki araçları başlatmaz.
 
-| Tür | Kaynak kanıt | Sniper'ın okuduğu yüzey |
+| Tür | Kaynak kanıt | VulKill'ın okuduğu yüzey |
 | --- | --- | --- |
 | **Kayıtlı rapor** | OWASP ZAP | Kayıtlı rapor özeti ve Automation Framework plan önizlemesi |
 | **Kayıtlı rapor** | Burp Suite | Site map, handoff manifest ve Logger CSV özeti |
@@ -386,8 +386,8 @@ MCP sunucusu newline-delimited JSON-RPC'yi yalnız alt sürecin stdin/stdout hat
 açmaz. Community modu varsayılan olarak ayrı kullanıcı verisi oluşturur:
 
 ```text
-command: /ABSOLUTE/PATH/TO/Sniper/.venv/bin/python
-args: /ABSOLUTE/PATH/TO/Sniper/scripts/sniper-mcp --mode community
+command: /ABSOLUTE/PATH/TO/VulKill/.venv/bin/python
+args: /ABSOLUTE/PATH/TO/VulKill/scripts/vulkill-mcp --mode community
 ```
 
 AI bulguları ve sınırlı proje bağlamını inceleyebilir, öneri hazırlayabilir ve desteklenen eylemler için plan
@@ -397,7 +397,7 @@ oluşturabilir. Durum değiştiren işlem iki çağrılıdır:
 2. İnsan aynı konuşmada gösterilen tam planı açıkça onaylarsa istemci aynı plan/hash ile `execute_action` ve
    `user_confirmed: true` gönderir.
 
-Plan tek kullanımlı ve sürelidir. Ancak `user_confirmed: true`, MCP hostunun beyanıdır; Sniper konuşmayı
+Plan tek kullanımlı ve sürelidir. Ancak `user_confirmed: true`, MCP hostunun beyanıdır; VulKill konuşmayı
 kriptografik olarak göremez. Kötü niyetli bir istemci yalan söyleyebilir. Bu yüzden yalnız güvenilir istemci kullanın;
 model çıktısını otomatik onaylamayın ve hedef sahipliğini ayrıca doğrulayın.
 
@@ -410,7 +410,7 @@ inceleyin; token, özel anahtar, müşteri verisi veya üretim veritabanı payla
 AI istemcisi zorunlu değildir:
 
 ```bash
-.venv/bin/python scripts/sniper-project-audit /ABSOLUTE/PATH/TO/YOUR_PROJECT
+.venv/bin/python scripts/vulkill-project-audit /ABSOLUTE/PATH/TO/YOUR_PROJECT
 .venv/bin/python cli_reports.py --help
 ```
 
@@ -428,7 +428,7 @@ export SNIPER_DATA_DIR="$PWD/.local-data"
 
 Arayüz varsayılan olarak `http://127.0.0.1:8787` adresindedir. Motor kartları ve formlar çalışma zamanı hazırlığına
 göre üretilir; eksik, doğrulanmamış veya desteklenmeyen motor kullanılabilir görünmez. Portu genel arayüze
-yayınlamayın. Uzaktan erişim gerekiyorsa önce Sniper kimlik doğrulamasını açın ve incelenmiş TLS reverse proxy veya
+yayınlamayın. Uzaktan erişim gerekiyorsa önce VulKill kimlik doğrulamasını açın ve incelenmiş TLS reverse proxy veya
 kimliği doğrulanmış tünel kullanın.
 
 ## Güvenli hızlı başlangıç
@@ -449,14 +449,14 @@ kimliği doğrulanmış tünel kullanın.
 2. Kurulumu ve komut yüzeyini dış hedefe bağlanmadan kontrol edin:
 
    ```bash
-   .venv/bin/python scripts/sniper-mcp --help
-   .venv/bin/python scripts/sniper-project-audit --help
+   .venv/bin/python scripts/vulkill-mcp --help
+   .venv/bin/python scripts/vulkill-project-audit --help
    ```
 
 3. Yalnız açıkça yetkili yerel proje klasörünü analiz edin:
 
    ```bash
-   .venv/bin/python scripts/sniper-project-audit /ABSOLUTE/PATH/TO/YOUR_PROJECT
+   .venv/bin/python scripts/vulkill-project-audit /ABSOLUTE/PATH/TO/YOUR_PROJECT
    ```
 
 4. İsterseniz MCP istemcinize [`examples/mcp/stdio-community.json`](examples/mcp/stdio-community.json) örneğini
@@ -489,7 +489,7 @@ Bu sayılar ürünün bulduğu açık sayısı değildir ve yalnız o kaynak anl
 Gelecek commitler test toplamlarını değiştirebilir; bir motorun CI'da veya başka mimaride atlanması o motora ilişkin
 çalışma kanıtı değildir.
 
-## Sniper'ın yapmadığı ve garanti etmediği şeyler
+## VulKill'ın yapmadığı ve garanti etmediği şeyler
 
 - Her güvenlik açığını bulduğunu, yanlış alarm üretmediğini veya temiz sonucun güvenlik sertifikası olduğunu garanti
   etmez.

@@ -1,4 +1,4 @@
-"""Sniper Unified C/C++ Memory Safety Engine (memsafety_engine.py).
+"""VulKill Unified C/C++ Memory Safety Engine (memsafety_engine.py).
 
 Re-exports and unifies static C/C++ memory safety analysis (`memsafety_c`) and
 human-approved isolated dynamic ASan/UBSan verification (`memsafety_dynamic`).

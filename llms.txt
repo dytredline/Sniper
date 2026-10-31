@@ -1,6 +1,6 @@
-# Sniper Community
+# VulKill Community
 
-> Sniper Community is a local-first defensive application-security toolkit for people who own or are explicitly authorized to assess source code, application artifacts, websites, and APIs.
+> VulKill Community is a local-first defensive application-security toolkit for people who own or are explicitly authorized to assess source code, application artifacts, websites, and APIs.
 
 ## Built-in capabilities
 
@@ -73,13 +73,13 @@ python3 scripts/setup-community --accept-third-party-licenses
 
 ## Evidence, safety, and governance
 
-- [Canonical source repository](https://github.com/dytredline/Sniper): authoritative source, release documentation, and license.
+- [Canonical source repository](https://github.com/dytredline/VulKill): authoritative source, release documentation, and license.
 - [Project overview at ConverserAI](https://converserai.com/#sniper): public introduction and repository link.
 - [Frequently asked questions](README.md#frequently-asked-questions): cost, AI requirements, validation limits, and installation sources.
 - [Software citation](CITATION.cff): author, license, source repository, and version metadata for attribution.
 - [Validation evidence](VALIDATION.md): reproducible test snapshot and evidence limits.
 - [Security policy](SECURITY.md): private vulnerability reporting and authorized research rules.
 - [Deployment](DEPLOYMENT.md): Linux, macOS (native core-only and Docker Desktop five-engine setup), Windows (native core-only, WSL2, and Docker Desktop), loopback binding, and source-manifest verification.
-- [License](LICENSE): Apache License 2.0 for Sniper Community; third-party licenses remain applicable.
+- [License](LICENSE): Apache License 2.0 for VulKill Community; third-party licenses remain applicable.
 
-Sniper findings and clean results are advisory, not proof that a system is secure. Use external-target features only with explicit authorization, review AI suggestions, and independently reproduce material findings before remediation decisions.
+VulKill findings and clean results are advisory, not proof that a system is secure. Use external-target features only with explicit authorization, review AI suggestions, and independently reproduce material findings before remediation decisions.

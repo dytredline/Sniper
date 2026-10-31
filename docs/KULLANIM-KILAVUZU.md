@@ -1,11 +1,11 @@
-# Sniper — Kullanım Kılavuzu (2026-10, sürüm 2.0.1-r27)
+# VulKill — Kullanım Kılavuzu (2026-10, sürüm 2.0.1-r27)
 
-Sniper, **çevrimdışı** çalışan yerel bir uygulama güvenliği aracıdır. Kaynak kodunu, bağımlılıkları,
+VulKill, **çevrimdışı** çalışan yerel bir uygulama güvenliği aracıdır. Kaynak kodunu, bağımlılıkları,
 altyapı tanımlarını (IaC), konteyner imajlarını ve SBOM dosyalarını analiz eder. Bulguları zaman içinde izler,
 rapor üretir ve CI'da kapı olarak çalışır. Hiçbir veri dışarı gönderilmez. Varsayılan adres:
 `http://127.0.0.1:8787/`.
 
-Komutlar Sniper Community kaynak dizininden çalıştırılır. Örneklerdeki `cli_reports.py`,
+Komutlar VulKill Community kaynak dizininden çalıştırılır. Örneklerdeki `cli_reports.py`,
 bu dizindeki `python3 cli_reports.py` komutunu ifade eder.
 
 Ayrıntılı konu belgeleri:
@@ -70,7 +70,7 @@ bir güvenlik kararıdır.
 | `admin` (yönetici) | Kullanıcıları, politikaları, saklama/yedek ayarlarını ve araç çalıştırmayı yönetir. |
 
 **Oturum güvenliği:** Oturum çerezi HttpOnly ve SameSite=Strict'tir. Durum değiştiren her istekte
-`X-Sniper-CSRF` başlığı zorunludur.
+`X-VulKill-CSRF` başlığı zorunludur.
 
 **Öz sağlık uyarısı:** Panodaki giriş denetimi, TOTP'si kapalı yönetici hesaplarını uyarı olarak gösterir.
 
@@ -127,7 +127,7 @@ proje classpath hazırlığını açıkça gösterir. İsteğe bağlı gerçek k
 motor desteği olarak Atheris modülü / fast-check `node_modules` dizini / Jazzer JAR yolu ve SHA-256 verilir; Jazzer
 için javac yolu ve SHA-256 da zorunludur. `/usr` dışı dağıtımlarda runtime'ı içeren güvenli `runtime_root` ayrıca
 verilir. Kabul edilen sınırlar: 1..10.000 iterasyon, 0..2.147.483.647 seed, 1..1.048.576 girdi baytı, 1..30 saniye
-ve 1.024..262.144 çıktı baytı. Motorlar Sniper ile gelmez ve indirilmez; eksik yapılandırma açıkça
+ve 1.024..262.144 çıktı baytı. Motorlar VulKill ile gelmez ve indirilmez; eksik yapılandırma açıkça
 `runtime_missing/not_run` döner.
 
 **Doğrulanmış ve olası akış:**
@@ -447,7 +447,7 @@ cli_reports.py ci <proje> [--policy .sniper-policy.json] [--sarif sniper.sarif] 
 
 Ayrıntı: [LSP.md](LSP.md). VS Code ve Neovim örnekleri orada.
 
-- **Çalıştırma:** `scripts/sniper-lsp` (stdio). Dosya açıldığında ya da kaydedildiğinde aynı motorla analiz edilir.
+- **Çalıştırma:** `scripts/vulkill-lsp` (stdio). Dosya açıldığında ya da kaydedildiğinde aynı motorla analiz edilir.
 - **Tanılama:** CWE ya da IaC kimliği ve bulgu takibi parmak izi içerir.
 - **Hızlı düzeltme:** `taint_autofix` dönüşümü önerilir; düzenlemeyi editör uygular.
 - **Ağ ve dosya:** Ağ yok. Önbellek dışında hiçbir şey yazılmaz (`~/.cache/sniper-lsp`).
@@ -553,7 +553,7 @@ Ayrıntı: [ARAC-SABITLEME.md](ARAC-SABITLEME.md).
 
 ## 12. Doğruluk ve ölçüm
 
-**Yöntem:** Sniper bağımsız setlerle ölçülür.
+**Yöntem:** VulKill bağımsız setlerle ölçülür.
 - Her set, daha önce hiç kullanılmamış açıklı projelerden kurulur.
 - Zemin gerçeği araç çıktısına bakılmadan yazılır.
 - CodeQL 2.27.1 ile karşılaştırılır.
@@ -561,7 +561,7 @@ Ayrıntı: [ARAC-SABITLEME.md](ARAC-SABITLEME.md).
 
 **Güncel dürüst sonuç (10. set, 2026-10-21, sürüm r19–r21):**
 
-| | Sniper | CodeQL 2.27.1 |
+| | VulKill | CodeQL 2.27.1 |
 |---|---|---|
 | Kod açıkları, doğrulanmış akış (27 proje, 184 açık) | **141/184 (%77)** | 81/184 (%44) |
 | Kesinlik (tartışmalılar yanlış sayılarak) | 0,87 | — |

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run a Sniper 2.0 source audit through the loopback-only API."""
+"""Run a VulKill 2.0 source audit through the loopback-only API."""
 
 from __future__ import annotations
 
@@ -35,22 +35,22 @@ def request_json(method: str, path: str, payload: dict | None = None) -> dict:
             message = json.loads(raw.decode("utf-8")).get("error", raw.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
             message = raw.decode("utf-8", errors="replace")
-        raise RuntimeError(f"Sniper API HTTP {exc.code}: {message}") from exc
+        raise RuntimeError(f"VulKill API HTTP {exc.code}: {message}") from exc
     except URLError as exc:
-        raise RuntimeError(f"Sniper 2.0 yerel servisine ulaşılamadı: {exc.reason}") from exc
+        raise RuntimeError(f"VulKill 2.0 yerel servisine ulaşılamadı: {exc.reason}") from exc
     if content_type != "application/json":
-        raise RuntimeError(f"Sniper API JSON yerine {content_type!r} döndürdü.")
+        raise RuntimeError(f"VulKill API JSON yerine {content_type!r} döndürdü.")
     try:
         result = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise RuntimeError("Sniper API geçerli JSON döndürmedi.") from exc
+        raise RuntimeError("VulKill API geçerli JSON döndürmedi.") from exc
     if not isinstance(result, dict):
-        raise RuntimeError("Sniper API beklenmeyen bir yanıt döndürdü.")
+        raise RuntimeError("VulKill API beklenmeyen bir yanıt döndürdü.")
     return result
 
 
 def add_agent_context(audit: dict) -> None:
-    """Attach bounded source context without persisting it in Sniper's database."""
+    """Attach bounded source context without persisting it in VulKill's database."""
     root = Path(str(audit["project_path"])).resolve()
     contexts: list[dict] = []
     for finding in audit.get("findings", [])[:MAX_CONTEXT_FINDINGS]:
@@ -91,7 +91,7 @@ def add_agent_context(audit: dict) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Yerel bir projeyi Sniper 2.0 ile analiz eder ve doğrulanabilir JSON raporu yazdırır."
+        description="Yerel bir projeyi VulKill 2.0 ile analiz eder ve doğrulanabilir JSON raporu yazdırır."
     )
     parser.add_argument("project_path", help="Analiz edilecek yerel proje klasörü")
     parser.add_argument(
@@ -111,7 +111,7 @@ def main() -> int:
         rows = request_json("GET", "/api/project-audits").get("project_audits", [])
         match = next((row for row in rows if row.get("project_path") == project_path), None)
         if not match:
-            raise RuntimeError("Bu proje için kayıtlı Sniper analizi bulunamadı.")
+            raise RuntimeError("Bu proje için kayıtlı VulKill analizi bulunamadı.")
         audit = request_json("GET", f"/api/project-audits/{match['id']}")
     else:
         audit = request_json("POST", "/api/project-audits", {"project_path": project_path})
@@ -119,7 +119,7 @@ def main() -> int:
     required = {"id", "project_path", "score", "grade", "finding_count", "findings"}
     missing = sorted(required.difference(audit))
     if missing:
-        raise RuntimeError(f"Sniper raporu zorunlu alanları içermiyor: {', '.join(missing)}")
+        raise RuntimeError(f"VulKill raporu zorunlu alanları içermiyor: {', '.join(missing)}")
     if args.agent_context:
         add_agent_context(audit)
     print(json.dumps(audit, ensure_ascii=False, indent=2, sort_keys=True))

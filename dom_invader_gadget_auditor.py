@@ -1,4 +1,4 @@
-"""Sniper DOM Invader & Client-Side Gadget Auditor (Burp DOM Invader karşılığı).
+"""VulKill DOM Invader & Client-Side Gadget Auditor (Burp DOM Invader karşılığı).
 
 İstemci tarafı JavaScript/TypeScript/HTML kodlarında:
 1. Client-Side Prototype Pollution (CSPP) kaynak -> derin birleştirme (deep merge) zincirlerini,

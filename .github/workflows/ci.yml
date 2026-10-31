@@ -1,4 +1,4 @@
-name: Sniper Community CI
+name: VulKill Community CI
 
 on:
   push:
@@ -32,13 +32,13 @@ jobs:
         run: python .github/scripts/validate-community-release.py
       - name: Assemble and validate Community source tree
         run: |
-          python scripts/build-community-source.py --output "${RUNNER_TEMP}/sniper-community-source"
+          python scripts/build-community-source.py --output "${RUNNER_TEMP}/vulkill-community-source"
           python .github/scripts/validate-community-release.py \
-            --root "${RUNNER_TEMP}/sniper-community-source" --scan-release-tree
+            --root "${RUNNER_TEMP}/vulkill-community-source" --scan-release-tree
       - name: Verify documented entrypoints
         run: |
-          python scripts/sniper-mcp --help
-          python scripts/sniper-project-audit --help
+          python scripts/vulkill-mcp --help
+          python scripts/vulkill-project-audit --help
           python cli_reports.py --help
       - name: Run Python and JavaScript tests
         run: python scripts/run_all_tests.py --verbose
@@ -47,14 +47,14 @@ jobs:
           GRAFANA_ADMIN_PASSWORD: ci-only-placeholder
         run: docker compose --profile monitoring config --quiet
       - name: Build local image
-        run: docker build --tag sniper-community:${{ github.sha }} .
+        run: docker build --tag vulkill-community:${{ github.sha }} .
       - name: Boot local image and verify health
         run: |
-          container_name="sniper-community-ci-${{ github.run_id }}"
+          container_name="vulkill-community-ci-${{ github.run_id }}"
           trap 'docker rm --force "$container_name" >/dev/null 2>&1 || true' EXIT
           docker run --detach --name "$container_name" \
             --env SNIPER_ALLOW_UNAUTHENTICATED_REMOTE=1 \
-            "sniper-community:${{ github.sha }}"
+            "vulkill-community:${{ github.sha }}"
           for attempt in $(seq 1 30); do
             health_status=$(docker inspect --format '{{.State.Health.Status}}' "$container_name")
             if [ "$health_status" = "healthy" ]; then

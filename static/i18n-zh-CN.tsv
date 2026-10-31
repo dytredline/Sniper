@@ -77,9 +77,9 @@ S	Yapılan düzeltme, sürüm, yeniden test sonucu veya risk kabul gerekçesi…
 S	Önem derecesi filtresi	严重性筛选器
 S	Yama sürümü mevcut açık uyarı sayısı	修复版本上仍未解决的安全公告数量
 S	Yapılandırma sorunu kritikliği dağılımı	配置问题严重性分布
-S	Sniper — Yerel güvenlik stüdyosu	Sniper — 本地安全工作室
+S	VulKill — Yerel güvenlik stüdyosu	VulKill — 本地安全工作室
 S	YEREL GÜVENLİK STÜDYOSU	本地安全工作室
-S	Sniper, düşük etkili kontroller yapar. DoS trafiği veya parola listesi çalıştırmaz.	Sniper 执行低影响检查，不会产生 DoS 流量，也不会运行密码字典。
+S	VulKill, düşük etkili kontroller yapar. DoS trafiği veya parola listesi çalıştırmaz.	VulKill 执行低影响检查，不会产生 DoS 流量，也不会运行密码字典。
 S	BAĞIMSIZ GÜVENLİK GÖRÜNÜMÜ	独立安全视图
 S	Riskleri erken görün,	尽早发现风险，
 S	kontrol sizde kalsın.	始终由您掌控。
@@ -169,7 +169,7 @@ S	Harici sonuç kaydı	外部结果记录
 S	Kuruluşun ayrı ve yetkili aracıyla yapılan testin özetini ham günlük ya da veri taşımadan kaydedin.	记录由组织独立授权工具执行的测试摘要，不携带原始日志或数据。
 S	Kanıt hash’i zorunlu	必须提供证据哈希
 S	Ham günlük ve kimlik bilgisi yok	无原始日志和凭据
-S	Sniper tarafından üretilen istek: 0	Sniper 生成的请求数：0
+S	VulKill tarafından üretilen istek: 0	VulKill 生成的请求数：0
 S	Sonuç kaydet	保存结果
 S	Laboratuvar dosyaları	实验室文件
 S	Henüz laboratuvar kaydı yok	尚无实验室记录
@@ -244,7 +244,7 @@ S	Örnek sayısı	样本数量
 S	Risk dağılımı	风险分布
 S	Denetimler yükleniyor	正在加载审计
 S	Toplu kanıtı bağla	关联汇总证据
-S	Sniper için yerel ZAP pasif kontrolü	Sniper 本地 ZAP 被动检查
+S	VulKill için yerel ZAP pasif kontrolü	VulKill 本地 ZAP 被动检查
 S	Yerel pasif kontrolü çalıştır	运行本地被动检查
 S	Pasif ZAP kontrolü tamamlandı.	ZAP 被动检查已完成。
 S	Uyarı türü	警报类型
@@ -273,7 +273,7 @@ S	Yerel Semgrep ve Trivy raporlarını karşılaştır	比较本地 Semgrep 和 
 S	Özetleri oluştur	生成摘要
 S	Semgrep özet	Semgrep 摘要
 S	Trivy özet	Trivy 摘要
-S	Sniper — Giriş	Sniper — 登录
+S	VulKill — Giriş	VulKill — 登录
 S	Doğrulama kodu (6 hane)	验证码（6 位）
 S	MCP KONTROL DÜZLEMİ	MCP 控制平面
 S	Hedef yetkisi bekleyen işler	等待目标授权的任务
@@ -331,7 +331,7 @@ S	Doğrulama başarısız.	验证失败。
 S	Doğrulama kodu hatalı.	验证码不正确。
 S	Giriş başarısız.	登录失败。
 S	Giriş etkin değil.	登录功能未启用。
-S	Giriş etkin değil; Sniper yerel erişimle açık. Ana sayfaya yönlendiriliyorsunuz.	登录功能未启用；Sniper 对本地访问开放。正在跳转到主页。
+S	Giriş etkin değil; VulKill yerel erişimle açık. Ana sayfaya yönlendiriliyorsunuz.	登录功能未启用；VulKill 对本地访问开放。正在跳转到主页。
 S	Girişi etkinleştir	启用登录
 S	Giriş zaten etkin.	登录功能已启用。
 S	Diğer tüm oturumları kapat	注销其他所有会话
@@ -352,7 +352,7 @@ S	Konteyner taban imajı sabitlenmemiş (:latest)	容器基础镜像未固定（
 S	Konteyner, Kubernetes ve CI/CD güvenliği	容器、Kubernetes 与 CI/CD 安全
 S	Konteyner/Pod ana makine ağ uzayını (hostNetwork) paylaşıyor	容器／Pod 共享主机网络命名空间（hostNetwork）
 S	Konteyner/Pod privileged (tam yetkili) modda çalışıyor	容器／Pod 以 privileged（完全特权）模式运行
-S	Sniper ana sayfa	Sniper 主页
+S	VulKill ana sayfa	VulKill 主页
 S	＋ Yeni hedef	＋ 新目标
 S	Son puan	最新评分
 S	Taramalar	扫描

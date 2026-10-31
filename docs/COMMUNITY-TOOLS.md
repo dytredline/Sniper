@@ -1,6 +1,6 @@
 # Community tool installation
 
-Sniper's built-in analyzers, report parsers, MCP server, CLI, and local web interface are part of the source tree.
+VulKill's built-in analyzers, report parsers, MCP server, CLI, and local web interface are part of the source tree.
 Selected third-party local executors are installed separately so their licenses, platform artifacts, and SHA-256
 digests remain explicit.
 
@@ -27,11 +27,11 @@ see `DEPLOYMENT.md` for the explicit project-copy path when Docker Desktop canno
 
 The command downloads only artifacts listed in `COMMUNITY-TOOLS.lock.json`, verifies each complete artifact before
 extracting its declared executable, and never executes a scanner. It installs into the ignored `runtimes/` directory;
-Sniper discovers the files, records their hashes, and still requires the normal local-input or target-authorization
+VulKill discovers the files, records their hashes, and still requires the normal local-input or target-authorization
 approval before a scan. Re-running the command verifies the recorded install rather than silently replacing files.
 
 The local profile contains Nuclei, Trivy, Gitleaks, TruffleHog, Opengrep, Syft, and Grype. The installed Nuclei binary works with
-Sniper's checked-in pinned loopback template; the authorized broad HTTP workflow still requires its separately pinned
+VulKill's checked-in pinned loopback template; the authorized broad HTTP workflow still requires its separately pinned
 catalog. The installed Trivy binary enables configuration profiles; vulnerability profiles still require a separately
 pinned offline database. Syft can produce a local manifest-only SBOM after installation; Grype vulnerability matching
 also requires the separately pinned offline database documented by its readiness result. Each upstream license is recorded in the lock file and remains applicable. Review and accept

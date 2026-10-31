@@ -7,24 +7,24 @@ from methodology import CATEGORIES, TEST_CATALOG
 
 TOOLS = [
     {
-        "id": "sniper-baseline", "name": "Sniper Temel Tarama", "kind": "Yerleşik pasif DAST",
-        "license": "Yerleşik", "execution": "Sniper içinde güvenli",
+        "id": "sniper-baseline", "name": "VulKill Temel Tarama", "kind": "Yerleşik pasif DAST",
+        "license": "Yerleşik", "execution": "VulKill içinde güvenli",
         "summary": "TLS, HTTP başlıkları, çerezler ve dönen sayfa üzerinde düşük etkili kontroller.",
         "url": "https://owasp.org/www-project-web-security-testing-guide/",
         "formats": ["HTML", "JSON", "SARIF"],
     },
     {
-        "id": "sniper-code-analysis", "name": "Sniper Kod ve Veri Akışı Analizi",
+        "id": "sniper-code-analysis", "name": "VulKill Kod ve Veri Akışı Analizi",
         "kind": "Yerleşik SAST (fonksiyonlar ve dosyalar arası taint)",
-        "license": "Yerleşik", "execution": "Sniper içinde güvenli",
+        "license": "Yerleşik", "execution": "VulKill içinde güvenli",
         "summary": "Python ve JS/TS projelerinde istek girdisinin SQL, komut, eval, HTML, yol, SSRF, "
                    "serileştirme ve yönlendirme hedeflerine ulaşıp ulaşmadığını izler; CodeQL tarzı akış yolu (SARIF codeFlows) üretir.",
         "url": "https://owasp.org/www-community/Source_Code_Analysis_Tools",
         "formats": ["JSON", "SARIF (codeFlows)", "HTML"],
     },
     {
-        "id": "sniper-auditors", "name": "Sniper Yerleşik Denetçiler", "kind": "Yerleşik yapılandırma ve kod denetimleri",
-        "license": "Yerleşik", "execution": "Sniper içinde güvenli",
+        "id": "sniper-auditors", "name": "VulKill Yerleşik Denetçiler", "kind": "Yerleşik yapılandırma ve kod denetimleri",
+        "license": "Yerleşik", "execution": "VulKill içinde güvenli",
         "summary": "Sır, gizlilik, günlük bütünlüğü, ReDoS, zero-trust/mesh, bulut IAM, protokol, kimlik doğrulama, "
                    "kripto/PQC, mobil, tedarik zinciri ve CVSS 4.0/SSVC önceliklendirme denetimleri; ağ erişimi yok.",
         "url": "https://owasp.org/www-project-application-security-verification-standard/",
@@ -32,14 +32,14 @@ TOOLS = [
     },
     {
         "id": "owasp-zap", "name": "OWASP ZAP", "kind": "DAST ve web proxy",
-        "license": "Açık kaynak", "execution": "Harici; sonuç Sniper'a kaydedilir",
+        "license": "Açık kaynak", "execution": "Harici; sonuç VulKill'a kaydedilir",
         "summary": "Web/API keşfi, kimlik doğrulamalı gezinme, pasif ve yapılandırılabilir aktif tarama.",
         "url": "https://www.zaproxy.org/docs/automate/automation-framework/",
         "formats": ["HTML", "JSON", "XML"],
     },
     {
         "id": "burp-suite", "name": "Burp Suite Professional", "kind": "DAST ve manuel proxy",
-        "license": "Ticari", "execution": "Harici; sonuç Sniper'a kaydedilir",
+        "license": "Ticari", "execution": "Harici; sonuç VulKill'a kaydedilir",
         "summary": "Oturumlu tarama, web/API yüzey haritalama ve uzman odaklı manuel test iş akışı.",
         "url": "https://portswigger.net/burp/documentation/scanner",
         "formats": ["HTML", "XML"],
@@ -48,7 +48,7 @@ TOOLS = [
         "id": "semgrep", "name": "Semgrep / Opengrep", "kind": "SAST, sır ve tedarik zinciri",
         "license": "Açık kaynak (Opengrep LGPL-2.1) + ticari", "execution": "Kaynak kodu/CI üzerinde harici",
         "summary": "Kaynak kodu kusurları, veri akışları ve sırlar. Yerel motor SHA-256 ile sabitlenmiş Opengrep; "
-                   "Sniper'ın kendi kural paketi (Python, JS/TS, Go, Java) ile dosya içi fonksiyonlar arası veri akışı izlenir.",
+                   "VulKill'ın kendi kural paketi (Python, JS/TS, Go, Java) ile dosya içi fonksiyonlar arası veri akışı izlenir.",
         "url": "https://semgrep.dev/docs/workflows/overview",
         "formats": ["JSON", "SARIF"],
     },
@@ -138,7 +138,7 @@ TOOLS = [
     {
         "id": "dependabot", "name": "Dependabot", "kind": "Bağımlılık uyarıları",
         "license": "GitHub koşullarına bağlı", "execution": "Yalnız kayıtlı rapor özeti",
-        "summary": "Kaydedilmiş Dependabot uyarılarını özetler; Sniper Dependabot taraması başlatmaz.",
+        "summary": "Kaydedilmiş Dependabot uyarılarını özetler; VulKill Dependabot taraması başlatmaz.",
         "url": "https://docs.github.com/en/code-security/dependabot", "formats": ["JSON"],
     },
     {
@@ -176,7 +176,7 @@ TOOLS = [
     },
     {
         "id": "expert-review", "name": "Uzman manuel incelemesi", "kind": "İş mantığı ve tasarım",
-        "license": "İnsan doğrulaması", "execution": "Sniper çalışma alanında yönlendirmeli",
+        "license": "İnsan doğrulaması", "execution": "VulKill çalışma alanında yönlendirmeli",
         "summary": "Araçların güvenilir biçimde anlayamadığı rol, iş kuralı, tasarım ve etki kontrolleri.",
         "url": "https://owasp.org/www-project-web-security-testing-guide/latest/README",
         "formats": ["Not", "Maskeli kanıt", "Bulgu"],
@@ -403,7 +403,7 @@ CATEGORY_TOOLING = {
     "supplychain": ("Yüksek otomasyon", ["osv-scanner", "syft-grype", "trivy", "semgrep", "npm-audit", "dependabot", "gitleaks", "trufflehog", "codeql", "expert-review", "sniper-auditors"], "Depo, kilit dosyaları, SBOM ve CI"),
     "availability": ("Staging gerekli", ["k6", "expert-review", "sniper-auditors"], "Staging/lab, SLO ve gözlemlenebilirlik"),
     "logging": ("Savunma sistemi gerekli", ["siem-review", "semgrep", "expert-review", "sniper-auditors", "sniper-code-analysis"], "Uygulama/WAF/kimlik günlükleri ve alarm erişimi"),
-    "controlled": ("Harici kanıt", ["k6", "burp-suite", "siem-review", "expert-review"], "Sentetik hesap veya staging; Sniper yalnız maskeli sonucu kaydeder"),
+    "controlled": ("Harici kanıt", ["k6", "burp-suite", "siem-review", "expert-review"], "Sentetik hesap veya staging; VulKill yalnız maskeli sonucu kaydeder"),
 }
 
 
@@ -485,8 +485,8 @@ def tooling_payload() -> dict:
         "categories": categories,
         "controls": controls,
         "policy": {
-            "native": "Sniper düşük etkili yerleşik temel taramayı, ağ erişimi olmayan kod/veri akışı analizini ve yerleşik denetçileri kendisi çalıştırır. Yerel ve izinli araç profilleri ayrı uç noktalar üzerinden, gerekli onay ve çalışma zamanı koşullarıyla çalışır.",
-            "external": "Rapor özeti tarama başlatmaz. Harici öneri, aracın Sniper'da çalıştırıldığı anlamına gelmez. Profilin listelenmesi ikilinin hazır veya hedefin yetkili olduğunu kanıtlamaz.",
+            "native": "VulKill düşük etkili yerleşik temel taramayı, ağ erişimi olmayan kod/veri akışı analizini ve yerleşik denetçileri kendisi çalıştırır. Yerel ve izinli araç profilleri ayrı uç noktalar üzerinden, gerekli onay ve çalışma zamanı koşullarıyla çalışır.",
+            "external": "Rapor özeti tarama başlatmaz. Harici öneri, aracın VulKill'da çalıştırıldığı anlamına gelmez. Profilin listelenmesi ikilinin hazır veya hedefin yetkili olduğunu kanıtlamaz.",
             "completion": "Bir araç önerisi kontrolün tamamlandığı anlamına gelmez; sonuç uzman tarafından doğrulanır.",
         },
     }

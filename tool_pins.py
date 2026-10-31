@@ -36,7 +36,7 @@ class ToolPin:
     source_url: str
     # mimari → {sha256: köken}
     digests: dict[str, dict[str, str]] = field(default_factory=dict)
-    # ortam değişkeni yoksa denenecek, Sniper'a ait kurulum yolu
+    # ortam değişkeni yoksa denenecek, VulKill'a ait kurulum yolu
     default_binary: Path | None = None
     # Bilinen güvensiz/geri çekilmiş ikililer operatör ortam sabitlemesiyle de yeniden kabul edilmez.
     revoked_digests: frozenset[str] = field(default_factory=frozenset)

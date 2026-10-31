@@ -22,7 +22,7 @@ import audit_integrity  # noqa: E402
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Sniper denetim anahtarı yönetimi")
+    parser = argparse.ArgumentParser(description="VulKill denetim anahtarı yönetimi")
     parser.add_argument("command", choices=("init", "status"))
     args = parser.parse_args(argv)
     anchor_dir = audit_integrity.anchor_dir()

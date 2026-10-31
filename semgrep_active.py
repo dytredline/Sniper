@@ -37,7 +37,7 @@ ALLOWED_RULEPACK_CATEGORIES = frozenset({
     "secrets", "configuration", "authentication", "authorization",
 })
 
-# Opengrep için Sniper'ın kendi yazdığı, lisans açısından temiz kural paketi.
+# Opengrep için VulKill'ın kendi yazdığı, lisans açısından temiz kural paketi.
 BUILTIN_OPENGREP_RULES = Path(__file__).resolve().parent / "rules" / "opengrep" / "sniper-core.yaml"
 MAX_REPORTED_FINDINGS = 200
 MAX_RULEPACK_BYTES = 10_000_000
@@ -47,7 +47,7 @@ def active_engine() -> tuple[str, str | None, str | None]:
     """Kullanılacak motoru seçer: ``(araç, ikili yolu, kural yolu)``.
 
     Sıra: açık ``SNIPER_OPENGREP_BINARY`` → operatörün SHA-256 ile sabitlediği
-    Semgrep (``SNIPER_SEMGREP_BINARY`` + ``SNIPER_SEMGREP_SHA256``) → Sniper araç
+    Semgrep (``SNIPER_SEMGREP_BINARY`` + ``SNIPER_SEMGREP_SHA256``) → VulKill araç
     dizinindeki sabitli Opengrep → (sabitlenmemiş) Semgrep. Sabitlenmemiş Semgrep
     seçilirse doğrulama aşamasında reddedilir; hiçbir şey yapılandırılmamışsa
     ikili yolu ``None`` döner.

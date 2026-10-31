@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assemble a deterministic, offline Sniper Community source tree."""
+"""Assemble a deterministic, offline VulKill Community source tree."""
 
 from __future__ import annotations
 
@@ -38,11 +38,11 @@ EXCLUDED_NAMES_CASEFOLD = frozenset(name.casefold() for name in EXCLUDED_NAMES)
 # modules used by the product. Keep this list narrow and review additions.
 INTERNAL_EVALUATION_PATHS = frozenset({
     "docs/advisories",
-    "docs/SNIPER-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md",
-    "docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md",
-    "docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md",
-    "docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.zh-CN.md",
-    "docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ko.md",
+    "docs/VULKILL-TARANAN-DEPOLAR-VE-BAGLANTILI-ACIKLAR.md",
+    "docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md",
+    "docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md",
+    "docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.zh-CN.md",
+    "docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ko.md",
     "docs/sniper-2-evaluation.md",
     "docs/olcum",
     "scripts/ai_triage_eval.py",
@@ -122,7 +122,7 @@ INTERNAL_PATTERNS = (
 
 LIMITATIONS = """# Community source distribution boundaries
 
-This assembled tree is the Sniper Community source distribution.
+This assembled tree is the VulKill Community source distribution.
 
 Commercial delivery, customer-bound licensing, private installer, and native
 binary-delivery implementation are intentionally absent. The web runtime uses
@@ -342,7 +342,7 @@ def _community_version_module(text: str, version: str) -> str:
     )
     if count != 1:
         raise ValueError("version.py does not contain one replaceable __version__ assignment")
-    return updated.replace("Sniper Enterprise", "Sniper Community")
+    return updated.replace("VulKill Enterprise", "VulKill Community")
 
 
 def _write_text(destination: Path, text: str, mode: int) -> None:
@@ -766,7 +766,7 @@ def _transform_mcp_community_wording(text: str) -> str:
     relative = "mcp_triage_server.py"
     private_label = "TRUE" + " LIVE"
     old = (
-        f"    # Community verisi kurulu Sniper'ın {private_label} veri kökünden ayrıdır. "
+        f"    # Community verisi kurulu VulKill'ın {private_label} veri kökünden ayrıdır. "
         "Bu varsayılan APP_DIR'ye de bağlı değildir;\n"
         "    # aynı yayın paketi nereden çalıştırılırsa çalıştırılsın kurulu uygulamanın "
         "veritabanına sessizce düşemez."

@@ -168,7 +168,7 @@ class SessionTests(ServerHarness):
         self.assertEqual(len(actions), 1)
         action = actions[0]
         self.assertEqual(action["kind"], "quickfix")
-        self.assertTrue(action["title"].startswith("Sniper: Parametreli sorgu"))
+        self.assertTrue(action["title"].startswith("VulKill: Parametreli sorgu"))
         edit = action["edit"]["changes"][uri][0]
         self.assertIn("?", edit["newText"])
         self.assertNotIn("+ request", edit["newText"])
@@ -176,7 +176,7 @@ class SessionTests(ServerHarness):
         applied = "".join(lines[:edit["range"]["start"]["line"]]) + edit["newText"] + "".join(lines[edit["range"]["end"]["line"]:])
         self.assertIn("WHERE id=?", applied)
         compile(applied, "app.py", "exec")
-        # Sniper dışı ya da türü olmayan tanılamalara eylem yok.
+        # VulKill dışı ya da türü olmayan tanılamalara eylem yok.
         other = dict(diag, source="pylint")
         request["params"]["context"]["diagnostics"] = [other]
         out, _ = self.run_session([self.init(), self.open_msg("app.py"), request] + self.end())

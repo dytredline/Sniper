@@ -401,7 +401,7 @@ def render_engagement_sarif(engagement: dict) -> dict:
             rules.append(
                 {
                     "id": rule_id,
-                    "shortDescription": {"text": str(finding.get("title") or "Sniper bulgusu")},
+                    "shortDescription": {"text": str(finding.get("title") or "VulKill bulgusu")},
                     "fullDescription": {"text": redact_evidence_text(finding.get("description") or "", max_len=12_000)},
                     "help": {"text": str(finding.get("recommendation") or "")},
                     "properties": {
@@ -419,7 +419,7 @@ def render_engagement_sarif(engagement: dict) -> dict:
                 "level": level_map.get(finding.get("severity", "info"), "note"),
                 "message": {
                     "text": redact_evidence_text(
-                        finding.get("description") or finding.get("title") or "Sniper bulgusu",
+                        finding.get("description") or finding.get("title") or "VulKill bulgusu",
                         max_len=12_000,
                     )
                 },
@@ -458,7 +458,7 @@ def render_engagement_sarif(engagement: dict) -> dict:
             {
                 "tool": {
                     "driver": {
-                        "name": "Sniper",
+                        "name": "VulKill",
                         "version": "1.1",
                         "informationUri": "https://owasp.org/www-project-web-security-testing-guide/",
                         "rules": rules,
@@ -561,7 +561,7 @@ def render_engagement_report(engagement: dict) -> str:
         )
         if approvals.get(key)
     ) or "Özel onaylı doğrulama yok"
-    return f"""<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Sniper manuel sızma testi raporu</title>
+    return f"""<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>VulKill manuel sızma testi raporu</title>
     <style>
     :root{{--ink:#13231e;--muted:#61716b;--line:#dce5df;--paper:#fff;--bg:#f3f6f4;--green:#0e7a54;--red:#bd3b45;--amber:#b8780e;--blue:#2f7088}}
     *{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 Inter,Arial,sans-serif}}main{{max-width:980px;margin:35px auto;background:var(--paper);padding:50px;border:1px solid var(--line)}}
@@ -572,7 +572,7 @@ def render_engagement_report(engagement: dict) -> str:
     .summary{{white-space:pre-wrap;border-left:4px solid var(--green);padding:4px 0 4px 16px}}footer{{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:11px}}
     @media print{{body{{background:white}}main{{border:0;margin:0;max-width:none;padding:18px}}h2{{break-after:avoid}}table,.finding{{break-inside:avoid}}}}@media(max-width:700px){{main{{margin:0;padding:24px}}header{{display:block}}.coverage{{text-align:left;margin-top:15px}}.meta,.counts,.scope{{grid-template-columns:1fr 1fr}}}}
     </style></head><body><main>
-    <header><div><div class="brand">SNIPER / MANUEL SIZMA TESTİ</div><h1>{esc(engagement.get('name'))}</h1><div>{esc(engagement.get('target_url'))}</div></div><div class="coverage">{esc(coverage.get('percent', 0))}%<small>METODOLOJİ KAPSAMI</small></div></header>
+    <header><div><div class="brand">VULKILL / MANUEL SIZMA TESTİ</div><h1>{esc(engagement.get('name'))}</h1><div>{esc(engagement.get('target_url'))}</div></div><div class="coverage">{esc(coverage.get('percent', 0))}%<small>METODOLOJİ KAPSAMI</small></div></header>
     <section class="meta"><div class="card"><small>Denetim kimliği</small><b>{esc(engagement.get('id'))}</b></div><div class="card"><small>Durum</small><b>{esc(engagement.get('status'))}</b></div><div class="card"><small>Yetki referansı</small><b>{esc(engagement.get('authorization_ref') or 'Belirtilmedi')}</b></div><div class="card"><small>Test penceresi</small><b>{esc(engagement.get('test_window') or 'Belirtilmedi')}</b></div></section>
     <section class="counts"><div class="card"><small>Kritik</small><b>{counts['critical']}</b></div><div class="card"><small>Yüksek</small><b>{counts['high']}</b></div><div class="card"><small>Orta</small><b>{counts['medium']}</b></div><div class="card"><small>Düşük</small><b>{counts['low']}</b></div></section>
     <section class="counts"><div class="card"><small>Etkin bulgu</small><b>{esc(remediation.get('active', 0))}</b></div><div class="card"><small>Geciken</small><b>{esc(remediation.get('overdue', 0))}</b></div><div class="card"><small>Yeniden test</small><b>{esc(remediation.get('retest', 0))}</b></div><div class="card"><small>Çözülen</small><b>{esc(remediation.get('resolved', 0))}</b></div></section>
@@ -582,7 +582,7 @@ def render_engagement_report(engagement: dict) -> str:
     <h2>Metodoloji kapsamı</h2><table><thead><tr><th>Kategori</th><th>Tamamlanan</th><th>Kapsam</th><th>Referans</th></tr></thead><tbody>{category_rows}</tbody></table>
     <h2>Test günlüğü</h2><table><thead><tr><th>Kontrol</th><th>Kategori</th><th>Test</th><th>Durum</th><th>Not</th></tr></thead><tbody>{test_rows}</tbody></table>
     <h2>Bağlı toplu araç kanıtları</h2><table><thead><tr><th>Kanıt kaydı</th><th>Kontrol</th><th>Araç / Biçim</th><th>Kaydedilme zamanı</th><th>Rapor SHA-256</th><th>Redakte özet</th></tr></thead><tbody>{tool_evidence_rows}</tbody></table>
-    <footer>Sniper yerel denetim kaydı · Otomatik temel tarama ve manuel test kanıtlarını birleştirir. Özel onaylı doğrulamalar trafik üretmez; yalnızca yetkili test uzmanının güvenli kanıtını kaydeder.</footer>
+    <footer>VulKill yerel denetim kaydı · Otomatik temel tarama ve manuel test kanıtlarını birleştirir. Özel onaylı doğrulamalar trafik üretmez; yalnızca yetkili test uzmanının güvenli kanıtını kaydeder.</footer>
     </main></body></html>"""
 
 

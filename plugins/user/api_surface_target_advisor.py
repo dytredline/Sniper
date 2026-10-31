@@ -29,7 +29,7 @@ class ApiSurfaceTargetAdvisorPlugin(BasePlugin):
         return PluginInfo(
             "api-surface-target-advisor",
             "1.0.0",
-            "Sniper Core",
+            "VulKill Core",
             "Hedef URL yolunda API, GraphQL veya yönetim yüzeyi bulunduğunda şema ve oran sınırı denetim danışmanı",
         )
 

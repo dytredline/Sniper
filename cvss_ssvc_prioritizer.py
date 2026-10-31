@@ -1,7 +1,7 @@
 """CVSS v3.1 / CVSS v4.0 vektörü ve CISA SSVC tabanlı bulgu önceliklendirici.
 
 Bu modül tamamen deterministiktir; ağ erişimi, alt süreç veya veritabanı yazımı
-yapmaz. Sniper bulgularının (dict) CWE / referans / kategori / önem bilgisinden
+yapmaz. VulKill bulgularının (dict) CWE / referans / kategori / önem bilgisinden
 CVSS 3.1 temel vektörü çıkarır, FIRST CVSS v3.1 belirtimine (Ek A yuvarlama
 dahil) göre birebir temel puanı hesaplar, aynı metriklerden bir CVSS 4.0 temel
 vektörü üretip FIRST resmi MacroVector algoritmasıyla (``cvss40`` modülü) sayısal
@@ -188,7 +188,7 @@ CWE_VECTOR_TABLE: dict[str, str] = {
     "CWE-530": "AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N",
 }
 
-# Sniper kategori → temsilî CWE (CWE bilgisi yoksa kullanılır).
+# VulKill kategori → temsilî CWE (CWE bilgisi yoksa kullanılır).
 CATEGORY_CWE_FALLBACK: dict[str, str] = {
     "headers": "CWE-693",
     "transport": "CWE-319",

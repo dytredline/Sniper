@@ -1,5 +1,5 @@
 'use strict';
-// Sniper taint analizi: JS/TS ayrıştırma köprüsü.
+// VulKill taint analizi: JS/TS ayrıştırma köprüsü.
 //
 // Python bu betiği hash'ini doğruladıktan sonra `node -e <içerik>` ile çalıştırır.
 // argv: [ayrıştırıcı yolu, ayrıştırıcı sha256]. Ayrıştırıcı bir kez okunur, aynı tampondan

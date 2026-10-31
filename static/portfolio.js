@@ -200,7 +200,7 @@
       `<label>Proje<select name="project_path">${projectOptions}</select></label>` +
       `<label>Durum<select name="status">${Object.entries(STATUS_FILTERS).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join("")}</select></label>` +
       `<button class="button primary" type="submit"${disabled}>İndir</button></form>` +
-      `<p class="muted">Dosya yerelde üretilir; Sniper hiçbir dış sisteme bağlanmaz. CSV hücreleri formül enjeksiyonuna karşı kaçışlanır. Her dışa aktarım işlem geçmişine yazılır.${canExport() ? "" : " Dışa aktarım için analist ya da yönetici rolü gerekir."}</p>`;
+      `<p class="muted">Dosya yerelde üretilir; VulKill hiçbir dış sisteme bağlanmaz. CSV hücreleri formül enjeksiyonuna karşı kaçışlanır. Her dışa aktarım işlem geçmişine yazılır.${canExport() ? "" : " Dışa aktarım için analist ya da yönetici rolü gerekir."}</p>`;
   }
 
   function exportUrl(values) {

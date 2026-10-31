@@ -42,7 +42,7 @@ class OpenSSLX509LoopbackAPITests(unittest.TestCase):
         cls.ca_pem = cls.base / 'ca.pem'
         _run('openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '8',
              '-keyout', str(cls.ca_key), '-out', str(cls.ca_pem),
-             '-subj', '/CN=Sniper Synthetic CA',
+             '-subj', '/CN=VulKill Synthetic CA',
              '-addext', 'basicConstraints=critical,CA:TRUE',
              '-addext', 'keyUsage=critical,keyCertSign,cRLSign')
         cls.certificates = {}

@@ -1,6 +1,6 @@
 # Security-sensitive test code
 
-Some tests must reproduce an unsafe pattern so Sniper can prove that it detects
+Some tests must reproduce an unsafe pattern so VulKill can prove that it detects
 the pattern. This code is confined to the test suite:
 
 - `test_dast_runtime_engine.py`, `test_dast_runtime_ssrf.py`, and `test_runtime_proof_open_redirect.py` start

@@ -1,6 +1,6 @@
-# Sniper Community use cases
+# VulKill Community use cases
 
-Sniper Community is a local-first defensive application-security toolkit for developers, maintainers, platform
+VulKill Community is a local-first defensive application-security toolkit for developers, maintainers, platform
 teams, and security reviewers. It combines built-in analysis with optional, readiness-gated local engines and makes
 results available through stdio MCP, the command line, or a loopback web interface.
 
@@ -43,7 +43,7 @@ This workflow is useful before a pull request, during a secure-code review, or w
 application. Start by inspecting the checked-in command contract:
 
 ```bash
-python3 scripts/sniper-project-audit --help
+python3 scripts/vulkill-project-audit --help
 ```
 
 ## Review service trust across a local repository portfolio
@@ -119,7 +119,7 @@ See [IAC-MOTORU.md](IAC-MOTORU.md) and [KONTEYNER-TARAMA.md](KONTEYNER-TARAMA.md
 | --- | --- |
 | Input | A supported, already-generated SARIF or scanner report stored as a local file. |
 | Checks | File/type and size bounds, supported schema structure, finding normalization, hashes, counts, severity aggregates, and masked or aggregate-only summaries where documented. |
-| Output | A bounded summary or imported evidence that can join Sniper's local review and triage flow. |
+| Output | A bounded summary or imported evidence that can join VulKill's local review and triage flow. |
 | Safety and approval boundary | Importing a report does not execute its originating tool, reproduce a finding, prove the scanned target was authorized, or prove the report is truthful. Report content remains untrusted input. |
 
 This workflow helps teams review results from an existing pipeline without presenting every upstream integration as
@@ -136,12 +136,12 @@ installed. An importer's presence is not an engine-readiness signal.
 
 The Community MCP flow is deliberately two-step: `prepare_action` first, then `execute_action` with the unchanged
 plan ID and SHA-256 after explicit human approval. Plans expire and are single-use. The fixed target, scope, and
-profile must be reviewed before execution; Sniper is not permission to scan an arbitrary internet host. See
+profile must be reviewed before execution; VulKill is not permission to scan an arbitrary internet host. See
 [COMMUNITY-MCP.md](COMMUNITY-MCP.md).
 
 ## Optional local engines
 
-Sniper's built-in analyzers and report parsers are included in the source tree. The rootless local profile can also
+VulKill's built-in analyzers and report parsers are included in the source tree. The rootless local profile can also
 install exactly seven pinned third-party engines:
 
 | Optional engine | Community role | Readiness boundary |
@@ -155,7 +155,7 @@ install exactly seven pinned third-party engines:
 | Grype 0.121.0 | Offline matching of the Syft SBOM against vulnerability data | The pinned binary and exact separately pinned offline database must pass readiness checks. |
 
 Installation is explicit and license-aware. A missing, unverified, or unready engine is not shown as usable merely
-because Sniper can import one of its saved reports. See [COMMUNITY-TOOLS.md](COMMUNITY-TOOLS.md) for the exact lock,
+because VulKill can import one of its saved reports. See [COMMUNITY-TOOLS.md](COMMUNITY-TOOLS.md) for the exact lock,
 platforms, offline cache flow, and third-party license boundary.
 
 ## Interpret results responsibly

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sniper uçtan uca duman testi: geçici veri diziniyle ayrı portta sunucu başlatır.
+"""VulKill uçtan uca duman testi: geçici veri diziniyle ayrı portta sunucu başlatır.
 
 Canlı veritabanına ve servise dokunmaz. Sağlık kontrolü, arayüz, tarama listesi, denetim
 kaydı doğrulaması ve yerel (ağsız) denetçi uç noktalarını çağırır; sunucuyu kapatır.
@@ -57,7 +57,7 @@ def _request(base: str, method: str, path: str, payload: dict | None = None) -> 
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Sniper duman testi (geçici veri dizini)")
+    parser = argparse.ArgumentParser(description="VulKill duman testi (geçici veri dizini)")
     parser.add_argument("--keep-data", action="store_true", help="Geçici veri dizinini silme")
     args = parser.parse_args(argv)
 

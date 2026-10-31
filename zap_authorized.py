@@ -1,6 +1,6 @@
 """Human-authorized, bounded ZAP spider plus active scan for one HTTP(S) target.
 
-This path deliberately does not depend on Sniper target or engagement records.
+This path deliberately does not depend on VulKill target or engagement records.
 The API caller supplies one target and an exact per-run authorization boolean.
 The target is still canonicalized, resolved once, pinned to the transient unit,
 and confined to one same-origin path subtree by a fixed Automation Framework

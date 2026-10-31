@@ -1,7 +1,7 @@
 """Yalıtılmış Playwright tarayıcı testi: girdi doğrulama, hedef listesi, seccomp filtresi, pinler, bulgu üretimi ve
 (pinli bwrap + Node + Chromium + playwright-core varsa) gerçek uçtan uca çalıştırma.
 
-Gerçek çalıştırma yalnız kendi 127.0.0.1 fikstürüne gider; tarayıcının başka yerel porta (Sniper) ve dış kökene
+Gerçek çalıştırma yalnız kendi 127.0.0.1 fikstürüne gider; tarayıcının başka yerel porta (VulKill) ve dış kökene
 ulaşamadığı da doğrulanır. Bileşenler yoksa atlanır."""
 from __future__ import annotations
 
@@ -209,7 +209,7 @@ class RealBrowserTests(_DataDir):
         self.assertIn("cookie_without_httponly", codes)
         first = result["facts"]["pages"][0]
         self.assertEqual(first["status"], 200)
-        # Sniper portuna ve dış kökene erişim yok: yalnız aktarıcı üzerinden seçilen hedef.
+        # VulKill portuna ve dış kökene erişim yok: yalnız aktarıcı üzerinden seçilen hedef.
         self.assertEqual(first["title"], "ENGELLENDI")
         self.assertIn("https://example.com", first["external_origins"])
         self.assertGreater(result["relay"]["connections"], 0)

@@ -1,4 +1,4 @@
-"""16. tur: bağımlılık lisans uyumu (çevrimdışı) ve Sniper öz sağlık panosu (salt okunur)."""
+"""16. tur: bağımlılık lisans uyumu (çevrimdışı) ve VulKill öz sağlık panosu (salt okunur)."""
 from __future__ import annotations
 
 import datetime as dt

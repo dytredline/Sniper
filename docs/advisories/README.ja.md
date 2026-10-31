@@ -1,19 +1,19 @@
-# Sniper スキャナーの監査で発見された検証済み脆弱性（11件）
+# VulKill スキャナーの監査で発見された検証済み脆弱性（11件）
 
 [English](README.md) | [Türkçe](README.tr.md) | **日本語** | [简体中文](README.zh-CN.md) | [한국어](README.ko.md)
 
 **セキュリティ研究者 / メンテナー:** **Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline))  
-**検出・検証エンジン:** **Sniper Security Toolkit** (`https://github.com/dytredline/Sniper`)  
+**検出・検証エンジン:** **VulKill Security Toolkit** (`https://github.com/dytredline/VulKill`)
 **検証基準:** 3層の実環境インパクト検証（`1. コードから脆弱性へと変化するメカニズム -> 2. 日常業務で発生し得る3つの重大なシナリオ（シナリオ A / B / C） -> 3. 実行・検証コマンド例およびランタイム証明（RED -> GREEN + BENIGN）`）
 
-本ディレクトリには、**Sniper** 静的・動的解析エンジンを用いたセキュリティ監査で発見された **11件の検証済みセキュリティ脆弱性**（6つのオープンソースプロジェクト対象）が収録されています。各レポートでは、**コード内のバグがどのように脆弱性へと変化するのかを誰にでもわかる平易な解説とソースコードレベルで説明**し、**日常業務で起こり得る3つの異なる重大シナリオ（`シナリオ A`、`シナリオ B`、`シナリオ C`）**、**具体的な実行・検証コマンド例**、および **エンドツーエンドのランタイム証明（`RED -> GREEN + BENIGN`）** を網羅しています。
+本ディレクトリには、**VulKill** 静的・動的解析エンジンを用いたセキュリティ監査で発見された **11件の検証済みセキュリティ脆弱性**（6つのオープンソースプロジェクト対象）が収録されています。各レポートでは、**コード内のバグがどのように脆弱性へと変化するのかを誰にでもわかる平易な解説とソースコードレベルで説明**し、**日常業務で起こり得る3つの異なる重大シナリオ（`シナリオ A`、`シナリオ B`、`シナリオ C`）**、**具体的な実行・検証コマンド例**、および **エンドツーエンドのランタイム証明（`RED -> GREEN + BENIGN`）** を網羅しています。
 
 - **エンドツーエンド・ランタイム証明レコード（11/11 PASS）:** [`other-repos-and-cua-real-world-impact-e2e-20261029.json`](other-repos-and-cua-real-world-impact-e2e-20261029.json)
-- **スキャン済みリポジトリおよび脆弱性アドバイザリ完全カタログ（8件の先行スキャン対象リポジトリ + 11件の検証済み脆弱性）:** [`../SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md`](../SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md)
+- **スキャン済みリポジトリおよび脆弱性アドバイザリ完全カタログ（8件の先行スキャン対象リポジトリ + 11件の検証済み脆弱性）:** [`../VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md`](../VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.ja.md)
 
 ---
 
-## 1. 一覧表：Sniper スキャナーで発見された11件の検証済み脆弱性（`シナリオ A / B / C` とランタイム証明）
+## 1. 一覧表：VulKill スキャナーで発見された11件の検証済み脆弱性（`シナリオ A / B / C` とランタイム証明）
 
 | # | アドバイザリ文書 & Upstream GHSA | 対象プロジェクト & コンポーネント | CWE & CVSS v3.1 | コード内で脆弱化する仕組み & 日常業務における3つの重大シナリオ（`シナリオ A / B / C`） | ランタイム証明（`RED -> GREEN`）& 検証コマンド |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -68,11 +68,11 @@
 
 ## 2. 全11件の脆弱性をローカル環境で検証・実行するコマンド
 
-以下のコマンドを使用することで、全11件の脆弱性に対する **Sniper 静的解析（SAST/IaC）の検出結果** と **隔離されたローカル環境でのランタイム証明（`RED -> GREEN + BENIGN`）** の両方を検証できます。
+以下のコマンドを使用することで、全11件の脆弱性に対する **VulKill 静的解析（SAST/IaC）の検出結果** と **隔離されたローカル環境でのランタイム証明（`RED -> GREEN + BENIGN`）** の両方を検証できます。
 
 ```bash
-# 1. Sniper ローカルプロジェクト監査の実行（SAST + IaC + SCA + ルート/境界解析）
-python3 scripts/sniper-project-audit /path/to/target-repo --format json --output audit-report.json
+# 1. VulKill ローカルプロジェクト監査の実行（SAST + IaC + SCA + ルート/境界解析）
+python3 scripts/vulkill-project-audit /path/to/target-repo --format json --output audit-report.json
 
 # 2. 11件すべての検証済みアドバイザリのエンドツーエンド・ランタイム証明サマリーを確認
 python3 -m json.tool docs/advisories/other-repos-and-cua-real-world-impact-e2e-20261029.json

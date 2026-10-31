@@ -75,7 +75,7 @@
       <div class="ai-policy">
         <p><b>Dış ajana izin (bu proje):</b> <span class="track-chip ${allowed ? "status-open" : "status-fixed"}">${allowed ? "açık" : "kapalı"}</span>
         ${admin ? `<button type="button" class="mini-button" data-ai-consent="${allowed ? "off" : "on"}">${allowed ? "İzni kaldır" : "İzin ver"}</button>` : ""}</p>
-        <p class="muted">Uyarı: dış ajan kullanıldığında kod parçaları ajanın model sağlayıcısına gönderilir; bu, Sniper'ın çevrimdışı ilkesinin dışındadır. İzin proje başınadır ve varsayılan kapalıdır.</p>
+        <p class="muted">Uyarı: dış ajan kullanıldığında kod parçaları ajanın model sağlayıcısına gönderilir; bu, VulKill'ın çevrimdışı ilkesinin dışındadır. İzin proje başınadır ve varsayılan kapalıdır.</p>
         <p><b>Otomatik uygulama:</b> ${auto.enabled ? `açık (güven ≥ ${Number(auto.min_confidence || 0.9).toFixed(2)} olan "muhtemelen yanlış alarm" önerileri yanlış alarm yapılır; geri alınabilir)` : "kapalı (her öneri analist kararı bekler)"}
         ${admin ? `<button type="button" class="mini-button" data-ai-auto="${auto.enabled ? "off" : "on"}">${auto.enabled ? "Kapat" : "Aç"}</button>` : ""}</p>
         ${agentBlock}

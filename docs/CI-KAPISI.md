@@ -59,5 +59,5 @@ Proje kökünde aranır ya da `--policy` ile verilir; bilinmeyen anahtar hatadı
 
 ## Şablonlar (`docs/ci/`)
 `github-actions-sniper-gate.yml`, `gitlab-ci-sniper.yml`, `Jenkinsfile.sniper`, `pre-commit-sniper-gate.sh`.
-Hepsi çevrimdışıdır: Sniper ve `SNIPER_OSV_DB_ROOT` (imzalı OSV arşivleri, `scripts/osv_refresh.py` ile hazırlanır)
+Hepsi çevrimdışıdır: VulKill ve `SNIPER_OSV_DB_ROOT` (imzalı OSV arşivleri, `scripts/osv_refresh.py` ile hazırlanır)
 çalıştırıcıya önceden kopyalanır.

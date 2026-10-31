@@ -1,4 +1,4 @@
-"""Yalıtılmış k6/Schemathesis: Sniper içinden yönetilen hedefler (kapsam seçenekleri, kritik yerel servisler,
+"""Yalıtılmış k6/Schemathesis: VulKill içinden yönetilen hedefler (kapsam seçenekleri, kritik yerel servisler,
 sahipliği doğrulanmış uzak hedefler), yük profilleri, API + denetim kaydı ve gerçek bubblewrap ile yalıtım
 (başka port, dış adres, yönlendirme, ev/veri dizini, yetenekler, iç içe userns, süre aşımı).
 

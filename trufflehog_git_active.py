@@ -513,7 +513,7 @@ def _run_verified(git_tree: ProjectTree, trufflehog: VerifiedExecutable) -> dict
         raise GitHistoryUnavailable("Git ikilisi kullanılamıyor.")
     data_dir = os.environ.get("SNIPER_DATA_DIR")
     if not data_dir:
-        raise GitHistoryUnavailable("Sniper veri dizini kullanılamıyor.")
+        raise GitHistoryUnavailable("VulKill veri dizini kullanılamıyor.")
     lock_path = Path(data_dir).resolve() / "trufflehog.lock"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     try:

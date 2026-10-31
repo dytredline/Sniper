@@ -74,7 +74,7 @@ class CiTestDependencyContractTests(unittest.TestCase):
         for path in (WORKFLOW, RELEASE_WORKFLOW):
             workflow = path.read_text(encoding="utf-8")
             for fragment in (
-                "docker build --tag sniper-community:${{ github.sha }} .",
+                "docker build --tag vulkill-community:${{ github.sha }} .",
                 "docker run --detach",
                 "SNIPER_ALLOW_UNAUTHENTICATED_REMOTE=1",
                 "State.Health.Status",

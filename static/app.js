@@ -3860,7 +3860,7 @@ function labScenarioIcon(type) {
 
 function labMetric(run) {
   if (run.scenario_type === "capacity_plan") return `<strong>${Number(run.results?.projected_requests || 0).toLocaleString("tr-TR")}</strong>tahmini istek`;
-  if (run.scenario_type === "lockout_plan") return `<strong>${Number(run.results?.requests_generated || 0)}</strong>Sniper isteği`;
+  if (run.scenario_type === "lockout_plan") return `<strong>${Number(run.results?.requests_generated || 0)}</strong>VulKill isteği`;
   return `<strong>MASKELİ</strong>sonuç kaydı`;
 }
 
@@ -3977,9 +3977,9 @@ async function openLabDetail(runId) {
     const calculation = run.scenario_type === "capacity_plan"
       ? `<div><small>TAHMİNİ İSTEK</small><strong>${Number(results.projected_requests || 0).toLocaleString("tr-TR")}</strong></div><div><small>TAHMİNİ EŞZAMANLILIK</small><strong>${Number(results.estimated_concurrency || 0)}</strong></div>`
       : run.scenario_type === "lockout_plan"
-        ? `<div><small>MİNİMUM GÖZLEM</small><strong>${Number(results.minimum_observation_seconds || 0)} sn</strong></div><div><small>SNIPER İSTEĞİ</small><strong>0</strong></div>`
-        : `<div><small>KANIT TÜRÜ</small><strong>Maskeli</strong></div><div><small>SNIPER İSTEĞİ</small><strong>0</strong></div>`;
-    $("#lab-detail-content").innerHTML = `<div class="lab-detail-summary"><div><small>SENARYO</small><b>${esc(labScenarioLabel(run.scenario_type))}</b></div><div><small>ORTAM</small><b>${esc(String(run.environment || "").toUpperCase())}</b></div><div><small>YETKİ REFERANSI</small><b>${esc(run.authorization_ref)}</b></div>${engagementHtml}</div><div class="lab-calculation">${calculation}</div>${labScenarioDetails(run)}<div class="lab-safety-result"><b>Güvenlik doğrulaması:</b> Sniper tarafından üretilen trafik/istek sayısı 0. Bu kayıt yalnızca planlama veya maskeli harici sonuç içerir.</div>`;
+        ? `<div><small>MİNİMUM GÖZLEM</small><strong>${Number(results.minimum_observation_seconds || 0)} sn</strong></div><div><small>VULKILL İSTEĞİ</small><strong>0</strong></div>`
+        : `<div><small>KANIT TÜRÜ</small><strong>Maskeli</strong></div><div><small>VULKILL İSTEĞİ</small><strong>0</strong></div>`;
+    $("#lab-detail-content").innerHTML = `<div class="lab-detail-summary"><div><small>SENARYO</small><b>${esc(labScenarioLabel(run.scenario_type))}</b></div><div><small>ORTAM</small><b>${esc(String(run.environment || "").toUpperCase())}</b></div><div><small>YETKİ REFERANSI</small><b>${esc(run.authorization_ref)}</b></div>${engagementHtml}</div><div class="lab-calculation">${calculation}</div>${labScenarioDetails(run)}<div class="lab-safety-result"><b>Güvenlik doğrulaması:</b> VulKill tarafından üretilen trafik/istek sayısı 0. Bu kayıt yalnızca planlama veya maskeli harici sonuç içerir.</div>`;
     form.elements.status.value = run.status;
     form.elements.evidence_summary.value = run.evidence_summary || "";
     showModal("lab-detail-modal");
@@ -4115,7 +4115,7 @@ function specialApprovalSummary(engagement) {
   const enabled = [
     ["controlled_lockout", "Kontrollü hesap kilitlenmesi"], ["staging_capacity", "Staging kapasite gözlemi"], ["redacted_data_proof", "Maskeli veri kanıtı"],
   ].filter(([key]) => approvals[key]).map(([, label]) => label);
-  return `<div class="special-approval-note"><b>Özel onaylı protokoller</b><br>${enabled.length ? enabled.map(esc).join(" · ") : "Bu denetimde özel onaylı doğrulama yok."}<br><br>Sniper bu kontroller için saldırı trafiği veya ham veri üretmez; yalnız uzman kanıtını kaydeder.</div>`;
+  return `<div class="special-approval-note"><b>Özel onaylı protokoller</b><br>${enabled.length ? enabled.map(esc).join(" · ") : "Bu denetimde özel onaylı doğrulama yok."}<br><br>VulKill bu kontroller için saldırı trafiği veya ham veri üretmez; yalnız uzman kanıtını kaydeder.</div>`;
 }
 
 function renderMethodology(engagement) {
@@ -4584,7 +4584,7 @@ $("#lab-form").addEventListener("submit", async event => {
     const payload = Object.fromEntries(form.entries());
     delete payload.plan_ack;
     await api("/api/lab-runs", { method: "POST", body: JSON.stringify(payload) });
-    showModal("lab-modal", false); await loadAll(); navigate("lab"); toast("Laboratuvar kaydı oluşturuldu; Sniper ağ isteği üretmedi.");
+    showModal("lab-modal", false); await loadAll(); navigate("lab"); toast("Laboratuvar kaydı oluşturuldu; VulKill ağ isteği üretmedi.");
   } catch (error) { toast(error.message, "error"); }
   finally { button.disabled = false; button.innerHTML = `Kaydı oluştur <span>→</span>`; }
 });

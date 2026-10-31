@@ -1,6 +1,6 @@
 """Community sürümü için MCP ürün eylemi adaptörleri.
 
-Bu modül tarayıcı ya da yeni bir analiz motoru değildir. Yerel Sniper ürün
+Bu modül tarayıcı ya da yeni bir analiz motoru değildir. Yerel VulKill ürün
 sözleşmelerini küçük, makine-okunur sonuçlara bağlar. Durum okuma dışındaki
 eylemler önce süreli bir plan üretir; plan yalnız ``user_confirmed is True`` ve
 aynı planın tam SHA-256 özetiyle bir kez yürütülebilir.
@@ -50,7 +50,7 @@ COMMUNITY_TOOLS: list[dict[str, Any]] = [
     },
     {
         "name": "community_job_status",
-        "description": "Bağlı Sniper iş kuyruğundaki bir işin güvenli durum özetini döndürür.",
+        "description": "Bağlı VulKill iş kuyruğundaki bir işin güvenli durum özetini döndürür.",
         "annotations": {"readOnlyHint": True, "destructiveHint": False,
                         "idempotentHint": True, "openWorldHint": False},
         "inputSchema": {
@@ -189,7 +189,7 @@ def _only(parameters: dict[str, Any], allowed: set[str]) -> None:
 
 
 class CommunityActions:
-    """Mevcut Sniper işlevlerini onay kapılı MCP eylemlerine uyarlar.
+    """Mevcut VulKill işlevlerini onay kapılı MCP eylemlerine uyarlar.
 
     ``store`` ve ``queue`` bilerek enjekte edilir. Eksik bağımlılık için geçici
     başarı üretilmez; ``list_capabilities`` o eylemi ``unavailable`` bildirir ve
@@ -325,7 +325,7 @@ class CommunityActions:
     def list_capabilities(self) -> dict[str, Any]:
         readiness = self._readiness()
         descriptions = {
-            "analyze_local_project": "İzinli yerel proje klasörünü Sniper ile analiz eder.",
+            "analyze_local_project": "İzinli yerel proje klasörünü VulKill ile analiz eder.",
             "generate_sbom": "İzinli yerel proje için CycloneDX 1.5 veya SPDX 2.3 SBOM üretir.",
             "compare_saved_scans": "İki kayıtlı proje denetimini veya iki kayıtlı ağ taramasını karşılaştırır.",
             "export_saved_audit": "Kayıtlı proje denetimini JSON, SARIF, HTML veya CSV olarak dışa aktarır.",

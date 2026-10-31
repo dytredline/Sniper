@@ -1,5 +1,5 @@
 'use strict';
-// Sniper sabit tarayıcı sürücüsü: bwrap sandbox'ında (ağ ad alanında yalnız lo + tek hedef aktarıcı) çalışır.
+// VulKill sabit tarayıcı sürücüsü: bwrap sandbox'ında (ağ ad alanında yalnız lo + tek hedef aktarıcı) çalışır.
 // Kullanıcı kodu çalıştırmaz; yalnız /job/plan.json'daki doğrulanmış yolları açar ve olgu toplar.
 // Yanıt gövdeleri, çerez değerleri ve form değerleri dışarı yazılmaz; yalnız sayılar, bayraklar ve kısaltılmış iletiler.
 const fs = require('node:fs');
@@ -106,7 +106,7 @@ async function main() {
     executablePath: '/opt/chromium/chrome',
     headless: true,
     // Chromium'un ad alanı sandbox'ı bwrap içinde kurulamaz; yalıtımı bwrap (ad alanları, yeteneksiz,
-    // ağsız) + Sniper seccomp filtresi sağlar. Bkz. tool_sandbox.py.
+    // ağsız) + VulKill seccomp filtresi sağlar. Bkz. tool_sandbox.py.
     chromiumSandbox: false,
     timeout: 45000,
     args: ['--disable-gpu', '--disable-dev-shm-usage', '--no-first-run', '--disable-background-networking',

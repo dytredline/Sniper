@@ -797,7 +797,7 @@ def generate_security_regression_test(
         test_filename = f"tests/security_regression_{slug}.rs"
         if cwe in {"CWE-787", "CWE-190"}:
             test_code = (
-                f"// Auto-generated Sniper security regression test ({cwe})\n"
+                f"// Auto-generated VulKill security regression test ({cwe})\n"
                 "#[test]\n"
                 f"fn test_security_regression_{slug}_checked_bounds() {{\n"
                 "    let count: usize = usize::MAX;\n"
@@ -809,7 +809,7 @@ def generate_security_regression_test(
             )
         else:
             test_code = (
-                f"// Auto-generated Sniper security regression test ({cwe})\n"
+                f"// Auto-generated VulKill security regression test ({cwe})\n"
                 "use std::path::{Component, Path};\n\n"
                 "#[test]\n"
                 f"fn test_security_regression_{slug}_rejects_traversal() {{\n"
@@ -852,7 +852,7 @@ def generate_security_regression_test(
     elif resolved_stack == "javascript":
         test_filename = f"security_regression_{slug}.test.js"
         test_code = (
-            f"// Auto-generated Sniper security regression test ({cwe})\n"
+            f"// Auto-generated VulKill security regression test ({cwe})\n"
             "const test = require(\"node:test\");\n"
             "const assert = require(\"node:assert/strict\");\n\n"
             "function enforceSecurityBoundary(input, actorId, ownerId) {\n"
@@ -874,7 +874,7 @@ def generate_security_regression_test(
         test_filename = f"test_security_regression_{slug}.py"
         if cwe in {"CWE-78", "CWE-77"}:
             test_code = (
-                f'"""Auto-generated Sniper security regression test for {cwe}."""\n'
+                f'"""Auto-generated VulKill security regression test for {cwe}."""\n'
                 "import shlex\n"
                 "import unittest\n\n\n"
                 "def build_safe_command(user_arg: str) -> list[str]:\n"
@@ -892,7 +892,7 @@ def generate_security_regression_test(
             )
         elif cwe == "CWE-22":
             test_code = (
-                f'"""Auto-generated Sniper security regression test for {cwe}."""\n'
+                f'"""Auto-generated VulKill security regression test for {cwe}."""\n'
                 "from pathlib import Path\n"
                 "import tempfile\n"
                 "import unittest\n\n\n"
@@ -912,7 +912,7 @@ def generate_security_regression_test(
             )
         elif cwe == "CWE-918":
             test_code = (
-                f'"""Auto-generated Sniper security regression test for {cwe}."""\n'
+                f'"""Auto-generated VulKill security regression test for {cwe}."""\n'
                 "import ipaddress\n"
                 "import unittest\n"
                 "from urllib.parse import urlparse\n\n\n"
@@ -943,7 +943,7 @@ def generate_security_regression_test(
             )
         elif cwe == "CWE-502":
             test_code = (
-                f'"""Auto-generated Sniper security regression test for {cwe}."""\n'
+                f'"""Auto-generated VulKill security regression test for {cwe}."""\n'
                 "import json\n"
                 "import unittest\n\n\n"
                 "def safe_deserialize_payload(raw: str) -> dict:\n"
@@ -961,7 +961,7 @@ def generate_security_regression_test(
             )
         elif cwe in {"CWE-639", "CWE-862"}:
             test_code = (
-                f'"""Auto-generated Sniper security regression test for {cwe}."""\n'
+                f'"""Auto-generated VulKill security regression test for {cwe}."""\n'
                 "import unittest\n\n\n"
                 "def fetch_owned_record(record: dict, current_user_id: str) -> dict:\n"
                 "    if not current_user_id or record.get(\"owner_id\") != current_user_id:\n"
@@ -976,7 +976,7 @@ def generate_security_regression_test(
             )
         else:
             test_code = (
-                f'"""Auto-generated Sniper security regression test for {cwe}."""\n'
+                f'"""Auto-generated VulKill security regression test for {cwe}."""\n'
                 "import unittest\n\n\n"
                 "def validate_untrusted_input(value: str) -> str:\n"
                 "    if not isinstance(value, str) or any(tok in value for tok in (\"..\", \"<script\", \"{{{{\", \"<!ENTITY\", \"'\")):\n"

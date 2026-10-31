@@ -388,7 +388,7 @@ class _LazyStore:
     `patch.object(server.STORE, "_connect", ...)` ya da `patch.object(server.STORE, "get_scan", ...)` gibi test
     kalıpları, deponun `self.<ad>` üzerinden çağırdığı yöntemlerde de etkili olur (ör. `compare_scans` →
     `self.get_scan`) ve çıkışta `delattr` ile geri alınır. `patch.object(server.STORE, "materialize", ...)` ise
-    vekilde kalır ve depoyu açtırmaz. `server.STORE.path = ...` gerçek depoya düşer, ancak canlı Sniper yolu
+    vekilde kalır ve depoyu açtırmaz. `server.STORE.path = ...` gerçek depoya düşer, ancak canlı VulKill yolu
     oluşturmadaki korumayla, depo açılmadan ve hiçbir dosyaya dokunulmadan `LiveDataProtected` ile reddedilir.
     """
 
@@ -396,7 +396,7 @@ class _LazyStore:
     _GUARDED_PATH_FIELDS = frozenset({"path", "_path"})
 
     def __init__(self, path: Path):
-        _guard_live_path(path)  # canlı Sniper yolunu içe aktarmada reddet (yalnız yol hesabı)
+        _guard_live_path(path)  # canlı VulKill yolunu içe aktarmada reddet (yalnız yol hesabı)
         object.__setattr__(self, "_path", path)
         object.__setattr__(self, "_lock", threading.Lock())
         object.__setattr__(self, "_store", None)
@@ -1175,7 +1175,7 @@ def build_lab_plan(payload: dict) -> dict:
             "estimated_concurrency": math.ceil(target_rps * baseline_latency_ms / 1000),
             "traffic_generated": False,
             "requests_generated": 0,
-            "notice": "Bu değerler planlama tahminidir; Sniper ağ trafiği üretmedi.",
+            "notice": "Bu değerler planlama tahminidir; VulKill ağ trafiği üretmedi.",
         }
     elif scenario_type == "lockout_plan":
         max_attempts = clean_number(payload, "max_attempts", minimum=1, maximum=10)
@@ -1193,7 +1193,7 @@ def build_lab_plan(payload: dict) -> dict:
             "traffic_generated": False,
             "requests_generated": 0,
             "password_list_stored": False,
-            "notice": "Yalnız sentetik hesap için kontrollü gözlem planıdır; Sniper oturum açma isteği göndermedi.",
+            "notice": "Yalnız sentetik hesap için kontrollü gözlem planıdır; VulKill oturum açma isteği göndermedi.",
         }
     else:
         evidence_hash = clean_text(payload, "evidence_hash", maximum=128, required=True)
@@ -7344,7 +7344,7 @@ def _localized_report(document: str, handler) -> str:
 def remote_bind_refusal(host: str, env: Mapping[str, str] | None = None) -> str | None:
     """Loopback dışı dinleme için iki ayrı açık onay iste; reddedilirse Türkçe gerekçe döndür.
 
-    Sniper isteğe bağlı giriş, rol ve TOTP sunar. Uzak bind için giriş etkinse ``SNIPER_REMOTE_AUTH_ACK=1``;
+    VulKill isteğe bağlı giriş, rol ve TOTP sunar. Uzak bind için giriş etkinse ``SNIPER_REMOTE_AUTH_ACK=1``;
     giriş kapalıysa daha riskli ``SNIPER_ALLOW_UNAUTHENTICATED_REMOTE=1`` gerekir. Uzak erişim için önerilen yol
     SSH tünelidir. Docker'da süreç konteyner içinde 0.0.0.0'a bağlanır; port yalnız 127.0.0.1'e yayımlanıyorsa
     (docker-compose.yml) onay orada verilir.
@@ -7368,7 +7368,7 @@ def remote_bind_refusal(host: str, env: Mapping[str, str] | None = None) -> str 
         return ("SNIPER_REMOTE_AUTH_ACK=1 verildi ama giriş etkin değil; önce 'cli_reports.py users create-admin' ile "
                 "yönetici oluşturun (uzak erişimde TLS ya da SSH tüneli kullanın).")
     if env.get("SNIPER_ALLOW_UNAUTHENTICATED_REMOTE") != "1":
-        return (f"Sniper {host} adresinde dinlemeyi reddetti: uygulamada kimlik doğrulama yok, bu adrese ağdan "
+        return (f"VulKill {host} adresinde dinlemeyi reddetti: uygulamada kimlik doğrulama yok, bu adrese ağdan "
                 "ulaşabilen herkes tüm verileri okuyup araç çalıştırabilir. Uzaktan erişim için SSH tüneli "
                 "kullanın (ör. ssh -L 8787:127.0.0.1:8787 sunucu). Docker'da portu yalnız 127.0.0.1'e "
                 "yayımlıyorsanız (docker-compose.yml: \"127.0.0.1:8787:8787\") bunu bilerek onaylamak için "
@@ -7414,7 +7414,7 @@ def main() -> None:
         PLUGIN_MANAGER.enabled = True
     PLUGIN_MANAGER.reload()
     server = SniperHTTPServer((HOST, PORT), SniperHandler)
-    print(f"Sniper hazır: http://{HOST}:{PORT}", flush=True)
+    print(f"VulKill hazır: http://{HOST}:{PORT}", flush=True)
     # Başarılı HTTP bind sonrası, durdurulan taramaları işle (rerun yapma)
     import datetime
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")

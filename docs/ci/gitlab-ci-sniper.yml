@@ -1,5 +1,5 @@
-# Sniper CI güvenlik kapısı — GitLab CI ÖRNEĞİ (.gitlab-ci.yml içine ekleyin).
-# Çevrimdışı: Sniper ve yerel OSV veritabanı çalıştırıcı imajına/makinesine önceden kopyalanmış olmalı.
+# VulKill CI güvenlik kapısı — GitLab CI ÖRNEĞİ (.gitlab-ci.yml içine ekleyin).
+# Çevrimdışı: VulKill ve yerel OSV veritabanı çalıştırıcı imajına/makinesine önceden kopyalanmış olmalı.
 sniper-gate:
   stage: test
   tags: [sniper]

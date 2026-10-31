@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-// External test harness: execute the real Sniper browser script with a small fake DOM.
+// External test harness: execute the real VulKill browser script with a small fake DOM.
 async function loadSniperApp(appJsPath, reportResponse = null) {
   const elements = new Map();
   const documentListeners = new Map();

@@ -111,7 +111,7 @@ class ExportTests(unittest.TestCase):
         doc = dependency_security.generate_cyclonedx_sbom(str(self.root), allowed_roots=(self.root.parent,))
         self.assertEqual(doc, dependency_security.generate_cyclonedx_sbom(str(self.root), allowed_roots=(self.root.parent,)))
         self.assertEqual(sbom_formats.validate_cyclonedx(doc), [])
-        self.assertEqual(doc["metadata"]["tools"][0]["vendor"], "Sniper")
+        self.assertEqual(doc["metadata"]["tools"][0]["vendor"], "VulKill")
         root_entry = doc["dependencies"][0]
         self.assertEqual(root_entry["ref"], "sniper-root")
         express = self.purl = dependency_security._package_url("npm", "express", "4.17.1")

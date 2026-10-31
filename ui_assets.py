@@ -127,14 +127,14 @@ def build(static_dir: Path, index_text: str) -> _Bundle:
             return cached
     js = None
     if len(scripts) > 1:
-        parts = ["/* Sniper arayüz paketi (ui_assets.py): index.html sırasıyla birleştirilmiş klasik betikler. */\n"]
+        parts = ["/* VulKill arayüz paketi (ui_assets.py): index.html sırasıyla birleştirilmiş klasik betikler. */\n"]
         for _, path in scripts:
             parts.append(f"/* --- {path.name} --- */\n")
             parts.append(_wrap_script(path.name, path.read_text(encoding="utf-8")))
         js = "".join(parts).encode("utf-8")
     css = None
     if len(styles) > 1:
-        parts = ["/* Sniper stil paketi (ui_assets.py): index.html sırasıyla. */\n"]
+        parts = ["/* VulKill stil paketi (ui_assets.py): index.html sırasıyla. */\n"]
         for _, path in styles:
             text = path.read_text(encoding="utf-8")
             parts.append(f"/* --- {path.name} --- */\n{text}\n")

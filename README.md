@@ -1,4 +1,4 @@
-# Sniper Community
+# VulKill Community
 
 [![M8ven Verified](https://m8ven.ai/badge/mcp/dytredline-sniper-9er1v0?v=d16a3a51d05233973aecdea96d29b90c&variant=verified)](https://m8ven.ai/mcp/dytredline-sniper-9er1v0?s=readme)
 
@@ -6,11 +6,11 @@
 
 [Project overview at ConverserAI](https://converserai.com/#sniper) · [Capabilities](docs/CAPABILITIES.md) · [Setup](#source-checkout-setup) · [Frequently asked questions](#frequently-asked-questions)
 
-Sniper Community is an open-source, local-first defensive application-security toolkit for people who build, own,
+VulKill Community is an open-source, local-first defensive application-security toolkit for people who build, own,
 or review applications, APIs, and websites. It helps teams examine supported source code through static application
 security testing (SAST), dependency manifests and SBOMs for software composition analysis (SCA), container
 artifacts, infrastructure as code (IaC), CI configuration, and saved security reports. For an owned or explicitly
-authorized web target, Sniper can also prepare a bounded runtime action for human review. Results are available to
+authorized web target, VulKill can also prepare a bounded runtime action for human review. Results are available to
 an AI client over local stdio MCP, to a person through the CLI, or in the loopback web interface.
 
 ## Capability tags
@@ -23,7 +23,7 @@ an AI client over local stdio MCP, to a person through the CLI, or in the loopba
 `Runtime Evidence` · `Multi-Repository Analysis` · `Trust Graphs` · `Artifact Provenance` · `Protocol Security` ·
 `Archive and Symlink Security` · `Binary Hardening` · `DevSecOps` · `Local First`
 
-Sniper Community v1.1 adds deeper, reviewable coverage in these areas:
+VulKill Community v1.1 adds deeper, reviewable coverage in these areas:
 
 - **Cross-framework access control:** correlate supported Rails inheritance, Spring and ASP.NET routes, GraphQL
   resolvers, object identifiers, authorization annotations, policies, roles, owners, and tenant-bound lookups.
@@ -48,18 +48,18 @@ scanning with local code and dependency review, then turn findings into a priori
 scans require the relevant engines, data, readiness checks, and explicit scope approval; they are not an unrestricted
 scan service. See the [website and API review path](docs/USE-CASES.md#plan-an-authorized-website-or-api-action).
 
-Ask an AI assistant to review your application before release. Through Sniper's local stdio MCP workflow, the AI can
+Ask an AI assistant to review your application before release. Through VulKill's local stdio MCP workflow, the AI can
 guide a supported security review, explain findings with code evidence, and help prioritize remediation while the
 same results remain available in the web interface, CLI, and CI artifacts.
 
 For Android, iOS, Flutter, and React Native projects, bring supported source code, mobile manifests, API paths,
 secrets, dependencies, SBOM data, and CI configuration into one release-preflight view. Whether you are preparing an
-**App Store or Google Play submission**, a **website or API launch**, or a **pull request**, Sniper helps surface the
+**App Store or Google Play submission**, a **website or API launch**, or a **pull request**, VulKill helps surface the
 security work worth completing before users receive the release.
 
-## What Sniper helps you inspect
+## What VulKill helps you inspect
 
-| Area | Questions Sniper helps answer |
+| Area | Questions VulKill helps answer |
 | --- | --- |
 | Source code and configuration | Which supported code paths, security patterns, secrets, and configuration choices need human review? |
 | Authorization and IDOR review | Which supported Python, JavaScript/TypeScript, Ruby/Rails, Spring, or ASP.NET routes may lack an authorization check (CWE-862), or load an object identifier without a visible user/role binding and therefore need IDOR review (CWE-639)? Rails analysis correlates cross-file controller inheritance; Spring and ASP.NET analysis correlates literal controller/minimal routes with authorization annotations or policies and subject-bound lookups. |
@@ -114,7 +114,7 @@ can start with the compact [LLM project index](llms.txt), while people can inspe
 
 ## IDOR and manual penetration testing support
 
-Sniper turns supported source code into a focused lead list for authorized manual penetration testing. Its built-in
+VulKill turns supported source code into a focused lead list for authorized manual penetration testing. Its built-in
 route and authorization inventory can flag unprotected-route candidates (CWE-862) and potential Insecure Direct
 Object Reference (IDOR) paths (CWE-639), then point the reviewer to the relevant file, route, and line of code. This
 helps a tester prioritize hands-on checks with separate test users, roles, and synthetic objects instead of starting
@@ -124,7 +124,7 @@ Each candidate is packaged for evidence-led manual validation. Within an authori
 confirm runtime behavior across separate users and roles while accounting for gateway, middleware, policy-service,
 and business-logic controls.
 
-Sniper includes built-in analyzers and report parsers in the source tree. Its rootless local profile can additionally
+VulKill includes built-in analyzers and report parsers in the source tree. Its rootless local profile can additionally
 install seven pinned, optional third-party engines: **Nuclei**, **Trivy**, **Gitleaks**, **TruffleHog**, **Opengrep**,
 **Syft**, and **Grype**. The built-in analysis remains available independently; an optional engine or profile is shown as usable
 only after its runtime, data, and license readiness checks pass.
@@ -142,7 +142,7 @@ reintroduction of the excluded delivery files.
 
 ## Release status
 
-This repository is the Sniper Community v1.1.0 source release. `COMMUNITY_VERSION` is the source-version marker;
+This repository is the VulKill Community v1.1.0 source release. `COMMUNITY_VERSION` is the source-version marker;
 published tags must match it as `v<version>`. The source is licensed under the Apache License 2.0. See
 [LICENSE](LICENSE). The publication status does not make that license grant provisional.
 
@@ -150,7 +150,7 @@ GitHub publishes an OIDC-backed provenance attestation for the source archive. A
 verify its identity and digest with:
 
 ```bash
-gh attestation verify sniper-community-1.1.0.tar.gz --repo dytredline/Sniper
+gh attestation verify vulkill-community-1.1.0.tar.gz --repo dytredline/VulKill
 ```
 
 ## What is included
@@ -169,7 +169,7 @@ gh attestation verify sniper-community-1.1.0.tar.gz --repo dytredline/Sniper
 - Manual CLI and Local web options for people who do not want an AI client in the loop.
 - Tests, checked-in rule/data assets, and contributor documentation.
 
-Sniper is a defensive aid, not proof that a system is secure. Findings, clean results, and AI suggestions require
+VulKill is a defensive aid, not proof that a system is secure. Findings, clean results, and AI suggestions require
 human review.
 
 ## Source-checkout setup
@@ -184,7 +184,7 @@ This source release
 is not a pip-installable package: run the checked-in
 entrypoints from the repository root. The rootless setup command creates `.venv`, installs the exact-version runtime
 dependencies and the locked local tool profile, then verifies the real MCP and project-audit help entrypoints without
-starting Sniper or a scanner:
+starting VulKill or a scanner:
 
 ```bash
 python3 scripts/setup-community --accept-third-party-licenses
@@ -216,7 +216,7 @@ Docker volume, run `./scripts/import-community-project /absolute/path/to/project
 After setup, the MCP help entrypoint remains directly available as:
 
 ```bash
-.venv/bin/python scripts/sniper-mcp --help
+.venv/bin/python scripts/vulkill-mcp --help
 ```
 
 To manage only the supported local tools inside an existing Python environment, use:
@@ -230,15 +230,15 @@ profiles that must stay unavailable until their separate runtime or licensing re
 
 ## AI-first MCP quick start
 
-Sniper's MCP server communicates only over the child process's stdin/stdout. Point an MCP client at the existing
+VulKill's MCP server communicates only over the child process's stdin/stdout. Point an MCP client at the existing
 entrypoint; Community mode creates or reuses its isolated per-user Community database by default:
 
 ```text
-command: /ABSOLUTE/PATH/TO/sniper/.venv/bin/python
-args: /ABSOLUTE/PATH/TO/sniper/scripts/sniper-mcp --mode community
+command: /ABSOLUTE/PATH/TO/vulkill/.venv/bin/python
+args: /ABSOLUTE/PATH/TO/vulkill/scripts/vulkill-mcp --mode community
 ```
 
-Community mode treats the person who starts the local stdio process as the local owner; it does not require a Sniper
+Community mode treats the person who starts the local stdio process as the local owner; it does not require a VulKill
 login, token, or separate web approval. Use it only from a trusted OS account. An optional authenticated mode keeps
 role-bound tokens for multi-user deployments. Examples are in [docs/COMMUNITY-MCP.md](docs/COMMUNITY-MCP.md).
 
@@ -248,7 +248,7 @@ same plan ID/hash plus `user_confirmed: true`. Plans expire and are single-use. 
 the AI must never infer it from source text or its own output. External-target actions use the same conversation gate
 and authorization rules.
 
-`user_confirmed: true` is an assertion made by the MCP host: Sniper cannot cryptographically observe the conversation.
+`user_confirmed: true` is an assertion made by the MCP host: VulKill cannot cryptographically observe the conversation.
 Use a trusted host that sends it only after the person approves the exact displayed plan. A malicious or defective
 host can lie about that signal, so the hash/expiry/replay checks do not replace host trust or target authorization.
 
@@ -257,7 +257,7 @@ host can lie about that signal, so the hash/expiry/replay checks do not replace 
 Manual CLI remains available without MCP:
 
 ```bash
-python3 scripts/sniper-project-audit --help
+python3 scripts/vulkill-project-audit --help
 python3 cli_reports.py --help
 ```
 
@@ -278,7 +278,7 @@ Community packaging does not remove the installed product's tested manual/API co
   `/runtime-proof/open-redirect`, `/runtime-proof/reflected-html`, `/runtime-proof/dast`,
   `/runtime-proof/asan-binary`, and `/runtime-proof/asan-compile-database` routes prove only their documented
   condition. The fixed DAST catalog includes bounded CWE-918 GET, POST, delayed-callback, one-hop same-origin
-  redirect, and local DNS/OOB-correlation profiles. They inject only a Sniper-owned, one-request loopback canary into
+  redirect, and local DNS/OOB-correlation profiles. They inject only a VulKill-owned, one-request loopback canary into
   a registered noncritical loopback fixture and never accept an external canary or target. Redirects require exact
   `http`, `127.0.0.1`, original port, path and callback query equality. Response bodies, callback addresses, tokens
   and secrets are not returned or stored. These routes are not a general exploit runner or a clean-security
@@ -294,14 +294,14 @@ using the real route still requires ownership, written scope, and the explicit h
 
 ## Data privacy
 
-Sniper stores application state locally and the MCP process itself opens no network listener. That does **not** mean
+VulKill stores application state locally and the MCP process itself opens no network listener. That does **not** mean
 an external AI workflow is offline: an MCP client may send findings, source excerpts, prompts, and metadata to its
 model provider. Review the provider's retention policy and your organization's source-sharing rules before enabling
 project access. Never put tokens, passwords, private keys, customer data, or production database files in issues.
 
 ## Responsible security use
 
-Use Sniper only on systems you own or have explicit authorization to assess. Confirm target ownership, written
+Use VulKill only on systems you own or have explicit authorization to assess. Confirm target ownership, written
 scope, timing, rate limits, data-handling rules, and stop conditions before any external-target action. Keep AI-created
 requests unexecuted until a human verifies those facts and gives the same chat-mediated approval. Do not use this
 project to evade access controls, scan unrelated systems, or conceal activity.
@@ -313,28 +313,28 @@ Security Maintainer: **Gökçe Baran Karakamış** ([@dytredline](https://github
 [SUPPORT.md](SUPPORT.md), public changes are recorded in [CHANGELOG.md](CHANGELOG.md), and research attribution is
 available in [CITATION.cff](CITATION.cff).
 
-### Gökçe Baran Karakamış — macOS Hardware Validation & Repositories Scanned with Sniper Report
+### Gökçe Baran Karakamış — macOS Hardware Validation & Repositories Scanned with VulKill Report
 
-The **real-hardware macOS (Apple Silicon) installation and runtime verification** performed by **Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline)) — covering both the native source setup (`python3 scripts/setup-community --core-only`) and the five-engine Docker Desktop profile (`./scripts/deploy-community-tools --accept-third-party-licenses`) — together with the detailed evidence audit, false-positive separation, how code patterns turn into exploitable risks, and real-world attack chaining across **8 open-source repositories** scanned with **Sniper**, are summarized below and published in full in [docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md](docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md) and [VALIDATION.md](VALIDATION.md).
+The **real-hardware macOS (Apple Silicon) installation and runtime verification** performed by **Gökçe Baran Karakamış** ([@dytredline](https://github.com/dytredline)) — covering both the native source setup (`python3 scripts/setup-community --core-only`) and the five-engine Docker Desktop profile (`./scripts/deploy-community-tools --accept-third-party-licenses`) — together with the detailed evidence audit, false-positive separation, how code patterns turn into exploitable risks, and real-world attack chaining across **8 open-source repositories** scanned with **VulKill**, are summarized below and published in full in [docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md](docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md) and [VALIDATION.md](VALIDATION.md).
 
 > **Important Methodology & Responsible Disclosure Note:** In static analysis, the mere presence of a dangerous sink (`exec`, `pickle.loads`, `subprocess.Popen`) or a CI/CD expression pattern does not by itself constitute a confirmed product CVE. For a finding to qualify as an exploitable vulnerability in a default or supported deployment, **reachability**, **trust-boundary crossing**, and **realistic attacker preconditions** must be proven together. Findings in projects currently undergoing Coordinated Vulnerability Disclosure (CVD / CVE-GHSA) are withheld until upstream patches are released.
 
-| Repository | Sniper SAST / IaC / SCA Summary | Verified Source Evidence & How Code Patterns Turn into Risk | Real-World Scenarios (`Scenario A / B / C`) & Attack Chaining | Combined Severity & Verification Command |
+| Repository | VulKill SAST / IaC / SCA Summary | Verified Source Evidence & How Code Patterns Turn into Risk | Real-World Scenarios (`Scenario A / B / C`) & Attack Chaining | Combined Severity & Verification Command |
 | :--- | :--- | :--- | :--- | :--- |
-| **1. `autogpt`** | `93` above threshold (`2C / 39H`); `142` triaged | **2 Critical SQLi (`obj.execute`), JWT & FastAPI `Security()` are false positives**; `jobstore_backfill.py:99` `pickle.loads(row.job_state)` + Compose default password (`RABBITMQ_DEFAULT_PASS`) + root Dockerfile are real | **Scenario A:** An attacker on the internal network using default Compose credentials writes a malicious pickle payload into `apscheduler_jobs.job_state`, achieving RCE inside the root container.<br/>**Scenario B:** Tampering with a backup or migration database triggers arbitrary code execution during restore via `jobstore_backfill.py`.<br/>**Scenario C:** Unpinned `:latest` container tags combined with root execution amplify post-exploitation impact. | **MEDIUM / HIGH (Conditional — Requires DB Write)**<br/>`python3 scripts/sniper-project-audit ./autogpt` |
-| **2. `zitadel`** | `67` above threshold (`8C / 42H`); `286` triaged | **8 Critical SQLi/`exec` findings are false positives** (parameterized `pgx` wrapper); 3 `docker.sock` mounts under `deploy/compose/`, `NODE_TLS_REJECT_UNAUTHORIZED=0` in reverse-proxy docs, and `WithInsecure()` are real | **Scenario A:** If an operator copies the `deploy/compose/` sample to production with `/var/run/docker.sock` mounted, container compromise escalates to host root.<br/>**Scenario B:** Copying `NODE_TLS_REJECT_UNAUTHORIZED=0` from the reverse-proxy sample into production enables active MITM interception of OIDC/OAuth session traffic.<br/>**Scenario C:** Leaving `cfg.Insecure = true` enabled on the OTLP telemetry pipeline transmits internal trace spans in cleartext. | **LOW / MEDIUM (Sample Deployment Hardening)**<br/>`python3 scripts/sniper-project-audit ./zitadel` |
-| **3. `nextcloud-mcp`** | `59` above threshold (`SAST 1C/6H`, `IaC 7H`, `SCA 5C/40H`) | **`token_utils.py` JWT and `login_flow.py:192` `poll_endpoint` SSRF are 100% false positives** (`initiate()` line 130 pins the origin via `_rewrite_to_nextcloud_host`); `pact.yml:93` `--branch "${{ github.head_ref }}"` is guarded by a `same-repo` condition | **Scenario A:** A compromised maintainer or insider account with branch-creation rights can inject shell metacharacters via a crafted branch name in `pact.yml:93` (external forks are blocked).<br/>**Scenario B:** Exposing the local development Compose stack with hardcoded Keycloak/Greenmail secrets to an untrusted network compromises test accounts.<br/>**Scenario C:** Outdated `pillow`/`cryptography`/`pyjwt` packages in `uv.lock` expose known transitive CVEs. | **LOW / MEDIUM (Internal CI & SCA)**<br/>`python3 scripts/sniper-project-audit ./nextcloud-mcp` |
-| **4. `mcpjam-inspector`** | `122` above threshold (`SAST 12C/8H`, `SCA 6C/96H`) | **18 of 20 C/H SAST findings (90%) are false positives** (14 JSDoc comments, 2 `.d.ts` files, 2 UI labels); `pr-preview.yml:116` `echo "branch=${{ github.event.pull_request.head.ref }}"` is guarded by a `same-repo` check | **Scenario A:** An account with in-repo branch creation permissions can manipulate `$GITHUB_OUTPUT` and the runner shell via `pr-preview.yml:116` (external fork PRs are blocked).<br/>**Scenario B:** Running dynamic evaluation helpers without sandbox isolation allows code execution in the evaluation worker environment.<br/>**Scenario C:** Vulnerable transitive dependencies (`handlebars`, `shell-quote`) in `package-lock.json` create supply-chain exposure. | **LOW / MEDIUM (Internal CI & SCA)**<br/>`python3 scripts/sniper-project-audit ./mcpjam-inspector` |
-| **5. `codebase-memory-mcp`** | `32` above threshold (`SAST 17C/7H`, `SCA 8H`) | **`store.c:2864` SQLi, `c_lsp.h:54` comment, and `kotlin_lsp.c`/`py_lsp.c` bounded buffers are false positives**; `http_server.c:668` `GET /api/browse?path=...` is protected by `localhost`-only CORS and `Host` header validation (`403`) | **Scenario A:** When `--ui` mode is enabled, another local process on the same machine can enumerate directory names via `http://127.0.0.1:<port>/api/browse?path=/` (cross-origin browser requests are blocked by CORS/Host checks).<br/>**Scenario B:** Accidentally exposing the `--ui` port through a reverse proxy or SSH port forward reveals the host directory tree.<br/>**Scenario C:** Unpatched frontend packages in `graph-ui/package-lock.json` introduce development-time dependency risk. | **LOW (Local Service Boundary)**<br/>`python3 scripts/sniper-project-audit ./codebase-memory-mcp` |
-| **6. `gitlab-mcp-server`** | `5` above threshold (`0C / 4H`) | `recorder.go:84` and `make.go:35` are false positives (shell-free `exec.Command("git", args...)`); `internal/gitlab/client.go:1416` `GITLAB_MCP_SKIP_TLS_VERIFY=true` is opt-in only | **Scenario A:** A developer enabling `GITLAB_MCP_SKIP_TLS_VERIFY=true` for a self-signed internal GitLab instance on shared Wi-Fi or VPN exposes their GitLab Personal Access Token (PAT) to active MITM interception.<br/>**Scenario B:** Leaving the flag enabled in CI/CD allows a network attacker to feed forged GitLab API responses into the MCP agent.<br/>**Scenario C:** The `pull_request_target` label workflow would become dangerous if an untrusted PR checkout step were added in the future. | **LOW (Opt-In Configuration)**<br/>`python3 scripts/sniper-project-audit ./gitlab-mcp-server` |
-| **7. `apktool-mcp`** | `16` above threshold (`SAST 1M`, `SCA 4C / 12H`) | SAST privacy warnings are false positives; **`uv.lock` contains 4 Critical and 12 High SCA dependency advisories** (`starlette 0.46.2`, `h11 0.14.0`, `fastmcp 2.2.0`, `mcp 1.6.0`) | **Scenario A:** Analyzing untrusted or malformed APKs over HTTP exposes the MCP server to denial-of-service or request-smuggling flaws in outdated `starlette`/`h11` parsers.<br/>**Scenario B:** Session and validation weaknesses in older `mcp`/`fastmcp` releases affect the local agent bridge.<br/>**Scenario C:** Outdated `certifi`/`anyio` packages weaken transport-layer reliability. | **LOW / MEDIUM (SCA Dependency Risk)**<br/>`python3 scripts/sniper-project-audit ./apktool-mcp` |
-| **8. `jadx-mcp`** | `32` above threshold (`SAST 3M`, `SCA 6C / 26H`) | Zero confirmed Critical/High SAST bugs; **`uv.lock` contains 6 Critical and 26 High SCA dependency advisories** (`authlib 1.6.8`, `cryptography 46.0.5`, `pyjwt 2.11.0`, `python-multipart 0.0.20`, `starlette 0.47.3`, `urllib3 2.5.0`) | **Scenario A:** Multipart file/APK upload endpoints using outdated `python-multipart` and `starlette` versions are vulnerable to memory/CPU exhaustion (DoS).<br/>**Scenario B:** Validation flaws in older `authlib` and `pyjwt` versions weaken token verification in authenticated MCP deployments.<br/>**Scenario C:** `urllib3` redirect header leakage and `cryptography` CVEs expose outbound requests. | **LOW / MEDIUM (SCA Dependency Risk)**<br/>`python3 scripts/sniper-project-audit ./jadx-mcp` |
+| **1. `autogpt`** | `93` above threshold (`2C / 39H`); `142` triaged | **2 Critical SQLi (`obj.execute`), JWT & FastAPI `Security()` are false positives**; `jobstore_backfill.py:99` `pickle.loads(row.job_state)` + Compose default password (`RABBITMQ_DEFAULT_PASS`) + root Dockerfile are real | **Scenario A:** An attacker on the internal network using default Compose credentials writes a malicious pickle payload into `apscheduler_jobs.job_state`, achieving RCE inside the root container.<br/>**Scenario B:** Tampering with a backup or migration database triggers arbitrary code execution during restore via `jobstore_backfill.py`.<br/>**Scenario C:** Unpinned `:latest` container tags combined with root execution amplify post-exploitation impact. | **MEDIUM / HIGH (Conditional — Requires DB Write)**<br/>`python3 scripts/vulkill-project-audit ./autogpt` |
+| **2. `zitadel`** | `67` above threshold (`8C / 42H`); `286` triaged | **8 Critical SQLi/`exec` findings are false positives** (parameterized `pgx` wrapper); 3 `docker.sock` mounts under `deploy/compose/`, `NODE_TLS_REJECT_UNAUTHORIZED=0` in reverse-proxy docs, and `WithInsecure()` are real | **Scenario A:** If an operator copies the `deploy/compose/` sample to production with `/var/run/docker.sock` mounted, container compromise escalates to host root.<br/>**Scenario B:** Copying `NODE_TLS_REJECT_UNAUTHORIZED=0` from the reverse-proxy sample into production enables active MITM interception of OIDC/OAuth session traffic.<br/>**Scenario C:** Leaving `cfg.Insecure = true` enabled on the OTLP telemetry pipeline transmits internal trace spans in cleartext. | **LOW / MEDIUM (Sample Deployment Hardening)**<br/>`python3 scripts/vulkill-project-audit ./zitadel` |
+| **3. `nextcloud-mcp`** | `59` above threshold (`SAST 1C/6H`, `IaC 7H`, `SCA 5C/40H`) | **`token_utils.py` JWT and `login_flow.py:192` `poll_endpoint` SSRF are 100% false positives** (`initiate()` line 130 pins the origin via `_rewrite_to_nextcloud_host`); `pact.yml:93` `--branch "${{ github.head_ref }}"` is guarded by a `same-repo` condition | **Scenario A:** A compromised maintainer or insider account with branch-creation rights can inject shell metacharacters via a crafted branch name in `pact.yml:93` (external forks are blocked).<br/>**Scenario B:** Exposing the local development Compose stack with hardcoded Keycloak/Greenmail secrets to an untrusted network compromises test accounts.<br/>**Scenario C:** Outdated `pillow`/`cryptography`/`pyjwt` packages in `uv.lock` expose known transitive CVEs. | **LOW / MEDIUM (Internal CI & SCA)**<br/>`python3 scripts/vulkill-project-audit ./nextcloud-mcp` |
+| **4. `mcpjam-inspector`** | `122` above threshold (`SAST 12C/8H`, `SCA 6C/96H`) | **18 of 20 C/H SAST findings (90%) are false positives** (14 JSDoc comments, 2 `.d.ts` files, 2 UI labels); `pr-preview.yml:116` `echo "branch=${{ github.event.pull_request.head.ref }}"` is guarded by a `same-repo` check | **Scenario A:** An account with in-repo branch creation permissions can manipulate `$GITHUB_OUTPUT` and the runner shell via `pr-preview.yml:116` (external fork PRs are blocked).<br/>**Scenario B:** Running dynamic evaluation helpers without sandbox isolation allows code execution in the evaluation worker environment.<br/>**Scenario C:** Vulnerable transitive dependencies (`handlebars`, `shell-quote`) in `package-lock.json` create supply-chain exposure. | **LOW / MEDIUM (Internal CI & SCA)**<br/>`python3 scripts/vulkill-project-audit ./mcpjam-inspector` |
+| **5. `codebase-memory-mcp`** | `32` above threshold (`SAST 17C/7H`, `SCA 8H`) | **`store.c:2864` SQLi, `c_lsp.h:54` comment, and `kotlin_lsp.c`/`py_lsp.c` bounded buffers are false positives**; `http_server.c:668` `GET /api/browse?path=...` is protected by `localhost`-only CORS and `Host` header validation (`403`) | **Scenario A:** When `--ui` mode is enabled, another local process on the same machine can enumerate directory names via `http://127.0.0.1:<port>/api/browse?path=/` (cross-origin browser requests are blocked by CORS/Host checks).<br/>**Scenario B:** Accidentally exposing the `--ui` port through a reverse proxy or SSH port forward reveals the host directory tree.<br/>**Scenario C:** Unpatched frontend packages in `graph-ui/package-lock.json` introduce development-time dependency risk. | **LOW (Local Service Boundary)**<br/>`python3 scripts/vulkill-project-audit ./codebase-memory-mcp` |
+| **6. `gitlab-mcp-server`** | `5` above threshold (`0C / 4H`) | `recorder.go:84` and `make.go:35` are false positives (shell-free `exec.Command("git", args...)`); `internal/gitlab/client.go:1416` `GITLAB_MCP_SKIP_TLS_VERIFY=true` is opt-in only | **Scenario A:** A developer enabling `GITLAB_MCP_SKIP_TLS_VERIFY=true` for a self-signed internal GitLab instance on shared Wi-Fi or VPN exposes their GitLab Personal Access Token (PAT) to active MITM interception.<br/>**Scenario B:** Leaving the flag enabled in CI/CD allows a network attacker to feed forged GitLab API responses into the MCP agent.<br/>**Scenario C:** The `pull_request_target` label workflow would become dangerous if an untrusted PR checkout step were added in the future. | **LOW (Opt-In Configuration)**<br/>`python3 scripts/vulkill-project-audit ./gitlab-mcp-server` |
+| **7. `apktool-mcp`** | `16` above threshold (`SAST 1M`, `SCA 4C / 12H`) | SAST privacy warnings are false positives; **`uv.lock` contains 4 Critical and 12 High SCA dependency advisories** (`starlette 0.46.2`, `h11 0.14.0`, `fastmcp 2.2.0`, `mcp 1.6.0`) | **Scenario A:** Analyzing untrusted or malformed APKs over HTTP exposes the MCP server to denial-of-service or request-smuggling flaws in outdated `starlette`/`h11` parsers.<br/>**Scenario B:** Session and validation weaknesses in older `mcp`/`fastmcp` releases affect the local agent bridge.<br/>**Scenario C:** Outdated `certifi`/`anyio` packages weaken transport-layer reliability. | **LOW / MEDIUM (SCA Dependency Risk)**<br/>`python3 scripts/vulkill-project-audit ./apktool-mcp` |
+| **8. `jadx-mcp`** | `32` above threshold (`SAST 3M`, `SCA 6C / 26H`) | Zero confirmed Critical/High SAST bugs; **`uv.lock` contains 6 Critical and 26 High SCA dependency advisories** (`authlib 1.6.8`, `cryptography 46.0.5`, `pyjwt 2.11.0`, `python-multipart 0.0.20`, `starlette 0.47.3`, `urllib3 2.5.0`) | **Scenario A:** Multipart file/APK upload endpoints using outdated `python-multipart` and `starlette` versions are vulnerable to memory/CPU exhaustion (DoS).<br/>**Scenario B:** Validation flaws in older `authlib` and `pyjwt` versions weaken token verification in authenticated MCP deployments.<br/>**Scenario C:** `urllib3` redirect header leakage and `cryptography` CVEs expose outbound requests. | **LOW / MEDIUM (SCA Dependency Risk)**<br/>`python3 scripts/vulkill-project-audit ./jadx-mcp` |
 
-For the complete file-and-line evidence audit of all 8 repositories, full `Scenario A / B / C` walkthroughs, example execution commands, and macOS verification details, see [docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md](docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md).
+For the complete file-and-line evidence audit of all 8 repositories, full `Scenario A / B / C` walkthroughs, example execution commands, and macOS verification details, see [docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md](docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md).
 
-#### Verified Vulnerabilities Discovered by Our Sniper Scanner
+#### Verified Vulnerabilities Discovered by Our VulKill Scanner
 
-Below are the **46 verified security advisories (45 original vulnerabilities + 1 upstream `CVE-2026-40295` duplicate defense-in-depth note)** discovered during our security audits with the **Sniper** static/dynamic analysis engine — complete with **How the Code Bug Turns into a Vulnerability**, **3 Diversified Real-World Critical Scenarios (`Scenario A / B / C`)**, **Example Execution Commands**, and **End-to-End Runtime Proofs (`RED -> GREEN + BENIGN`)** (see [docs/advisories/README.md](docs/advisories/README.md) and [docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md](docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md)):
+Below are the **46 verified security advisories (45 original vulnerabilities + 1 upstream `CVE-2026-40295` duplicate defense-in-depth note)** discovered during our security audits with the **VulKill** static/dynamic analysis engine — complete with **How the Code Bug Turns into a Vulnerability**, **3 Diversified Real-World Critical Scenarios (`Scenario A / B / C`)**, **Example Execution Commands**, and **End-to-End Runtime Proofs (`RED -> GREEN + BENIGN`)** (see [docs/advisories/README.md](docs/advisories/README.md) and [docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md](docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md)):
 
 | # | Advisory Document & Upstream GHSA | Target Project & Component | CWE & CVSS v3.1 | How the Bug Turns into a Vulnerability & 3 Critical Real-World Scenarios (`Scenario A / B / C`) | Runtime Proof (`RED -> GREEN`) & Example Command |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -385,9 +385,9 @@ Below are the **46 verified security advisories (45 original vulnerabilities + 1
 | **45** | [`45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md`](docs/advisories/45-VERCEL-CLIENT-08A-PREBUILT-FILEPATHMAP-DOTNEXT-ENV-SECRET-UPLOAD.md)<br/>`VERCEL-CLIENT-08A`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/vercel** (`@vercel/client <= 18.10.0`)<br/>`packages/client/src/utils/hashes.ts:115-167`<br/>`packages/client/src/deploy.ts:127-195` (`filesFromFilePathMap`) | `CWE-200 / CWE-706`<br/>**5.0 Medium**<br/>`AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N` | **How It Happens in Code:** `filesFromFilePathMap()` (`packages/client/src/utils/hashes.ts:115-167`) resolves `.vc-config.json` `filePathMap` entries via `path.resolve(cwd, filePath)` without root confinement or `.vercelignore` filtering.<br/>**Scenario A (`.next/required-server-files.json` Leak):** Uploads local `.env` secrets despite `.vercelignore`.<br/>**Scenario B (CI Prebuilt Artifact Traversal):** `../../` entries in `filePathMap` upload host secrets to `/v2/files`.<br/>**Scenario C (Build Cache Poisoning):** Restored `.vc-config.json` exfiltrates runner files. | `RED`: `outside_host_secret_uploaded: true, dotnext_env_secret_uploaded: true`<br/>`GREEN`: `path_confined_to_cwd: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
 | **46** | [`46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md`](docs/advisories/46-VERCEL-CLIENT-08B-PREBUILT-BULKREDIRECTSPATH-SYMLINK-AND-IGNORE-BYPASS.md)<br/>`VERCEL-CLIENT-08B`<br/>MITRE CNA-LR & Vercel Security Advisory | **vercel/vercel** (`@vercel/client <= 18.10.0`)<br/>`packages/client/src/utils/index.ts:116-148`<br/>`packages/client/src/deploy.ts:145-195` (`buildFileTree` / `bulkRedirectsPath`) | `CWE-59 / CWE-200`<br/>**5.0 Medium**<br/>`AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N` | **How It Happens in Code:** `buildFileTree()` (`packages/client/src/utils/index.ts:116-148`) resolves `config.bulkRedirectsPath` without `fs.realpath()` root confinement or `.vercelignore` filtering, following symlinks outside `cwd`.<br/>**Scenario A (Symlink Host Read):** Symlink inside `bulkRedirectsPath` uploads `/etc/hostname` or `~/.ssh/id_rsa`.<br/>**Scenario B (`../` Directory Walk):** Parent traversal enumerates and uploads outside directories.<br/>**Scenario C (`.vercelignore` Bypass):** Ignored secret files are uploaded in prebuilt mode. | `RED`: `symlink_target_outside_cwd_uploaded: true`<br/>`GREEN`: `realpath_confinement_and_lstat_enforced: true`<br/>`node verify_npm_stable_tarballs_20261028.mjs` |
 
-#### Kendi Sniper Taramamızda Bulduğumuz Doğrulanmış Açıklar (Vulnerabilities Discovered by Our Sniper Scanner)
+#### Kendi VulKill Taramamızda Bulduğumuz Doğrulanmış Açıklar (Vulnerabilities Discovered by Our VulKill Scanner)
 
-**Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Adım Adım Günlük Hayat Kritik Senaryoları (`Scenario A / B / C`)**, **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ve **Doğrulanmış Savunma Yamaları (`git diff`)** ile kanıtlanan **46 güvenlik kaydı (45 özgün açık + 1 üst akış duplicate)** ([docs/advisories/README.md](docs/advisories/README.md)) aşağıda yayımlanmıştır:
+**VulKill** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Adım Adım Günlük Hayat Kritik Senaryoları (`Scenario A / B / C`)**, **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ve **Doğrulanmış Savunma Yamaları (`git diff`)** ile kanıtlanan **46 güvenlik kaydı (45 özgün açık + 1 üst akış duplicate)** ([docs/advisories/README.md](docs/advisories/README.md)) aşağıda yayımlanmıştır:
 
 | # | Açık / Advisory Bağlantısı | Hedef Proje & Bileşen | CWE & CVSS v3.1 | Günlük Hayatta Yol Açtığı Kritik Senaryolar (`Scenario A / B / C`) | Çalışma Zamanı Kanıtı (`RED -> GREEN`) |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -452,9 +452,9 @@ python3 .github/scripts/validate-community-release.py
 Build the reviewable source distribution into a new directory outside this checkout, then validate that assembled tree:
 
 ```bash
-python3 scripts/build-community-source.py --output /ABSOLUTE/PATH/TO/sniper-community-source
+python3 scripts/build-community-source.py --output /ABSOLUTE/PATH/TO/vulkill-community-source
 python3 .github/scripts/validate-community-release.py \
-  --root /ABSOLUTE/PATH/TO/sniper-community-source --scan-release-tree
+  --root /ABSOLUTE/PATH/TO/vulkill-community-source --scan-release-tree
 ```
 
 The builder is offline. It copies runtime source through an explicit exclusion policy, removes closed delivery
@@ -474,29 +474,29 @@ that the engine works on your machine.
 
 ## Frequently asked questions
 
-### What is Sniper Community?
+### What is VulKill Community?
 
-Sniper Community is an Apache-2.0 open-source application-security toolkit for authorized source-code, dependency,
+VulKill Community is an Apache-2.0 open-source application-security toolkit for authorized source-code, dependency,
 SBOM, container, infrastructure, website, and API review. It combines local analyzers and saved-report workflows
 with a CLI, loopback web interface, and optional AI-assisted review through Model Context Protocol (MCP).
 The [capability map](docs/CAPABILITIES.md) distinguishes built-in checks from optional engines and manual review.
 
-### Can I use Sniper without an AI subscription?
+### Can I use VulKill without an AI subscription?
 
 Yes. The CLI and local web interface do not require an AI client. An optional MCP client can connect to its own
-model provider; that provider's availability, privacy rules, and fees are separate from Sniper's source license.
+model provider; that provider's availability, privacy rules, and fees are separate from VulKill's source license.
 Local hardware and optional third-party tools also have their own requirements.
 
-### Can Sniper be used on Windows, macOS, and Linux?
+### Can VulKill be used on Windows, macOS, and Linux?
 
 Yes. Python 3.12 is the tested interpreter. The full native five-engine setup is supported on Linux ARM64 and x86-64.
 On **macOS (Apple Silicon)**, both the native source setup (`python3 scripts/setup-community --core-only`) and the
 five-engine Docker Desktop profile (`./scripts/deploy-community-tools --accept-third-party-licenses`) are verified on
-real macOS hardware and supported (not experimental). On **Windows**, Sniper supports the native `--core-only` source
+real macOS hardware and supported (not experimental). On **Windows**, VulKill supports the native `--core-only` source
 setup (`python3 scripts/setup-community --core-only`), WSL2, and Linux containers via Docker Desktop; see the
 [deployment guide](DEPLOYMENT.md) and [validation evidence](VALIDATION.md) for platform details.
 
-### Can Sniper scan a website for vulnerabilities?
+### Can VulKill scan a website for vulnerabilities?
 
 Yes, for websites and APIs you own or are explicitly authorized to assess. Supported workflows prepare bounded
 external-target actions, combine web and TLS evidence with local source analysis, and produce reviewable findings.
@@ -504,16 +504,16 @@ The relevant engines, pinned catalogs or vulnerability data, runtime readiness, 
 See the [website/API workflow](docs/USE-CASES.md#plan-an-authorized-website-or-api-action) and
 [capability boundaries](docs/CAPABILITIES.md); no tool can guarantee discovery of every vulnerability.
 
-### Can Sniper help find and fix mobile application vulnerabilities?
+### Can VulKill help find and fix mobile application vulnerabilities?
 
-Sniper helps teams review supported Android, iOS, Flutter, and React Native code, manifests, dependencies, API
+VulKill helps teams review supported Android, iOS, Flutter, and React Native code, manifests, dependencies, API
 paths, and release configuration. It turns evidence into prioritized remediation work before an App Store or Google
 Play release. Developers can use the findings and AI-assisted explanations to prepare changes and review them.
 Coverage depends on supported inputs: this is not universal mobile-binary scanning, automatic repair of every
 vulnerability, or an app-store approval guarantee. See [mobile release preflight](#review-before-you-ship) and the
 [capability map](docs/CAPABILITIES.md).
 
-### Does Sniper replace a penetration test or guarantee a secure release?
+### Does VulKill replace a penetration test or guarantee a secure release?
 
 No. It produces evidence and review candidates, including potential authorization and IDOR issues. A qualified
 reviewer must validate material findings, test runtime controls within an authorized scope, and decide what to fix.
@@ -521,7 +521,7 @@ A clean scan is not a security certification. See the [validation evidence](VALI
 
 ### Where are the official source and installation instructions?
 
-The source repository is [dytredline/Sniper](https://github.com/dytredline/Sniper). Start with the
+The source repository is [dytredline/VulKill](https://github.com/dytredline/VulKill). Start with the
 [source-checkout setup](#source-checkout-setup) and [deployment guide](DEPLOYMENT.md) for your platform.
 The project is introduced on [ConverserAI](https://converserai.com/#sniper); the repository remains the source of
 truth for capabilities, platform support, license terms, and release evidence. Use [CITATION.cff](CITATION.cff)
@@ -529,5 +529,5 @@ when citing the software in research or published work.
 
 ## License
 
-Sniper Community is licensed under the Apache License 2.0 (`Apache-2.0`). See [LICENSE](LICENSE) for the complete
+VulKill Community is licensed under the Apache License 2.0 (`Apache-2.0`). See [LICENSE](LICENSE) for the complete
 terms. Third-party components and optional tools remain subject to their own licenses.

@@ -397,10 +397,10 @@ def run_zap_target_active(
     try:
         data_dir_raw = os.environ.get("SNIPER_DATA_DIR")
         if not data_dir_raw:
-            raise ZapUnavailable("Sniper veri dizini kullanılamıyor.")
+            raise ZapUnavailable("VulKill veri dizini kullanılamıyor.")
         data_dir = Path(data_dir_raw)
         if data_dir.is_symlink() or not data_dir.is_dir() or data_dir.stat().st_uid != os.getuid():
-            raise ZapUnavailable("Sniper veri dizini kullanılamıyor.")
+            raise ZapUnavailable("VulKill veri dizini kullanılamıyor.")
         with tempfile.TemporaryDirectory(prefix="sniper_zap_active_", dir=data_dir) as temp:
             work = Path(temp)
             (work / "plan.yaml").write_text(_plan(target_url, work), encoding="utf-8")

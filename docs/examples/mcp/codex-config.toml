@@ -1,7 +1,7 @@
-[mcp_servers.sniper-triage]
-command = "/ABSOLUTE/PATH/TO/sniper/.venv/bin/python"
+[mcp_servers.vulkill-triage]
+command = "/ABSOLUTE/PATH/TO/vulkill/.venv/bin/python"
 args = [
-  "/ABSOLUTE/PATH/TO/sniper/scripts/sniper-mcp",
+  "/ABSOLUTE/PATH/TO/vulkill/scripts/vulkill-mcp",
   "--mode",
   "community",
 ]

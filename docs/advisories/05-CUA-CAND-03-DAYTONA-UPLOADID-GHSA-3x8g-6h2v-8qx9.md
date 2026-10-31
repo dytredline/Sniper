@@ -50,9 +50,9 @@ In `trycua/cua` (`cua-compat` crate `<= 0.8.0`, `libs/cua/crates/cua-compat/src/
 
 ## 3. Example Execution & Verification Commands
 
-### 1. Auditing the Component with Sniper CLI
+### 1. Auditing the Component with VulKill CLI
 ```bash
-python3 scripts/sniper-project-audit \
+python3 scripts/vulkill-project-audit \
   --repo-path /home/community-user/targets/cua \
   --include "libs/cua/crates/cua-compat/src/daytona/objectstore.rs"
 ```

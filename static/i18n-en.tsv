@@ -325,7 +325,7 @@ S	Boş olmayan bir hariç tutma listesi boş olamaz.	A non-empty exclusion list 
 S	Boş sertifika bloğu içeren OpenSSL x509 toplu girdisi reddedildi.	OpenSSL x509 batch input containing an empty certificate block was rejected.
 S	Boş veya geçersiz sertifika bloğu kabul edilmez.	Empty or invalid certificate blocks are not accepted.
 S	Boşta ve mutlak zaman aşımı değerlerinin riskle uyumlu olduğunu doğrulayın.	Verify that idle and absolute timeout values match the risk.
-S	Bu DGX üzerindeki kullanıcı ev dizininde seçtiğiniz projeyi açık onaydan sonra tarar. Motor, SHA-256 ile sabitlenmiş Opengrep (Sniper'ın kendi kural paketi: Python, JS/TS, Go, Java için enjeksiyon, yol aşımı, SSRF, güvensiz seri çözme, zayıf kripto, sabit sır, XSS) ya da operatörün sabitlediği Semgrep'tir; doğrulanamayan ikili çalıştırılmaz. Ağ hedefi taranmaz. Sonuçta bulgu sayısı, önem dağılımı, rapor özeti ve en çok 200 bulgu (kural, CWE, proje içi göreli dosya:satır, açıklama) gösterilir; ham kod gösterilmez ve hiçbir sonuç saklanmaz. Bulgular uzman doğrulaması gerektirir.	Scans the project you select in the user's home directory on this DGX after explicit approval. The engine is SHA-256-pinned Opengrep (Sniper's own rule pack: injection, path traversal, SSRF, insecure deserialization, weak crypto, hard-coded secrets and XSS for Python, JS/TS, Go and Java) or an operator-pinned Semgrep; unverifiable binaries are not executed. No network target is scanned. The result shows the finding count, severity distribution, report summary and at most 200 findings (rule, CWE, project-relative file:line, description); raw code is not shown and no result is stored. Findings require expert verification.
+S	Bu DGX üzerindeki kullanıcı ev dizininde seçtiğiniz projeyi açık onaydan sonra tarar. Motor, SHA-256 ile sabitlenmiş Opengrep (VulKill'ın kendi kural paketi: Python, JS/TS, Go, Java için enjeksiyon, yol aşımı, SSRF, güvensiz seri çözme, zayıf kripto, sabit sır, XSS) ya da operatörün sabitlediği Semgrep'tir; doğrulanamayan ikili çalıştırılmaz. Ağ hedefi taranmaz. Sonuçta bulgu sayısı, önem dağılımı, rapor özeti ve en çok 200 bulgu (kural, CWE, proje içi göreli dosya:satır, açıklama) gösterilir; ham kod gösterilmez ve hiçbir sonuç saklanmaz. Bulgular uzman doğrulaması gerektirir.	Scans the project you select in the user's home directory on this DGX after explicit approval. The engine is SHA-256-pinned Opengrep (VulKill's own rule pack: injection, path traversal, SSRF, insecure deserialization, weak crypto, hard-coded secrets and XSS for Python, JS/TS, Go and Java) or an operator-pinned Semgrep; unverifiable binaries are not executed. No network target is scanned. The result shows the finding count, severity distribution, report summary and at most 200 findings (rule, CWE, project-relative file:line, description); raw code is not shown and no result is stored. Findings require expert verification.
 S	Bu DGX üzerindeki seçtiğim yerel TLS portunda tam testssl.sh taramasını başlatmayı onaylıyorum.	I approve starting a full testssl.sh scan on the local TLS port I selected on this DGX.
 S	Bu DGX'teki yerel proje Git geçmişinin taranmasını onaylıyorum; sır doğrulaması yapılmaz.	I approve scanning the Git history of the local project on this DGX; secrets are not verified.
 S	Bu DGX'teki yerel proje dosyalarının Gitleaks ile taranmasını onaylıyorum.	I approve scanning the local project files on this DGX with Gitleaks.
@@ -339,7 +339,7 @@ S	Bu bulgu için otomatik yama üretilemedi.	Could not generate an automatic pat
 S	Bu bulgu türü için otomatik düzeltme önerisi yok.	No automatic fix suggestion for this finding type.
 S	Bu bölüm saldırı çalıştırmaz. Üretim ortamında otomatik kapasite veya parola denemesi oluşturulamaz; acil durdurma eşikleri planın zorunlu parçasıdır.	This section does not run attacks. Automated capacity or password attempts cannot be created in production; emergency stop thresholds are a mandatory part of the plan.
 S	Bu denetimde özel onaylı doğrulama yok.	This audit has no specially approved verification.
-S	Bu değerler planlama tahminidir; Sniper ağ trafiği üretmedi.	These values are planning estimates; Sniper generated no network traffic.
+S	Bu değerler planlama tahminidir; VulKill ağ trafiği üretmedi.	These values are planning estimates; VulKill generated no network traffic.
 S	Bu dil için ayrıştırma denetimi yok; temel denge korunuyor.	No parse check for this language; basic balance is preserved.
 S	Bu dil için yalnız metinsel öneri var.	Only a text suggestion is available for this language.
 S	Bu filtrede bulgu yok	No findings in this filter
@@ -352,7 +352,7 @@ S	Bu hedef için zaten bir tarama çalışıyor.	A scan is already running for t
 S	Bu hedef türü için öneri yok.	No suggestion for this target type.
 S	Bu hedefin bağlantılarında ZAP spider taraması yapılmasını açıkça onaylıyorum.	I explicitly approve a ZAP spider scan of this target's links.
 S	Bu hedefte tamamlanmış temel tarama yok.	No completed baseline scan for this target.
-S	Bu ileti yerel Sniper kurulumunuzdan gönderildi.	This message was sent from your local Sniper installation.
+S	Bu ileti yerel VulKill kurulumunuzdan gönderildi.	This message was sent from your local VulKill installation.
 S	Bu işi kuyruğa almak için yetkiniz yok.	You are not authorized to queue this job.
 S	Bu işlem için yetkiniz yok.	You are not authorized for this action.
 S	Bu işlem yalnız izinli genel HTTP(S) kök hedefin bağlantılarını geleneksel ZAP spider ile keşfeder; aktif saldırı taraması değildir. Denetimde kayıtlı dışlanan yollar ve UTC test penceresi uygulanır. Açılışta tarama başlamaz; iki ayrı onay gerekir.	This action only discovers the links of an authorized public HTTP(S) root target with the traditional ZAP spider; it is not an active attack scan. Excluded paths recorded in the audit and the UTC test window are applied. No scan starts on opening; two separate approvals are required.
@@ -769,7 +769,7 @@ S	Entitlements dosyasında get-task-allow anahtarı true olarak bırakılmış.	
 S	Erişilebilir host	Reachable host
 S	Erişilebilir: açıklı fonksiyon kodda kullanılıyor	Reachable: the vulnerable function is used in the code
 S	Erişilebilirlik	Reachability
-S	Erişim etkisini gerçek veriyi toplamadan; kayıt sayısı, içerik hash'i ve geri döndürülemez maskeli tek örnekle kanıtlayın. Ham veri Sniper'a kaydedilmemelidir.	Prove access impact without collecting real data: with a record count, a content hash and a single irreversibly masked sample. Raw data must not be recorded in Sniper.
+S	Erişim etkisini gerçek veriyi toplamadan; kayıt sayısı, içerik hash'i ve geri döndürülemez maskeli tek örnekle kanıtlayın. Ham veri VulKill'a kaydedilmemelidir.	Prove access impact without collecting real data: with a record count, a content hash and a single irreversibly masked sample. Raw data must not be recorded in VulKill.
 S	Eski TLS sürümü kullanılıyor	An old TLS version is in use
 S	Eski ve referanssız dosyalar	Old and unreferenced files
 S	Etiket (isteğe bağlı)	Label (optional)
@@ -1030,7 +1030,7 @@ S	Girdi çok büyük (maksimum 64 KB).	Input too large (maximum 64 KB).
 S	Girdiyi metin olarak bağlayın (textContent) veya DOMPurify/escape ile arındırın; şablonda otomatik kaçışı kapatmayın.	Bind input as text (textContent) or sanitize with DOMPurify/escaping; do not turn off auto-escaping in templates.
 S	Giriş başarısız.	Sign-in failed.
 S	Giriş etkin değil.	Sign-in is not enabled.
-S	Giriş etkin değil; Sniper yerel erişimle açık. Ana sayfaya yönlendiriliyorsunuz.	Sign-in is not enabled; Sniper is open to local access. Redirecting to the home page.
+S	Giriş etkin değil; VulKill yerel erişimle açık. Ana sayfaya yönlendiriliyorsunuz.	Sign-in is not enabled; VulKill is open to local access. Redirecting to the home page.
 S	Giriş noktaları	Entry points
 S	Giriş ve yetki değişiminde oturum kimliğinin yenilendiğini doğrulayın.	Verify that the session ID is renewed on sign-in and privilege change.
 S	Giriş yap	Sign in
@@ -1157,7 +1157,7 @@ S	Harici sözleşme çağrısında (.call{value:}) durum güncellemesi öncesi E
 S	Harici tarayıcı testi	External browser test
 S	Harici test sonucu kaydıdır; ham günlük, kimlik bilgisi veya çıkarılmış veri içermez.	This is an external test result record; it contains no raw logs, credentials or extracted data.
 S	Harici, kapsamla sınırlandırılmış	External, scope-limited
-S	Harici; sonuç Sniper'a kaydedilir	External; the result is recorded in Sniper
+S	Harici; sonuç VulKill'a kaydedilir	External; the result is recorded in VulKill
 S	Hassas alan adı ile günlük çağrısı aynı satırda görüldü; değer kaydedilmedi.	A sensitive field name and a logging call were seen on the same line; the value was not recorded.
 S	Hassas alan değişkeni günlük çağrısına veriliyor; değer kaydedilmedi.	A sensitive field variable is passed to a logging call; the value was not recorded.
 S	Hassas alanları şifreleyin; parola için KDF kullanın.	Encrypt sensitive fields; use a KDF for passwords.
@@ -1373,7 +1373,7 @@ S	Kategori	Category
 S	Katı sınırlar	Hard limits
 S	Kaydedilme zamanı	Recorded at
 S	Kaydedilmiş CodeQL SARIF özeti	Saved CodeQL SARIF summary
-S	Kaydedilmiş Dependabot uyarılarını özetler; Sniper Dependabot taraması başlatmaz.	Summarizes saved Dependabot alerts; Sniper does not start a Dependabot scan.
+S	Kaydedilmiş Dependabot uyarılarını özetler; VulKill Dependabot taraması başlatmaz.	Summarizes saved Dependabot alerts; VulKill does not start a Dependabot scan.
 S	Kaydedilmiş ECS JSONL kanıt özeti	Saved ECS JSONL evidence summary
 S	Kaydedilmiş JSON rapor ve çevrimdışı DB tazelik özeti	Saved JSON report and offline DB freshness summary
 S	Kaydedilmiş JSON rapor, kural envanteri ve TLS doğrulama filtresi	Saved JSON report, rule inventory and TLS verification filter
@@ -1415,7 +1415,7 @@ S	Kaynak kod analizi için bir klasör seçin.	Select a folder for source code a
 S	Kaynak kod, yapılandırma ve kilit dosyası denetimleri	Source code, configuration and lock file audits
 S	Kaynak kodda doğrudan kullanılmıyor (dolaylı bağımlılık olabilir)	Not used directly in the source code (may be a transitive dependency)
 S	Kaynak kodda sabit sır olasılığı	Possible hard-coded secret in source code
-S	Kaynak kodu kusurları, veri akışları ve sırlar. Yerel motor SHA-256 ile sabitlenmiş Opengrep; Sniper'ın kendi kural paketi (Python, JS/TS, Go, Java) ile dosya içi fonksiyonlar arası veri akışı izlenir.	Source code flaws, data flows and secrets. The local engine is SHA-256-pinned Opengrep; intra-file inter-procedural data flow is tracked with Sniper's own rule pack (Python, JS/TS, Go, Java).
+S	Kaynak kodu kusurları, veri akışları ve sırlar. Yerel motor SHA-256 ile sabitlenmiş Opengrep; VulKill'ın kendi kural paketi (Python, JS/TS, Go, Java) ile dosya içi fonksiyonlar arası veri akışı izlenir.	Source code flaws, data flows and secrets. The local engine is SHA-256-pinned Opengrep; intra-file inter-procedural data flow is tracked with VulKill's own rule pack (Python, JS/TS, Go, Java).
 S	Kaynak kodu/CI üzerinde harici	External on source code/CI
 S	Kaynak sunucu gizleme	Origin server concealment
 S	Kaynak ve artefakt sırları	Source and artifact secrets
@@ -1528,7 +1528,7 @@ S	Kriptografi ve parola saklama	Cryptography and password storage
 S	Kritik	Critical
 S	Kritik + yüksek	Critical + high
 S	Kritik olaylar sessiz saatleri deler	Critical events break through quiet hours
-S	Kritik yerel servisler (Sniper, LLM, SSH tüneli, ssh, VNC)	Critical local services (Sniper, LLM, SSH tunnel, ssh, VNC)
+S	Kritik yerel servisler (VulKill, LLM, SSH tüneli, ssh, VNC)	Critical local services (VulKill, LLM, SSH tunnel, ssh, VNC)
 S	Kritiklik dağılımı	Criticality distribution
 S	Kuantum sonrası kriptografi (NIST PQC) ve CycloneDX CBOM envanteri	Post-quantum cryptography (NIST PQC) and CycloneDX CBOM inventory
 S	Kubernetes iş yükünde yetki yükseltme (allowPrivilegeEscalation) açık	Privilege escalation (allowPrivilegeEscalation) enabled in a Kubernetes workload
@@ -1600,7 +1600,7 @@ S	Laboratuvar	Lab
 S	Laboratuvar dosyaları	Lab files
 S	Laboratuvar kaydı bulunamadı.	Lab record not found.
 S	Laboratuvar kaydı güncellendi	Lab record updated
-S	Laboratuvar kaydı oluşturuldu; Sniper ağ isteği üretmedi.	Lab record created; Sniper generated no network requests.
+S	Laboratuvar kaydı oluşturuldu; VulKill ağ isteği üretmedi.	Lab record created; VulKill generated no network requests.
 S	Laboratuvar kaydı yanıtı farklı bir kayda ait.	Lab record response belongs to a different record.
 S	Linux sunucu CIS sertleştirme	Linux server CIS hardening
 S	Linux sunucu CIS sertleştirme (sshd, systemd, sysctl, sudoers, cron)	Linux server CIS hardening (sshd, systemd, sysctl, sudoers, cron)
@@ -1747,8 +1747,8 @@ S	OSV çevrimiçi sorgusu yalnızca yerel Tor SOCKS vekiliyle kullanılabilir.	O
 S	OSV-Scanner ile çevrimdışı npm kilit dosyası analizi	Offline npm lock file analysis with OSV-Scanner
 S	OSV-Scanner çalışma zamanı kullanılamıyor veya meşgul.	OSV-Scanner runtime is unavailable or busy.
 S	OSV-Scanner çalıştırması başarısız oldu.	OSV-Scanner run failed.
-S	OWASP WSTG 4.4 · Sniper güvenli kanıt protokolü	OWASP WSTG 4.4 · Sniper safe evidence protocol
-S	OWASP WSTG 4.5 · Sniper güvenli kanıt protokolü	OWASP WSTG 4.5 · Sniper safe evidence protocol
+S	OWASP WSTG 4.4 · VulKill güvenli kanıt protokolü	OWASP WSTG 4.4 · VulKill safe evidence protocol
+S	OWASP WSTG 4.5 · VulKill güvenli kanıt protokolü	OWASP WSTG 4.5 · VulKill safe evidence protocol
 S	OWASP WSTG kapsamını, test kanıtlarını ve uzman bulgularını tek dosyada yönetin.	Manage OWASP WSTG coverage, test evidence and expert findings in one file.
 S	OWASP kategorisi	OWASP category
 S	Okuyucu yalnız görüntüler; analist analiz/tarama başlatır, triyaj ve bulgu durumu değiştirir; yönetici araç çalıştırır, ayarları ve kullanıcıları yönetir.	Readers can only view; analysts start analyses/scans and change triage and finding status; administrators run tools and manage settings and users.
@@ -1993,25 +1993,25 @@ S	Rapor hem Trivy hem de OSV şemasına sahip; çakışan şema tespit edildi.	T
 S	Rapor içeriği	Report content
 S	Rapor türü	Report type
 S	Rapor yalnızca kullanıcı dizini veya bağlı yerel diskten okunabilir.	The report can only be read from the user directory or an attached local disk.
-S	Rapor yerel Sniper sunucusunda özetlenir; ham XML saklanmaz. İsteğe bağlı açık onayla yalnızca toplu sayılar ve bu sayıların özeti denetim/test adımına bağlanır. Özeti oluşturan hash, kaynak XML’in kimliğini veya hedefe ait olduğunu kanıtlamaz. Bu işlem Burp Suite’i çalıştırmaz ve tarama yapmaz.	The report is summarized on the local Sniper server; raw XML is not stored. With optional explicit approval, only aggregate counts and their digest are bound to the audit/test step. The digest hash does not prove the identity of the source XML or that it belongs to the target. This does not run Burp Suite and performs no scan.
+S	Rapor yerel VulKill sunucusunda özetlenir; ham XML saklanmaz. İsteğe bağlı açık onayla yalnızca toplu sayılar ve bu sayıların özeti denetim/test adımına bağlanır. Özeti oluşturan hash, kaynak XML’in kimliğini veya hedefe ait olduğunu kanıtlamaz. Bu işlem Burp Suite’i çalıştırmaz ve tarama yapmaz.	The report is summarized on the local VulKill server; raw XML is not stored. With optional explicit approval, only aggregate counts and their digest are bound to the audit/test step. The digest hash does not prove the identity of the source XML or that it belongs to the target. This does not run Burp Suite and performs no scan.
 S	Rapor yolu normal bir dosya olmalıdır.	The report path must be a regular file.
 S	Rapor yükleniyor	Loading report
 S	Rapor çok büyük	Report is too large
 S	Rapor önizlemesini aç	Open report preview
-S	Rapor özeti tarama başlatmaz. Harici öneri, aracın Sniper'da çalıştırıldığı anlamına gelmez. Profilin listelenmesi ikilinin hazır veya hedefin yetkili olduğunu kanıtlamaz.	A report summary does not start a scan. An external suggestion does not mean the tool runs in Sniper. Listing a profile does not prove that the binary is ready or the target is authorized.
+S	Rapor özeti tarama başlatmaz. Harici öneri, aracın VulKill'da çalıştırıldığı anlamına gelmez. Profilin listelenmesi ikilinin hazır veya hedefin yetkili olduğunu kanıtlamaz.	A report summary does not start a scan. An external suggestion does not mean the tool runs in VulKill. Listing a profile does not prove that the binary is ready or the target is authorized.
 S	Rapor, CSV, arşiv ve toplu indirmelerde yetki, satır sınırı, maskeleme ve kısa ömürlü bağlantı kontrollerini doğrulayın.	Verify authorization, row limits, masking and short-lived link controls for reports, CSV, archives and bulk downloads.
 S	Rapordaki ana makine adının denetim hedefiyle karşılaştırılmasını onaylıyorum	I approve comparing the hostname in the report with the audit target
 S	Raporlar	Reports
 S	Raporu aç	Open report
-S	Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Ham JSON saklanmaz. İsterseniz ayrı açık onayla yalnız toplu özeti etkin, yetkili ve maskeli kanıt onaylı bir manuel denetim test adımına bağlayabilirsiniz. Bu işlem Gitleaks’i çalıştırmaz ve tarama yapmaz; SHA-256, hedef veya rapor kaynağını kanıtlamaz.	Preview a summary of the allowed fields by sending the report to the local Sniper server. Raw JSON is not stored. With a separate explicit approval you can bind only the aggregate summary to a test step of an active, authorized manual audit with masked-evidence approval. This does not run Gitleaks and performs no scan; the SHA-256 does not prove the target or report origin.
-S	Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Ham JSON saklanmaz. İsterseniz ayrı açık onayla yalnız toplu özeti etkin, yetkili ve maskeli kanıt onaylı bir manuel denetim test adımına bağlayabilirsiniz. Bu işlem Trivy komutu çalıştırmaz ve tarama yapmaz; SHA-256, hedef veya rapor kaynağını kanıtlamaz.	Preview a summary of the allowed fields by sending the report to the local Sniper server. Raw JSON is not stored. With a separate explicit approval you can bind only the aggregate summary to a test step of an active, authorized manual audit with masked-evidence approval. This does not run a Trivy command and performs no scan; the SHA-256 does not prove the target or report origin.
-S	Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Ham JSON saklanmaz. İsterseniz ayrı açık onayla yalnız toplu özeti etkin, yetkili ve maskeli kanıt onaylı bir manuel denetim test adımına bağlayabilirsiniz. Bu işlem testssl.sh çalıştırmaz ve tarama yapmaz; SHA-256, hedef veya rapor kaynağını kanıtlamaz.	Preview a summary of the allowed fields by sending the report to the local Sniper server. Raw JSON is not stored. With a separate explicit approval you can bind only the aggregate summary to a test step of an active, authorized manual audit with masked-evidence approval. This does not run testssl.sh and performs no scan; the SHA-256 does not prove the target or report origin.
-S	Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir.	Preview a summary of the allowed fields by sending the report to the local Sniper server. The report is not stored; only the summary is shown.
-S	Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem Dependabot’u çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.	Preview a summary of the allowed fields by sending the report to the local Sniper server. The report is not stored; only the summary is shown. This does not run Dependabot, performs no scan and does not store the JSON content.
-S	Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem Qualys API çağrısı yapmaz, tarama yapmaz ve JSON içeriğini saklamaz.	Preview a summary of the allowed fields by sending the report to the local Sniper server. The report is not stored; only the summary is shown. This makes no Qualys API call, performs no scan and does not store the JSON content.
-S	Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem Semgrep çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.	Preview a summary of the allowed fields by sending the report to the local Sniper server. The report is not stored; only the summary is shown. This does not run Semgrep, performs no scan and does not store the JSON content.
-S	Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem ZAP çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.	Preview a summary of the allowed fields by sending the report to the local Sniper server. The report is not stored; only the summary is shown. This does not run ZAP, performs no scan and does not store the JSON content.
-S	Raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem npm komutu çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.	Preview a summary of the allowed fields by sending the report to the local Sniper server. The report is not stored; only the summary is shown. This runs no npm command, performs no scan and does not store the JSON content.
+S	Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Ham JSON saklanmaz. İsterseniz ayrı açık onayla yalnız toplu özeti etkin, yetkili ve maskeli kanıt onaylı bir manuel denetim test adımına bağlayabilirsiniz. Bu işlem Gitleaks’i çalıştırmaz ve tarama yapmaz; SHA-256, hedef veya rapor kaynağını kanıtlamaz.	Preview a summary of the allowed fields by sending the report to the local VulKill server. Raw JSON is not stored. With a separate explicit approval you can bind only the aggregate summary to a test step of an active, authorized manual audit with masked-evidence approval. This does not run Gitleaks and performs no scan; the SHA-256 does not prove the target or report origin.
+S	Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Ham JSON saklanmaz. İsterseniz ayrı açık onayla yalnız toplu özeti etkin, yetkili ve maskeli kanıt onaylı bir manuel denetim test adımına bağlayabilirsiniz. Bu işlem Trivy komutu çalıştırmaz ve tarama yapmaz; SHA-256, hedef veya rapor kaynağını kanıtlamaz.	Preview a summary of the allowed fields by sending the report to the local VulKill server. Raw JSON is not stored. With a separate explicit approval you can bind only the aggregate summary to a test step of an active, authorized manual audit with masked-evidence approval. This does not run a Trivy command and performs no scan; the SHA-256 does not prove the target or report origin.
+S	Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Ham JSON saklanmaz. İsterseniz ayrı açık onayla yalnız toplu özeti etkin, yetkili ve maskeli kanıt onaylı bir manuel denetim test adımına bağlayabilirsiniz. Bu işlem testssl.sh çalıştırmaz ve tarama yapmaz; SHA-256, hedef veya rapor kaynağını kanıtlamaz.	Preview a summary of the allowed fields by sending the report to the local VulKill server. Raw JSON is not stored. With a separate explicit approval you can bind only the aggregate summary to a test step of an active, authorized manual audit with masked-evidence approval. This does not run testssl.sh and performs no scan; the SHA-256 does not prove the target or report origin.
+S	Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir.	Preview a summary of the allowed fields by sending the report to the local VulKill server. The report is not stored; only the summary is shown.
+S	Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem Dependabot’u çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.	Preview a summary of the allowed fields by sending the report to the local VulKill server. The report is not stored; only the summary is shown. This does not run Dependabot, performs no scan and does not store the JSON content.
+S	Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem Qualys API çağrısı yapmaz, tarama yapmaz ve JSON içeriğini saklamaz.	Preview a summary of the allowed fields by sending the report to the local VulKill server. The report is not stored; only the summary is shown. This makes no Qualys API call, performs no scan and does not store the JSON content.
+S	Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem Semgrep çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.	Preview a summary of the allowed fields by sending the report to the local VulKill server. The report is not stored; only the summary is shown. This does not run Semgrep, performs no scan and does not store the JSON content.
+S	Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem ZAP çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.	Preview a summary of the allowed fields by sending the report to the local VulKill server. The report is not stored; only the summary is shown. This does not run ZAP, performs no scan and does not store the JSON content.
+S	Raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetini önizleyin. Rapor saklanmaz, sadece özet gösterilir. Bu işlem npm komutu çalıştırmaz, tarama yapmaz ve JSON içeriğini saklamaz.	Preview a summary of the allowed fields by sending the report to the local VulKill server. The report is not stored; only the summary is shown. This runs no npm command, performs no scan and does not store the JSON content.
 S	Raporun kökü bir JSON nesnesi olmalıdır.	The report root must be a JSON object.
 S	Rastgelelik, anahtar yönetimi, algoritma ve çalışma modu seçimlerini mimari düzeyde değerlendirin.	Evaluate randomness, key management, algorithm and mode-of-operation choices at the architecture level.
 S	Redakte kanıt özeti	Redacted evidence summary
@@ -2067,12 +2067,12 @@ S	SMTP alıcıları en çok 10 adreslik liste olmalı.	SMTP recipients must be a
 S	SMTP güvenliği starttls, ssl veya none olmalı.	SMTP security must be starttls, ssl or none.
 S	SMTP parolası en çok 1024 karakterlik tek satır olmalı.	SMTP password must be a single line of at most 1024 characters.
 S	SMTP portu 1–65535 olmalı.	SMTP port must be 1–65535.
-S	SNIPER / BAĞIMSIZ DENETİM	SNIPER / INDEPENDENT AUDIT
-S	SNIPER / MANUEL SIZMA TESTİ	SNIPER / MANUAL PENETRATION TEST
-S	SNIPER / TARAMA KARŞILAŞTIRMASI	SNIPER / SCAN COMPARISON
-S	SNIPER 2.0 · YEREL KAYNAK KOD	SNIPER 2.0 · LOCAL SOURCE CODE
-S	SNIPER İSTEĞİ	SNIPER REQUEST
-S	SNIPER'DA TANIMLI AKIŞ	FLOW DEFINED IN SNIPER
+S	VULKILL / BAĞIMSIZ DENETİM	VULKILL / INDEPENDENT AUDIT
+S	VULKILL / MANUEL SIZMA TESTİ	VULKILL / MANUAL PENETRATION TEST
+S	VULKILL / TARAMA KARŞILAŞTIRMASI	VULKILL / SCAN COMPARISON
+S	VULKILL 2.0 · YEREL KAYNAK KOD	VULKILL 2.0 · LOCAL SOURCE CODE
+S	VULKILL İSTEĞİ	VULKILL REQUEST
+S	VULKILL'DA TANIMLI AKIŞ	FLOW DEFINED IN VULKILL
 S	SNIPER_REMOTE_AUTH_ACK=1 verildi ama giriş etkin değil; önce 'cli_reports.py users create-admin' ile yönetici oluşturun (uzak erişimde TLS ya da SSH tüneli kullanın).	SNIPER_REMOTE_AUTH_ACK=1 was given but sign-in is not enabled; first create an administrator with 'cli_reports.py users create-admin' (use TLS or an SSH tunnel for remote access).
 S	SON DURUM	LATEST STATUS
 S	SON PUAN	LATEST SCORE
@@ -2154,7 +2154,7 @@ S	Semgrep/Trivy karşılaştırma	Semgrep/Trivy comparison
 S	Sentetik OpenAPI 3.x JSON şeması	Synthetic OpenAPI 3.x JSON schema
 S	Sentetik hata senaryoları ve günlük erişimi	Synthetic error scenarios and log access
 S	Sentetik hesap takma adı	Synthetic account alias
-S	Sentetik hesap veya staging; Sniper yalnız maskeli sonucu kaydeder	Synthetic account or staging; Sniper records only the masked result
+S	Sentetik hesap veya staging; VulKill yalnız maskeli sonucu kaydeder	Synthetic account or staging; VulKill records only the masked result
 S	Sentetik hesap, MFA ve kurtarma senaryoları	Synthetic account, MFA and recovery scenarios
 S	Sentetik hesaplarla test ortamında	In a test environment with synthetic accounts
 S	Sentetik kilitlenme planı	Synthetic lockout plan
@@ -2202,37 +2202,37 @@ S	Silmek için onay kutusunu işaretleyin.	Tick the approval box to delete.
 S	Site haritası kaydı:	Site map record:
 S	Site sayısı	Site count
 S	Site-map XML içeriği (XML yapıştırın)	Site-map XML content (paste XML)
-S	Sniper 2.0 — Yerel güvenlik stüdyosu	Sniper 2.0 — Local security studio
-S	Sniper Kod ve Veri Akışı Analizi	Sniper Code and Data Flow Analysis
-S	Sniper Proje Güvenlik Denetimi:	Sniper Project Security Audit:
-S	Sniper Proje Güvenlik Raporu —	Sniper Project Security Report —
-S	Sniper Temel Tarama	Sniper Baseline Scan
-S	Sniper Yerleşik Denetçiler	Sniper Built-in Auditors
-S	Sniper Yönetici Özeti —	Sniper Executive Summary —
-S	Sniper akışları	Sniper flows
-S	Sniper ana sayfa	Sniper home page
-S	Sniper bu kontroller için saldırı trafiği veya ham veri üretmez; yalnız uzman kanıtını kaydeder.	Sniper generates no attack traffic or raw data for these controls; it only records expert evidence.
-S	Sniper bulgusu	Sniper finding
-S	Sniper düşük etkili yerleşik temel taramayı, ağ erişimi olmayan kod/veri akışı analizini ve yerleşik denetçileri kendisi çalıştırır. Yerel ve izinli araç profilleri ayrı uç noktalar üzerinden, gerekli onay ve çalışma zamanı koşullarıyla çalışır.	Sniper itself runs the low-impact built-in baseline scan, code/data flow analysis without network access and the built-in auditors. Local and authorized tool profiles run via separate endpoints, with the required approvals and runtime conditions.
-S	Sniper güvenli kanıt protokolü	Sniper safe evidence protocol
-S	Sniper isteği	Sniper request
-S	Sniper için yerel ZAP pasif kontrolü	Local ZAP passive check for Sniper
-S	Sniper içinde güvenli	Safe within Sniper
-S	Sniper içinde otomatik çalışmaz	Does not run automatically inside Sniper
-S	Sniper manuel sızma testi raporu	Sniper manual penetration test report
-S	Sniper tarafından üretilen istek: 0	Requests generated by Sniper: 0
-S	Sniper tarafından üretilen trafik/istek sayısı 0. Bu kayıt yalnızca planlama veya maskeli harici sonuç içerir.	Traffic/requests generated by Sniper: 0. This record contains only planning or a masked external result.
-S	Sniper tarama karşılaştırması	Sniper scan comparison
-S	Sniper test bildirimi	Sniper test notification
-S	Sniper trafik üretmez; sistem sahibinin testi kaydedilir.	Sniper generates no traffic; the system owner's test is recorded.
-S	Sniper veri dizini geçersiz.	Sniper data directory is invalid.
-S	Sniper veri dizini yapılandırılmamış.	Sniper data directory is not configured.
-S	Sniper veri dizini yapılandırılmamış; özel kurallar saklanamıyor.	Sniper data directory is not configured; custom rules cannot be stored.
-S	Sniper yerel denetim kaydı · Otomatik temel tarama ve manuel test kanıtlarını birleştirir. Özel onaylı doğrulamalar trafik üretmez; yalnızca yetkili test uzmanının güvenli kanıtını kaydeder.	Sniper local audit record · Combines automatic baseline scan and manual test evidence. Specially approved verifications generate no traffic; they only record the authorized tester's safe evidence.
-S	Sniper çalışma alanında yönlendirmeli	Guided in the Sniper workspace
-S	Sniper — Giriş	Sniper — Sign in
-S	Sniper, düşük etkili kontroller yapar. DoS trafiği veya parola listesi çalıştırmaz.	Sniper performs low-impact checks. It does not run DoS traffic or password lists.
-S	Sniper’ın ağ isteği veya parola denemesi üretmeyeceğini; bu kaydın yalnız planlama ya da maskeli sonuç kaydı olduğunu anlıyorum.	I understand that Sniper will not generate network requests or password attempts and that this record is only a planning or masked-outcome record.
+S	VulKill 2.0 — Yerel güvenlik stüdyosu	VulKill 2.0 — Local security studio
+S	VulKill Kod ve Veri Akışı Analizi	VulKill Code and Data Flow Analysis
+S	VulKill Proje Güvenlik Denetimi:	VulKill Project Security Audit:
+S	VulKill Proje Güvenlik Raporu —	VulKill Project Security Report —
+S	VulKill Temel Tarama	VulKill Baseline Scan
+S	VulKill Yerleşik Denetçiler	VulKill Built-in Auditors
+S	VulKill Yönetici Özeti —	VulKill Executive Summary —
+S	VulKill akışları	VulKill flows
+S	VulKill ana sayfa	VulKill home page
+S	VulKill bu kontroller için saldırı trafiği veya ham veri üretmez; yalnız uzman kanıtını kaydeder.	VulKill generates no attack traffic or raw data for these controls; it only records expert evidence.
+S	VulKill bulgusu	VulKill finding
+S	VulKill düşük etkili yerleşik temel taramayı, ağ erişimi olmayan kod/veri akışı analizini ve yerleşik denetçileri kendisi çalıştırır. Yerel ve izinli araç profilleri ayrı uç noktalar üzerinden, gerekli onay ve çalışma zamanı koşullarıyla çalışır.	VulKill itself runs the low-impact built-in baseline scan, code/data flow analysis without network access and the built-in auditors. Local and authorized tool profiles run via separate endpoints, with the required approvals and runtime conditions.
+S	VulKill güvenli kanıt protokolü	VulKill safe evidence protocol
+S	VulKill isteği	VulKill request
+S	VulKill için yerel ZAP pasif kontrolü	Local ZAP passive check for VulKill
+S	VulKill içinde güvenli	Safe within VulKill
+S	VulKill içinde otomatik çalışmaz	Does not run automatically inside VulKill
+S	VulKill manuel sızma testi raporu	VulKill manual penetration test report
+S	VulKill tarafından üretilen istek: 0	Requests generated by VulKill: 0
+S	VulKill tarafından üretilen trafik/istek sayısı 0. Bu kayıt yalnızca planlama veya maskeli harici sonuç içerir.	Traffic/requests generated by VulKill: 0. This record contains only planning or a masked external result.
+S	VulKill tarama karşılaştırması	VulKill scan comparison
+S	VulKill test bildirimi	VulKill test notification
+S	VulKill trafik üretmez; sistem sahibinin testi kaydedilir.	VulKill generates no traffic; the system owner's test is recorded.
+S	VulKill veri dizini geçersiz.	VulKill data directory is invalid.
+S	VulKill veri dizini yapılandırılmamış.	VulKill data directory is not configured.
+S	VulKill veri dizini yapılandırılmamış; özel kurallar saklanamıyor.	VulKill data directory is not configured; custom rules cannot be stored.
+S	VulKill yerel denetim kaydı · Otomatik temel tarama ve manuel test kanıtlarını birleştirir. Özel onaylı doğrulamalar trafik üretmez; yalnızca yetkili test uzmanının güvenli kanıtını kaydeder.	VulKill local audit record · Combines automatic baseline scan and manual test evidence. Specially approved verifications generate no traffic; they only record the authorized tester's safe evidence.
+S	VulKill çalışma alanında yönlendirmeli	Guided in the VulKill workspace
+S	VulKill — Giriş	VulKill — Sign in
+S	VulKill, düşük etkili kontroller yapar. DoS trafiği veya parola listesi çalıştırmaz.	VulKill performs low-impact checks. It does not run DoS traffic or password lists.
+S	VulKill’ın ağ isteği veya parola denemesi üretmeyeceğini; bu kaydın yalnız planlama ya da maskeli sonuç kaydı olduğunu anlıyorum.	I understand that VulKill will not generate network requests or password attempts and that this record is only a planning or masked-outcome record.
 S	Solidity akıllı sözleşmesinde Reentrancy (yeniden giriş) riski (.call{value:})	Reentrancy risk in a Solidity smart contract (.call{value:})
 S	Solidity akıllı sözleşmesinde tx.origin ile kimlik doğrulama	Authentication with tx.origin in a Solidity smart contract
 S	Son 5 bağlantı gösteriliyor. Tam liste denetim JSON raporunda bulunur.	Showing the last 5 links. The full list is in the audit JSON report.
@@ -2701,7 +2701,7 @@ S	Yalnız JSON verisi çözülür; kod çalışmaz.	Only JSON data is decoded; n
 S	Yalnız Playwright (tarayıcı)	Playwright only (browser)
 S	Yalnız Python değişmezleri (sayı, dize, liste, sözlük) çözülür; ifade/kod çalışmaz.	Only Python literals (numbers, strings, lists, dicts) are decoded; no expressions/code run.
 S	Yalnız Schemathesis	Schemathesis only
-S	Yalnız Sniper hizmet kullanıcısının evindeki bir projenin kök package-lock.json dosyası (npm v2/v3) geçici olarak kopyalanır. npm audit, paket adları ve sürümleri için resmî npm registry güvenlik bildirimlerini sorgular. Paket kurulmaz, düzeltme veya proje betiği çalıştırılmaz; dış site hedefi taranmaz. Sonuç yalnız toplu sayıları gösterir ve saklanmaz.	Only the root package-lock.json (npm v2/v3) of a project in the Sniper service user's home is temporarily copied. npm audit queries official npm registry security advisories for package names and versions. No packages are installed and no fixes or project scripts are run; no external site target is scanned. The result only shows aggregate counts and is not stored.
+S	Yalnız VulKill hizmet kullanıcısının evindeki bir projenin kök package-lock.json dosyası (npm v2/v3) geçici olarak kopyalanır. npm audit, paket adları ve sürümleri için resmî npm registry güvenlik bildirimlerini sorgular. Paket kurulmaz, düzeltme veya proje betiği çalıştırılmaz; dış site hedefi taranmaz. Sonuç yalnız toplu sayıları gösterir ve saklanmaz.	Only the root package-lock.json (npm v2/v3) of a project in the VulKill service user's home is temporarily copied. npm audit queries official npm registry security advisories for package names and versions. No packages are installed and no fixes or project scripts are run; no external site target is scanned. The result only shows aggregate counts and is not stored.
 S	Yalnız araç kimliği, SHA-256 ve toplu sayılar saklanır. Eşleşme uzman incelemesine düşer; hedef doğrulanmış veya test geçmiş sayılmaz.	Only the tool ID, SHA-256 and aggregate counts are stored. A match goes to expert review; the target is not considered verified or the test passed.
 S	Yalnız atlananlar	Skipped only
 S	Yalnız atlananlar / yalnız değişenler modu varsayılan yapılamaz; analiz başlatırken tek seferlik seçilir.	Skipped-only / changed-only mode cannot be made the default; it is chosen once when starting an analysis.
@@ -2712,7 +2712,7 @@ S	Yalnız bu DGX üzerindeki 127.0.0.1 adresinin seçtiğiniz TLS portunu tarar.
 S	Yalnız bu DGX'teki hizmet kullanıcısının ev dizinindeki Git geçmişini, açık onayla, güncelleme ve sır doğrulaması yapmadan tarar. Uzak depo veya web sitesi taranmaz. Ham sırlar ve dosya yolları sonuçta gösterilmez; bulgular doğrulanmamıştır.	Scans only the Git history in the service user's home directory on this DGX, with explicit approval, without updates or secret verification. No remote repository or website is scanned. Raw secrets and file paths are not shown in the result; findings are unverified.
 S	Yalnız bu DGX'teki hizmet kullanıcısının ev dizinindeki yerel dosyaların sınırlı bir kopyasını açık onayla tarar. En fazla 2000 dosya, toplam 25 MB ve dosya başına 1 MB sınırı vardır; sembolik bağlar ve .git geçmişi izlenmez. Uzak depo veya web sitesi taranmaz. Güncelleme ve sır doğrulaması yapılmaz; ham sırlar ve dosya yolları sonuçta gösterilmez.	Scans a limited copy of local files only in the service user's home directory on this DGX, with explicit approval. Limits: at most 2000 files, 25 MB in total and 1 MB per file; symbolic links and .git history are not followed. No remote repository or website is scanned. No updates or secret verification; raw secrets and file paths are not shown in the result.
 S	Yalnız bu DGX'teki hizmet kullanıcısının ev dizinindeki yerel proje dosyalarının sınırlı bir kopyasını açık onayla tarar. En fazla 2000 dosya, toplam 25 MB ve dosya başına 1 MB sınırı vardır; sembolik bağlar, .git geçmişi ve yerel Gitleaks yapılandırma dosyaları izlenmez. Uzak depo veya web sitesi taranmaz. Ham sırlar ve dosya yolları sonuçta gösterilmez; bulgular uzman doğrulaması gerektirir.	Scans a limited copy of local project files only in the service user's home directory on this DGX, with explicit approval. Limits: at most 2000 files, 25 MB in total and 1 MB per file; symbolic links, .git history and local Gitleaks configuration files are not followed. No remote repository or website is scanned. Raw secrets and file paths are not shown in the result; findings require expert verification.
-S	Yalnız bu Sniper sunucusunun 127.0.0.1 üzerindeki /api/health adresine tek GET gönderilir. Örümcek, aktif saldırı ve dış hedef seçimi yoktur. Ham ZAP raporu geçici dizinde işlenir; veritabanına kaydedilmez veya arayüzde gösterilmez.	Only a single GET is sent to /api/health on 127.0.0.1 of this Sniper server. There is no spider, active attack or external target selection. The raw ZAP report is processed in a temporary directory; it is not saved to the database or shown in the UI.
+S	Yalnız bu VulKill sunucusunun 127.0.0.1 üzerindeki /api/health adresine tek GET gönderilir. Örümcek, aktif saldırı ve dış hedef seçimi yoktur. Ham ZAP raporu geçici dizinde işlenir; veritabanına kaydedilmez veya arayüzde gösterilmez.	Only a single GET is sent to /api/health on 127.0.0.1 of this VulKill server. There is no spider, active attack or external target selection. The raw ZAP report is processed in a temporary directory; it is not saved to the database or shown in the UI.
 S	Yalnız bu depo için özet senkronunu onaylıyorum	I approve the summary sync for this repository only
 S	Yalnız confirm alanı kullanılabilir.	Only the confirm field may be used.
 S	Yalnız confirm, status ve note alanları kullanılabilir.	Only the confirm, status and note fields may be used.
@@ -2739,7 +2739,7 @@ S	Yalnız onaylı loopback hedefe sınırlı yük testi	Limited load test agains
 S	Yalnız pasif	Passive only
 S	Yalnız rapor özeti	Report summary only
 S	Yalnız sabit yerel fikstürün tarayıcıda çalıştırılmasını onaylıyorum	I approve running only the fixed local fixture in the browser
-S	Yalnız sentetik hesap için kontrollü gözlem planıdır; Sniper oturum açma isteği göndermedi.	This is only a controlled observation plan for a synthetic account; Sniper sent no sign-in request.
+S	Yalnız sentetik hesap için kontrollü gözlem planıdır; VulKill oturum açma isteği göndermedi.	This is only a controlled observation plan for a synthetic account; VulKill sent no sign-in request.
 S	Yalnız sentetik hesap; parola listesi yok.	Synthetic account only; no password list.
 S	Yalnız staging/laboratuvar	Staging/lab only
 S	Yalnız username ve password alanları gönderin.	Send only the username and password fields.
@@ -2749,14 +2749,14 @@ S	Yalnız yerel proje kökündeki requirements.txt dosyası, sabitlenmiş çevri
 S	Yalnız {action: 'mark-read', ids: 'all' | [...]} kabul edilir.	Only {action: 'mark-read', ids: 'all' | [...]} is accepted.
 S	Yalnız önceden kaydedilmiş,	A limited summary of previously saved ECS-compatible JSON Lines evidence containing
 S	Yalnız önceden oluşturulmuş Playwright JSON reporter dosyasını yerel olarak özetler. Tarayıcı testi başlatmaz, dış hedefe bağlanmaz ve raporu saklamaz. Test sayısı HTTP isteği veya güvenlik açığı sayısı değildir.	Only summarizes a previously created Playwright JSON reporter file locally. It does not start a browser test, connect to an external target or store the report. The test count is not the number of HTTP requests or vulnerabilities.
-S	Yalnız üretim dışı ortamdan alınan kapasite, kesme eşiği, otomatik ölçekleme ve normale dönüş kanıtını inceleyin; Sniper trafik üretmez.	Only review capacity, cut-off threshold, autoscaling and return-to-normal evidence taken from a non-production environment; Sniper generates no traffic.
+S	Yalnız üretim dışı ortamdan alınan kapasite, kesme eşiği, otomatik ölçekleme ve normale dönüş kanıtını inceleyin; VulKill trafik üretmez.	Only review capacity, cut-off threshold, autoscaling and return-to-normal evidence taken from a non-production environment; VulKill generates no traffic.
 S	Yalnızca HTTP ve HTTPS hedefleri desteklenir.	Only HTTP and HTTPS targets are supported.
 S	Yalnızca TLSv1.2 ve TLSv1.3 protokollerine izin verin.	Allow only the TLSv1.2 and TLSv1.3 protocols.
 S	Yalnızca adresin geçerli olduğu ve herkese açık bir IP'ye yönlendiği teknik olarak kontrol edilir.	Only technically checks that the address is valid and resolves to a public IP.
 S	Yalnızca hedef ve denetim adı zorunludur. Diğer alanlar raporlama notudur; boş bırakılsa da tam kontrol kataloğu oluşturulur.	Only the target and audit name are required. Other fields are reporting notes; the full control catalog is created even if they are left empty.
 S	Yalnızca sahibi tarafından sağlanan sentetik test hesabında, kurallarda belirtilen düşük deneme tavanıyla kilitlenme ve alarm davranışını manuel olarak doğrulayın; parola listesi kullanmayın.	Manually verify lockout and alerting behavior only on an owner-provided synthetic test account, with the low attempt ceiling stated in the rules; do not use password lists.
 S	Yalnızca uygulamanın temel işlevi için zorunlu olan en az ayrıcalıklı izinleri talep edin.	Request only the least-privileged permissions required for the app's core function.
-S	Yalnızca üretim dışı ve ayrılmış ortamda, sistem sahibi tarafından çalıştırılan kapasite testinin onay, gözlem, kesme eşiği ve iyileşme kanıtını kaydedin; Sniper trafik üretmez.	Record approval, observation, cut-off threshold and recovery evidence of a capacity test run by the system owner only in a non-production, dedicated environment; Sniper generates no traffic.
+S	Yalnızca üretim dışı ve ayrılmış ortamda, sistem sahibi tarafından çalıştırılan kapasite testinin onay, gözlem, kesme eşiği ve iyileşme kanıtını kaydedin; VulKill trafik üretmez.	Record approval, observation, cut-off threshold and recovery evidence of a capacity test run by the system owner only in a non-production, dedicated environment; VulKill generates no traffic.
 S	Yalıtılmış test	Isolated test
 S	Yama	Patch
 S	Yama bir koruma ekliyor; analiz motoru bu korumayı arındırıcı saymadığı için bulgu hâlâ raporlanıyor. Korumanın doğruluğunu elle gözden geçirin.	The patch adds a protection; since the analysis engine does not count it as a sanitizer, the finding is still reported. Review the correctness of the protection manually.
@@ -2894,7 +2894,7 @@ S	Yerel proje klasörü ve açık Dockerfile tarama onayı gerekli.	A local proj
 S	Yerel proje klasörü ve açık tarama onayı gerekli.	A local project folder and explicit scan approval are required.
 S	Yerel proje klasörü, kök .tf dosya adı ve açık tarama onayı gerekli.	A local project folder, root .tf file name and explicit scan approval are required.
 S	Yerel proje klasörü, kök YAML dosya adı ve açık tarama onayı gerekli.	A local project folder, root YAML file name and explicit scan approval are required.
-S	Yerel proje taramalarını Sniper içinden belirli aralıklarla çalıştırır. Uzak hedefli araçlar zamanlanamaz; aynı planın önceki işi sürerken yenisi atlanır, servis kapalıyken kaçırılan çalıştırma açılışta bir kez telafi edilir.	Runs local project scans from within Sniper at set intervals. Tools with remote targets cannot be scheduled; a new run is skipped while the same plan's previous job is still running, and a run missed while the service was off is made up once at startup.
+S	Yerel proje taramalarını VulKill içinden belirli aralıklarla çalıştırır. Uzak hedefli araçlar zamanlanamaz; aynı planın önceki işi sürerken yenisi atlanır, servis kapalıyken kaçırılan çalıştırma açılışta bir kez telafi edilir.	Runs local project scans from within VulKill at set intervals. Tools with remote targets cannot be scheduled; a new run is skipped while the same plan's previous job is still running, and a run missed while the service was off is made up once at startup.
 S	Yerel proje tehdit modellemesi için açık onay (confirm_local: true) gereklidir.	Local project threat modeling requires explicit approval (confirm_local: true).
 S	Yerel proje yolu	Local project path
 S	Yerel proje yolu ve açık tarama onayı gerekli.	A local project path and explicit scan approval are required.
@@ -3448,8 +3448,8 @@ S	Önce iki adımlı doğrulama kurulumunu başlatın.	Start two-step verificati
 S	Önce kayıtlı bir hedef seçin, kapsam ve test sınırlarını tanımlayın.	First select a saved target and define scope and test limits.
 S	Önce manuel denetim seçin	Select a manual audit first
 S	Önce raporlama modunda ölçün, ardından nonce/hash tabanlı dar bir politika uygulayın.	Measure in report-only mode first, then apply a narrow nonce/hash-based policy.
-S	Önceden dışa aktarılmış JUnit XML raporunu yalnız yerel Sniper sunucusunda özetleyin. Şema veya hedef test edilmez; rapor saklanmaz. Testcase sayısı üretilen HTTP istek sayısı değildir. Hata ayrıntıları gösterilmez.	Summarize a previously exported JUnit XML report on the local Sniper server only. The schema or target is not tested; the report is not stored. The testcase count is not the number of generated HTTP requests. Error details are not shown.
-S	Önceden üretilmiş Nmap XML raporunu yerel Sniper sunucusunda özetleyin. Bu işlem Nmap çalıştırmaz, hedef taramaz veya raporu saklamaz. Yalnız toplam sayılar ve rapor özeti gösterilir.	Summarize a previously generated Nmap XML report on the local Sniper server. This does not run Nmap, scan a target or store the report. Only totals and the report digest are shown.
+S	Önceden dışa aktarılmış JUnit XML raporunu yalnız yerel VulKill sunucusunda özetleyin. Şema veya hedef test edilmez; rapor saklanmaz. Testcase sayısı üretilen HTTP istek sayısı değildir. Hata ayrıntıları gösterilmez.	Summarize a previously exported JUnit XML report on the local VulKill server only. The schema or target is not tested; the report is not stored. The testcase count is not the number of generated HTTP requests. Error details are not shown.
+S	Önceden üretilmiş Nmap XML raporunu yerel VulKill sunucusunda özetleyin. Bu işlem Nmap çalıştırmaz, hedef taramaz veya raporu saklamaz. Yalnız toplam sayılar ve rapor özeti gösterilir.	Summarize a previously generated Nmap XML report on the local VulKill server. This does not run Nmap, scan a target or store the report. Only totals and the report digest are shown.
 S	Önceki	Previous
 S	Önceki SBOM	Earlier SBOM
 S	Önceki analiz	Earlier analysis
@@ -3537,7 +3537,7 @@ S	Üçüncü taraflar	Third parties
 S	Üçüncü taraflar, üretim ödeme akışı, sosyal mühendislik…	Third parties, production payment flow, social engineering…
 S	Üçüncü taraflara şifresiz/aşırı veri aktarımı	Unencrypted/excessive data transfer to third parties
 S	çar	wed
-S	çıktısını yapıştırın. Sniper yalnız üç satırlık kayıt özetini işler; hedefe bağlanmaz, OpenSSL komutu çalıştırmaz veya raporu saklamaz.	. Sniper only processes the three-line record summary; it does not connect to the target, run an OpenSSL command or store the report.
+S	çıktısını yapıştırın. VulKill yalnız üç satırlık kayıt özetini işler; hedefe bağlanmaz, OpenSSL komutu çalıştırmaz veya raporu saklamaz.	. VulKill only processes the three-line record summary; it does not connect to the target, run an OpenSSL command or store the report.
 S	üretilemedi	could not be generated
 S	üretilmiş/küçültülmüş (*.min.js, *.bundle.js vb.)	generated/minified (*.min.js, *.bundle.js etc.)
 S	üçüncü taraf HTTP yanıtı	third-party HTTP response
@@ -3557,7 +3557,7 @@ S	İki farklı analiz seçin.	Select two different analyses.
 S	İki farklı kayıt seçip karşılaştırmayı başlatın.	Select two different records and start the comparison.
 S	İki farklı ve aynı projeye ait kayıtlı SBOM seçin.	Select two different saved SBOMs of the same project.
 S	İki proje analizini karşılaştır	Compare two project analyses
-S	İki raporu yerel Sniper sunucusuna göndererek izin verilen alanların özetlerini önizleyin. Raporlar saklanmaz, sadece özetler gösterilir. Bu işlem tarama yapmaz ve JSON içeriğini saklamaz.	Preview summaries of the allowed fields by sending both reports to the local Sniper server. The reports are not stored; only the summaries are shown. This performs no scan and does not store the JSON content.
+S	İki raporu yerel VulKill sunucusuna göndererek izin verilen alanların özetlerini önizleyin. Raporlar saklanmaz, sadece özetler gösterilir. Bu işlem tarama yapmaz ve JSON içeriğini saklamaz.	Preview summaries of the allowed fields by sending both reports to the local VulKill server. The reports are not stored; only the summaries are shown. This performs no scan and does not store the JSON content.
 S	İki tarama arasındaki değişim	Change between two scans
 S	İki taramayı karşılaştır	Compare two scans
 S	İkili SHA-256 uyuşmuyor	Binary SHA-256 mismatch
@@ -3981,11 +3981,11 @@ P	{0} hedef	{0} targets
 P	Bulgu var ({0})	Has findings ({0})
 P	{0} rota · {1}	{0} routes · {1}
 P	@babel/parser {0} (SHA-256 sabitli)	@babel/parser {0} (SHA-256 pinned)
-P	Sniper Proje Güvenlik Denetimi: {1}	Sniper Project Security Audit: {1}
-P	Sniper Proje Güvenlik Raporu — {0}	Sniper Project Security Report — {0}
+P	VulKill Proje Güvenlik Denetimi: {1}	VulKill Project Security Audit: {1}
+P	VulKill Proje Güvenlik Raporu — {0}	VulKill Project Security Report — {0}
 P	| Öneri: {0}	| Recommendation: {0}
 P	Biçim: {2} · Analiz: {3} · {4}	Format: {2} · Analysis: {3} · {4}
-P	Sniper Yönetici Özeti — {0}	Sniper Executive Summary — {0}
+P	VulKill Yönetici Özeti — {0}	VulKill Executive Summary — {0}
 P	{11} (yanlış alarm / risk kabulü; gizlenmez)	{11} (false positive / risk acceptance; not hidden)
 P	{12} · ortalama düzeltme süresi: {13}	{12} · average fix time: {13}
 P	{14} doğrulanmış veri akışı · {15} desen/gözden geçirme	{14} verified data flows · {15} pattern/review
@@ -4139,9 +4139,9 @@ S	Sistem sağlığı	System health
 S	Yeniden denetle	Re-check
 S	Değer	Value
 S	Ayrıntı ve öneri	Details and recommendation
-S	Salt okunur: Sniper hiçbir dosyayı silmez ya da düzeltmez, yalnız öneri verir. Günlük denetimde sorun bulunursa bildirim merkezine uyarı düşer.	Read-only: Sniper never deletes or fixes any file; it only recommends. If the daily check finds a problem, an alert is posted to the notification center.
-S	Sniper öz sağlık uyarıları (günlük denetim)	Sniper self-health alerts (daily check)
-S	Salt okunur rapor: Sniper hiçbir dosyayı silmez ya da düzeltmez; yalnız öneri verir.	Read-only report: Sniper never deletes or fixes any file; it only recommends.
+S	Salt okunur: VulKill hiçbir dosyayı silmez ya da düzeltmez, yalnız öneri verir. Günlük denetimde sorun bulunursa bildirim merkezine uyarı düşer.	Read-only: VulKill never deletes or fixes any file; it only recommends. If the daily check finds a problem, an alert is posted to the notification center.
+S	VulKill öz sağlık uyarıları (günlük denetim)	VulKill self-health alerts (daily check)
+S	Salt okunur rapor: VulKill hiçbir dosyayı silmez ya da düzeltmez; yalnız öneri verir.	Read-only report: VulKill never deletes or fixes any file; it only recommends.
 S	Denetleniyor…	Checking…
 S	Sağlık raporu alınamadı	Could not get the health report
 P	Sağlık raporu alınamadı ({0})	Could not get the health report ({0})
@@ -4203,10 +4203,10 @@ P	kurulu değil / sabitlenmemiş: {0}	not installed / not pinned: {0}
 P	yeni sürüm {0} kurulu, servis henüz yeniden başlatılmadı	new version {0} is installed, the service has not been restarted yet
 P	son güncelleme: {0} · {1}	last update: {0} · {1}
 P	imza: {0}	signature: {0}
-S	Sniper yalnız yerel/tünel erişimiyle korunuyor.	Sniper is protected only by local/tunnel access.
+S	VulKill yalnız yerel/tünel erişimiyle korunuyor.	VulKill is protected only by local/tunnel access.
 P	TOTP kapalı yönetici: {0}	Administrators without TOTP: {0}
 S	tüm yöneticilerde TOTP açık	TOTP is enabled for all administrators
-S	Eski rapor/yedekleri gözden geçirin ya da diski genişletin; Sniper kendiliğinden hiçbir şey silmez.	Review old reports/backups or enlarge the disk; Sniper never deletes anything on its own.
+S	Eski rapor/yedekleri gözden geçirin ya da diski genişletin; VulKill kendiliğinden hiçbir şey silmez.	Review old reports/backups or enlarge the disk; VulKill never deletes anything on its own.
 S	Eski yedekleri arşivleyin.	Archive old backups.
 S	Bütünlük hatasında servisi durdurup en son yedekten geri dönmeyi değerlendirin (update.py --rollback ya da DB yedeği).	On an integrity error, consider stopping the service and restoring the latest backup (update.py --rollback or a DB backup).
 S	Veritabanı büyük; eski analizleri arşivlemeyi düşünün.	The database is large; consider archiving old analyses.
@@ -4223,8 +4223,8 @@ S	Servisi yeniden başlatın (systemctl --user restart sniper.service).	Restart 
 S	Güncelleme günlüğünü inceleyin; paket doğrulaması ve sağlık denetimi neden başarısız oldu?	Review the update log; why did package verification or the health check fail?
 S	Girişi açın: cli_reports.py users create-admin --username <ad>.	Enable login: cli_reports.py users create-admin --username <name>.
 S	Yönetici hesaplarında iki adımlı doğrulamayı (TOTP) açın.	Enable two-factor authentication (TOTP) on administrator accounts.
-S	İlk girişte parolayı değiştirin ve bu dosyayı silin (Sniper dosyayı kendisi silmez).	Change the password at first login and delete this file (Sniper does not delete it itself).
-P	Sniper öz sağlık: {0} sorun	Sniper self-health: {0} problems
+S	İlk girişte parolayı değiştirin ve bu dosyayı silin (VulKill dosyayı kendisi silmez).	Change the password at first login and delete this file (VulKill does not delete it itself).
+P	VulKill öz sağlık: {0} sorun	VulKill self-health: {0} problems
 S	Öz sağlık panosunda uyarı/sorun var; ayrıntı İşlem geçmişi › Sistem sağlığı kartında.	The self-health dashboard has warnings/problems; details are on the Activity log › System health card.
 S	Bağımlılık lisansları	Dependency licenses
 S	Bağımlılık lisans uyumu	Dependency license compliance
@@ -4515,7 +4515,7 @@ S	Son tarihi geçen bulgular için hatırlatma, süresi dolan risk kabulleri iç
 S	Politikayı yalnız yönetici değiştirebilir.	Only an administrator can change the policy.
 S	Tüm projeler	All projects
 S	İndir	Download
-S	Dosya yerelde üretilir; Sniper hiçbir dış sisteme bağlanmaz.	The file is generated locally; Sniper does not connect to any external system.
+S	Dosya yerelde üretilir; VulKill hiçbir dış sisteme bağlanmaz.	The file is generated locally; VulKill does not connect to any external system.
 S	CSV hücreleri formül enjeksiyonuna karşı kaçışlanır.	CSV cells are escaped against formula injection.
 S	Her dışa aktarım işlem geçmişine yazılır.	Every export is written to the activity log.
 S	Dışa aktarım için analist ya da yönetici rolü gerekir.	Export requires the analyst or administrator role.
@@ -4855,7 +4855,7 @@ S	Geçici dosyalar ve önbellek	Temporary files and cache
 S	Birikmiş veritabanı yedekleri	Accumulated database backups
 S	Yedek dosya izinleri	Backup file permissions
 S	İşlem geçmişi › Saklama ve yedekler bölümünden önizleyip döndürmeyi açın.	Preview and enable rotation under Activity › Retention and backups.
-S	Bu yedeklerin izinlerini 0600 yapın (chmod 600); Sniper izinleri kendisi değiştirmez.	Set these backups' permissions to 0600 (chmod 600); Sniper does not change permissions itself.
+S	Bu yedeklerin izinlerini 0600 yapın (chmod 600); VulKill izinleri kendisi değiştirmez.	Set these backups' permissions to 0600 (chmod 600); VulKill does not change permissions itself.
 S	Saklama politikası kapalı; önce politikayı etkinleştirin (önizleme her zaman yapılabilir).	The retention policy is off; enable it first (a preview is always possible).
 S	Plan önizlemeden sonra değişti; yeniden önizleyip onaylayın.	The plan changed after the preview; preview again and confirm.
 S	confirm: true ve önizlemedeki plan_id gönderin.	Send confirm: true and the plan_id from the preview.
@@ -5297,7 +5297,7 @@ S	AI triyaj önerileri	AI triage suggestions
 S	Dış ajana izin (bu proje):	External agent access (this project):
 S	İzni kaldır	Revoke access
 S	İzin ver	Grant access
-S	Uyarı: dış ajan kullanıldığında kod parçaları ajanın model sağlayıcısına gönderilir; bu, Sniper'ın çevrimdışı ilkesinin dışındadır. İzin proje başınadır ve varsayılan kapalıdır.	Warning: when an external agent is used, code snippets are sent to the agent's model provider; this is outside Sniper's offline principle. Access is per project and off by default.
+S	Uyarı: dış ajan kullanıldığında kod parçaları ajanın model sağlayıcısına gönderilir; bu, VulKill'ın çevrimdışı ilkesinin dışındadır. İzin proje başınadır ve varsayılan kapalıdır.	Warning: when an external agent is used, code snippets are sent to the agent's model provider; this is outside VulKill's offline principle. Access is per project and off by default.
 S	Otomatik uygulama:	Auto-apply:
 S	kapalı (her öneri analist kararı bekler)	off (every suggestion waits for an analyst decision)
 S	Aç	Turn on

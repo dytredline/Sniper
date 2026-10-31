@@ -1,4 +1,4 @@
-"""Rootless one-command setup orchestration for a Sniper Community checkout."""
+"""Rootless one-command setup orchestration for a VulKill Community checkout."""
 
 from __future__ import annotations
 
@@ -132,7 +132,7 @@ def setup_community(
             "The locked local tool profile requires Linux; use --core-only on this platform or WSL2/Docker for the five-engine profile"
         )
     if sys.version_info < MINIMUM_PYTHON:
-        raise SetupError("Sniper Community setup requires Python 3.12 or newer")
+        raise SetupError("VulKill Community setup requires Python 3.12 or newer")
 
     root_input = Path(repo_root).expanduser()
     if root_input.is_symlink() or not root_input.is_dir():

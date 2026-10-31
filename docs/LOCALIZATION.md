@@ -1,6 +1,6 @@
-# Sniper Community localization
+# VulKill Community localization
 
-Sniper Community 1.1 arayüz ve HTML raporlarında Türkçe (`tr`) kaynak dili ile İngilizce (`en`) temel
+VulKill Community 1.1 arayüz ve HTML raporlarında Türkçe (`tr`) kaynak dili ile İngilizce (`en`) temel
 paketi; Japonca (`ja`), Basitleştirilmiş Çince (`zh-CN`) ve Korece (`ko`) genişletilmiş başlangıç
 paketleri sunar. İngilizce görünür-arayüz sözlüğü mevcut kapsam testinde 1908/2064 (%92,4) dizgeyi
 kapsar; bu nedenle tam çeviri iddiası yoktur. Seçili CJK paketinde bulunmayan metin, İngilizce girdisi

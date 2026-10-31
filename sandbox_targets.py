@@ -1,14 +1,14 @@
-"""Sniper içinden yönetilen yalıtılmış test hedefleri, kapsam seçenekleri ve yük profilleri.
+"""VulKill içinden yönetilen yalıtılmış test hedefleri, kapsam seçenekleri ve yük profilleri.
 
 Ayarlar ``$SNIPER_DATA_DIR/sandbox-targets.json`` dosyasında (0600, flock, atomik yazım) tutulur.
 
 Kapsam seçenekleri (her biri bağımsız açılıp kapanır):
   * ``local``            — 127.0.0.1 portları (varsayılan açık).
-  * ``critical``         — Sniper'ın kendi portu ve kritik yerel servisler (LLM, SSH tüneli, ssh, VNC); varsayılan
+  * ``critical``         — VulKill'ın kendi portu ve kritik yerel servisler (LLM, SSH tüneli, ssh, VNC); varsayılan
                            kapalı; açıkken bu portlar (uyarıyla) eklenebilir.
   * ``remote_verified``  — yalnız sahipliği doğrulanmış alan adları (varsayılan kapalı). IP hedefi kabul edilmez.
-    Sniper rastgele belirteç üretir; kullanıcı belirteci ``https://<alan>/.well-known/sniper-verify/<id>`` dosyasına
-    ya da ``_sniper-verify.<alan>`` TXT kaydına koyar ve tek "Doğrula" ile Sniper önce dosyayı, sonra TXT'yi dener.
+    VulKill rastgele belirteç üretir; kullanıcı belirteci ``https://<alan>/.well-known/sniper-verify/<id>`` dosyasına
+    ya da ``_sniper-verify.<alan>`` TXT kaydına koyar ve tek "Doğrula" ile VulKill önce dosyayı, sonra TXT'yi dener.
     Doğrulanmış hedef kalıcıdır; arka planda REVERIFY_SECONDS aralıkla yalnız doğrulanmış alanlara, yalnız aynı
     .well-known yoluna/TXT kaydına yeniden doğrulama yapılır; başarısız olursa hedef yeniden doğrulanana dek çalışmaz.
 Tüm değişiklikler API'de tek ``confirm: true`` onayıyla yapılır ve denetim kaydına yazılır (server.py).
@@ -38,7 +38,7 @@ PORT_ENVS = {"k6": "SNIPER_K6_ALLOWED_PORTS", "schemathesis": "SNIPER_SCHEMATHES
              "runtime_proof": "SNIPER_RUNTIME_PROOF_ALLOWED_PORTS"}
 SCOPES = ("local", "critical", "remote_verified")
 DEFAULT_SCOPES = {"local": True, "critical": False, "remote_verified": False}
-# Kritik yerel servisler: Sniper, LLM (llama-server), SSH ters tüneli, ssh, VNC. Engellenmez; ayrı onay ister.
+# Kritik yerel servisler: VulKill, LLM (llama-server), SSH ters tüneli, ssh, VNC. Engellenmez; ayrı onay ister.
 CRITICAL_PORTS = frozenset({8787, 18090, 20129, 22, 5901})
 BUILTIN_PRESETS = {
     "hafif": {"vus": 1, "duration_s": 10, "label": "Hafif"},
@@ -88,7 +88,7 @@ class VerificationFailed(TargetError):
     """Sahiplik doğrulaması başarısız."""
 
 
-CRITICAL_WARNING = ("Uyarı: bu port kritik bir yerel servise ait (Sniper, LLM, SSH tüneli, ssh veya VNC). Yük testi bu "
+CRITICAL_WARNING = ("Uyarı: bu port kritik bir yerel servise ait (VulKill, LLM, SSH tüneli, ssh veya VNC). Yük testi bu "
                     "servisi yavaşlatabilir ya da durdurabilir.")
 
 
@@ -111,7 +111,7 @@ def _path(environ: dict[str, str]) -> Path:
     text = environ.get("SNIPER_DATA_DIR", "")
     path = Path(text)
     if not text or not path.is_absolute() or path.is_symlink() or not path.is_dir():
-        raise TargetError("Sniper veri dizini yapılandırılmamış.")
+        raise TargetError("VulKill veri dizini yapılandırılmamış.")
     return path / FILE_NAME
 
 
@@ -482,7 +482,7 @@ def fetch_http_token(host: str, token_id: str, timeout: float = 5.0) -> bytes:
     conn = http.client.HTTPSConnection(host, 443, timeout=timeout, context=ssl.create_default_context())
     try:
         conn.request("GET", f"/.well-known/sniper-verify/{token_id}",
-                     headers={"Host": host, "User-Agent": "Sniper-ownership-verification", "Connection": "close"})
+                     headers={"Host": host, "User-Agent": "VulKill-ownership-verification", "Connection": "close"})
         response = conn.getresponse()
         if response.status != 200:
             raise VerificationFailed(f"HTTP doğrulama yanıtı {response.status} (yönlendirme izlenmez).")

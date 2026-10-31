@@ -1,6 +1,6 @@
 # Community support
 
-Sniper Community is maintained on a best-effort basis and has no support SLA. Before requesting help, use the latest
+VulKill Community is maintained on a best-effort basis and has no support SLA. Before requesting help, use the latest
 published Community release, read `README.md` and `DEPLOYMENT.md`, and run the documented validation command.
 
 Use a public GitHub issue for reproducible bugs and focused feature requests. Include the Community version or commit,

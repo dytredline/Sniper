@@ -509,7 +509,7 @@ def _description(item: dict[str, Any]) -> str:
         parts.append(f"Kanıt: {report_provenance.redact_evidence_text(evidence, max_len=4000)}")
     if item.get("status_note"):
         parts.append(f"Not: {item['status_note']}")
-    parts.append(f"Sniper takip kimliği: {item.get('id')}")
+    parts.append(f"VulKill takip kimliği: {item.get('id')}")
     return "\n".join(str(p)[:4000] for p in parts)
 
 
@@ -581,7 +581,7 @@ def to_jira_csv(items: list[dict[str, Any]]) -> str:
     """Jira "CSV içe aktarma" için: Summary, Issue Type, Priority, Description, Labels (×2), Due Date, Assignee."""
     priority = {"critical": "Highest", "high": "High", "medium": "Medium", "low": "Low", "info": "Lowest"}
     header = ["Summary", "Issue Type", "Priority", "Description", "Labels", "Labels", "Due Date", "Assignee",
-              "Sniper ID"]
+              "VulKill ID"]
     rows = []
     for item in items:
         label = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(item.get("category") or "genel"))[:60] or "genel"

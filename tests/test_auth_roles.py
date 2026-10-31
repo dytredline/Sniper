@@ -319,7 +319,7 @@ class TotpTests(AuthTestBase):
         admin = self.enable_with_admin()
         status, data = admin.post("/api/auth/totp/begin", {})
         self.assertEqual(status, 200)
-        self.assertTrue(data["otpauth_uri"].startswith("otpauth://totp/Sniper%3Ayonetici?secret="))
+        self.assertTrue(data["otpauth_uri"].startswith("otpauth://totp/VulKill%3Ayonetici?secret="))
         secret = data["secret"]
         step = int(time.time() // 30)
         status, done = admin.post("/api/auth/totp/confirm", {"code": auth.totp_code(secret, step)})

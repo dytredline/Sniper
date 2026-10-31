@@ -1,6 +1,6 @@
 # Araç ikilisi sabitleme (SHA-256 pin) ve doğrulanmış çalıştırma
 
-Sniper, Gitleaks, TruffleHog ve Semgrep/Opengrep'i yalnız SHA-256 değeri sabitlenmiş
+VulKill, Gitleaks, TruffleHog ve Semgrep/Opengrep'i yalnız SHA-256 değeri sabitlenmiş
 ikililerle çalıştırır. Kaynak: `tool_pins.py` (tablo), `verified_exec.py` (çalıştırma).
 
 ## Nasıl çalışır
@@ -35,14 +35,14 @@ yol verilebilir; içerik yine sabitlemeye uymalıdır.
 `semgrep_active.active_engine()` sırası:
 1. `SNIPER_OPENGREP_BINARY` verilmişse Opengrep,
 2. `SNIPER_SEMGREP_BINARY` + `SNIPER_SEMGREP_SHA256` verilmişse (operatör sabitlemesi) Semgrep,
-3. Sniper araç dizininde sabitli Opengrep varsa Opengrep,
+3. VulKill araç dizininde sabitli Opengrep varsa Opengrep,
 4. aksi halde sabitlenmemiş Semgrep — **reddedilir**.
 
 Semgrep bir Python paketidir; giriş betiğinin hash'i sanal ortamın tamamını
 korumaz. Bu yüzden varsayılan motor Opengrep'tir.
 
 ## Kural paketi
-`rules/opengrep/sniper-core.yaml` — Sniper için yazılmış 39 kural (Python, JS/TS, Go,
+`rules/opengrep/sniper-core.yaml` — VulKill için yazılmış 39 kural (Python, JS/TS, Go,
 Java): SQL/komut/kod enjeksiyonu, SSTI, yol aşımı, SSRF, açık yönlendirme, XSS,
 güvensiz seri çözme, zayıf hash/şifre, TLS doğrulamasının kapatılması, JWT imza
 hataları, sabit sırlar, hata ayıklama modu. Her kuralda CWE, kategori ve Türkçe ileti

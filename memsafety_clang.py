@@ -263,7 +263,7 @@ def _invoke(clang: str, path: Path, root: Path, incs: list[Path], deadline: floa
 class _StubDir:
     """Eksik ÜRETİLEN başlıklar için boş yer tutucular (geçici dizinde; proje dosyalarına asla yazılmaz)."""
 
-    CONTENT = "/* Sniper yer tutucu: derleme sirasinda uretilen baslik (icerik bilinmiyor) */\n"
+    CONTENT = "/* VulKill yer tutucu: derleme sirasinda uretilen baslik (icerik bilinmiyor) */\n"
 
     def __init__(self, root: Path, info: Any) -> None:
         import threading

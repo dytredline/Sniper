@@ -1,6 +1,6 @@
 # Yalnız değişenler (git) ve CI
 
-Sniper, bir git deposundaki **değişen/eklenen** dosyaları ve bunlardan etkilenebilen çağıran dosyaları analiz
+VulKill, bir git deposundaki **değişen/eklenen** dosyaları ve bunlardan etkilenebilen çağıran dosyaları analiz
 edip taban sürümle karşılaştırarak **bu değişikliğin getirdiği yeni bulguları** raporlar. Böylece bir veri
 kaynağı değiştiğinde, değişmeyen çağıran dosyada yeni oluşan dosyalar-arası akış gözden kaçmaz.
 
@@ -10,18 +10,18 @@ kaynağı değiştiğinde, değişmeyen çağıran dosyada yeni oluşan dosyalar
 - API: `POST /api/project-audits` gövdesi `{"project_path": "...", "scope": {"changed_only": true, "base_ref": "origin/main"}}`.
   Sonuçta `changed_scan` özeti (değişen dosyalar, yeni bulgu sayısı, düzelen bulgular ve `incremental_plan`
   telemetrisi) ve her bulguda `is_new`, `in_changed_lines`, `context_fingerprint` alanları bulunur.
-- CLI: `python3 /ABSOLUTE/PATH/TO/sniper/cli_reports.py auto-scan <proje> --changed-since origin/main --sarif out.sarif --fail-on high [--no-store]`
+- CLI: `python3 /ABSOLUTE/PATH/TO/vulkill/cli_reports.py auto-scan <proje> --changed-since origin/main --sarif out.sarif --fail-on high [--no-store]`
   Eşik (`--fail-on`) yalnız değişenler modunda yalnız YENİ bulguları sayar; aşılırsa çıkış kodu 1.
   SARIF 2.1.0 çıktısında `baselineState` (new/unchanged) ve `partialFingerprints.sniperContext/v1` dolu.
 - Örnekler: `docs/ci/pre-commit-sniper.sh` (pre-commit kancası), `docs/ci/github-actions-sniper.yml` (kendi
-  barındırılan çalıştırıcı için iş akışı). İkisi de yalnız örnektir; Sniper hiçbir şeyi yayınlamaz.
+  barındırılan çalıştırıcı için iş akışı). İkisi de yalnız örnektir; VulKill hiçbir şeyi yayınlamaz.
 
 ## Nasıl çalışır
 1. Taban başvurusu `git rev-parse --verify` ile commit'e çözülür (aralık `..` ve `-` ile başlayan değer reddedilir).
-2. Taban ağacı `git ls-tree` ile listelenir; çalışma ağacındaki dosyalar Sniper tarafından ham git blob özetiyle
+2. Taban ağacı `git ls-tree` ile listelenir; çalışma ağacındaki dosyalar VulKill tarafından ham git blob özetiyle
    karşılaştırılır (eklenen/değişen/silinen; içeriği aynı yeniden adlandırma değişiklik sayılmaz; `.gitignore`
    ile yok sayılan izlenmeyen dosyalar hariç).
-3. Sniper kaynak envanterinden sınırlı ve döngü-güvenli bir ters bağımlılık konisi çıkarır. Bulgular değişen
+3. VulKill kaynak envanterinden sınırlı ve döngü-güvenli bir ters bağımlılık konisi çıkarır. Bulgular değişen
    dosyalar ile bunların geçişli çağıranları için üretilir; doğrudan değişmemiş çağıran bulgusunda
    `in_changed_lines=false` olur. Proje geneli "eksik denetim" bulguları bu modda çalışmaz.
 4. Planlayıcı en fazla 10.000 aday, dosya başına 1 MB, toplam 64 MB ve 32 bağımlılık adımı işler. Envanter
@@ -41,7 +41,7 @@ yolu yayımlamaz.
 ## Güvenlik
 Taranan depo güvenilmez kabul edilir. git yalnız nesne veritabanını okuyan komutlarla, kabuksuz, genel/sistem
 yapılandırması kapalı (`GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`), `core.fsmonitor=false`,
-`core.hooksPath=/dev/null`, `protocol.allow=never` ile çalışır. Çalışma ağacı karşılaştırmasını git değil Sniper
+`core.hooksPath=/dev/null`, `protocol.allow=never` ile çalışır. Çalışma ağacı karşılaştırmasını git değil VulKill
 yaptığı için deponun tanımlayabileceği clean/smudge süzgeçleri, textconv/harici diff ve fsmonitor komutları çalışmaz.
 
 ## Sınırlamalar

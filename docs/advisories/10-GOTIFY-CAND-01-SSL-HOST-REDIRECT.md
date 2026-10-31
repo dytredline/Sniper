@@ -55,9 +55,9 @@ In `gotify/server` (`v2.9.1`, commit `f4de61997c1b30bf9ac43ec662dc5120c2ec981b`)
 
 ## 3. Example Execution & Verification Commands
 
-### 1. Auditing the Component with Sniper CLI
+### 1. Auditing the Component with VulKill CLI
 ```bash
-python3 scripts/sniper-project-audit \
+python3 scripts/vulkill-project-audit \
   --repo-path /home/community-user/targets/gotify-server \
   --include "router/router.go"
 ```

@@ -22,7 +22,7 @@ def data_dir(environ: dict[str, str] | None = None) -> Path:
     text = (os.environ if environ is None else environ).get("SNIPER_DATA_DIR", "")
     path = Path(text)
     if not text or not path.is_absolute() or path.is_symlink() or not path.is_dir():
-        raise OpsStoreError("Sniper veri dizini yapılandırılmamış.")
+        raise OpsStoreError("VulKill veri dizini yapılandırılmamış.")
     return path
 
 

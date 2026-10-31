@@ -24,11 +24,11 @@ class TestCommunityRelease(unittest.TestCase):
         self.assertIn('tags: ["v*"]', workflow)
         self.assertIn("VERSION=$(tr -d '\\n\\r' < COMMUNITY_VERSION)", workflow)
         self.assertIn('"${GITHUB_REF_NAME}" != "v${VERSION}"', workflow)
-        self.assertIn('RELEASE_TREE="${RUNNER_TEMP}/sniper-community-${VERSION}"', workflow)
-        self.assertIn('RELEASE_ARCHIVE="${GITHUB_WORKSPACE}/sniper-community-${VERSION}.tar.gz"', workflow)
+        self.assertIn('RELEASE_TREE="${RUNNER_TEMP}/vulkill-community-${VERSION}"', workflow)
+        self.assertIn('RELEASE_ARCHIVE="${GITHUB_WORKSPACE}/vulkill-community-${VERSION}.tar.gz"', workflow)
         self.assertIn('python scripts/build-community-source.py --output "${RELEASE_TREE}"', workflow)
         self.assertNotIn(
-            'python scripts/build-community-source.py --output "sniper-community-${VERSION}"',
+            'python scripts/build-community-source.py --output "vulkill-community-${VERSION}"',
             workflow,
         )
         self.assertIn('--root "${RELEASE_TREE}" --scan-release-tree', workflow)
@@ -36,7 +36,7 @@ class TestCommunityRelease(unittest.TestCase):
         self.assertIn("--scan-release-tree", workflow)
         self.assertIn("tar --sort=name --mtime='UTC 1970-01-01'", workflow)
         self.assertIn('-czf "${RELEASE_ARCHIVE}"', workflow)
-        self.assertIn('sha256sum "sniper-community-${VERSION}.tar.gz"', workflow)
+        self.assertIn('sha256sum "vulkill-community-${VERSION}.tar.gz"', workflow)
         self.assertIn(
             "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2",
             workflow,
@@ -49,15 +49,15 @@ class TestCommunityRelease(unittest.TestCase):
             "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2",
             workflow,
         )
-        self.assertIn("subject-path: sniper-community-*.tar.gz", workflow)
+        self.assertIn("subject-path: vulkill-community-*.tar.gz", workflow)
         self.assertIn("if: github.ref_type == 'tag'", workflow)
         self.assertIn("GH_TOKEN: ${{ github.token }}", workflow)
         self.assertIn('gh release create "v${VERSION}"', workflow)
-        self.assertIn('"sniper-community-${VERSION}.tar.gz"', workflow)
+        self.assertIn('"vulkill-community-${VERSION}.tar.gz"', workflow)
         self.assertIn('"SHA256SUMS"', workflow)
         self.assertIn("--verify-tag", workflow)
         self.assertNotIn("--clobber", workflow)
-        self.assertNotIn("Sniper Enterprise", workflow)
+        self.assertNotIn("VulKill Enterprise", workflow)
         self.assertNotIn("from version import", workflow)
 
     def test_public_release_documents_do_not_claim_candidate_status(self) -> None:
@@ -74,7 +74,7 @@ class TestCommunityRelease(unittest.TestCase):
             "review artifact, not a promoted release",
         ):
             self.assertNotIn(stale, combined)
-        self.assertIn("sniper community v1.1.0 source release", texts[0].casefold())
+        self.assertIn("vulkill community v1.1.0 source release", texts[0].casefold())
 
     def test_builder_excludes_installed_release_record_and_rebrands_version(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -98,8 +98,8 @@ class TestCommunityRelease(unittest.TestCase):
 
             version_text = (output / "version.py").read_text(encoding="utf-8")
             self.assertIn('__version__ = "1.1.0"', version_text)
-            self.assertIn("Sniper Community", version_text)
-            self.assertNotIn("Sniper Enterprise", version_text)
+            self.assertIn("VulKill Community", version_text)
+            self.assertNotIn("VulKill Enterprise", version_text)
 
             manifest = (output / "COMMUNITY-SOURCE-MANIFEST.sha256").read_text(encoding="utf-8")
             self.assertNotRegex(manifest, r"(?m)  (?:.*/)?RELEASE\.json$")

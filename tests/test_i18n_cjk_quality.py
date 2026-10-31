@@ -16,10 +16,10 @@ LOCALES = ("ja", "zh-CN", "ko")
 # These strings are visible before a user opens a feature panel.  They must be
 # native translations, not English fallback, in every advertised CJK locale.
 LAUNCH_SURFACE = {
-    "Sniper — Yerel güvenlik stüdyosu",
-    "Sniper ana sayfa",
+    "VulKill — Yerel güvenlik stüdyosu",
+    "VulKill ana sayfa",
     "YEREL GÜVENLİK STÜDYOSU",
-    "Sniper, düşük etkili kontroller yapar. DoS trafiği veya parola listesi çalıştırmaz.",
+    "VulKill, düşük etkili kontroller yapar. DoS trafiği veya parola listesi çalıştırmaz.",
     "BAĞIMSIZ GÜVENLİK GÖRÜNÜMÜ",
     "Riskleri erken görün,",
     "kontrol sizde kalsın.",
@@ -36,7 +36,7 @@ LAUNCH_SURFACE = {
     "İlk hedefinizi ekleyin",
     "Web adresini kaydettikten sonra güvenli temel taramayı doğrudan başlatabilirsiniz.",
     "Yeni hedef ekle",
-    "Sniper — Giriş",
+    "VulKill — Giriş",
     "Doğrulama kodu (6 hane)",
     "ya da kurtarma kodu",
     "Hesabınızı kaybettiyseniz yönetici, sunucuda",

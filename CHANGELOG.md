@@ -1,11 +1,11 @@
 # Changelog
 
-All notable changes to Sniper Community are recorded here. The project follows semantic versioning for public
+All notable changes to VulKill Community are recorded here. The project follows semantic versioning for public
 Community releases.
 
 ## Unreleased
 
-## Sniper Community 1.1.0 — 2026-10-29
+## VulKill Community 1.1.0 — 2026-10-29
 
 - Expanded authorization review across supported Rails inheritance, Spring and ASP.NET routes, and GraphQL
   resolvers; added bounded multi-repository trust graphs for CI artifacts, webhooks, services, and dependency lineage.
@@ -37,7 +37,7 @@ Community releases.
   and Korean READMEs; added a contributor note and an automated parity gate so future public feature additions must
   update all five language documents together.
 
-## Sniper Community 1.0.0 — 2026-10-24
+## VulKill Community 1.0.0 — 2026-10-24
 
 - Added local-first source, configuration, dependency, container, and report workflows.
 - Added the stdio MCP interface with expiring, single-use, human-confirmed MCP action plans.

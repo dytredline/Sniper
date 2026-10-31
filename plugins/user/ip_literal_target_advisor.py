@@ -17,7 +17,7 @@ class IpLiteralTargetAdvisorPlugin(BasePlugin):
         return PluginInfo(
             "ip-literal-target-advisor",
             "1.0.0",
-            "Sniper Core",
+            "VulKill Core",
             "Doğrudan IP adresi hedefleri için SNI, TLS sertifika kapsamı ve sanal ana bilgisayar izolasyon danışmanı",
         )
 

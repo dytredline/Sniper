@@ -34,7 +34,7 @@ def _fetch_json(url: str) -> dict:
             raise ValueError(f"HTTP {response.status}")
         payload = json.load(response)
     if not isinstance(payload, dict):
-        raise ValueError("Invalid Sniper response")
+        raise ValueError("Invalid VulKill response")
     return payload
 
 
@@ -98,7 +98,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     deadline = time.monotonic() + 90
-    last_error = "Sniper henüz hazır değil"
+    last_error = "VulKill henüz hazır değil"
     while time.monotonic() < deadline:
         try:
             health = _fetch_json(HEALTH_URL)
@@ -106,14 +106,14 @@ def main(argv: list[str] | None = None) -> int:
             if health.get("status") == "ok":
                 missing = missing_engines(readiness)
                 if not missing:
-                    print("Sniper Docker hazır: http://127.0.0.1:8787")
+                    print("VulKill Docker hazır: http://127.0.0.1:8787")
                     print("Beş motor hazır: Nuclei, Trivy, Gitleaks, TruffleHog, Opengrep")
                     return 0
                 last_error = "Hazır olmayan motorlar: " + ", ".join(missing)
         except (OSError, URLError, ValueError, json.JSONDecodeError) as exc:
             last_error = str(exc)
         time.sleep(2)
-    print(f"Sniper hazır olma denetimi başarısız: {last_error}", file=sys.stderr)
+    print(f"VulKill hazır olma denetimi başarısız: {last_error}", file=sys.stderr)
     return 1
 
 

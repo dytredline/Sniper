@@ -167,7 +167,7 @@ test("repeated built-in routes render as one readable capability and one action"
         required_input: "Kaynak", tool_ids: ["sniper-auditors"],
       }],
       tools: [{
-        id: "sniper-auditors", name: "Sniper Yerleşik Denetçiler", kind: "SAST", license: "Yerleşik",
+        id: "sniper-auditors", name: "VulKill Yerleşik Denetçiler", kind: "SAST", license: "Yerleşik",
         summary: "Yerel denetçiler", formats: ["JSON"], url: "https://example.test/auditors",
         workflows: [{ mode: "built_in", label: "Satır içi / proje kod denetçileri", routes }],
       }],
@@ -340,6 +340,6 @@ test("basic scan modal keeps its copy and scope rows in a compact top-aligned fl
 });
 
 test("Community interface shows the v1 product identity", () => {
-  assert.match(html, /SNIPER 1\.0/);
-  assert.doesNotMatch(html, /SNIPER 2\.0|Sniper 2\.0/);
+  assert.match(html, /VULKILL 1\.0/);
+  assert.doesNotMatch(html, /VULKILL 2\.0|VulKill 2\.0/);
 });

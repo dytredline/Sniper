@@ -13,7 +13,7 @@ engellemez. Burada:
   anahtarla imzalı bir çapa dosyasına atomik yazılır; doğrulama kuyruk silinmesini ve geri
   sarmayı bununla görür.
 
-Sınır: Sniper ile aynı kullanıcı yetkisine sahip bir saldırgan anahtarı da okuyabilir; bu
+Sınır: VulKill ile aynı kullanıcı yetkisine sahip bir saldırgan anahtarı da okuyabilir; bu
 katman yalnız veritabanının tek başına değiştirilmesine/geri yüklenmesine karşı korur. Eski
 ama geçerli bir çapanın yeniden konması (replay) da bu katmanla tespit edilemez.
 

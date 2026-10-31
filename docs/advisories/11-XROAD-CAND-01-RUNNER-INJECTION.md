@@ -52,9 +52,9 @@ In `nordic-institute/X-Road` (commit `38cd99ec0ebbcc13ddbaaeb9187018d49bdd278b`)
 
 ## 3. Example Execution & Verification Commands
 
-### 1. Auditing the Component with Sniper CLI
+### 1. Auditing the Component with VulKill CLI
 ```bash
-python3 scripts/sniper-project-audit \
+python3 scripts/vulkill-project-audit \
   --repo-path /home/community-user/targets/X-Road \
   --include ".github/workflows/_build-and-package.yml"
 ```

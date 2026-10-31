@@ -1,5 +1,5 @@
 'use strict';
-// Sniper yetkili-hedef tarayıcı sürücüsü: bwrap sandbox'ında (ağ ad alanında yalnız lo + tek hedef aktarıcı) çalışır.
+// VulKill yetkili-hedef tarayıcı sürücüsü: bwrap sandbox'ında (ağ ad alanında yalnız lo + tek hedef aktarıcı) çalışır.
 // Kullanıcı kodu çalıştırmaz; yalnız /job/plan.json'daki doğrulanmış yolları açar ve olgu toplar.
 // Yanıt gövdeleri, çerez değerleri ve form değerleri dışarı yazılmaz; yalnız sayılar, bayraklar ve kısaltılmış iletiler.
 const fs = require('node:fs');

@@ -23,7 +23,7 @@ def render_sarif(scan: dict) -> dict:
         rule_id = f"SNIPER-{finding.get('id', 'finding')}"
         rules.append({
             "id": rule_id,
-            "shortDescription": {"text": str(finding.get("title", "Sniper bulgusu"))},
+            "shortDescription": {"text": str(finding.get("title", "VulKill bulgusu"))},
             "fullDescription": {"text": str(finding.get("description", ""))},
             "help": {"text": str(finding.get("recommendation", ""))},
             "properties": {
@@ -39,7 +39,7 @@ def render_sarif(scan: dict) -> dict:
         results.append({
             "ruleId": rule_id,
             "level": level_map.get(finding.get("severity", "info"), "note"),
-            "message": {"text": str(finding.get("description") or finding.get("title") or "Sniper bulgusu")},
+            "message": {"text": str(finding.get("description") or finding.get("title") or "VulKill bulgusu")},
             "locations": [{"physicalLocation": {"artifactLocation": {"uri": scan.get("target_url", "")}}}],
             "fingerprints": {"sniper/v1": str(finding.get("id", ""))},
             "properties": {
@@ -58,7 +58,7 @@ def render_sarif(scan: dict) -> dict:
         "version": "2.1.0",
         "runs": [{
             "tool": {"driver": {
-                "name": "Sniper",
+                "name": "VulKill",
                 "version": "1.0",
                 "informationUri": "https://owasp.org/www-project-web-security-testing-guide/",
                 "rules": rules,
@@ -151,7 +151,7 @@ def render_engagement_sarif(engagement: dict) -> dict:
         if rule_id not in seen_rules:
             rules.append({
                 "id": rule_id,
-                "shortDescription": {"text": str(finding.get("title") or "Sniper bulgusu")},
+                "shortDescription": {"text": str(finding.get("title") or "VulKill bulgusu")},
                 "fullDescription": {"text": str(finding.get("description") or "")},
                 "help": {"text": str(finding.get("recommendation") or "")},
                 "properties": {
@@ -163,7 +163,7 @@ def render_engagement_sarif(engagement: dict) -> dict:
         results.append({
             "ruleId": rule_id,
             "level": level_map.get(finding.get("severity", "info"), "note"),
-            "message": {"text": str(finding.get("description") or finding.get("title") or "Sniper bulgusu")},
+            "message": {"text": str(finding.get("description") or finding.get("title") or "VulKill bulgusu")},
             "locations": [{"physicalLocation": {"artifactLocation": {"uri": str(finding.get("affected_asset") or engagement.get("target_url", ""))}}}],
             "fingerprints": {"sniper/engagement/v1": finding_id},
             "properties": {
@@ -179,7 +179,7 @@ def render_engagement_sarif(engagement: dict) -> dict:
         "version": "2.1.0",
         "runs": [{
             "tool": {"driver": {
-                "name": "Sniper", "version": "1.1",
+                "name": "VulKill", "version": "1.1",
                 "informationUri": "https://owasp.org/www-project-web-security-testing-guide/",
                 "rules": rules,
             }},
@@ -224,7 +224,7 @@ def render_report(scan: dict) -> str:
         </section>"""
     else:
         comparison_html = ""
-    return f"""<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Sniper denetim raporu</title>
+    return f"""<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>VulKill denetim raporu</title>
     <style>
     :root{{--ink:#13231e;--muted:#5d6d67;--line:#dce5df;--paper:#fff;--bg:#f3f6f4;--green:#0e7a54;--red:#bd3b45;--amber:#b8780e}}
     *{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 Inter,Arial,sans-serif}}
@@ -242,7 +242,7 @@ def render_report(scan: dict) -> str:
     footer{{margin-top:38px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}}
     @media print{{body{{background:white}}main{{border:0;margin:0;max-width:none;padding:20px}}}}@media(max-width:700px){{main{{margin:0;padding:25px}}.meta,.counts{{grid-template-columns:1fr 1fr}}header{{display:block}}}}
     </style></head><body><main>
-    <header><div><div class="brand">SNIPER / BAĞIMSIZ DENETİM</div><h1>Web güvenliği temel değerlendirmesi</h1><div>{esc(scan.get('target_url'))}</div></div>
+    <header><div><div class="brand">VULKILL / BAĞIMSIZ DENETİM</div><h1>Web güvenliği temel değerlendirmesi</h1><div>{esc(scan.get('target_url'))}</div></div>
     <div class="score">{esc(scan.get('score', '—'))}<small>/100 · {esc(scan.get('grade', '—'))}</small></div></header>
     <section class="meta"><div class="card"><small>Tarama kimliği</small><b>{esc(scan.get('id'))}</b></div><div class="card"><small>Durum</small><b>{esc(scan.get('status'))}</b></div><div class="card"><small>Başlangıç</small><b>{esc(scan.get('started_at'))}</b></div><div class="card"><small>Bitiş</small><b>{esc(scan.get('finished_at'))}</b></div></section>
     <section class="counts"><div class="card"><small>Kritik</small><b>{esc(counts.get('critical', 0))}</b></div><div class="card"><small>Yüksek</small><b>{esc(counts.get('high', 0))}</b></div><div class="card"><small>Orta</small><b>{esc(counts.get('medium', 0))}</b></div><div class="card"><small>Düşük</small><b>{esc(counts.get('low', 0))}</b></div></section>
@@ -299,11 +299,11 @@ def render_diff_report(diff: dict, scan_1: dict, scan_2: dict) -> str:
 
     score_delta = summary.get("score_delta")
     score_delta_text = f"{score_delta:+d}" if isinstance(score_delta, int) else "—"
-    return f"""<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Sniper tarama karşılaştırması</title>
+    return f"""<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>VulKill tarama karşılaştırması</title>
     <style>{REPORT_STYLE}
     table{{width:100%;border-collapse:collapse;margin:16px 0}}th,td{{border:1px solid var(--line);padding:8px 10px;text-align:left}}th{{background:#f9fbfa;font-weight:600}}
     </style></head><body><main>
-    <header><div><div class="brand">SNIPER / TARAMA KARŞILAŞTIRMASI</div><h1>İki tarama arasındaki değişim</h1><div>{esc(scan_2.get('target_url'))}</div></div>
+    <header><div><div class="brand">VULKILL / TARAMA KARŞILAŞTIRMASI</div><h1>İki tarama arasındaki değişim</h1><div>{esc(scan_2.get('target_url'))}</div></div>
     <div class="score">{esc(score_delta_text)}<small> puan · {esc(summary.get('scan_1_score', '—'))} → {esc(summary.get('scan_2_score', '—'))}</small></div></header>
     <section class="meta">
       <div class="card"><small>Önceki tarama</small><b>{esc(summary.get('scan_1_id'))}</b>{esc(summary.get('scan_1_finished_at'))}</div>
@@ -377,7 +377,7 @@ def render_engagement_report(engagement: dict) -> str:
             ("redacted_data_proof", "Maskeli veri sızıntısı kanıtı"),
         ) if approvals.get(key)
     ) or "Özel onaylı doğrulama yok"
-    return f"""<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>Sniper manuel sızma testi raporu</title>
+    return f"""<!doctype html><html lang="tr"><head><meta charset="utf-8"><title>VulKill manuel sızma testi raporu</title>
     <style>
     :root{{--ink:#13231e;--muted:#61716b;--line:#dce5df;--paper:#fff;--bg:#f3f6f4;--green:#0e7a54;--red:#bd3b45;--amber:#b8780e;--blue:#2f7088}}
     *{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 Inter,Arial,sans-serif}}main{{max-width:980px;margin:35px auto;background:var(--paper);padding:50px;border:1px solid var(--line)}}
@@ -388,7 +388,7 @@ def render_engagement_report(engagement: dict) -> str:
     .summary{{white-space:pre-wrap;border-left:4px solid var(--green);padding:4px 0 4px 16px}}footer{{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--muted);font-size:11px}}
     @media print{{body{{background:white}}main{{border:0;margin:0;max-width:none;padding:18px}}h2{{break-after:avoid}}table,.finding{{break-inside:avoid}}}}@media(max-width:700px){{main{{margin:0;padding:24px}}header{{display:block}}.coverage{{text-align:left;margin-top:15px}}.meta,.counts,.scope{{grid-template-columns:1fr 1fr}}}}
     </style></head><body><main>
-    <header><div><div class="brand">SNIPER / MANUEL SIZMA TESTİ</div><h1>{esc(engagement.get('name'))}</h1><div>{esc(engagement.get('target_url'))}</div></div><div class="coverage">{esc(coverage.get('percent', 0))}%<small>METODOLOJİ KAPSAMI</small></div></header>
+    <header><div><div class="brand">VULKILL / MANUEL SIZMA TESTİ</div><h1>{esc(engagement.get('name'))}</h1><div>{esc(engagement.get('target_url'))}</div></div><div class="coverage">{esc(coverage.get('percent', 0))}%<small>METODOLOJİ KAPSAMI</small></div></header>
     <section class="meta"><div class="card"><small>Denetim kimliği</small><b>{esc(engagement.get('id'))}</b></div><div class="card"><small>Durum</small><b>{esc(engagement.get('status'))}</b></div><div class="card"><small>Yetki referansı</small><b>{esc(engagement.get('authorization_ref') or 'Belirtilmedi')}</b></div><div class="card"><small>Test penceresi</small><b>{esc(engagement.get('test_window') or 'Belirtilmedi')}</b></div></section>
     <section class="counts"><div class="card"><small>Kritik</small><b>{counts['critical']}</b></div><div class="card"><small>Yüksek</small><b>{counts['high']}</b></div><div class="card"><small>Orta</small><b>{counts['medium']}</b></div><div class="card"><small>Düşük</small><b>{counts['low']}</b></div></section>
     <section class="counts"><div class="card"><small>Etkin bulgu</small><b>{esc(remediation.get('active', 0))}</b></div><div class="card"><small>Geciken</small><b>{esc(remediation.get('overdue', 0))}</b></div><div class="card"><small>Yeniden test</small><b>{esc(remediation.get('retest', 0))}</b></div><div class="card"><small>Çözülen</small><b>{esc(remediation.get('resolved', 0))}</b></div></section>
@@ -397,7 +397,7 @@ def render_engagement_report(engagement: dict) -> str:
     <h2>Bulgular</h2>{finding_rows}
     <h2>Metodoloji kapsamı</h2><table><thead><tr><th>Kategori</th><th>Tamamlanan</th><th>Kapsam</th><th>Referans</th></tr></thead><tbody>{category_rows}</tbody></table>
     <h2>Test günlüğü</h2><table><thead><tr><th>Kontrol</th><th>Kategori</th><th>Test</th><th>Durum</th><th>Not</th></tr></thead><tbody>{test_rows}</tbody></table>
-    <footer>Sniper yerel denetim kaydı · Otomatik temel tarama ve manuel test kanıtlarını birleştirir. Özel onaylı doğrulamalar trafik üretmez; yalnızca yetkili test uzmanının güvenli kanıtını kaydeder.</footer>
+    <footer>VulKill yerel denetim kaydı · Otomatik temel tarama ve manuel test kanıtlarını birleştirir. Özel onaylı doğrulamalar trafik üretmez; yalnızca yetkili test uzmanının güvenli kanıtını kaydeder.</footer>
     </main></body></html>"""
 
 

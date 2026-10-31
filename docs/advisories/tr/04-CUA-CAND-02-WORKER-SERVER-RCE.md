@@ -61,9 +61,9 @@ async def reset_environment(request: ResetRequest):
 
 ## 3. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
 
-### 1. Sniper CLI ile Hedef Bileşenin Denetlenmesi
+### 1. VulKill CLI ile Hedef Bileşenin Denetlenmesi
 ```bash
-python3 scripts/sniper-project-audit \
+python3 scripts/vulkill-project-audit \
   --repo-path /home/community-user/targets/cua \
   --include "libs/cua-bench-rl/cua_bench_rl/workers/worker_server.py"
 ```

@@ -1,6 +1,6 @@
 """Wave 6 — Bulut-Yerli (Cloud-Native) Kubernetes Admission, NetworkPolicy ve Tetragon eBPF Sentezleyici.
 
-Projenin gerçek servis güven grafiğini (service_trust_graph) ve Sniper güvenlik
+Projenin gerçek servis güven grafiğini (service_trust_graph) ve VulKill güvenlik
 bulgularını kullanarak en az ayrıcalıklı Kubernetes NetworkPolicy, CEL tabanlı
 ValidatingAdmissionPolicy ve Cilium Tetragon eBPF TracingPolicy manifestolarını üretir.
 """

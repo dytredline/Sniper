@@ -162,7 +162,7 @@ def validate_project_path(value: str, allowed_roots: tuple[Path, ...] | None = N
 
 
 def _is_sniper_source_tree(tree: ProjectTree) -> bool:
-    """Recognize Sniper itself through the already pinned project descriptor.
+    """Recognize VulKill itself through the already pinned project descriptor.
 
     The recognition check must not reopen attacker-controlled absolute paths:
     the same descriptor-anchored tree used by the scanner performs both file
@@ -974,7 +974,7 @@ def _has_untrusted_gha_expression(raw_line: str) -> bool:
 
 
 def _is_detection_rule_pack(suffix: str, text: str) -> bool:
-    """Semgrep/Opengrep YAML kural paketi veya Sniper taint model JSON'u mu?"""
+    """Semgrep/Opengrep YAML kural paketi veya VulKill taint model JSON'u mu?"""
     if suffix in {".yaml", ".yml"}:
         return _has_rule_pack_yaml_shape(text)
     if suffix == ".json":
@@ -2368,7 +2368,7 @@ def _analyze_project(
                     per_rule_count[title] = per_rule_count.get(title, 0) + 1
                     add(category, severity, title, path, line_number, evidence, recommendation, reference)
         elif _is_detection_rule_pack(suffix, text):
-            # Semgrep/Opengrep kural paketi veya Sniper taint modeli: içindeki desenler tespit
+            # Semgrep/Opengrep kural paketi veya VulKill taint modeli: içindeki desenler tespit
             # verisidir, çalışan kod değildir; kod kuralları uygulanmaz.
             signals.add("detection_rules")
         else:

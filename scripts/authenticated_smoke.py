@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Loopback Sniper uçlarını mevcut oturum çereziyle salt okunur doğrula."""
+"""Loopback VulKill uçlarını mevcut oturum çereziyle salt okunur doğrula."""
 from __future__ import annotations
 
 import argparse

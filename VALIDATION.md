@@ -1,8 +1,8 @@
-# Sniper Community validation evidence
+# VulKill Community validation evidence
 
 This page records reproducible evidence for the public Community source tree. It is intentionally limited to code,
 tests, packaging, and synthetic fixtures included in this repository. It does not describe or compare a private
-edition, and it contains no customer data, live Sniper database content, external-target scan results, workstation
+edition, and it contains no customer data, live VulKill database content, external-target scan results, workstation
 paths, or maintainer-only evidence.
 
 ## What the Community release provides
@@ -44,8 +44,8 @@ tree.
 | Community container image build | PASS — the final assembled source replaced `/app` in the already verified locked R66 runtime without network access; the isolated image reached `healthy` and `/api/health` returned `status: ok` |
 | CodeQL languages | PASS on the published main baseline — Actions, JavaScript/TypeScript, and Python jobs passed; the v1.1.0 release pull request must pass fresh CI and CodeQL checks before tagging |
 
-Public workflow history is available in [Community CI](https://github.com/dytredline/Sniper/actions/workflows/ci.yml)
-and the [CodeQL runs](https://github.com/dytredline/Sniper/actions?query=workflow%3ACodeQL+branch%3Amain).
+Public workflow history is available in [Community CI](https://github.com/dytredline/VulKill/actions/workflows/ci.yml)
+and the [CodeQL runs](https://github.com/dytredline/VulKill/actions?query=workflow%3ACodeQL+branch%3Amain).
 
 The publication security gate was allowed to fail during review. Its first blocking pass reported 12 high-severity
 alerts in changed code. Five were reproduced as real path-race or polynomial-complexity defects and fixed with
@@ -85,7 +85,7 @@ and verified on a real Apple Silicon Mac:
 
 2. **macOS Apple Silicon + Docker Desktop five-engine profile (`./scripts/deploy-community-tools --accept-third-party-licenses`):**
    - The five-engine Community image was built on the same Apple Silicon Mac with Docker Desktop after explicit
-     acceptance of the engines' separate open-source licenses. Sniper started on loopback and reported healthy. Runtime
+     acceptance of the engines' separate open-source licenses. VulKill started on loopback and reported healthy. Runtime
      prechecks passed for the pinned Nuclei loopback, Trivy local-secret, Gitleaks, TruffleHog filesystem, and Opengrep
      local-code profiles. The web dashboard and tool matrix opened in a browser on the same Mac.
    - A synthetic test project was copied from a macOS Documents checkout into the persistent Docker project volume and
@@ -98,9 +98,9 @@ The full source test runner executed in a Linux test container on that Mac: **2,
 failures/errors; 203 pytest tests passed, one skipped; 432 Node tests passed**. Both the native macOS `--core-only`
 source route and the Docker-backed five-engine route are verified and supported on macOS; this result does not claim
 that every one of the 161 methodology controls is automated. See also
-[docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md](docs/SNIPER-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md) and
+[docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md](docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md) and
 [docs/advisories/README.md](docs/advisories/README.md) for the complete macOS verification summary, the 8 scanned
-open-source repositories audit report, and the 11 verified vulnerabilities discovered by Sniper.
+open-source repositories audit report, and the 11 verified vulnerabilities discovered by VulKill.
 
 ## Run the same public checks
 
@@ -115,13 +115,13 @@ python3 scripts/run_all_tests.py --verbose
 Build and inspect a fresh public source tree outside the checkout:
 
 ```bash
-python3 scripts/build-community-source.py --output /ABSOLUTE/PATH/TO/sniper-community-source
+python3 scripts/build-community-source.py --output /ABSOLUTE/PATH/TO/vulkill-community-source
 python3 .github/scripts/validate-community-release.py \
-  --root /ABSOLUTE/PATH/TO/sniper-community-source --scan-release-tree
+  --root /ABSOLUTE/PATH/TO/vulkill-community-source --scan-release-tree
 ```
 
 The GitHub workflow additionally validates the Compose configuration, builds the local Community image, and runs
-CodeQL. No step in this validation snapshot scans an external website or uses a live Sniper database.
+CodeQL. No step in this validation snapshot scans an external website or uses a live VulKill database.
 
 ## How to interpret the result
 
@@ -132,4 +132,4 @@ CodeQL. No step in this validation snapshot scans an external website or uses a 
 - Optional integrations that are unavailable or skipped on a host are not counted as working on that host.
 - Security findings should be reproduced and reviewed by an authorized human before remediation decisions.
 
-Security issues in Sniper Community should be reported privately through the process in [SECURITY.md](SECURITY.md).
+Security issues in VulKill Community should be reported privately through the process in [SECURITY.md](SECURITY.md).

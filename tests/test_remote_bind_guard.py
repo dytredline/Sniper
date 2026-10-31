@@ -47,7 +47,7 @@ class RemoteBindGuardTests(unittest.TestCase):
                                   capture_output=True, text=True, timeout=60)
             self.assertNotEqual(proc.returncode, 0)
             self.assertIn("SNIPER_ALLOW_UNAUTHENTICATED_REMOTE=1", proc.stderr)
-            self.assertNotIn("Sniper hazır", proc.stdout)
+            self.assertNotIn("VulKill hazır", proc.stdout)
             # Veritabanı bile oluşturulmadan düşer.
             self.assertFalse((Path(data_dir) / "sniper.db").exists())
 
