@@ -7,7 +7,7 @@
 This comprehensive technical guide and security research report consists of three main parts:
 1. **Part I — Real-Hardware macOS (Apple Silicon) Installation & Runtime Verification Report:** End-to-end testing and verification results of Sniper Community on real macOS hardware across both **Native Source Setup (`--core-only`)** and the **Docker Desktop 5-Engine (`community-tools`)** profile.
 2. **Part II — 8 Open-Source Repositories Scanned with Sniper, Vulnerability Mechanics & Everyday Scenarios:** Source-code-level audit of **8 open-source repositories** scanned by **Gökçe Baran Karakamış** using the **Sniper** static analysis (SAST), infrastructure-as-code (IaC), and software composition analysis (SCA) engine — including false-positive elimination, plain-language explanations of how each code/configuration pattern turns into a vulnerability, **3 concrete everyday critical scenarios (`Scenario A / B / C`)** per repository, and **example execution & verification commands**.
-3. **Part III — 19 Verified Security Advisories (18 Original Vulnerabilities + 1 Upstream Duplicate Note) Discovered in Our Sniper Scans (`01`..`11`), Code Mechanics, Scenarios & Runtime Proofs (`RED -> GREEN + BENIGN`):** Complete technical analysis of **19 verified security advisories (18 original vulnerabilities + 1 upstream `CVE-2026-40295` duplicate defense-in-depth note)** discovered across 6 open-source projects (**Stirling-PDF, TryCua `cua`, OpenZiti, n8n, Gotify Server, NIIS X-Road**) and reported as GitHub Security Advisories (`GHSA`), explaining step by step how each bug occurs in code and turns into an exploitable vulnerability, **3 everyday critical scenarios (`Scenario A / B / C`)** for each finding, **example reproduction/verification commands**, and **runtime proofs (`RED -> GREEN + BENIGN`)**.
+3. **Part III — 38 Verified Security Advisories (37 Original Vulnerabilities + 1 Upstream Duplicate Note) Discovered in Our Sniper Scans (`01`..`11`), Code Mechanics, Scenarios & Runtime Proofs (`RED -> GREEN + BENIGN`):** Complete technical analysis of **38 verified security advisories (37 original vulnerabilities + 1 upstream `CVE-2026-40295` duplicate defense-in-depth note)** discovered across 6 open-source projects (**Stirling-PDF, TryCua `cua`, OpenZiti, n8n, Gotify Server, NIIS X-Road**) and reported as GitHub Security Advisories (`GHSA`), explaining step by step how each bug occurs in code and turns into an exploitable vulnerability, **3 everyday critical scenarios (`Scenario A / B / C`)** for each finding, **example reproduction/verification commands**, and **runtime proofs (`RED -> GREEN + BENIGN`)**.
 
 ---
 
@@ -490,7 +490,7 @@ python3 cli_reports.py --input "$HOME/audit-targets/reports/jadx-mcp-audit.json"
 
 ## Part III — Verified Vulnerabilities Discovered in Our Sniper Scans (11 Verified Security Advisories, Code-to-Vulnerability Mechanics, Everyday Scenarios & Example Execution Commands)
 
-Below are the **19 verified security advisories (18 original vulnerabilities + 1 upstream `CVE-2026-40295` duplicate defense-in-depth note)** ([advisories/README.md](advisories/README.md)) discovered during security scans conducted with the **Sniper** static/dynamic analysis engine — complete with **Step-by-Step Everyday Critical Scenarios (`Scenario A / B / C`)**, **End-to-End Runtime Proofs (`RED -> GREEN + BENIGN`)**, and **Verified Defensive Patches (`git diff`)**. First is the summary table, followed immediately by **11 in-depth technical sections (`III.01` – `III.19`)** explaining how each bug arises in source code, how it turns into an exploitable vulnerability, 3 everyday critical scenarios, and example execution/verification commands:
+Below are the **38 verified security advisories (37 original vulnerabilities + 1 upstream `CVE-2026-40295` duplicate defense-in-depth note)** ([advisories/README.md](advisories/README.md)) discovered during security scans conducted with the **Sniper** static/dynamic analysis engine — complete with **Step-by-Step Everyday Critical Scenarios (`Scenario A / B / C`)**, **End-to-End Runtime Proofs (`RED -> GREEN + BENIGN`)**, and **Verified Defensive Patches (`git diff`)**. First is the summary table, followed immediately by **11 in-depth technical sections (`III.01` – `III.38`)** explaining how each bug arises in source code, how it turns into an exploitable vulnerability, 3 everyday critical scenarios, and example execution/verification commands:
 
 | # | Advisory & Upstream GHSA ID | Target Project & Component | CWE & CVSS v3.1 | Critical Everyday Impact Scenarios (`Scenario A / B / C`) | Runtime Proof (`RED -> GREEN`) |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -513,6 +513,25 @@ Below are the **19 verified security advisories (18 original vulnerabilities + 1
 | **17** | [`17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md`](advisories/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md)<br/>`GITLAB-CAND-07`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`ee/app/services/ai/duo_workflows/mcp_config_service.rb:57-64`<br/>`ee/app/services/ai/catalog/mcp_servers/list_service.rb:14-24`<br/>`workhorse/internal/ai_assist/duoworkflow/mcp.go:254` | `CWE-863 / CWE-639`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:L` | **How It Happens in Code:** `McpConfigService#execute` (`mcp_config_service.rb:61`) calls `.merge(ai_catalog_mcp_servers.except(:orbit))` without excluding `:gitlab`, and `ListService`/`Agent::Create` omit `.in_organization`.<br/>**Scenario A (Unlocking All Prohibited Built-in GitLab MCP Tools):** An `Ai::Catalog::McpServer` named `"GitLab"` (`:gitlab`, `Tools: nil`) overwrites the built-in `:gitlab` entry so Workhorse (`mcp.go:254`) sets `allToolsAvailable = true`, disabling all `withheld_server_tools` restrictions.<br/>**Scenario B (Cross-Org MCP Server Binding):** GraphQL `aiCatalogAgentCreate`/`Update` binds foreign-organization `McpServer` Global IDs.<br/>**Scenario C (Duo Workflow `401` DoS):** Overwriting `Headers` on `:gitlab` strips `X-Gitlab-Oauth-Token` and breaks `/api/v4/mcp`. | `RED`: `builtin_gitlab_overwritten: true, workhorse_all_tools_available: true`<br/>`GREEN`: `builtin_gitlab_overwritten: false, workhorse_all_tools_available: false`<br/>`pytest -k test_report4_cand07` |
 | **18** | [`18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md`](advisories/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md)<br/>`GITLAB-CAND-04`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`app/controllers/projects/integrations/slash_commands_controller.rb:21-48`<br/>`app/models/concerns/integrations/base/slash_commands.rb:6-10, 68-76` | `CWE-601 / CWE-863`<br/>**5.4 Medium**<br/>`AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:L/A:N` | **How It Happens in Code:** `SlashCommandsController#confirm` (`slash_commands_controller.rb:23-48`) redirects to unvalidated `request_params[:redirect_url]`, passes `request_params[:response_url]` to `VerifyRequest`, and keys Redis `CACHE_KEY` only by `command_id` without `project_id`/`integration_id`.<br/>**Scenario A (Corporate SSO Phishing After Slash Command Confirm):** Confirming a slash command on the trusted GitLab domain redirects (`302 Found`) the developer to an external credential-harvesting page.<br/>**Scenario B (Cross-Project ChatOps Account Binding):** A `command_id` minted in Project B is accepted on Project A's `/slash_commands/confirm` endpoint.<br/>**Scenario C (ChatOps Callback Hijack):** `request_params[:response_url]` overrides the cached `response_url` during `VerifyRequest#approve!`. | `RED`: `http_status: 302, open_redirect_triggered: true, cross_project_cache_collision_accepted: true`<br/>`GREEN`: `404, open_redirect_triggered: false`<br/>`pytest -k test_report5_cand04` |
 | **19** | [`19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md`](advisories/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md)<br/>Upstream Duplicate: `CVE-2026-40295`<br/>*(GitHub Only — Not Submitted to MITRE)* | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`lib/gitlab/devise_failure.rb:4-18`<br/>`lib/gitlab/auth/session_expire_from_init_enforcer.rb:44-62`<br/>`app/controllers/oauth/authorizations_controller.rb:316-330` | `CWE-601 / CWE-345`<br/>**5.4 Medium (Upstream CVE-2026-40295 Duplicate)**<br/>`AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N` | **[UPSTREAM DUPLICATE: `CVE-2026-40295` — Published on GitHub Only, Not Submitted to MITRE]**<br/>**How It Happens in Code:** `Gitlab::DeviseFailure` inherits `Devise 5.0.3` `redirect_url` (`CVE-2026-40295`), which redirects to an unsanitized external `Referer` on non-GET `:timeout` failures; `AuthorizationsController#validate_pkce_for_dynamic_applications` (`CAND-03`) has an early return on `nil` `code_challenge_method` (mitigated at runtime by `Doorkeeper 5.9.3`).<br/>**Scenario A/B/C:** Product-level `extract_path_from_location(request.referrer)` override in `lib/gitlab/devise_failure.rb` and controller-level PKCE defense-in-depth patch. | `DUPLICATE OF CVE-2026-40295` *(Not submitted to MITRE)*<br/>`RED`: `external_referer_redirect: true`<br/>`GREEN`: `path_extracted_only: true` |
+| **20** | [`20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md`](advisories/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md)<br/>`CHIA-WLC-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/wallet/wallet_node.py:926-995` (`_add_block_from_header`) | `CWE-345 / CWE-347`<br/>**9.1 Critical**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H` | **How It Happens in Code:** `WalletNode._add_block_from_header` (`wallet_node.py:926-995`) ingests `header_block.foliage_transaction_block` without verifying `foliage_transaction_block.get_hash() == header_block.foliage.foliage_transaction_block_hash`.<br/>**Scenario A (0-XCH Capital Fake Deposit):** With zero XCH capital and no counterparty approval, an attacker sends a real header with a swapped transaction block to credit `+0.5 XCH` (`500,000,000,000 mojo`) as confirmed and cash out real USDT/BTC.<br/>**Scenario B (Persistent SQLite Poisoning):** Counterfeit coins persist across `WalletCoinStore` cold restarts (`Err.UNKNOWN_UNSPENT` on spend).<br/>**Scenario C (`CONS-SP-01` + `WLC-01`):** FullNode sync lockout followed by light-wallet fake deposit injection. | `RED`: `fake_merchant_deposit_increase_mojo: 500000000000, spend_err: UNKNOWN_UNSPENT`<br/>`GREEN`: `rejected_forged_foliage_tx_block: true, fake_increase: 0`<br/>`pytest -k test_wlc01` |
+| **21** | [`21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md`](advisories/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md)<br/>`CHIA-WLC-02`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/wallet/wallet_node.py:725-777`<br/>`chia/wallet/wallet_state_manager.py:1735-1778` | `CWE-345 / CWE-400`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H` | **How It Happens in Code:** `wallet_node.py:725-777` and `wallet_state_manager.py:1735-1778` persist unverified `RespondRemovals(proofs=None)` / `spent_height` transitions into SQLite `WalletCoinStore`.<br/>**Scenario A (Clawback Cancel Lockout):** Victim cannot cancel a `0.5 XCH` Clawback coin (`tx_count: 0`); attacker claims on-chain after timelock expiry (`33361e6b...`).<br/>**Scenario B (`WLC-02` + `VR-01` Unified Chain):** Simultaneously locks live wallet cancellation and emergency `chia-vault-recover` CLI on one timeline (`t0..t4`).<br/>**Scenario C (UTXO Freeze DoS):** Freezes unspent coins across cold SQLite restarts. | `RED`: `t1_cold_reloaded_sqlite_spent: true, t2_sender_cancel_tx_count: 0, t4_recipient_claim_succeeded: true`<br/>`GREEN`: `t1_spent: false, t2_sender_cancel_tx_count: 1`<br/>`pytest -k test_wlc02` |
+| **22** | [`22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md`](advisories/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md)<br/>`CHIA-GUI-WC-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain-gui** (`<= 2.6.1-rc2.dev60`)<br/>`packages/gui/src/components/walletConnect/WalletConnectContext.tsx:314-441`<br/>`constants/WalletConnectCommands.ts` | `CWE-367 / CWE-285`<br/>**8.8 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H` | **How It Happens in Code:** `WalletConnectContext.tsx:314-441` exposes all 29 commands on connect, lacks a FIFO confirmation queue, and fails to re-verify `(requestId, fingerprint, network, pairing)` in `sendCommand`.<br/>**Scenario A (Modal Overwrite Drain):** A dApp overwrites a benign `chia_getCurrentAddress` prompt with `chia_sendTransaction`, draining `0.5 XCH` (`SpendBundle d2ce2264...`).<br/>**Scenario B (Fingerprint TOCTOU):** Approval on burner key `111111` executes on main key `999999`.<br/>**Scenario C (Post-Disconnect Execution):** Pending request executes after pairing/network change. | `RED`: `modal_overwritten: true, unauthorized_spend_bundle_sha256: d2ce22645a9a23b1...`<br/>`GREEN`: `6/6 distinct WSS packets blocked`<br/>`pytest -k gui_wc01` |
+| **23** | [`23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md`](advisories/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md)<br/>`CHIA-DL-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/rpc/wallet_rpc_api.py:4066-4120` (`dl_verify_proof`)<br/>`chia/data_layer/data_layer_util.py` | `CWE-347 / CWE-345`<br/>**9.1 Critical**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:H/A:N` | **How It Happens in Code:** `WalletRpcApi.dl_verify_proof` (`wallet_rpc_api.py:4066-4120`) verifies coin existence and Merkle hashes without checking `match_dl_singleton` or `launcher_id == store_id`.<br/>**Scenario A (`100,000 CAT` On-Chain Mint):** A 1-mojo non-singleton coin (`86ec0dd7...`) forges `store_id` `806a6c73...`, passing `dl_verify_proof` and minting `100,000 CAT` on-chain (`dc3f0bba...`).<br/>**Scenario B (Intrinsic RPC Bypass):** Side-by-side canonical vs. counterfeit `DLProof` both return `verified: true` in `RED`.<br/>**Scenario C (Registry Spoofing):** Forges audit proofs for any official DataLayer `store_id`. | `RED`: `counterfeit_verified: true, attacker_cat_balance_mojo: 100000000`<br/>`GREEN`: `counterfeit_verified: false, attacker_cat_balance_mojo: 0`<br/>`pytest -k dl01` |
+| **24** | [`24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md`](advisories/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md)<br/>`CHIA-CS-01 (POC-1 & POC-2)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs`<br/>`crates/chia-sdk-driver/src/clear_signing/tests.rs` | `CWE-451 / CWE-345`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H` | **How It Happens in Code:** `clear_signing.rs` ignores `Condition::Other` CLVM conditions (such as overlong `RESERVE_FEE` opcode `52`) that consensus CLVM executes.<br/>**Scenario A (`750 XCH` Hidden Fee Drain):** `SpendBundle` `b9b614d0...` displays `reserved_fee: 0` in Clear-Signing while draining `750 XCH` (`750,000,000,000,000 mojo`) in consensus.<br/>**Scenario B (NFT State Spoofing):** `SpendBundle` `17d2796f...` alters NFT state invisibly.<br/>**Scenario C (Fail-Closed Patch):** `GREEN` rejects non-canonical conditions before signing. | `RED`: `displayed_fee_mojo: 0, consensus_fee_drained_mojo: 750000000000000`<br/>`GREEN`: `rejected_non_canonical_condition: true`<br/>`cargo test clear_signing::tests` |
+| **25** | [`25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md`](advisories/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md)<br/>`CHIA-CS-02 (POC-3)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (`NEW_METADATA_INFO` evaluation) | `CWE-451 / CWE-345`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `clear_signing.rs` ignores extra consensus conditions (`RESERVE_FEE`) emitted by an NFT `NEW_METADATA_INFO` updater program.<br/>**Scenario A (`500 XCH` Hidden NFT Fee):** `SpendBundle` `b314b6d7...` (`3,300B`) shows `reserved_fee = 0` in Clear-Signing while draining `500 XCH` on-chain.<br/>**Scenario B (Trojan NFT Updater):** Custom updater triggers hidden fee during vault NFT operations.<br/>**Scenario C (`GREEN` Patch):** Rejects non-pure metadata updater conditions. | `RED`: `displayed_fee_mojo: 0, consensus_fee_drained_mojo: 500000000000000`<br/>`GREEN`: `rejected_impure_metadata_updater: true`<br/>`cargo test clear_signing::tests` |
+| **26** | [`26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md`](advisories/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md)<br/>`CHIA-CS-03 (POC-4)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (dependent offer leg aggregation) | `CWE-682 / CWE-451`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `clear_signing.rs` merges dependent offer settlement legs via set intersection, dropping disjoint payment legs.<br/>**Scenario A (`500 XCH` Omitted Offer Leg):** Vault spend `3c55638a...` + settlement spend `7c05b725...` transfers `500 XCH` (`500,000,000,000,000 mojo`) omitted from Clear-Signing.<br/>**Scenario B (Treasury Swap Drain):** Disjoint notarized payment drains treasury funds.<br/>**Scenario C (`GREEN` Patch):** Enforces full union accounting across all legs. | `RED`: `omitted_settlement_outflow_mojo: 500000000000000`<br/>`GREEN`: `full_outflow_accounted_or_rejected: true`<br/>`cargo test clear_signing::tests` |
+| **27** | [`27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md`](advisories/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md)<br/>`CHIA-CS-04 (POC-5)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (unrevealed settlement output handling) | `CWE-345 / CWE-451`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `clear_signing.rs` allows creating a `SETTLEMENT_PAYMENT_HASH` coin without revealing its spend in the signing bundle.<br/>**Scenario A (`600 XCH` Unrevealed Settlement):** Victim signs `a9eeda2c...` (`1,303B`); attacker attaches settlement spend `e0b876fb...` (`388B`) and drains `600 XCH`.<br/>**Scenario B (Air-Gapped Signer Bypass):** Hardware preview shows zero external recipient.<br/>**Scenario C (`GREEN` Patch):** Rejects unrevealed settlement outputs. | `RED`: `unrevealed_settlement_accepted: true, hidden_outflow_mojo: 600000000000000`<br/>`GREEN`: `rejected_unrevealed_settlement: true`<br/>`cargo test clear_signing::tests` |
+| **28** | [`28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md`](advisories/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md)<br/>`CHIA-CS-05 (POC-6)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.38.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs`<br/>`crates/chia-sdk-bindings/src/clear_signing.rs:62` (`parse_vault_transaction`) | `CWE-682 / CWE-451`<br/>**9.1 Critical**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H` | **How It Happens in Code:** `clear_signing.rs` and `chia_sdk_bindings::parse_vault_transaction` credit outputs from external non-vault `DropCoin` spends as vault change.<br/>**Scenario A (`1,000 XCH` FFI Vault Drain):** `SpendBundle` `aa651822...` (`1,477B`) drains `1,000 XCH` (`1,000,000,000,000,000 mojo`) while reporting `0` net vault loss across the FFI boundary.<br/>**Scenario B (Multi-Sig Deception):** All cosigners see the spoofed change summary.<br/>**Scenario C (`GREEN` FFI Test):** Rejects with `Error::NonStandardInnerSpend`. | `RED`: `ffi_parse_vault_tx_accepted: true, masked_vault_drain_mojo: 1000000000000000`<br/>`GREEN`: `Err(NonStandardInnerSpend)`<br/>`cargo test --test clear_signing_ffi_proof` |
+| **29** | [`29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md`](advisories/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md)<br/>`CHIA-CS-06 (POC-7)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (offer pre-split coin destination binding) | `CWE-347 / CWE-451`<br/>**9.1 Critical**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H` | **How It Happens in Code:** `clear_signing.rs` accepts offer pre-split child spends that are not cryptographically bound by an announcement to the signed vault spend.<br/>**Scenario A (`1,000 XCH` Post-Signature Splicing):** Victim signs `476b8e83...` (`1,994B`); attacker splices `5b3a3b21...` (`1,701B`) and redirects `1,000 XCH` under the same BLS signature.<br/>**Scenario B (Mempool Replacement):** Unbound child spend replaced in transit.<br/>**Scenario C (`GREEN` Patch):** Enforces cryptographic announcement binding. | `RED`: `pre_split_sha256: 476b8e83..., spliced_sha256: 5b3a3b21..., redirected_mojo: 1000000000000000`<br/>`GREEN`: `rejected_unbound_presplit: true`<br/>`cargo test clear_signing::tests` |
+| **30** | [`30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md`](advisories/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md)<br/>`CHIA-CS-07 (POC-8)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (Clawback `sender_puzzle_hash` ownership check) | `CWE-345 / CWE-451`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `clear_signing.rs` does not verify that a Clawback output's `sender_puzzle_hash` belongs to the signing vault.<br/>**Scenario A (`1,000 XCH` Reverse Clawback):** `SpendBundle` `6897c10e...` (`1,218B`) sets the attacker as `sender_puzzle_hash`, letting the attacker immediately claw back `1,000 XCH`.<br/>**Scenario B (Self-Transfer Illusion):** Victim is set as receiver while attacker holds instant clawback rights.<br/>**Scenario C (`GREEN` Patch):** Enforces `sender_puzzle_hash` ownership. | `RED`: `attacker_set_as_clawback_sender: true, hijacked_mojo: 1000000000000000`<br/>`GREEN`: `rejected_foreign_clawback_sender: true`<br/>`cargo test clear_signing::tests` |
+| **31** | [`31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md`](advisories/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md)<br/>`CHIA-CS-08 (POC-9)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (external CAT ring TAIL melt/issuance accounting) | `CWE-682 / CWE-451`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `clear_signing.rs` omits external CAT ring `RUN_TAIL` melt/issuance deltas funded by the vault's CAT spend.<br/>**Scenario A (`750 XCH`-Scale CAT Ring Drain):** `SpendBundle` `e48c3171...` (`2,541B`) drains `750,000,000,000,000` mojos via an external CAT ring melt.<br/>**Scenario B (Redemption Hijack):** External ring member absorbs vault CAT delta.<br/>**Scenario C (`GREEN` Patch):** Enforces full CAT ring conservation. | `RED`: `poc9_spend_bundle_sha256: e48c3171..., omitted_cat_ring_delta_mojo: 750000000000000`<br/>`GREEN`: `rejected_unbalanced_external_cat_ring: true`<br/>`cargo test clear_signing::tests` |
+| **32** | [`32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md`](advisories/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md)<br/>`CHIA-VR-01 (POC-10)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-vault-recover** (`<= 1.0.0-rc9`)<br/>`src/locate.rs:148-219` (`find_launcher_id`) | `CWE-345 / CWE-400`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` | **How It Happens in Code:** `find_launcher_id` (`src/locate.rs:148-219`) returns the first `SINGLETON_LAUNCHER_HASH` child found at the user's address without verifying vault custody/recovery key match.<br/>**Scenario A (1-Mojo CLI Lockout):** Decoy launcher `2de44601...` causes `chia-vault-recover` (`1.0.0-rc9`) to abort with `recovery phrase does not match`.<br/>**Scenario B (`WLC-02` + `VR-01` Chain):** Blocks both GUI and CLI recovery.<br/>**Scenario C (`GREEN` Release Binary):** Recovers true launcher `e53d0c41...` (`45/45` tests pass). | `RED`: `selected_launcher: 2de44601... (decoy), cli_exit_code: 1`<br/>`GREEN`: `selected_launcher: e53d0c41... (victim), cli_exit_code: 0`<br/>`pytest -k poc10` |
+| **33** | [`33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md`](advisories/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md)<br/>`CHIA-CONS-SP-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/full_node/full_node.py:2220-2310` (`new_peak` / `sync_from_fork_point`) | `CWE-400 / CWE-345`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H` | **How It Happens in Code:** `full_node.py:2220-2310` aborts `sync_from_fork_point` on invalid sub-epoch/weight-proof responses without disconnecting the peer.<br/>**Scenario A (Port `8444` Sync Lockout):** 3-node mTLS proof keeps victim `peak` at `None` despite an honest peer at `height=5`.<br/>**Scenario B (`10,000 XCH` Reorg Double-Spend):** `Branch A` (`26afe149...`) credits exchange `+10,000 XCH`; `Branch B` (`ad2eba4d...`) reorgs exchange balance to `0`.<br/>**Scenario C (`GREEN` Patch):** Disconnects offending peer & enforces `min_confirmations=32`. | `RED`: `victim_peak: None, reorg_exchange_loss_mojo: 10000000000000000`<br/>`GREEN`: `victim_synced_height: 5, exchange_loss_mojo: 0`<br/>`pytest -k reorg` |
+| **34** | [`34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md`](advisories/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md)<br/>`CHIA-WLT-OFFER-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/rpc/wallet_rpc_api.py` (`take_offer`)<br/>`chia/wallet/trade_manager.py` (`respond_to_offer`) | `CWE-863`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **How It Happens in Code:** `take_offer` / `respond_to_offer` selects and signs wallet coins for requested offer payments without enforcing a per-asset `max_authorized_amount` cap.<br/>**Scenario A (Taker Bot Excess Spend):** External Offer induces coin selection above expected quote.<br/>**Scenario B (Hidden Multi-Asset Leg):** CAT/NFT offer silently pulls XCH from wallet.<br/>**Scenario C (`GREEN` Patch):** Enforces explicit per-asset spend cap. | `RED`: `unbounded_implicit_coin_spend_signed: true`<br/>`GREEN`: `exceeded_max_authorized_amount_rejected: true`<br/>`pytest -k wallet` |
+| **35** | [`35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md`](advisories/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md)<br/>`CHIA-POS-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/farmer/farmer_api.py:85-185` (`FarmerAPI.new_proof_of_space`)<br/>`chiapos` Rust FFI (`size_v2` / `get_quality_string`) | `CWE-248 / CWE-20`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` | **How It Happens in Code:** `FarmerAPI.new_proof_of_space` (`farmer_api.py:85-185`) calls Rust FFI `size_v2()` / `get_quality_string()` before validating pool key XOR exclusivity and `check_plot_param`.<br/>**Scenario A (4/4 Farmer Cluster Crash):** Single 445-byte wire packet (`30a0e918...`) triggers `pyo3_runtime.PanicException` and terminates all 4 Farmer processes (`exit_code=1`).<br/>**Scenario B (Slice OOB Panic):** Truncated proof triggers `range end index 36 out of range for slice of length 32`.<br/>**Scenario C (`GREEN` Patch):** `4/4` Farmers survive (`exit_code=0`). | `RED`: `packet_bytes: 445, crashed_farmers: 4/4, PanicException`<br/>`GREEN`: `crashed_farmers: 0/4, alive_farmers: 4`<br/>`pytest -k farmer` |
+| **36** | [`36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md`](advisories/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md)<br/>`CHIA-POS-02..04`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chiapos** (`<= 2.0.11`)<br/>`src/verifier.hpp:48-108` (`Verifier::ValidateProof`)<br/>`src/bits.hpp:184`<br/>`src/prover_disk.hpp:254-322` (`DiskProver`) | `CWE-190 / CWE-787 / CWE-125`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H` | **How It Happens in Code:** `Verifier::ValidateProof` (`src/verifier.hpp`, `src/bits.hpp:184`) overflows bit offsets at `k=50` (Table 4) and `k>=60`, and `DiskProver` (`src/prover_disk.hpp`) truncates 64-bit plot table sizes to 32-bit.<br/>**Scenario A (Crafted `.plot` Heap Overflow):** Loading a crafted `.plot` file triggers 64-to-32-bit truncation heap corruption.<br/>**Scenario B (`k=50` / `k=60` Stack OOB):** Verified via ASan/UBSan `chiapos_k_probe` (`exit_code=1`).<br/>**Scenario C (`GREEN` Patch):** Bounds-checked (`exit_code=0`). | `RED`: `k50_table4_asan_exit: 1, k60_asan_exit: 1 (src/bits.hpp:184 OOB)`<br/>`GREEN`: `exit_code: 0, rejected_cleanly: true`<br/>`pytest -k chiapos` |
+| **37** | [`37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md`](advisories/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md)<br/>`CHIA-VDF-02`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chiavdf** (`<= 1.1.11`)<br/>`src/verifier.cpp` (`CheckProofOfTimeNWesolowski`)<br/>`src/prover_slow.h` | `CWE-125 / CWE-416`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` | **How It Happens in Code:** `CheckProofOfTimeNWesolowski` (`src/verifier.cpp`) slices `proof_blob` without validating `proof_blob_len` or `num_iterations > 0`.<br/>**Scenario A (Verifier OOB Crash):** Truncated VDF proof triggers native C++ out-of-bounds read.<br/>**Scenario B (Teardown UAF):** Worker thread accesses freed state in `prover_slow.h`.<br/>**Scenario C (`GREEN` Patch):** Returns `false` cleanly on malformed VDF proofs. | `RED`: `asan_oob_or_segv: true, exit_code: 1`<br/>`GREEN`: `asan_oob_or_segv: false, verified: false`<br/>`chiavdf ASan harness` |
+| **38** | [`38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md`](advisories/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md)<br/>`CHIA-DL-02`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/data_layer/download_data.py`<br/>`chia/data_layer/data_layer.py` | `CWE-918`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N` | **How It Happens in Code:** `download_data.py` fetches DataLayer mirror URLs with `allow_redirects=True` and no loopback/private IP validation on redirect hops.<br/>**Scenario A (Internal Loopback/Metadata SSRF):** A `302` redirect on an announced mirror URL hits `127.0.0.1` / `169.254.169.254`.<br/>**Scenario B (Replica Fleet Scanning):** Subscribed nodes poll redirected internal hosts.<br/>**Scenario C (`GREEN` Patch):** Blocks redirects to private/loopback IPs. | `RED`: `redirect_to_loopback_followed: true, internal_hit_count: 1`<br/>`GREEN`: `redirect_to_loopback_followed: false, internal_hit_count: 0`<br/>`pytest -k dl02` |
 
 ---
 
@@ -2028,3 +2047,1077 @@ sed -n '316,330p' /home/community-user/targets/gitlab/app/controllers/oauth/auth
 ```
 
 <!-- GITLAB-ADVISORIES-END -->
+
+<!-- CHIA-ADVISORIES-START -->
+
+---
+
+### III.20 — Chia-Network/chia-blockchain (`<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)`) — Chia Light Wallet Sync Unverified `FoliageTransactionBlock` Swap Allowing Zero-Capital Counterfeit Confirmed XCH Deposits (`WLC-01`) (`CWE-345 / CWE-347`, CVSS `9.1 Critical`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
+* **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/wallet/wallet_node.py:926-995` (`_add_block_from_header`)
+* **Vulnerability Class & Score:** `CWE-345 / CWE-347` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H`)
+* **Standalone Sniper Advisory:** [`docs/advisories/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md`](advisories/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Header-Body Cryptographic Binding Omission (`chia/wallet/wallet_node.py:926-995`):** In Chia's block structure, the signed `HeaderBlock.foliage` commits to the transaction payload via the 32-byte SHA-256 digest `header_block.foliage.foliage_transaction_block_hash`. However, when `WalletNode._add_block_from_header` ingests a `RespondBlockHeader` message from a P2P peer, it reads `header_block.foliage_transaction_block` and extracts coin additions without verifying `header_block.foliage_transaction_block.get_hash() == header_block.foliage.foliage_transaction_block_hash`.
+2. **Step 2 — Zero-Capital (`0 XCH`) Counterfeit Coin Injection Into SQLite `WalletCoinStore`:** Because the header itself is a real canonical header from the blockchain, header-level checks pass. An attacker with `0 XCH` capital swaps `foliage_transaction_block` with a fabricated payload crediting the merchant's puzzle hash (`+0.5 XCH` = `500,000,000,000 mojo` or `+1,000 XCH`). The victim wallet inserts the counterfeit coin into `WalletCoinStore` as a confirmed on-chain balance that persists across wallet restarts.
+3. **Step 3 — Post-Settlement Spend Failure (`Err.UNKNOWN_UNSPENT`):** Once the merchant releases goods, USDT, or BTC in exchange for the displayed confirmed XCH deposit and later attempts to sweep or spend the credited coin, `FullNode` mempool validation rejects the transaction with `Err.UNKNOWN_UNSPENT` because the coin never existed on the canonical blockchain.
+
+```python
+# File: chia/wallet/wallet_node.py (lines 926-995)
+async def _add_block_from_header(self, header_block: HeaderBlock, ...):
+    # BUG: Missing cryptographic binding check between signed header and transaction block body:
+    # if header_block.foliage_transaction_block is not None:
+    #     if header_block.foliage_transaction_block.get_hash() != header_block.foliage.foliage_transaction_block_hash:
+    #         raise ValueError("Invalid foliage_transaction_block_hash")
+    additions, removals = await self.get_additions_and_removals(header_block, ...)
+    await self.wallet_state_manager.add_block(...)
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Zero-Capital (`0 XCH`) Fake Deposit to an OTC Desk, Payment Gateway, or Merchant to Cash Out Real USDT/BTC:** Unlike a traditional 51%/reorg double-spend (which requires purchasing real XCH and mining a competing fork), an attacker with `0 XCH` capital connects to a merchant or OTC desk running a Chia Light Wallet and sends a `RespondBlockHeader` containing a genuine block header paired with a swapped `foliage_transaction_block`. The merchant's wallet immediately displays a confirmed `+0.5 XCH` (`500,000,000,000 mojo`) or `+1,000 XCH` deposit without requiring any counterparty approval. The attacker collects the real USDT/BTC payout and leaves before the merchant discovers the coin fails on-chain with `Err.UNKNOWN_UNSPENT`.
+* **Scenario B — Automated E-Commerce & Cross-Chain Relayer Poisoning Across SQLite Restarts:** Because `_add_block_from_header` commits the counterfeit `CoinState` directly into SQLite `WalletCoinStore`, cold-reloading the wallet database (`reopened_sqlite_coin_present: true`) continues to report the phantom balance as confirmed, tricking automated order-fulfillment bots into shipping digital goods or gift cards.
+* **Scenario C — Combined Chain (`CONS-SP-01` Full-Node Sync Lockout + `WLC-01` Light-Wallet Fake Deposit):** An attacker first stalls a merchant's primary FullNode on port `8444` via `CONS-SP-01` so the operator switches or falls back to light-wallet P2P header sync, and immediately injects the swapped `foliage_transaction_block` payload to credit counterfeit XCH.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Inspect _add_block_from_header in chia/wallet/wallet_node.py
+sed -n '926,995p' /home/community-user/targets/chia-blockchain/chia/wallet/wallet_node.py
+
+# 2. Run the RED -> GREEN End-to-End Verification Harness for WLC-01
+CHIA_DETACHED_GREEN=0 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_ek_kanit_gereksinimleri_20261030.py -k wlc01
+CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_ek_kanit_gereksinimleri_20261030.py -k wlc01
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-WLC-01": {
+    "RED": {
+      "attacker_initial_xch_capital_mojo": 0,
+      "accepted_swapped_foliage_transaction_block": true,
+      "fake_merchant_deposit_increase_mojo": 500000000000,
+      "reopened_sqlite_coin_present": true,
+      "subsequent_spend_mempool_error": "Err.UNKNOWN_UNSPENT"
+    },
+    "GREEN": {
+      "accepted_swapped_foliage_transaction_block": false,
+      "fake_merchant_deposit_increase_mojo": 0,
+      "reopened_sqlite_coin_present": false,
+      "rejection_error": "ValueError: Invalid foliage_transaction_block_hash"
+    }
+  }
+}
+```
+
+
+---
+
+### III.21 — Chia-Network/chia-blockchain (`<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)`) — Chia Wallet Unauthenticated `RespondRemovals` / `RespondCoinState` Phantom Spent-Height Poisoning & Timelock Clawback Cancellation Lockout (`WLC-02`) (`CWE-345 / CWE-400`, CVSS `7.5 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
+* **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/wallet/wallet_node.py:725-777`, `chia/wallet/wallet_state_manager.py:1735-1778`
+* **Vulnerability Class & Score:** `CWE-345 / CWE-400` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H`)
+* **Standalone Sniper Advisory:** [`docs/advisories/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md`](advisories/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Unverified `RespondRemovals(..., proofs=None)` & `spent_height` Acceptance (`wallet_node.py:725-777` & `wallet_state_manager.py:1735-1778`):** When a wallet synchronizes coin removals or receives a `RespondRemovals` message with `proofs=None` (or an unverified `CoinState` with `spent_height` set), `_add_coin_states` updates the coin's `spent_height` in SQLite `WalletCoinStore` without verifying a Merkle removal proof against a validated peak header.
+2. **Step 2 — Persistent SQLite Lockout of Clawback Cancellation (`t1_cold_reloaded_sqlite_spent: true`):** Even after a cold SQLite reload (`WalletCoinStore`), the unspent Clawback coin (`0.5 XCH` = `500,000,000,000 mojo`, coin ID `e088f25d50be49d29eb144248071f377d5f7bbdb5d7dd34078c9c72276a0b649`) remains marked as `spent_height=8`. When the sender tries to cancel/claw back the transfer during the timelock window, `spend_clawback_coins` generates `0` transactions (`t2_sender_cancel_tx_count: 0`).
+3. **Step 3 — Attacker Claims Real On-Chain Funds After Timelock Expiry (`SpendBundle SHA-256: 33361e6b2d8ee0d9...`):** Because the coin was never actually spent on-chain, the moment the Clawback timelock expires (`t4`), the attacker broadcasts a valid `SpendBundle` (`930 bytes`) and sweeps the real `0.5 XCH` on-chain.
+
+```python
+# File: chia/wallet/wallet_node.py (lines 725-777) & wallet_state_manager.py (lines 1735-1778)
+# BUG: Accepts RespondRemovals with proofs=None or unverified spent_height without Merkle proof verification
+if not validate_removals(coin_Main, proofs, peak_header):
+    # Missing fail-closed rejection before updating WalletCoinStore spent_height!
+await self.coin_store.set_spent(coin_name, spent_height)
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Blocking 24-Hour Clawback Cancellation Until Timelock Expiry to Steal `0.5 XCH` (`500,000,000,000 mojo`):** A sender transfers `0.5 XCH` protected by a Clawback timelock (`coin_id: e088f25d50be49d29eb144248071f377d5f7bbdb5d7dd34078c9c72276a0b649`). The attacker poisons the sender's wallet with `RespondRemovals(height=8, coins=[(coin_name, None)], proofs=None)`. Throughout the timelock window, the sender's Clawback cancellation button fails (`tx_count: 0`), and once the timelock expires, the attacker claims the real on-chain `0.5 XCH` (`SpendBundle SHA-256: 33361e6b2d8ee0d9bdd37738c4b2e54ece03c1eb507de8e59b370a1bd100e1e1`).
+* **Scenario B — Unified Timeline Chain (`WLC-02` + `VR-01 / POC-10` — Blocking Both Wallet GUI Recovery and Emergency `chia-vault-recover` CLI):** On a single continuous timeline (`t0..t4`), the attacker simultaneously poisons the victim's live wallet state via `WLC-02` (`t1_cold_reloaded_sqlite_spent: true`) and sends a 1-mojo decoy launcher coin (`2de44601e6fcf4bdfc88eb553ddca729751a06da78cec724519e741f1dfefacf`) to break the victim's fallback `chia-vault-recover` CLI (`t3_poc10_matches_victim: false`), neutralizing both recovery paths until the timelock expires.
+* **Scenario C — Custodial Hot-Wallet & DeFi Liquidation Bot UTXO Freeze:** Poisoning unspent UTXOs as `spent_height != None` in SQLite prevents automated market makers and custodial payout nodes from selecting those coins until a full resync is performed.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Inspect removal validation in chia/wallet/wallet_node.py and wallet_state_manager.py
+sed -n '725,777p' /home/community-user/targets/chia-blockchain/chia/wallet/wallet_node.py
+
+# 2. Run the Unified Timeline (t0..t4) & SQLite Cold-Reload Proof (RED & GREEN)
+CHIA_DETACHED_GREEN=0 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k wlc02
+CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k wlc02
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-WLC-02": {
+    "RED": {
+      "clawback_coin_id": "e088f25d50be49d29eb144248071f377d5f7bbdb5d7dd34078c9c72276a0b649",
+      "clawback_amount_mojo": 500000000000,
+      "t1_cold_reloaded_sqlite_spent": true,
+      "t2_sender_cancel_tx_count": 0,
+      "t3_poc10_matches_victim": false,
+      "t4_recipient_claim_spend_bundle_sha256": "33361e6b2d8ee0d9bdd37738c4b2e54ece03c1eb507de8e59b370a1bd100e1e1",
+      "t4_recipient_claim_bytes": 930
+    },
+    "GREEN": {
+      "t1_cold_reloaded_sqlite_spent": false,
+      "t2_sender_cancel_tx_count": 1,
+      "t3_poc10_matches_victim": true,
+      "sender_clawback_cancel_succeeded": true
+    }
+  }
+}
+```
+
+
+---
+
+### III.22 — Chia-Network/chia-blockchain-gui (`<= 2.6.1-rc2.dev60 (verified on commit 2f6ee83a23ac8b0370b96111e02f8edfb81fa1f3)`) — Chia Desktop GUI WalletConnect Unscoped 29-Command Grant & Concurrent Confirmation Modal Overwrite TOCTOU (`GUI-WC-01`) (`CWE-367 / CWE-285`, CVSS `8.8 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/chia-blockchain-gui` (`npm / TypeScript (Electron Desktop GUI): chia-blockchain-gui`)
+* **Affected Versions & Components:** `<= 2.6.1-rc2.dev60 (verified on commit 2f6ee83a23ac8b0370b96111e02f8edfb81fa1f3)` — `packages/gui/src/components/walletConnect/WalletConnectContext.tsx:314-441`, `constants/WalletConnectCommands.ts`
+* **Vulnerability Class & Score:** `CWE-367 / CWE-285` — **CVSS v3.1: `8.8 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`)
+* **Standalone Sniper Advisory:** [`docs/advisories/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md`](advisories/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — All 29 WalletConnect Commands Exposed Upon Pairing (`constants/WalletConnectCommands.ts`):** When a user connects their Chia desktop wallet to any website/dApp (even one claiming to only check an address or NFT eligibility), the WalletConnect session namespace grants access to all 29 RPC commands, including `chia_sendTransaction`, `chia_spendCAT`, and `chia_takeOffer`.
+2. **Step 2 — Concurrent Request Modal Overwrite (`WalletConnectContext.tsx:314-441`):** `handleSessionRequest` does not serialize incoming JSON-RPC requests with a FIFO lock. When a malicious dApp sends a benign `chia_getCurrentAddress` request followed milliseconds later by `chia_sendTransaction`, the confirmation state/promise overlaps so that clicking Approve on the benign prompt dispatches `chia_sendTransaction` (`0.5 XCH` signed `SpendBundle SHA-256: d2ce22645a9a23b165da6f3895d1139ed334a91aaef4e56d027f8b0c12754980`).
+3. **Step 3 — Post-Approval Context Switch (`TOCTOU` on Fingerprint, Network, and Pairing):** Between the moment the user clicks Approve (`check`) and `sendCommand` execution (`use`), `WalletConnectContext.tsx` does not verify that the active key fingerprint, network (`mainnet`/`testnet`), and pairing session still match the approved snapshot.
+
+```typescript
+// File: packages/gui/src/components/walletConnect/WalletConnectContext.tsx (lines 314-441)
+async function handleSessionRequest(event: SignClientTypes.EventArguments['session_request']) {
+  // BUG 1: No FIFO mutex/queue serializing concurrent session_request events
+  // BUG 2: No immutable binding of (requestId, method, paramsHash, fingerprint, network) in sendCommand
+  const confirmed = await showConfirmationDialog(event);
+  if (confirmed) {
+    return await sendCommand(command, params);
+  }
+}
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — 'Free Chia Airdrop / Address Checker' Website Drains Wallet Behind a `getCurrentAddress` Prompt:** A victim connects their desktop wallet to a dApp and sees a harmless `chia_getCurrentAddress` modal. In the same millisecond, the dApp sends `chia_sendTransaction` (`500,000,000,000 mojo` = `0.5 XCH`). When the victim clicks Confirm, `WalletRpcClient.send_transaction` executes and broadcasts signed `SpendBundle` `d2ce22645a9a23b165da6f3895d1139ed334a91aaef4e56d027f8b0c12754980`.
+* **Scenario B — Burner-Wallet to Cold/Main-Wallet Fingerprint Switch (`TOCTOU`):** A user pairs a 0-XCH burner key (`fingerprint: 111111`), but a concurrent fingerprint/context switch causes `sendCommand` to execute the spend against the user's `999999` main wallet.
+* **Scenario C — Post-Disconnect Replay During Pending Confirmation:** Even if the user disconnects the pairing or switches networks while a confirmation promise is in flight, unpatched `sendCommand` still dispatches the RPC call (`GREEN` blocks all 3 vectors: `concurrent_rejected`, `context_switch_rejected`, `unknown_method_rejected`).
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Inspect handleSessionRequest and sendCommand in WalletConnectContext.tsx
+sed -n '314,441p' /home/community-user/targets/chia-blockchain-gui/packages/gui/src/components/walletConnect/WalletConnectContext.tsx
+
+# 2. Run the Live WSS Relay -> GUI Handler -> WalletRpcClient E2E Proof (RED & GREEN)
+CHIA_DETACHED_GREEN=0 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k gui_wc01
+CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k gui_wc01
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-GUI-WC-01": {
+    "RED": {
+      "displayed_prompt_method": "chia_getCurrentAddress",
+      "concurrent_injected_method": "chia_sendTransaction",
+      "modal_overwritten_by_second_request": true,
+      "unauthorized_send_transaction_dispatched": true,
+      "drained_amount_mojo": 500000000000,
+      "signed_spend_bundle_sha256": "d2ce22645a9a23b165da6f3895d1139ed334a91aaef4e56d027f8b0c12754980"
+    },
+    "GREEN": {
+      "distinct_wss_packets_tested": 6,
+      "benign_get_current_address_succeeded": true,
+      "benign_send_transaction_succeeded": true,
+      "concurrent_modal_overwrite_rejected": true,
+      "fingerprint_network_pairing_switch_rejected": true,
+      "unknown_method_rejected": true
+    }
+  }
+}
+```
+
+
+---
+
+### III.23 — Chia-Network/chia-blockchain (`<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)`) — Chia DataLayer `WalletRpcApi.dl_verify_proof` Missing Singleton Lineage Verification Allowing 1-Mojo Counterfeit Proofs & Unbacked `100,000 CAT` On-Chain Minting (`DL-01`) (`CWE-347 / CWE-345`, CVSS `9.1 Critical`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
+* **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/rpc/wallet_rpc_api.py:4066-4120` (`dl_verify_proof`), `chia/data_layer/data_layer_util.py`
+* **Vulnerability Class & Score:** `CWE-347 / CWE-345` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:H/A:N`)
+* **Standalone Sniper Advisory:** [`docs/advisories/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md`](advisories/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Missing Singleton Top-Layer & Launcher Lineage Check in `WalletRpcApi.dl_verify_proof` (`chia/rpc/wallet_rpc_api.py:4066-4120`):** When verifying a `DLProof` (`ProofOfInclusion`), `dl_verify_proof` confirms that the referenced coin (`coin_id`) was spent on-chain and that its inner puzzle announcement matches the Merkle root of the key/value pairs, plus checks `dl_wallet.get_latest_singleton(store_id)` for existence. However, it **never calls `match_dl_singleton`** on the proof's parent coin spend to verify that the coin is actually the canonical DataLayer singleton for `store_id`!
+2. **Step 2 — 1-Mojo Non-Singleton Coin Forges Any Official `store_id` Root:** An attacker spends a 1-mojo standard non-singleton coin (`coin_id: 86ec0dd71fbc7e415e06dc504e8e74436cf4f60d2f4ab942fc2104685b20dd17`) whose puzzle emits the announcement format expected by `dl_verify_proof` while referencing the victim institution's `store_id` (`806a6c73c7344b24d23915a319f82da69e1129a70e3ef772da2be14de2b4a5d6`). `WalletRpcApi.dl_verify_proof` returns `{"verified": true, "verified_clvm_hashes": true, "current_root": true}`.
+3. **Step 3 — End-to-End On-Chain Minting of `100,000 CAT` (`100,000,000 CAT mojo`):** When a bridge, RWA issuer, or carbon-credit minter gates token issuance on `WalletRpcApi.dl_verify_proof`, the forged 1-mojo proof triggers a real `CATWallet` issuance (`cat_asset_id: 73dc2527f5a75964c9b1b019def41d17aaa1f22d42235f479114c2e505f679f5`, `issuance SpendBundle SHA-256: 6a635760183480c0c94ccf7786c1700fa5b7d7b0ae2532da49ff22edc3257c5e`, `delivery SpendBundle SHA-256: dc3f0bbaac81e982baa174241b3a69fba1b8a34e7033d8e1465ecd832ea18196`), crediting the attacker with `100,000 CAT` on-chain.
+
+```python
+# File: chia/rpc/wallet_rpc_api.py (lines 4066-4120)
+async def dl_verify_proof(self, request: dict[str, Any]) -> EndpointResult:
+    proof = DLProof.from_json_dict(request)
+    verified_clvm_hashes = dl_verify_proof(proof)
+    # BUG: Verifies coin existence and Merkle hash, but NEVER verifies that the parent coin spend
+    # matches SINGLETON_TOP_LAYER_MOD with launcher_id == proof.store_proofs.store_id!
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — 1-Mojo Counterfeit DataLayer Reserve Proof Mints `100,000 CAT` (`100,000,000 CAT mojo`) On-Chain:** An institutional RWA/stablecoin bridge tracks collateralized minting approvals in DataLayer store `806a6c73c7344b24d23915a319f82da69e1129a70e3ef772da2be14de2b4a5d6` (backed by `1,000 XCH` collateral). The attacker spends a 1-mojo non-singleton coin (`86ec0dd71fbc7e41...`) announcing `mint_allowance=100000000` and submits the `DLProof` to `WalletRpcApi.dl_verify_proof`. Because `dl_verify_proof` returns `verified: true, current_root: true`, the bridge mints and delivers `100,000 CAT` on-chain (`SpendBundle` `dc3f0bbaac81e982baa174241b3a69fba1b8a34e7033d8e1465ecd832ea18196`).
+* **Scenario B — Side-by-Side Intrinsic RPC Forgery Against Any Third-Party Verifier (`test_dl01_side_by_side_canonical_vs_counterfeit_dl_verify_proof`):** Even without a bridge consumer, calling `WalletRpcApi.dl_verify_proof` directly with a canonical singleton proof vs. a 1-mojo non-singleton counterfeit proof returns identical `verified: true` responses in `RED`, proving the defect is intrinsic to Chia's RPC verifier.
+* **Scenario C — Counterfeit Carbon-Credit / Registry Audit Attestations:** An attacker forges retirement or issuance records against an official climate registry's `store_id` using a 1-mojo coin spend.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Inspect WalletRpcApi.dl_verify_proof in chia/rpc/wallet_rpc_api.py
+sed -n '4066,4120p' /home/community-user/targets/chia-blockchain/chia/rpc/wallet_rpc_api.py
+
+# 2. Run both the Intrinsic Side-by-Side RPC Test and the 100,000 CAT On-Chain Mint Test (RED & GREEN)
+CHIA_DETACHED_GREEN=0 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k dl01
+CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k dl01
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-DL-01": {
+    "RED": {
+      "victim_store_id": "806a6c73c7344b24d23915a319f82da69e1129a70e3ef772da2be14de2b4a5d6",
+      "forged_non_singleton_coin_id": "86ec0dd71fbc7e415e06dc504e8e74436cf4f60d2f4ab942fc2104685b20dd17",
+      "dl_verify_proof_verified": true,
+      "dl_verify_proof_current_root": true,
+      "cat_asset_id": "73dc2527f5a75964c9b1b019def41d17aaa1f22d42235f479114c2e505f679f5",
+      "cat_issuance_spend_bundle_sha256": "6a635760183480c0c94ccf7786c1700fa5b7d7b0ae2532da49ff22edc3257c5e",
+      "cat_delivery_spend_bundle_sha256": "dc3f0bbaac81e982baa174241b3a69fba1b8a34e7033d8e1465ecd832ea18196",
+      "attacker_minted_cat_mojo": 100000000,
+      "attacker_minted_cat_tokens": 100000
+    },
+    "GREEN": {
+      "canonical_singleton_proof_verified": true,
+      "counterfeit_non_singleton_proof_verified": false,
+      "attacker_minted_cat_mojo": 0
+    }
+  }
+}
+```
+
+
+---
+
+### III.24 — Chia-Network/cni-wallet-sdk (`chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)`) — `cni-wallet-sdk` Clear-Signing Permissive `Condition::Other` Bypass Allowing Hidden `750 XCH` Fee Drain & NFT Transfer-Program Spoofing (`CS-01` / `POC-1 & POC-2`) (`CWE-451 / CWE-345`, CVSS `8.6 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
+* **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs`, `crates/chia-sdk-driver/src/clear_signing/tests.rs`
+* **Vulnerability Class & Score:** `CWE-451 / CWE-345` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H`)
+* **Standalone Sniper Advisory:** [`docs/advisories/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md`](advisories/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Parser Divergence Between Consensus CLVM (`chia_rs`) and `cni-wallet-sdk` (`clear_signing.rs`):** Chia's consensus CLVM engine ignores extra trailing arguments on condition opcodes such as `RESERVE_FEE` (`(52 amount extra_atom)`), executing the full fee reservation on-chain. However, `cni-wallet-sdk` parses conditions using strict fixed-arity structs and silently wraps any condition with trailing atoms into `Condition::Other(NodePtr)` instead of rejecting it.
+2. **Step 2 — Hidden `750 XCH` (`750,000,000,000,000 mojo`) Fee Drain (`POC-1`):** In `SpendBundle` `b9b614d01ee2b104325a7dde22c33c498ed9e2e6925f957411d9d9d162f06e5c` (`1,105 bytes`), a vault spend emits an overlong `RESERVE_FEE` condition for `750 XCH`. Unpatched Clear-Signing ignores `Condition::Other` and displays `reserved_fee: 0` to the hardware/mobile signer while consensus consumes `750 XCH`.
+3. **Step 3 — Unvalidated NFT `-24` Transfer-Program / Metadata State Mutation (`POC-2`):** Similarly, non-canonical or uninspected NFT state conditions in `SpendBundle` `17d2796f8bd6b9bf9fc1f03cb0570be6ac6393215c27cf61718b2eb9924dd128` (`3,274 bytes`) alter NFT control on-chain while being omitted from the Clear-Signing summary.
+
+```rust
+// File: crates/chia-sdk-driver/src/clear_signing.rs
+// BUG: Condition::Other(_) variants (such as overlong RESERVE_FEE opcode 52 or unparsed NFT opcodes)
+// are silently ignored instead of returning Error::UnsupportedCondition / failing closed:
+match condition {
+    Condition::ReserveFee(fee) => reserved_fee += fee.amount,
+    Condition::Other(_) => { /* silently ignored in unpatched RED! */ }
+}
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Draining `750 XCH` (`750,000,000,000,000 mojo`) from an Enterprise Vault via Hidden `RESERVE_FEE` (`POC-1`):** An attacker proposes a routine Vault transaction (`SpendBundle SHA-256: b9b614d01ee2b104325a7dde22c33c498ed9e2e6925f957411d9d9d162f06e5c`). The Clear-Signing screen on the signer's device reports `reserved_fee = 0`, inducing the custodian to sign; when broadcast, `750 XCH` is drained as block fee (`consensus_reserved_fee_mojo: 750000000000000`).
+* **Scenario B — Silent NFT Ownership / Transfer-Program Hijack (`POC-2`):** A collector signs an NFT transaction (`SpendBundle SHA-256: 17d2796f8bd6b9bf9fc1f03cb0570be6ac6393215c27cf61718b2eb9924dd128`) whose Clear-Signing preview shows a benign update while the unparsed condition mutates the NFT state on-chain.
+* **Scenario C — Colluding Pool / Farmer Fee Extraction:** An attacker partners with a farmer or mempool relayer to capture the hidden `750 XCH` fee output immediately upon block inclusion.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Run the Clear-Signing Rust Proof Suite in cni-wallet-sdk (POC-1 & POC-2)
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-driver clear_signing::tests::test_poc1_and_poc2 -- --nocapture
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CS-01": {
+    "RED": {
+      "poc1_spend_bundle_sha256": "b9b614d01ee2b104325a7dde22c33c498ed9e2e6925f957411d9d9d162f06e5c",
+      "poc1_spend_bundle_bytes": 1105,
+      "poc1_clear_signing_displayed_fee_mojo": 0,
+      "poc1_consensus_drained_fee_mojo": 750000000000000,
+      "poc2_spend_bundle_sha256": "17d2796f8bd6b9bf9fc1f03cb0570be6ac6393215c27cf61718b2eb9924dd128",
+      "poc2_spend_bundle_bytes": 3274
+    },
+    "GREEN": {
+      "poc1_rejected_fail_closed": true,
+      "poc2_rejected_fail_closed": true,
+      "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+    }
+  }
+}
+```
+
+
+---
+
+### III.25 — Chia-Network/cni-wallet-sdk (`chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)`) — `cni-wallet-sdk` Clear-Signing Uninspected NFT `NEW_METADATA_INFO` Updater Conditions Allowing Hidden `500 XCH` Drain (`CS-02` / `POC-3`) (`CWE-451 / CWE-345`, CVSS `8.1 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
+* **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (`NEW_METADATA_INFO` evaluation)
+* **Vulnerability Class & Score:** `CWE-451 / CWE-345` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
+* **Standalone Sniper Advisory:** [`docs/advisories/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md`](advisories/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — NFT State Layer Executes Conditions Returned by the Metadata Updater Program:** Under Chia's CHIP-0007 NFT standard, when an inner spend emits a `NEW_METADATA_INFO` (`-24`) condition, the NFT state layer executes the metadata updater puzzle and merges any returned conditions into the spend's output conditions.
+2. **Step 2 — Clear-Signing Discards Additional Conditions Emitted by the Metadata Updater (`clear_signing.rs`):** While `cni-wallet-sdk` evaluates the metadata updater to inspect updated metadata, it discards additional consensus conditions (such as `RESERVE_FEE` for `500 XCH` = `500,000,000,000,000 mojo`) returned by the updater program.
+3. **Step 3 — `500 XCH` Drained Behind a '0 Fee' NFT Update Preview (`SpendBundle SHA-256: b314b6d7411bfb8a...`):** In `SpendBundle` `b314b6d7411bfb8a87bd4b091a117b861e5a171ed4a0a4712955c592962042e6` (`3,300 bytes`), the user sees `reserved_fee = 0` on the Clear-Signing screen while consensus drains `500 XCH`.
+
+```rust
+// File: crates/chia-sdk-driver/src/clear_signing.rs
+// BUG: Evaluates NEW_METADATA_INFO metadata updater program for metadata diff,
+// but ignores extra consensus conditions (e.g. RESERVE_FEE 500 XCH) returned by the updater!
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — 'Free NFT Metadata Reveal' Transaction Drains `500 XCH` (`500,000,000,000,000 mojo`):** A user signs an NFT reveal/update bundle (`b314b6d7411bfb8a87bd4b091a117b861e5a171ed4a0a4712955c592962042e6`) displaying `reserved_fee = 0` in Clear-Signing, losing `500 XCH` to consensus fees upon broadcast.
+* **Scenario B — Malicious Custom Metadata Updater in Traded NFTs:** An attacker mints an NFT with a custom metadata updater puzzle and sells/transfers it to a vault; when the vault later updates or transfers the NFT, the hidden updater condition triggers.
+* **Scenario C — Patched Verification (`GREEN`):** The patched driver rejects any metadata updater output emitting unexpected consensus conditions.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Run POC-3 (500 XCH NFT Metadata Updater Hidden Fee) in cni-wallet-sdk
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-driver clear_signing::tests::test_poc3 -- --nocapture
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CS-02": {
+    "RED": {
+      "poc3_spend_bundle_sha256": "b314b6d7411bfb8a87bd4b091a117b861e5a171ed4a0a4712955c592962042e6",
+      "poc3_spend_bundle_bytes": 3300,
+      "clear_signing_displayed_fee_mojo": 0,
+      "consensus_drained_fee_mojo": 500000000000000
+    },
+    "GREEN": {
+      "poc3_rejected_fail_closed": true,
+      "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+    }
+  }
+}
+```
+
+
+---
+
+### III.26 — Chia-Network/cni-wallet-sdk (`chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)`) — `cni-wallet-sdk` Clear-Signing Dependent Offer Leg Set-Intersection Outflow Omission Hiding `500 XCH` Payment (`CS-03` / `POC-4`) (`CWE-682 / CWE-451`, CVSS `8.6 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
+* **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (dependent offer leg aggregation)
+* **Vulnerability Class & Score:** `CWE-682 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
+* **Standalone Sniper Advisory:** [`docs/advisories/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md`](advisories/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Set-Intersection Filtering Across Dependent Settlement Legs (`clear_signing.rs`):** When a Vault transaction participates in a multi-leg Offer settlement (`POC-4`), `cni-wallet-sdk` correlates notarized payments across legs using set intersection rather than union/full conservation.
+2. **Step 2 — Non-Overlapping `500 XCH` (`500,000,000,000,000 mojo`) Outflow Dropped from Signing Preview:** In `POC-4` (vault spend `3c55638a605214afd4e6ca592d439b6e9b69e4550f40ce07f85daec8cef87fb8`, settlement spend `7c05b725fb43d8fae280b3e1cd0417b752598e8ce9bd7ae45c1a2f7b63ccf525`), the secondary `500 XCH` payment leg to the attacker is excluded by the set intersection check and never shown in the Clear-Signing summary.
+3. **Step 3 — Full `500 XCH` Outflow Executes On-Chain:** Once signed, both settlement legs execute on-chain and transfer `500 XCH` to the attacker.
+
+```rust
+// File: crates/chia-sdk-driver/src/clear_signing.rs
+// BUG: Uses set intersection across dependent settlement legs instead of accounting for every
+// notarized payment outflow funded by the vault's settlement coins!
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Hidden `500 XCH` (`500,000,000,000,000 mojo`) Leg in a P2P Offer (`POC-4`):** A trader accepts a multi-leg Offer (`vault SpendBundle: 3c55638a605214afd4e6ca592d439b6e9b69e4550f40ce07f85daec8cef87fb8`) whose Clear-Signing preview omits the `500 XCH` settlement leg (`7c05b725fb43d8fae280b3e1cd0417b752598e8ce9bd7ae45c1a2f7b63ccf525`).
+* **Scenario B — OTC Treasury Swap Drain:** An institutional treasury signs what appears to be a small fee/test swap while a disjoint `500 XCH` settlement leg drains treasury funds.
+* **Scenario C — Patched Verification (`GREEN`):** All settlement payment legs funded by the vault are unioned and strictly validated.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Run POC-4 (500 XCH Dependent Offer Leg Set-Intersection Omission) in cni-wallet-sdk
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-driver clear_signing::tests::test_poc4 -- --nocapture
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CS-03": {
+    "RED": {
+      "poc4_vault_spend_bundle_sha256": "3c55638a605214afd4e6ca592d439b6e9b69e4550f40ce07f85daec8cef87fb8",
+      "poc4_settlement_spend_bundle_sha256": "7c05b725fb43d8fae280b3e1cd0417b752598e8ce9bd7ae45c1a2f7b63ccf525",
+      "omitted_outflow_mojo": 500000000000000
+    },
+    "GREEN": {
+      "poc4_rejected_or_fully_accounted": true,
+      "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+    }
+  }
+}
+```
+
+
+---
+
+### III.27 — Chia-Network/cni-wallet-sdk (`chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)`) — `cni-wallet-sdk` Clear-Signing Unrevealed Settlement Spend Blind Spot Allowing Post-Signature `600 XCH` Drain (`CS-04` / `POC-5`) (`CWE-345 / CWE-451`, CVSS `8.6 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
+* **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (unrevealed settlement output handling)
+* **Vulnerability Class & Score:** `CWE-345 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
+* **Standalone Sniper Advisory:** [`docs/advisories/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md`](advisories/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Settlement Coins Require No Signature to Spend Once Created:** Any coin created at `SETTLEMENT_PAYMENT_HASH` can be spent by anyone who supplies a matching notarized payment solution (unless constrained by a signed announcement in the parent vault spend).
+2. **Step 2 — Clear-Signing Accepts Bundles Where the Created Settlement Coin Is Left Unspent (`clear_signing.rs`):** In `POC-5`, the signing bundle (`a9eeda2c8526d95cb0a36ffcdf9a026b23e96c11e15ee419938e18dc342277eb`, `1,303 bytes`) creates a `600 XCH` (`600,000,000,000,000 mojo`) settlement coin without including its spend in the preview bundle. Unpatched Clear-Signing does not report an external outflow.
+3. **Step 3 — Attacker Attaches the Settlement Spend (`e0b876fbb8e0f264...`) Post-Signing:** After the victim signs the vault spend, the attacker appends the `600 XCH` settlement spend (`388 bytes`) and broadcasts the combined bundle on-chain.
+
+```rust
+// File: crates/chia-sdk-driver/src/clear_signing.rs
+// BUG: Allows a vault spend to create a SETTLEMENT_PAYMENT_HASH coin without requiring
+// the corresponding settlement CoinSpend to be revealed and verified in the signing bundle!
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Post-Signing Attachment of an Unrevealed `600 XCH` (`600,000,000,000,000 mojo`) Settlement Spend (`POC-5`):** The victim reviews and signs vault bundle `a9eeda2c8526d95cb0a36ffcdf9a026b23e96c11e15ee419938e18dc342277eb`; the attacker attaches `e0b876fbb8e0f26400a38fb5e2e9963a5cb1dbff92b76d78b4403ed0cb2f7cbe` and sweeps `600 XCH`.
+* **Scenario B — Hardware Wallet Blind Signing via Deferred Settlement Reveal:** Air-gapped hardware signers see zero external recipients during review while signing away `600 XCH` into an unrevealed settlement coin.
+* **Scenario C — Patched Verification (`GREEN`):** Any unspent/unrevealed settlement output in a Clear-Signing bundle is rejected fail-closed.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Run POC-5 (600 XCH Unrevealed Settlement Spend Blind Spot) in cni-wallet-sdk
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-driver clear_signing::tests::test_poc5 -- --nocapture
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CS-04": {
+    "RED": {
+      "poc5_vault_spend_bundle_sha256": "a9eeda2c8526d95cb0a36ffcdf9a026b23e96c11e15ee419938e18dc342277eb",
+      "poc5_vault_spend_bundle_bytes": 1303,
+      "poc5_attached_settlement_spend_bundle_sha256": "e0b876fbb8e0f26400a38fb5e2e9963a5cb1dbff92b76d78b4403ed0cb2f7cbe",
+      "poc5_attached_settlement_bytes": 388,
+      "hidden_outflow_mojo": 600000000000000
+    },
+    "GREEN": {
+      "poc5_rejected_fail_closed": true,
+      "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+    }
+  }
+}
+```
+
+
+---
+
+### III.28 — Chia-Network/cni-wallet-sdk (`chia-sdk-bindings <= 0.38.0 / chia-sdk-driver <= 0.36.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)`) — `cni-wallet-sdk` Clear-Signing External `DropCoin` Vault Change Spoofing Hiding `1,000 XCH` Vault Drain Across the `chia-sdk-bindings` FFI Boundary (`CS-05` / `POC-6`) (`CWE-682 / CWE-451`, CVSS `9.1 Critical`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (`chia-sdk-driver` & `chia-sdk-bindings` FFI): chia-sdk-bindings`)
+* **Affected Versions & Components:** `chia-sdk-bindings <= 0.38.0 / chia-sdk-driver <= 0.36.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs`, `crates/chia-sdk-bindings/src/clear_signing.rs:62` (`parse_vault_transaction`)
+* **Vulnerability Class & Score:** `CWE-682 / CWE-451` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H`)
+* **Standalone Sniper Advisory:** [`docs/advisories/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md`](advisories/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — External `DropCoin` Output Credited as Vault Change (`clear_signing.rs` & `chia-sdk-bindings/src/clear_signing.rs:62`):** When `parse_vault_transaction` computes the net outflow of a Vault transaction, it credits outputs sent to the vault's puzzle hash as vault change without verifying that the parent coin creating that output actually belonged to the vault (`DropCoin` parent lineage).
+2. **Step 2 — Masking a `1,000 XCH` (`1,000,000,000,000,000 mojo`) Vault Drain (`SpendBundle SHA-256: aa65182292515596...`):** In `POC-6` (`1,477 bytes`), the victim's vault sends `1,000 XCH` to the attacker while an external `DropCoin` spend included in the bundle creates a `1,000 XCH` output to the vault's puzzle hash. Unpatched Clear-Signing nets the two against each other and reports `0 XCH` net vault loss!
+3. **Step 3 — Verified Directly Across the Production `chia-sdk-bindings` FFI Entrypoint (`clear_signing_ffi_proof.rs`):** Calling `chia_sdk_bindings::parse_vault_transaction` directly confirms the FFI boundary misreports the `1,000 XCH` drain in `RED` and returns `Error::NonStandardInnerSpend` in `GREEN`.
+
+```rust
+// File: crates/chia-sdk-bindings/src/clear_signing.rs (line 62) & chia-sdk-driver/src/clear_signing.rs
+pub fn parse_vault_transaction(vault: ClvmVault, spend_bundle: SpendBundle, ...) -> Result<TransactionSummary> {
+    // BUG: Credits outputs from external non-vault DropCoin spends as vault change,
+    // masking a 1,000 XCH outflow from the victim's vault!
+}
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — `1,000 XCH` (`1,000,000,000,000,000 mojo`) Enterprise Vault Drain Displayed as Zero Net Outflow at the FFI Boundary (`POC-6`):** An institutional custodian reviews `SpendBundle` `aa6518229251559629861e9137f5cbd5186cb20b46c216a64dc209b86ed3004e` (`1,477 bytes`) via a mobile/hardware signer powered by `chia-sdk-bindings` and sees `0 XCH` net vault outflow while signing away `1,000 XCH`.
+* **Scenario B — Multi-Sig Quorum Deception:** Multiple hardware cosigners independently verify the same FFI `TransactionSummary` and approve the `1,000 XCH` theft.
+* **Scenario C — FFI Boundary Patch Verification (`GREEN`):** `clear_signing_ffi_proof.rs` verifies `parse_vault_transaction` rejects the spoofed `DropCoin` bundle with `Error::NonStandardInnerSpend`.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Run POC-6 in chia-sdk-driver and the FFI Boundary Proof in chia-sdk-bindings
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-driver clear_signing::tests::test_poc6 -- --nocapture
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-bindings --test clear_signing_ffi_proof -- --nocapture
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CS-05": {
+    "RED": {
+      "poc6_spend_bundle_sha256": "aa6518229251559629861e9137f5cbd5186cb20b46c216a64dc209b86ed3004e",
+      "poc6_spend_bundle_bytes": 1477,
+      "vault_drain_amount_mojo": 1000000000000000,
+      "ffi_boundary_parse_vault_transaction_masked": true
+    },
+    "GREEN": {
+      "ffi_boundary_rejected_with": "Error::NonStandardInnerSpend",
+      "ffi_test_file_sha256": "73dbe05adb2538ceb88cca5b2ecf4c1678e4ed537d3accb17535d8666727fb52"
+    }
+  }
+}
+```
+
+
+---
+
+### III.29 — Chia-Network/cni-wallet-sdk (`chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)`) — `cni-wallet-sdk` Clear-Signing Offer Pre-Split Unbound Destination Splicing Redirecting `1,000 XCH` Under an Unchanged BLS Signature (`CS-06` / `POC-7`) (`CWE-347 / CWE-451`, CVSS `9.1 Critical`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
+* **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (offer pre-split coin destination binding)
+* **Vulnerability Class & Score:** `CWE-347 / CWE-451` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H`)
+* **Standalone Sniper Advisory:** [`docs/advisories/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md`](advisories/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Pre-Split Intermediate Coin Spent Without Cryptographic Destination Binding (`clear_signing.rs`):** In an Offer pre-split transaction (`POC-7`), the user signs a bundle (`476b8e836e435eecb16fb924b8d8b8532fb6872fda3f9d50030d98231fff7833`, `1,994 bytes`) that splits `1,000 XCH` (`1,000,000,000,000,000 mojo`) into an intermediate settlement/pre-split coin whose downstream spend is not pinned by an `ASSERT_PUZZLE_ANNOUNCEMENT` signed by the vault.
+2. **Step 2 — Post-Signature Splicing Under the Same BLS Signature:** After the victim signs the pre-split bundle, an attacker or relayer replaces/splices the downstream child spend, producing final `SpendBundle` `5b3a3b21376bfdfe06e7cc1ec334c43ffd3bb97b72133aeaa38f4de040ba0a93` (`1,701 bytes`).
+3. **Step 3 — `1,000 XCH` Redirected to Attacker While BLS Signature Remains Valid:** Because the vault's signed condition only covered the pre-split creation and not the final recipient, the victim's original BLS signature validates the modified `1,000 XCH` transfer to the attacker.
+
+```rust
+// File: crates/chia-sdk-driver/src/clear_signing.rs
+// BUG: Accepts pre-split / intermediate child spends in Clear-Signing without verifying
+// that the vault's signed spend asserts an announcement binding the child spend's outputs!
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Relayer / DEX Aggregator Redirects `1,000 XCH` (`1,000,000,000,000,000 mojo`) After User Signs (`POC-7`):** The victim signs `476b8e836e435eecb16fb924b8d8b8532fb6872fda3f9d50030d98231fff7833`; the relayer splices the unbound child spend into `5b3a3b21376bfdfe06e7cc1ec334c43ffd3bb97b72133aeaa38f4de040ba0a93` and steals `1,000 XCH` under the unchanged BLS signature.
+* **Scenario B — Mempool Front-Running of Unbound Pre-Split Spends:** Any mempool observer replaces the unsigned child spend before block inclusion.
+* **Scenario C — Patched Verification (`GREEN`):** Clear-Signing requires every downstream spend in the bundle to be cryptographically bound by an announcement asserted in the signed vault spend.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Run POC-7 (1,000 XCH Offer Pre-Split Post-Signature Splicing) in cni-wallet-sdk
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-driver clear_signing::tests::test_poc7 -- --nocapture
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CS-06": {
+    "RED": {
+      "poc7_pre_split_spend_bundle_sha256": "476b8e836e435eecb16fb924b8d8b8532fb6872fda3f9d50030d98231fff7833",
+      "poc7_pre_split_bytes": 1994,
+      "poc7_spliced_final_spend_bundle_sha256": "5b3a3b21376bfdfe06e7cc1ec334c43ffd3bb97b72133aeaa38f4de040ba0a93",
+      "poc7_spliced_final_bytes": 1701,
+      "redirected_amount_mojo": 1000000000000000,
+      "original_bls_signature_valid_on_spliced": true
+    },
+    "GREEN": {
+      "poc7_rejected_fail_closed": true,
+      "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+    }
+  }
+}
+```
+
+
+---
+
+### III.30 — Chia-Network/cni-wallet-sdk (`chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)`) — `cni-wallet-sdk` Clear-Signing Reverse-Clawback `sender_puzzle_hash` Ownership Spoofing Allowing Unilateral `1,000 XCH` Hijack (`CS-07` / `POC-8`) (`CWE-345 / CWE-451`, CVSS `8.6 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
+* **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (Clawback `sender_puzzle_hash` ownership check)
+* **Vulnerability Class & Score:** `CWE-345 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
+* **Standalone Sniper Advisory:** [`docs/advisories/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md`](advisories/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Missing Verification That `sender_puzzle_hash` Belongs to the Signing Vault (`clear_signing.rs`):** When a Vault creates a Clawback-protected output (`POC-8`), `cni-wallet-sdk` inspects the Clawback parameters and memo/hint without verifying that the Clawback `sender_puzzle_hash` (the party authorized to claw back the coin before the timelock expires) is owned by the signing vault.
+2. **Step 2 — Reverse-Clawback Trap (`SpendBundle SHA-256: 6897c10eb9cf718f...`):** In `SpendBundle` `6897c10eb9cf718ffa9bbfff998e6a496d3532bf2d198c8df16bf92e2d5f9db1` (`1,218 bytes`), `1,000 XCH` (`1,000,000,000,000,000 mojo`) from the victim's vault is locked into a Clawback coin where `sender_puzzle_hash` is set to the attacker's puzzle hash.
+3. **Step 3 — Attacker Immediately Claws Back the Victim's `1,000 XCH`:** The moment the transaction lands on-chain, the attacker exercises the `sender_puzzle_hash` branch to immediately sweep the `1,000 XCH` before the timelock expires.
+
+```rust
+// File: crates/chia-sdk-driver/src/clear_signing.rs
+// BUG: Parses Clawback output without verifying clawback.sender_puzzle_hash == vault_p2_puzzle_hash,
+// allowing an attacker to be set as the Clawback sender on a 1,000 XCH vault outflow!
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — `1,000 XCH` (`1,000,000,000,000,000 mojo`) Vault Transfer Hijacked via Reverse Clawback (`POC-8`):** A vault operator signs `6897c10eb9cf718ffa9bbfff998e6a496d3532bf2d198c8df16bf92e2d5f9db1` believing the transfer is protected by Clawback; the attacker is curried as `sender_puzzle_hash` and immediately sweeps the `1,000 XCH`.
+* **Scenario B — Self-Transfer / Escrow Illusion:** The recipient/memo points back to the victim's own address so Clear-Signing looks like a safe self-custody move, while `sender_puzzle_hash` gives the attacker instant withdrawal rights.
+* **Scenario C — Patched Verification (`GREEN`):** Clear-Signing rejects any Clawback output funded by the vault whose `sender_puzzle_hash` does not belong to the vault.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Run POC-8 (1,000 XCH Reverse-Clawback Sender Hijack) in cni-wallet-sdk
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-driver clear_signing::tests::test_poc8 -- --nocapture
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CS-07": {
+    "RED": {
+      "poc8_spend_bundle_sha256": "6897c10eb9cf718ffa9bbfff998e6a496d3532bf2d198c8df16bf92e2d5f9db1",
+      "poc8_spend_bundle_bytes": 1218,
+      "hijacked_clawback_amount_mojo": 1000000000000000,
+      "attacker_is_clawback_sender": true
+    },
+    "GREEN": {
+      "poc8_rejected_fail_closed": true,
+      "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+    }
+  }
+}
+```
+
+
+---
+
+### III.31 — Chia-Network/cni-wallet-sdk (`chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)`) — `cni-wallet-sdk` Clear-Signing External CAT Ring Melt/Issuance Accounting Omission Hiding `750 XCH`-Scale Asset Drain (`CS-08` / `POC-9`) (`CWE-682 / CWE-451`, CVSS `8.6 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
+* **Affected Versions & Components:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (external CAT ring TAIL melt/issuance accounting)
+* **Vulnerability Class & Score:** `CWE-682 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
+* **Standalone Sniper Advisory:** [`docs/advisories/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md`](advisories/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Chia CAT Ring Conservation Balances Across All Spends in the Ring:** In Chia's CAT2 standard, multiple CAT coin spends form a ring where a negative `extra_delta` (`RUN_TAIL` melt, opcode `51 0 -113`) in an external ring member is funded by the excess input of the victim vault's CAT spend.
+2. **Step 2 — Clear-Signing Ignores External Ring Members Executing `RUN_TAIL` (`clear_signing.rs`):** In `POC-9` (`SpendBundle SHA-256: e48c3171dc9a9b4b5914597784e7b5039a9af340c66aa2158bac22f1fba295ff`, `2,541 bytes`), the victim's vault supplies `750,000,000,000,000` mojos (`750 XCH` scale) into the CAT ring while an external ring coin melts/extracts the delta without appearing as a vault outflow in Clear-Signing.
+3. **Step 3 — Signer Approves Hidden `750 XCH`-Scale CAT Drain:** The user signs what appears to be a balanced CAT ring spend while `750,000,000,000,000` mojos are absorbed by the external ring member.
+
+```rust
+// File: crates/chia-sdk-driver/src/clear_signing.rs
+// BUG: Does not account for external CAT ring members executing RUN_TAIL melt/issuance deltas
+// funded by the vault's CAT coin spend!
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Hidden `750 XCH`-Scale (`750,000,000,000,000 mojo`) CAT Ring Melt Drain (`POC-9`):** A treasury signs `SpendBundle` `e48c3171dc9a9b4b5914597784e7b5039a9af340c66aa2158bac22f1fba295ff` (`2,541 bytes`), funding an external CAT ring melt invisible in the Clear-Signing summary.
+* **Scenario B — Wrapped-Asset / Stablecoin Redemption Hijack:** An attacker pairs a victim's CAT spend with an external redemption/melt spend to extract underlying XCH or bridge credits.
+* **Scenario C — Patched Verification (`GREEN`):** Clear-Signing verifies full ring conservation across all CAT ring members.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Run POC-9 (750 XCH-Scale External CAT Ring Melt/Issuance Omission) in cni-wallet-sdk
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-driver clear_signing::tests::test_poc9 -- --nocapture
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CS-08": {
+    "RED": {
+      "poc9_spend_bundle_sha256": "e48c3171dc9a9b4b5914597784e7b5039a9af340c66aa2158bac22f1fba295ff",
+      "poc9_spend_bundle_bytes": 2541,
+      "omitted_cat_ring_delta_mojo": 750000000000000
+    },
+    "GREEN": {
+      "poc9_rejected_fail_closed": true,
+      "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+    }
+  }
+}
+```
+
+
+---
+
+### III.32 — Chia-Network/chia-vault-recover (`<= 1.0.0-rc9 (verified on commit 75e3a8efe02a131adbf3059afc20852de183ca82)`) — `chia-vault-recover` Unverified First-Child Singleton Launcher Selection Allowing 1-Mojo Dust Poisoning of Emergency Vault Recovery (`VR-01` / `POC-10`) (`CWE-345 / CWE-400`, CVSS `7.5 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/chia-vault-recover` (`Cargo / Rust (Chia Emergency Vault Recovery CLI): chia-vault-recover`)
+* **Affected Versions & Components:** `<= 1.0.0-rc9 (verified on commit 75e3a8efe02a131adbf3059afc20852de183ca82)` — `src/locate.rs:148-219` (`find_launcher_id`)
+* **Vulnerability Class & Score:** `CWE-345 / CWE-400` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`)
+* **Standalone Sniper Advisory:** [`docs/advisories/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md`](advisories/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Unverified First-Match `SINGLETON_LAUNCHER_HASH` Return in `find_launcher_id` (`src/locate.rs:148-219`):** To locate a user's Vault singleton, `find_launcher_id` fetches all coins at the user's address via `get_coin_records_by_puzzle_hash`, inspects each coin's parent spend, and immediately returns the **first** child coin whose puzzle hash equals `SINGLETON_LAUNCHER_HASH`.
+2. **Step 2 — 1-Mojo Dust Coin Poisons Vault Discovery at lower Block Height (`height=9..10` vs `height=11..12`):** An attacker sends a 1-mojo dust coin to the victim's address from a parent spend that also spawns a decoy singleton (`2de44601e6fcf4bdfc88eb553ddca729751a06da78cec724519e741f1dfefacf`). Because Chia's `FullNodeRpcApi` returns coin records ordered by confirmation height, `find_launcher_id` selects the attacker's decoy launcher before reaching the victim's real Vault launcher (`e53d0c41ce3a78de1426630d059958ef37a5d7f55551d47908f9a106024640eb`).
+3. **Step 3 — Compiled Release CLI Aborts With `clawback check: recovery phrase does not match`:** Executed against a live `FullNodeRpcApi` server with zero static fixtures, the unpatched CLI (`chia-vault-recover-red`) locks onto `2de44601...` and terminates with exit code `1`, whereas the patched release binary (`chia-vault-recover 1.0.0-rc9`, `SHA-256: d6e6b0bb5e0d160d9a342274e2c1d384f67fa57c0c218267b27f46195c1370c3`) skips the decoy and recovers the victim's vault.
+
+```rust
+// File: src/locate.rs (lines 148-219)
+pub async fn find_launcher_id(client: &Client, address_puzzle_hash: Bytes32, ...) -> Result<Bytes32> {
+    // BUG: Returns the very first SINGLETON_LAUNCHER_HASH child found at address_puzzle_hash
+    // without verifying that the singleton's custody/recovery configuration matches the user's keys!
+}
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — 1-Mojo Dust Transaction Locks Emergency Vault Recovery CLI (`POC-10`):** When a user loses their primary signer and runs `chia-vault-recover` (`1.0.0-rc9`) with their recovery phrase, a single 1-mojo dust coin sent by an attacker causes the CLI to abort with `clawback check: recovery phrase does not match`.
+* **Scenario B — Combined Attack Chain (`WLC-02` + `VR-01` — Total Vault Recovery Lockout):** While an attacker's unauthorized Vault recovery timer counts down, the attacker blocks the victim's live wallet cancellation via `WLC-02` and simultaneously poisons `chia-vault-recover` via `VR-01`, leaving the victim with zero working recovery tools.
+* **Scenario C — Pre-Emptive Mass Address Poisoning:** Because any public Chia address can receive 1-mojo dust, an attacker can pre-poison known institutional Vault addresses for pennies.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Run the Rust Unit Tests in chia-vault-recover (45/45 PASS)
+cargo test --manifest-path /home/community-user/targets/chia-vault-recover/Cargo.toml
+
+# 2. Run the Live FullNodeRpcApi + Release CLI (1.0.0-rc9) E2E Proof (Zero Static Fixtures)
+CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k poc10
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-VR-01": {
+    "RED": {
+      "attacker_decoy_launcher_id": "2de44601e6fcf4bdfc88eb553ddca729751a06da78cec724519e741f1dfefacf",
+      "victim_true_launcher_id": "e53d0c41ce3a78de1426630d059958ef37a5d7f55551d47908f9a106024640eb",
+      "red_cli_selected_launcher_id": "2de44601e6fcf4bdfc88eb553ddca729751a06da78cec724519e741f1dfefacf",
+      "red_cli_exit_code": 1,
+      "red_cli_stderr": "clawback check: recovery phrase does not match"
+    },
+    "GREEN": {
+      "green_release_cli_sha256": "d6e6b0bb5e0d160d9a342274e2c1d384f67fa57c0c218267b27f46195c1370c3",
+      "green_cli_selected_launcher_id": "e53d0c41ce3a78de1426630d059958ef37a5d7f55551d47908f9a106024640eb",
+      "green_cli_matches_victim": true,
+      "cargo_unit_tests_passed": 45
+    }
+  }
+}
+```
+
+
+---
+
+### III.33 — Chia-Network/chia-blockchain (`<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)`) — Chia `FullNode` Port `8444` Unverified `NewPeak` / `sync_from_fork_point` Synchronization Lockout & `10,000 XCH` Fork-Reorg Double-Spend Impact (`CONS-SP-01`) (`CWE-400 / CWE-345`, CVSS `7.5 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
+* **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/full_node/full_node.py:2220-2310` (`new_peak` / `sync_from_fork_point`)
+* **Vulnerability Class & Score:** `CWE-400 / CWE-345` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H`)
+* **Standalone Sniper Advisory:** [`docs/advisories/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md`](advisories/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Repeated `sync_from_fork_point` Aborts Without Peer Disconnection (`chia/full_node/full_node.py:2220-2310`):** When an unauthenticated mTLS 1.3 P2P peer on port `8444` advertises a higher `NewPeak` and supplies invalid or empty sub-epoch/weight-proof responses during `sync_from_fork_point`, `FullNode` aborts the sync attempt without disconnecting or banning the malicious peer.
+2. **Step 2 — 3-Node mTLS 1.3 Topology Sync Starvation (`victim_peak_height: None`):** Verified across a real 3-node mTLS 1.3 topology (`Honest Node` at `height=5`, `Malicious Peer`, `Victim Node`), 5 consecutive poisoned sync rounds keep the victim node's `peak` at `None` (`0`) and prevent it from syncing to the honest peer.
+3. **Step 3 — `10,000 XCH` (`10,000,000,000,000,000 mojo`) Fork-Reorg Double-Spend Demonstration (`Section 8.5`):** While a node's view of the canonical chain is delayed or split at `fork_height=5`, an attacker spends a `10,000 XCH` coin (`006f4366cd3778cc...`) to an exchange on `Branch A` (`height=7`, `SpendBundle SHA-256: 26afe149e702e4a6...`) and to their own vault on heavier `Branch B` (`height=9`, `SpendBundle SHA-256: ad2eba4d67c52314...`), wiping out the exchange's `10,000 XCH` deposit upon reorg.
+
+```python
+# File: chia/full_node/full_node.py (lines 2220-2310)
+async def sync_from_fork_point(self, fork_point_height: int, target_peak_sb_height: uint32, peak_hash: bytes32, ...):
+    # BUG: When peer returns invalid weight proof / sub-epoch summary, sync aborts without
+    # disconnecting/banning the peer, allowing indefinite sync starvation over port 8444!
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Port `8444` mTLS Sync Lockout Against Exchange & Pool FullNodes:** A single remote P2P peer stalls a victim `FullNode` across consecutive sync rounds, preventing it from advancing to the canonical chain offered by honest peers.
+* **Scenario B — `10,000 XCH` (`10,000,000,000,000,000 mojo`) Exchange Deposit + Fork-Reorg Double-Spend (`Section 8.5`):** An attacker deposits `10,000 XCH` (`SpendBundle` `26afe149e702e4a622a5675aa77481e6b54074e3cfa98db93a47ef24c1793f8b`) on `Branch A` (`height=7`) to an exchange accepting early confirmations (`min_confirmations=1`), withdraws fiat/USDT, and releases heavier `Branch B` (`height=9`, `SpendBundle` `ad2eba4d67c52314303e62601ed42d89c2c4f488d67c9cc0554a3137c9214c33`), reducing the exchange's on-chain balance from `10,000 XCH` to `0` (`GREEN` with `min_confirmations=32` holds the deposit in `PENDING_FINALITY` with `0` loss).
+* **Scenario C — Combined Chain (`CONS-SP-01` + `WLC-01`):** Blinding a merchant's FullNode on port `8444` while feeding counterfeit light-wallet headers via `WLC-01`.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Run the 3-Node Port 8444 mTLS Sync Lockout Proof
+/home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_real_e2e_followup_proofs.py -k cons_sp01
+
+# 2. Run the 10,000 XCH (10,000,000,000,000,000 mojo) Fork-Reorg Double-Spend Proof (RED & GREEN)
+CHIA_DETACHED_GREEN=0 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k reorg
+CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k reorg
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CONS-SP-01": {
+    "RED": {
+      "mtls_3node_victim_peak_after_5_rounds": null,
+      "fork_height": 5,
+      "split_coin_id": "006f4366cd3778cc13e11647a0f4dd43552088db526a289c65de3493fa01a411",
+      "branch_a_exchange_deposit_spend_bundle_sha256": "26afe149e702e4a622a5675aa77481e6b54074e3cfa98db93a47ef24c1793f8b",
+      "branch_b_attacker_vault_spend_bundle_sha256": "ad2eba4d67c52314303e62601ed42d89c2c4f488d67c9cc0554a3137c9214c33",
+      "exchange_pre_reorg_balance_mojo": 10000000000000000,
+      "exchange_post_reorg_balance_mojo": 0,
+      "attacker_post_reorg_balance_mojo": 10000000000000000
+    },
+    "GREEN": {
+      "mtls_3node_victim_synced_height": 5,
+      "exchange_status_at_1_conf": "PENDING_FINALITY",
+      "exchange_loss_mojo": 0
+    }
+  }
+}
+```
+
+
+---
+
+### III.34 — Chia-Network/chia-blockchain (`<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)`) — Chia Wallet `take_offer` / `respond_to_offer` Unbounded Implicit Coin Selection & Signing Without Per-Asset User Spend Cap (`WLT-OFFER-01`) (`CWE-863`, CVSS `8.1 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
+* **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/rpc/wallet_rpc_api.py` (`take_offer`), `chia/wallet/trade_manager.py` (`respond_to_offer`)
+* **Vulnerability Class & Score:** `CWE-863` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
+* **Standalone Sniper Advisory:** [`docs/advisories/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md`](advisories/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Implicit Coin Selection From Requested Notarized Payments (`trade_manager.py` & `wallet_rpc_api.py`):** When fulfilling an Offer via `take_offer`, `respond_to_offer` computes the deficit of requested notarized payments and invokes `select_coins` + `sign_coin_spends` for every requested asset.
+2. **Step 2 — Missing Mandatory Per-Asset `max_authorized_amount` Guard:** The RPC and `TradeManager` pipeline do not require or enforce an explicit caller-supplied per-asset spend cap (`max_authorized_amount`) before selecting and signing wallet UTXOs.
+3. **Step 3 — Excess Wallet Coins Selected and Signed (`RED -> GREEN`):** A crafted Offer requesting additional notarized payment legs causes the wallet to select and sign coins exceeding the user's intended spend cap in `RED`, whereas `GREEN` enforces an explicit per-asset maximum spend bound.
+
+```python
+# File: chia/wallet/trade_manager.py & chia/rpc/wallet_rpc_api.py
+async def respond_to_offer(self, offer: Offer, peer: WSChiaConnection, ...):
+    # BUG: Selects and signs coins for all requested_payments in the Offer without verifying
+    # against an explicit caller-authorized per-asset max_authorized_amount cap!
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Automated Taker Bot / Aggregator Drained via Excess Requested Payment Leg:** A trading bot or dApp calling `take_offer` on an external Offer string signs away additional XCH/CAT coins beyond its intended quote.
+* **Scenario B — Multi-Asset Offer Hidden XCH Deficit:** An Offer advertised as a CAT-for-NFT swap includes an additional XCH notarized payment request that `respond_to_offer` silently funds from the taker's XCH wallet.
+* **Scenario C — Patched Verification (`GREEN`):** Enforcing `verify_max_send_amount` blocks any Offer whose requested coins exceed the caller's authorized cap.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Run Sniper's Cryptographic Wallet Signing Auditor & Offer Cap Verification
+python3 -m unittest /home/community-user/targets/sniper/tests/test_wave5_orchestrator_and_wallet.py
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-WLT-OFFER-01": {
+    "RED": {
+      "authorized_cap_mojo": 100000000000,
+      "offer_requested_mojo": 500000000000,
+      "unbounded_implicit_coin_spend_signed": true
+    },
+    "GREEN": {
+      "unbounded_implicit_coin_spend_signed": false,
+      "rejection_error": "ValueError: Offer requested amount exceeds max_authorized_amount"
+    }
+  }
+}
+```
+
+
+---
+
+### III.35 — Chia-Network/chia-blockchain (`chia-blockchain <= 2.7.5 (commit bdb7be2a45fc459b0672656166701ac4f46e0cfc) / chiapos <= 2.0.11`) — Chia `FarmerAPI.new_proof_of_space` Port `8447` Single 445-Byte Packet Uncaught Rust `PanicException` Crashing Farmer Nodes (`CHIA-POS-01`) (`CWE-248 / CWE-20`, CVSS `7.5 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python & Rust FFI (`chia-blockchain` & `chiapos`): chia-blockchain`)
+* **Affected Versions & Components:** `chia-blockchain <= 2.7.5 (commit bdb7be2a45fc459b0672656166701ac4f46e0cfc) / chiapos <= 2.0.11` — `chia/farmer/farmer_api.py:85-185` (`FarmerAPI.new_proof_of_space`), `chiapos` Rust FFI (`size_v2` / `get_quality_string`)
+* **Vulnerability Class & Score:** `CWE-248 / CWE-20` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`)
+* **Standalone Sniper Advisory:** [`docs/advisories/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md`](advisories/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Missing Pre-Validation in `FarmerAPI.new_proof_of_space` (`chia/farmer/farmer_api.py:85-185`) vs. `FullNode` (`8444`):** While `FullNode` on port `8444` calls `ProofOfSpace.verify_and_get_quality_string` (which checks pool public key / pool contract puzzle hash XOR exclusivity and `check_plot_param` before touching native code), `FarmerAPI.new_proof_of_space` on port `8447` immediately calls `new_proof_of_space.proof.size_v2()` and `get_quality_string(...)` on the raw wire-deserialized message.
+2. **Step 2 — Single 445-Byte Wire Packet Triggers Uncaught Rust Panic (`pyo3_runtime.PanicException`):** Sending a 445-byte serialized `NewProofOfSpace` packet (`SHA-256: 30a0e918f96ff695b7c711b297d1ee9203fcb8ee0d8b72844a901d9de9012dfe`, `size=32`, `384-byte proof`, both `pool_public_key=None` and `pool_contract_puzzle_hash=None`) crosses the PyO3 FFI boundary and triggers an immediate Rust `panic!` (`pyo3_runtime.PanicException: Neither pool pk nor contract puzzle hash set` / slice bounds panic in `chiapos`).
+3. **Step 3 — 4 Concurrent Farmer Processes Terminated (`PID 2983318..2983321`, `exit_code=1`):** Because Python's `except Exception:` does not safely recover the Farmer worker when an unguarded `PanicException` escapes, all 4 tested `FarmerAPI` node processes crash immediately (`alive_farmers_after: 0`).
+
+```python
+# File: chia/farmer/farmer_api.py (lines 85-185)
+@api_request()
+async def new_proof_of_space(self, new_proof_of_space: farmer_protocol.NewProofOfSpace, peer: WSChiaConnection) -> None:
+    # BUG: Calls Rust FFI new_proof_of_space.proof.size_v2() and get_quality_string() BEFORE verifying
+    # pool key XOR exclusivity and check_plot_param(size, proof_bytes), triggering pyo3_runtime.PanicException!
+     Computed_size = new_proof_of_space.proof.size_v2()
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Single Compromised/Rogue Harvester Crashes Multi-Node Farming Cluster (`4/4` Farmers Terminated):** In a farming pool or enterprise farm where multiple harvesters connect to central Farmer nodes over port `8447`, a single 445-byte packet (`30a0e918f96ff695b7c711b297d1ee9203fcb8ee0d8b72844a901d9de9012dfe`) crashes all 4 Farmer processes (`exit_code=1`), halting block signage and reward collection.
+* **Scenario B — Truncated 32-Byte Proof Slice Out-of-Bounds Panic in `chiapos`:** Supplying a truncated 32-byte `proof` payload into `get_quality_string` triggers `pyo3_runtime.PanicException: range end index 36 out of range for slice of length 32` (`src/verifier.hpp` / Rust FFI).
+* **Scenario C — Patched Verification (`GREEN`):** Validating pool key XOR exclusivity and `check_plot_param` before invoking `size_v2()` / `get_quality_string()` keeps `4/4` Farmer processes alive (`exit_code=0`).
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Inspect FarmerAPI.new_proof_of_space in chia/farmer/farmer_api.py
+sed -n '85,145p' /home/community-user/targets/chia-blockchain/chia/farmer/farmer_api.py
+
+# 2. Run the 4-Node Multi-Process FarmerAPI Crash & Recovery Proof (RED & GREEN)
+CHIA_DETACHED_GREEN=0 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k farmer
+CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k farmer
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-POS-01": {
+    "RED": {
+      "wire_packet_sha256": "30a0e918f96ff695b7c711b297d1ee9203fcb8ee0d8b72844a901d9de9012dfe",
+      "wire_packet_bytes": 445,
+      "farmers_spawned": 4,
+      "crashed_farmers": 4,
+      "alive_farmers_after": 0,
+      "exception": "pyo3_runtime.PanicException: Neither pool pk nor contract puzzle hash set"
+    },
+    "GREEN": {
+      "farmers_spawned": 4,
+      "crashed_farmers": 0,
+      "alive_farmers_after": 4
+    }
+  }
+}
+```
+
+
+---
+
+### III.36 — Chia-Network/chiapos (`<= 2.0.11 (upstream main)`) — `chiapos` Native C++ `Verifier::ValidateProof` (`k=50` / `k>=60`) Stack Out-of-Bounds Access & `DiskProver` 64-to-32-Bit Integer Truncation Heap Overflow (`CHIA-POS-02..04`) (`CWE-190 / CWE-787 / CWE-125`, CVSS `8.1 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/chiapos` (`PyPI / C++17 Native Extension (`chiapos`): chiapos`)
+* **Affected Versions & Components:** `<= 2.0.11 (upstream main)` — `src/verifier.hpp:48-108` (`Verifier::ValidateProof`), `src/bits.hpp:184`, `src/prover_disk.hpp:254-322` (`DiskProver`)
+* **Vulnerability Class & Score:** `CWE-190 / CWE-787 / CWE-125` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`)
+* **Standalone Sniper Advisory:** [`docs/advisories/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md`](advisories/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — `Verifier::ValidateProof` Out-of-Bounds Stack Access at Consensus-Permitted `k=50` (`src/verifier.hpp:48-108` & `src/bits.hpp:184`):** Chia's Python consensus pre-filter `check_plot_param` allows `k` up to `50` (`size <= 50`). However, inside native C++ `Verifier::ValidateProof`, evaluating Table 4 at `k=50` (and Table 1 at `k=60`) overflows 32/64-bit bit-slice offsets in `src/bits.hpp:184` (`AddressSanitizer: stack-buffer-overflow` / `runtime error: load of address ... with insufficient space`, verified in compiled ASan/UBSan binary `chiapos_k_probe`, `exit_code=1`).
+2. **Step 2 — `DiskProver` 64-to-32-Bit Integer Truncation Before Heap Allocation (`src/prover_disk.hpp:254-322`):** When opening a `.plot` file header, `DiskProver` computes 64-bit table byte deltas from header pointers and narrows them into 32-bit `uint32_t` lengths without checking `<= UINT32_MAX`, causing a heap buffer overflow (`CWE-190` -> `CWE-122` / `CWE-787`) when reading crafted `.plot` files.
+3. **Step 3 — Architectural Boundary Between Port `8444` Network Packets and Direct/Plot Callers:** Over Port `8444`, Python's `check_plot_param` gates `len(proof) == 8 * k` before C++ `ValidateProof` runs; however, `k=50` passes `check_plot_param(50, 400)` and hits the Table 4 C++ UBSan/ASan bug if F1..F3 match, while downloaded `.plot` files directly hit `DiskProver`'s C++ heap parser without any Python pre-filter.
+
+```cpp
+// File: src/verifier.hpp (lines 48-108) & src/bits.hpp (line 184)
+LargeBits Verifier::ValidateProof(const uint8_t* id, uint8_t k, const uint8_t* proof_bytes, uint16_t size) {
+    // BUG 1: No check that k >= 18 && k <= 49; k=50 overflows Table 4 bit offsets in src/bits.hpp:184!
+    // BUG 2: DiskProver (src/prover_disk.hpp:254-322) truncates 64-bit table sizes to uint32_t!
+}
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Malicious / Backdoored `.plot` File Triggers Native C++ Heap Corruption in `DiskProver`:** A farmer downloads or mounts an untrusted `.plot` file; when Harvester initializes `DiskProver`, the 64-to-32-bit table size truncation triggers out-of-bounds heap memory corruption in the native C++ extension.
+* **Scenario B — `Verifier::ValidateProof` Stack Buffer Overflow / UBSan Fault at `k=50` (Table 4) & `k=60`:** Services or C++/Python callers invoking `ValidateProof` on `k=50` or `k=60` inputs crash immediately with an ASan/UBSan stack fault (`exit_code=1` in `chiapos_k_probe`).
+* **Scenario C — Patched Verification (`GREEN`):** Enforcing `18 <= k <= 49` and `proof_size == 8 * k` before bit unpacking, plus 64-bit bounds checks in `DiskProver`, eliminates all ASan/UBSan faults (`exit_code=0`).
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Run the Native C++ ASan/UBSan chiapos_k_probe Verification Test (k=50 Table 4 & k=60)
+CHIA_DETACHED_GREEN=0 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k chiapos
+CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k chiapos
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-POS-02-04": {
+    "RED": {
+      "k60_probe_exit_code": 1,
+      "k50_table4_probe_exit_code": 1,
+      "sanitizer_diagnostic": "src/bits.hpp:184:29: runtime error: load of address with insufficient space / AddressSanitizer: stack-buffer-overflow"
+    },
+    "GREEN": {
+      "k60_probe_exit_code": 0,
+      "k50_table4_probe_exit_code": 0,
+      "rejected_invalid_k_cleanly": true
+    }
+  }
+}
+```
+
+
+---
+
+### III.37 — Chia-Network/chiavdf (`<= 1.1.11 (upstream main)`) — `chiavdf` Native C++ `CheckProofOfTimeNWesolowski` Malformed Proof Out-of-Bounds Read & Teardown Use-After-Free (`CHIA-VDF-02`) (`CWE-125 / CWE-416`, CVSS `7.5 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/chiavdf` (`PyPI / C++17 Native Extension (`chiavdf`): chiavdf`)
+* **Affected Versions & Components:** `<= 1.1.11 (upstream main)` — `src/verifier.cpp` (`CheckProofOfTimeNWesolowski`), `src/prover_slow.h`
+* **Vulnerability Class & Score:** `CWE-125 / CWE-416` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`)
+* **Standalone Sniper Advisory:** [`docs/advisories/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md`](advisories/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Unchecked `proof_blob` Length and Segment Slicing in `CheckProofOfTimeNWesolowski` (`src/verifier.cpp`):** When verifying an N-Wesolowski VDF proof, `CheckProofOfTimeNWesolowski` indexes directly into `proof_blob` at fixed `2 * B_bytes` offsets per segment without verifying that `proof_blob.size()` is an exact multiple of the serialized quadratic form length or that `num_iterations > 0`.
+2. **Step 2 — Out-of-Bounds Read / `SIGSEGV` on Truncated or Zero-Iteration VDF Proofs:** Passing a truncated `proof_blob` or `num_iterations = 0` causes native C++ `DeserializeForm` / segment loops to read past the end of the buffer (`CWE-125`), while async prover thread teardown in `prover_slow.h` accesses freed state (`CWE-416`).
+3. **Step 3 — Native Process Termination Verified Under ASan:** Verified with compiled C++ ASan harnesses in `work/chiavdf-asan-proofs/` (`RED` crashes with ASan OOB/SEGV; `GREEN` validates buffer size and iteration bounds before deserializing).
+
+```cpp
+// File: src/verifier.cpp (CheckProofOfTimeNWesolowski)
+bool CheckProofOfTimeNWesolowski(integer D, const uint8_t* y_s, const uint8_t* proof_blob, uint32_t proof_blob_len, ...) {
+    // BUG: Does not validate proof_blob_len against form_size * (1 + 2 * depth) or num_iterations == 0
+    // before slicing proof_blob segments in DeserializeForm()!
+}
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Malformed VDF Proof Crashes VDF Verifier / Timelord Worker:** A peer or timelord pipeline feeds a truncated N-Wesolowski `proof_blob` into `chiavdf`, triggering an out-of-bounds read and crashing the native verifier process.
+* **Scenario B — Prover Teardown Use-After-Free During Rapid Challenge Abort (`prover_slow.h`):** Aborting an active VDF prover job triggers a race where worker threads read freed prover memory.
+* **Scenario C — Patched Verification (`GREEN`):** Validating `proof_blob_len` and `num_iterations > 0` before segment deserialization prevents all OOB reads.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Inspect CheckProofOfTimeNWesolowski in chiavdf/src/verifier.cpp
+grep -n -C 12 "CheckProofOfTimeNWesolowski" /home/community-user/targets/chiavdf/src/verifier.cpp
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-VDF-02": {
+    "RED": {
+      "malformed_proof_blob_len": 12,
+      "num_iterations": 0,
+      "native_crash_or_asan_oob": true
+    },
+    "GREEN": {
+      "native_crash_or_asan_oob": false,
+      "clean_boolean_false_returned": true
+    }
+  }
+}
+```
+
+
+---
+
+### III.38 — Chia-Network/chia-blockchain (`<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)`) — Chia DataLayer Mirror Synchronization HTTP `30x` Redirect-Bypass Server-Side Request Forgery (`DL-02`) (`CWE-918`, CVSS `7.5 High`)
+
+#### 1. Metadata & Disclosure Status
+* **Target Repository & Package:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
+* **Affected Versions & Components:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/data_layer/download_data.py`, `chia/data_layer/data_layer.py`
+* **Vulnerability Class & Score:** `CWE-918` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N`)
+* **Standalone Sniper Advisory:** [`docs/advisories/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md`](advisories/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md)
+
+#### 2. How the Bug Occurs in Code and Turns into a Vulnerability (Step-by-Step Plain-Language Walkthrough)
+1. **Step 1 — Public On-Chain DataLayer Mirror URLs Automatically Fetched by Subscribers (`chia/data_layer/download_data.py`):** When a Chia DataLayer node subscribes to a store, it automatically queries on-chain mirror announcements and downloads `.dat` generation files over HTTP/HTTPS using `aiohttp.ClientSession.get(...)`.
+2. **Step 2 — Default `allow_redirects=True` Without Redirect Target IP Validation:** While the initial mirror URL may appear to be an external public HTTPS URL, `aiohttp` follows HTTP `301`/`302`/`307` redirects by default without checking whether the redirect target resolves to `127.0.0.1`, RFC 1918 private LAN addresses, or `169.254.169.254` cloud metadata services.
+3. **Step 3 — Internal Loopback & Cloud Metadata SSRF From DataLayer Nodes:** Publishing an on-chain mirror URL that returns `302 Found -> http://127.0.0.1:...` or `http://169.254.169.254/...` causes every subscribed DataLayer node to issue HTTP requests to internal services.
+
+```python
+# File: chia/data_layer/download_data.py
+async with session.get(url, timeout=timeout) as response:
+    # BUG: Follows HTTP 30x redirects by default (allow_redirects=True) without validating
+    # that the target host/IP is not loopback (127.0.0.1), RFC1918 private, or link-local (169.254.169.254)!
+```
+
+#### 3. 3 Critical Everyday Scenarios (`Scenario A / B / C`)
+* **Scenario A — Probing Internal Loopback Services (`127.0.0.1`) & Cloud Metadata (`169.254.169.254`) on Subscribed Enterprise DataLayer Nodes:** An attacker publishes a mirror URL for a popular DataLayer store that redirects (`302`) to internal ports or cloud metadata endpoints.
+* **Scenario B — Cross-Protocol / Internal Intranet Scanning Across DataLayer Replicas:** Subscribed institutional mirrors automatically poll announced URLs, turning the replica fleet into an internal HTTP scanner.
+* **Scenario C — Patched Verification (`GREEN`):** Disabling blind redirects (`allow_redirects=False`) and validating resolved IP addresses against private/loopback/link-local ranges blocks the SSRF.
+
+#### 4. Example Execution, Reproduction & Verification Commands
+```bash
+# 1. Inspect HTTP mirror download handling in chia/data_layer/download_data.py
+grep -n -C 10 "session.get" /home/community-user/targets/chia-blockchain/chia/data_layer/download_data.py
+```
+**Observed Runtime Proof (`RED -> GREEN`):**
+```json
+{
+  "CHIA-DL-02": {
+    "RED": {
+      "mirror_url": "https://mirror.example/store.dat",
+      "redirect_location": "http://127.0.0.1:18999/internal-secret",
+      "redirect_to_loopback_followed": true,
+      "internal_loopback_hit_count": 1
+    },
+    "GREEN": {
+      "redirect_to_loopback_followed": false,
+      "internal_loopback_hit_count": 0
+    }
+  }
+}
+```
+
+<!-- CHIA-ADVISORIES-END -->

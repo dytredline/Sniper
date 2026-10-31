@@ -7,7 +7,7 @@
 Bu kapsamlı teknik kılavuz ve güvenlik araştırma raporu üç ana bölümden oluşmaktadır:
 1. **Bölüm I — macOS (Apple Silicon) Gerçek Donanım Kurulum ve Çalışma Doğrulama Raporu:** Sniper Community'nin gerçek macOS donanımı üzerinde hem **yerel kaynak kurulumu (`--core-only`)** hem de **Docker Desktop beş motorlu (`community-tools`)** kurulumu ile uçtan uca test ve doğrulama sonuçları.
 2. **Bölüm II — Sniper ile Taranan 8 Açık Kaynak Depo, Zafiyet Dönüşüm Mekanizmaları ve Günlük Hayat Senaryoları:** **Gökçe Baran Karakamış** tarafından **Sniper** statik analiz (SAST), altyapı (IaC) ve bağımlılık (SCA) denetim motoru ile taranan **8 açık kaynak deponun** kaynak kodu düzeyinde incelenmesi, yanlış pozitif ayrımı, kod hatalarının hangi koşullarda zafiyete dönüştüğünün herkesin anlayabileceği dilde açıklanması, her depo için **3 gerçek hayat senaryosu (`Senaryo A / B / C`)** ve **örnek çalıştırma/doğrulama komutları**.
-3. **Bölüm III — Kendi Sniper Taramamızda Bulduğumuz 19 Doğrulanmış Güvenlik Kaydı (`01`..`19`: 18 Özgün Açık + 1 Üst Akış Duplicate), Kod Analizi, Senaryolar ve Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`):** 6 farklı açık kaynak projede (**Stirling-PDF, TryCua `cua`, OpenZiti, n8n, Gotify Server, NIIS X-Road**) keşfedilen ve GitHub Security Advisory (`GHSA`) olarak bildirilen **11 doğrulanmış güvenlik açığının** kodda nasıl oluştuğu, adım adım nasıl zafiyete dönüştüğü, her biri için **3 somut günlük hayat kritik senaryosu (`Senaryo A / B / C`)**, **örnek çalıştırma/tetikleme komutları** ve **savunma yamaları (`git diff`)**.
+3. **Bölüm III — Kendi Sniper Taramamızda Bulduğumuz 38 Doğrulanmış Güvenlik Kaydı (`01`..`38`: 37 Özgün Açık + 1 Üst Akış Duplicate), Kod Analizi, Senaryolar ve Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`):** 6 farklı açık kaynak projede (**Stirling-PDF, TryCua `cua`, OpenZiti, n8n, Gotify Server, NIIS X-Road**) keşfedilen ve GitHub Security Advisory (`GHSA`) olarak bildirilen **11 doğrulanmış güvenlik açığının** kodda nasıl oluştuğu, adım adım nasıl zafiyete dönüştüğü, her biri için **3 somut günlük hayat kritik senaryosu (`Senaryo A / B / C`)**, **örnek çalıştırma/tetikleme komutları** ve **savunma yamaları (`git diff`)**.
 
 ---
 
@@ -489,9 +489,9 @@ python3 cli_reports.py --input "$HOME/audit-targets/reports/jadx-mcp-audit.json"
 
 ---
 
-## Bölüm III — Kendi Sniper Taramamızda Bulduğumuz Doğrulanmış Açıklar (19 Doğrulanmış Güvenlik Kaydı (18 Özgün Açık + 1 Üst Akış Duplicate), Zafiyete Dönüşüm Mekanizmaları, Senaryolar ve Örnek Çalıştırma Komutları)
+## Bölüm III — Kendi Sniper Taramamızda Bulduğumuz Doğrulanmış Açıklar (38 Doğrulanmış Güvenlik Kaydı (37 Özgün Açık + 1 Üst Akış Duplicate), Zafiyete Dönüşüm Mekanizmaları, Senaryolar ve Örnek Çalıştırma Komutları)
 
-**Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Adım Adım Günlük Hayat Kritik Senaryoları (`Senaryo A / B / C`)**, **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ve **Doğrulanmış Savunma Yamaları (`git diff`)** ile kanıtlanan **19 güvenlik kaydı (18 özgün açık + 1 üst akış duplicate)** ([advisories/README.tr.md](advisories/README.tr.md)) aşağıda önce özet tablo halinde, hemen ardından ise **her bir açığın kodda nasıl oluştuğunu, adım adım nasıl zafiyete dönüştüğünü, 3 günlük hayat kritik senaryosunu ve örnek çalıştırma/doğrulama komutlarını** içeren kapsamlı teknik bölümler (`III.01` – `III.19`) halinde sunulmuştur:
+**Sniper** statik/dinamik analiz motoru ile yürüttüğümüz güvenlik taramalarında tespit edilen, **Adım Adım Günlük Hayat Kritik Senaryoları (`Senaryo A / B / C`)**, **Uçtan Uca Çalışma Zamanı Kanıtları (`RED -> GREEN + BENIGN`)** ve **Doğrulanmış Savunma Yamaları (`git diff`)** ile kanıtlanan **38 güvenlik kaydı (37 özgün açık + 1 üst akış duplicate)** ([advisories/README.tr.md](advisories/README.tr.md)) aşağıda önce özet tablo halinde, hemen ardından ise **her bir açığın kodda nasıl oluştuğunu, adım adım nasıl zafiyete dönüştüğünü, 3 günlük hayat kritik senaryosunu ve örnek çalıştırma/doğrulama komutlarını** içeren kapsamlı teknik bölümler (`III.01` – `III.38`) halinde sunulmuştur:
 
 | # | Açık / Advisory & GHSA Bağlantısı | Hedef Proje & Bileşen | CWE & CVSS v3.1 | Günlük Hayatta Yol Açtığı Kritik Senaryolar (`Senaryo A / B / C`) | Çalışma Zamanı Kanıtı (`RED -> GREEN`) |
 | :-: | :--- | :--- | :--- | :--- | :--- |
@@ -514,6 +514,25 @@ python3 cli_reports.py --input "$HOME/audit-targets/reports/jadx-mcp-audit.json"
 | **17** | [`17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md`](advisories/tr/17-GITLAB-CAND-07-AGENT-CROSS-ORG-MCP-KEY-COLLISION.md)<br/>`GITLAB-CAND-07`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`ee/app/services/ai/duo_workflows/mcp_config_service.rb:57-64`<br/>`ee/app/services/ai/catalog/mcp_servers/list_service.rb:14-24`<br/>`workhorse/internal/ai_assist/duoworkflow/mcp.go:254` | `CWE-863 / CWE-639`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:L` | **Kodda Oluşumu:** `McpConfigService#execute` (`mcp_config_service.rb:61`) `.except(:orbit)` kullanırken `:gitlab` anahtarını dışlamaz ve `ListService`/`Agent::Create` `.in_organization` kontrolü yapmaz.<br/>**Senaryo A (Tüm Yerleşik GitLab AI Araç Kısıtlamalarını Sıfırlama):** Adı `"GitLab"` (`:gitlab`, `Tools: nil`) olan katalog sunucusu yerleşik `:gitlab` kaydını ezerek Workhorse'ta (`mcp.go:254`) `allToolsAvailable = true` yapar ve tüm `withheld_server_tools` yasaklarını kaldırır.<br/>**Senaryo B (Başka Organizasyonun MCP Sunucusunu Bağlama):** GraphQL mutasyonlarıyla başka organizasyondaki `McpServer` GID'si ajana bağlanır.<br/>**Senaryo C (Duo Workflow `401` DoS):** `:gitlab` üzerindeki `Headers` ezilerek `/api/v4/mcp` çağrıları çökertilir. | `RED`: `builtin_gitlab_overwritten: true, workhorse_all_tools_available: true`<br/>`GREEN`: `builtin_gitlab_overwritten: false, workhorse_all_tools_available: false`<br/>`pytest -k test_report4_cand07` |
 | **18** | [`18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md`](advisories/tr/18-GITLAB-CAND-04-SLASH-COMMANDS-CONFIRM-OPEN-REDIRECT.md)<br/>`GITLAB-CAND-04`<br/>MITRE CNA-LR & HackerOne | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`app/controllers/projects/integrations/slash_commands_controller.rb:21-48`<br/>`app/models/concerns/integrations/base/slash_commands.rb:6-10, 68-76` | `CWE-601 / CWE-863`<br/>**5.4 Medium**<br/>`AV:N/AC:L/PR:L/UI:R/S:C/C:L/I:L/A:N` | **Kodda Oluşumu:** `SlashCommandsController#confirm` (`slash_commands_controller.rb:23-48`) doğrulanmamış `request_params[:redirect_url]` adresine yönlendirme yapar, `request_params[:response_url]` kullanır ve Redis `CACHE_KEY` içinde `project_id`/`integration_id` bağlamaz.<br/>**Senaryo A (Güvenilir GitLab Onay Ekranı Üzerinden Şifre/2FA Avı):** Slash komutu onaylandığı anda kullanıcı `302 Found` ile harici sahte SSO giriş sayfasına yönlendirilir.<br/>**Senaryo B (Projeler Arası ChatOps Hesap Bağlama):** Proje B'de üretilen `command_id` Proje A'nın onay uç noktasında geçerli kabul edilir.<br/>**Senaryo C (ChatOps Geri Çağrı Yönlendirmesi):** `request_params[:response_url]` önbellekteki URL'nin yerine kullanılarak onay yanıtı saldırgana yönlendirilir. | `RED`: `http_status: 302, open_redirect_triggered: true, cross_project_cache_collision_accepted: true`<br/>`GREEN`: `404, open_redirect_triggered: false`<br/>`pytest -k test_report5_cand04` |
 | **19** | [`19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md`](advisories/tr/19-GITLAB-DEVISE-CVE-2026-40295-DUPLICATE-AND-PKCE-DEFENSE.md)<br/>Üst Akış Duplicate: `CVE-2026-40295`<br/>*(Yalnızca GitHub — MITRE'ye Gönderilmedi)* | **gitlab-org/gitlab** (`<= 19.6.0-pre`)<br/>`lib/gitlab/devise_failure.rb:4-18`<br/>`lib/gitlab/auth/session_expire_from_init_enforcer.rb:44-62`<br/>`app/controllers/oauth/authorizations_controller.rb:316-330` | `CWE-601 / CWE-345`<br/>**5.4 Medium (Upstream CVE-2026-40295 Duplicate)**<br/>`AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N` | **[ÜST AKIŞ DUPLICATE: `CVE-2026-40295` — Yalnızca GitHub'da Yayımlandı, MITRE'ye Gönderilmedi]**<br/>**Kodda Oluşumu:** `Gitlab::DeviseFailure`, `Devise 5.0.3` (`CVE-2026-40295`) içindeki `redirect_url` metodunu miras alarak `GET` dışı `:timeout` hatalarında harici `Referer` başlığına yönlendirme yapar; `CAND-03` ise çalışma zamanında `Doorkeeper 5.9.3` tarafından engellenir.<br/>**Senaryo A/B/C:** `lib/gitlab/devise_failure.rb` içinde `extract_path_from_location(request.referrer)` ürün yaması ve PKCE savunma derinliği yaması. | `DUPLICATE OF CVE-2026-40295` *(Not submitted to MITRE)*<br/>`RED`: `external_referer_redirect: true`<br/>`GREEN`: `path_extracted_only: true` |
+| **20** | [`20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md`](advisories/tr/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md)<br/>`CHIA-WLC-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/wallet/wallet_node.py:926-995` (`_add_block_from_header`) | `CWE-345 / CWE-347`<br/>**9.1 Critical**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H` | **Kodda Oluşumu:** `WalletNode._add_block_from_header` (`wallet_node.py:926-995`), `foliage_transaction_block.get_hash() == header_block.foliage.foliage_transaction_block_hash` kontrolünü yapmadan işlem blokunu kabul eder.<br/>**Senaryo A (0 XCH Sermayeli Sahte Yatırım):** Cebinde `0 XCH` olan saldırgan gerçek başlık altına sahte işlem bloku takarak satıcı cüzdanında `+0.5 XCH` (`500,000,000,000 mojo`) onaylı bakiye gösterir ve gerçek USDT/BTC çeker.<br/>**Senaryo B (Kalıcı SQLite Zehirlemesi):** Sahte coin cüzdan yeniden başlatıldığında da kalır; harcanmak istendiğinde `UNKNOWN_UNSPENT` verir.<br/>**Senaryo C (`CONS-SP-01` + `WLC-01`):** FullNode senkron kilidi sonrası hafif cüzdana sahte yatırım enjeksiyonu. | `RED`: `fake_merchant_deposit_increase_mojo: 500000000000, spend_err: UNKNOWN_UNSPENT`<br/>`GREEN`: `rejected_forged_foliage_tx_block: true, fake_increase: 0`<br/>`pytest -k test_wlc01` |
+| **21** | [`21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md`](advisories/tr/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md)<br/>`CHIA-WLC-02`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/wallet/wallet_node.py:725-777`<br/>`chia/wallet/wallet_state_manager.py:1735-1778` | `CWE-345 / CWE-400`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H` | **Kodda Oluşumu:** `wallet_node.py:725-777` ve `wallet_state_manager.py:1735-1778`, kanıtsız `RespondRemovals(proofs=None)` / `spent_height` bildirimini Merkle kanıtı olmadan SQLite `WalletCoinStore`'a yazar.<br/>**Senaryo A (Clawback İptal Kilidi):** Kurban `0.5 XCH` Clawback işlemini iptal edemez (`tx_count: 0`); süre dolunca saldırgan zincir üstünde parayı çeker (`33361e6b...`).<br/>**Senaryo B (`WLC-02` + `VR-01` Birleşik Zincir):** Tek zaman çizelgesinde (`t0..t4`) hem cüzdan iptalini hem `chia-vault-recover` CLI aracını kilitler.<br/>**Senaryo C (UTXO Dondurma):** Cüzdan yeniden başlatılsa bile coin harcanmış görünür. | `RED`: `t1_cold_reloaded_sqlite_spent: true, t2_sender_cancel_tx_count: 0, t4_recipient_claim_succeeded: true`<br/>`GREEN`: `t1_spent: false, t2_sender_cancel_tx_count: 1`<br/>`pytest -k test_wlc02` |
+| **22** | [`22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md`](advisories/tr/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md)<br/>`CHIA-GUI-WC-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain-gui** (`<= 2.6.1-rc2.dev60`)<br/>`packages/gui/src/components/walletConnect/WalletConnectContext.tsx:314-441`<br/>`constants/WalletConnectCommands.ts` | `CWE-367 / CWE-285`<br/>**8.8 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H` | **Kodda Oluşumu:** `WalletConnectContext.tsx:314-441` bağlantıda 29 komutun tamamını açar, FIFO onay kilidi kullanmaz ve `sendCommand` içinde `(requestId, fingerprint, network, pairing)` doğrulaması yapmaz.<br/>**Senaryo A (Onay Penceresi Ezme):** 'Sadece adresine bakacağım' (`getCurrentAddress`) penceresi ezilerek arka planda `chia_sendTransaction` (`SpendBundle d2ce2264...`) çalıştırılır.<br/>**Senaryo B (Parmak İzi TOCTOU):** Boş cüzdanda verilen onay ana cüzdanda (`999999`) çalışır.<br/>**Senaryo C (Bağlantı Kesme Sonrası Yürütme):** Eşleşme silinse bile bekleyen işlem çalışır. | `RED`: `modal_overwritten: true, unauthorized_spend_bundle_sha256: d2ce22645a9a23b1...`<br/>`GREEN`: `6/6 distinct WSS packets blocked`<br/>`pytest -k gui_wc01` |
+| **23** | [`23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md`](advisories/tr/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md)<br/>`CHIA-DL-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/rpc/wallet_rpc_api.py:4066-4120` (`dl_verify_proof`)<br/>`chia/data_layer/data_layer_util.py` | `CWE-347 / CWE-345`<br/>**9.1 Critical**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:H/A:N` | **Kodda Oluşumu:** `WalletRpcApi.dl_verify_proof` (`wallet_rpc_api.py:4066-4120`), kanıttaki coin'in `match_dl_singleton` ve `launcher_id == store_id` soy kütüğüne ait olduğunu doğrulamaz.<br/>**Senaryo A (`100.000 CAT` Zincir Üstü Basım):** `1 mojo`'luk sahte coin (`86ec0dd7...`) kurumun `store_id` (`806a6c73...`) kanıtını taklit eder ve zincirde `100.000 CAT` (`dc3f0bba...`) basılır.<br/>**Senaryo B (Doğrudan RPC Kanıtı):** Yan yana testte gerçek ve sahte kanıt `RED` modda aynı `verified: true` sonucunu alır.<br/>**Senaryo C (Resmi Sicil Sahteciliği):** Herhangi bir `store_id` adına sahte veri kanıtı doğrulatılır. | `RED`: `counterfeit_verified: true, attacker_cat_balance_mojo: 100000000`<br/>`GREEN`: `counterfeit_verified: false, attacker_cat_balance_mojo: 0`<br/>`pytest -k dl01` |
+| **24** | [`24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md`](advisories/tr/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md)<br/>`CHIA-CS-01 (POC-1 & POC-2)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs`<br/>`crates/chia-sdk-driver/src/clear_signing/tests.rs` | `CWE-451 / CWE-345`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H` | **Kodda Oluşumu:** `clear_signing.rs`, konsensüsta geçerli olan fazladan argümanlı `Condition::Other` koşullarını (`RESERVE_FEE` vb.) hata vermeden yok sayar.<br/>**Senaryo A (`750 XCH` Gizli Ücret Çekimi):** `SpendBundle` `b9b614d0...` imza ekranında `reserved_fee: 0` gösterirken kasadan `750 XCH` (`750,000,000,000,000 mojo`) çeker.<br/>**Senaryo B (NFT Durum Manipülasyonu):** `SpendBundle` `17d2796f...` ile NFT durumu ekranda görünmeden değiştirilir.<br/>**Senaryo C (Savunma Yaması):** `GREEN` modunda standart dışı koşullar reddedilir. | `RED`: `displayed_fee_mojo: 0, consensus_fee_drained_mojo: 750000000000000`<br/>`GREEN`: `rejected_non_canonical_condition: true`<br/>`cargo test clear_signing::tests` |
+| **25** | [`25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md`](advisories/tr/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md)<br/>`CHIA-CS-02 (POC-3)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (`NEW_METADATA_INFO` evaluation) | `CWE-451 / CWE-345`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **Kodda Oluşumu:** `clear_signing.rs`, NFT `NEW_METADATA_INFO` güncelleyici programının ürettiği ek `RESERVE_FEE` koşullarını hesaba katmaz.<br/>**Senaryo A (`500 XCH` Gizli Çıkış):** `SpendBundle` `b314b6d7...` (`3.300B`) ekranda `0 ücret` gösterirken `500 XCH` çeker.<br/>**Senaryo B (Tuzaklı NFT Güncelleyici):** Özel güncelleyici kasa işleminde gizli çıkışı tetikler.<br/>**Senaryo C (`GREEN` Yaması):** Ek koşul üreten güncelleyicileri reddeder. | `RED`: `displayed_fee_mojo: 0, consensus_fee_drained_mojo: 500000000000000`<br/>`GREEN`: `rejected_impure_metadata_updater: true`<br/>`cargo test clear_signing::tests` |
+| **26** | [`26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md`](advisories/tr/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md)<br/>`CHIA-CS-03 (POC-4)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (dependent offer leg aggregation) | `CWE-682 / CWE-451`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **Kodda Oluşumu:** `clear_signing.rs` bağımlı teklif bacaklarını kesişim (`intersection`) ile birleştirerek ayrık ödeme bacaklarını düşürür.<br/>**Senaryo A (`500 XCH` Gizli Teklif Bacağı):** Kasa (`3c55638a...`) ve settlement (`7c05b725...`) harcamasıyla `500 XCH` ekranda görünmeden çekilir.<br/>**Senaryo B (Hazine Takas Kaybı):** İkinci ödeme bacağı imzalanan özette yer almaz.<br/>**Senaryo C (`GREEN` Yaması):** Tüm bacakların tam birleşimini zorunlu kılar. | `RED`: `omitted_settlement_outflow_mojo: 500000000000000`<br/>`GREEN`: `full_outflow_accounted_or_rejected: true`<br/>`cargo test clear_signing::tests` |
+| **27** | [`27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md`](advisories/tr/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md)<br/>`CHIA-CS-04 (POC-5)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (unrevealed settlement output handling) | `CWE-345 / CWE-451`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **Kodda Oluşumu:** `clear_signing.rs`, harcaması pakette gösterilmeyen (`unrevealed`) `SETTLEMENT_PAYMENT_HASH` çıktısını geçerli kabul eder.<br/>**Senaryo A (`600 XCH` Gizli Settlement):** Kurban `a9eeda2c...` (`1.303B`) paketini imzalar; saldırgan `e0b876fb...` (`388B`) harcamasını ekleyip `600 XCH` çeker.<br/>**Senaryo B (Donanım Cüzdanı Atlama):** İmza ekranında dış alıcı görünmez.<br/>**Senaryo C (`GREEN` Yaması):** Açılmamış settlement çıktılarını reddeder. | `RED`: `unrevealed_settlement_accepted: true, hidden_outflow_mojo: 600000000000000`<br/>`GREEN`: `rejected_unrevealed_settlement: true`<br/>`cargo test clear_signing::tests` |
+| **28** | [`28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md`](advisories/tr/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md)<br/>`CHIA-CS-05 (POC-6)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.38.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs`<br/>`crates/chia-sdk-bindings/src/clear_signing.rs:62` (`parse_vault_transaction`) | `CWE-682 / CWE-451`<br/>**9.1 Critical**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H` | **Kodda Oluşumu:** `clear_signing.rs` ve `chia_sdk_bindings::parse_vault_transaction`, kasaya ait olmayan harici `DropCoin` çıktısını kasa para üstü (change) olarak düşer.<br/>**Senaryo A (`1.000 XCH` Kasa Boşaltma):** `SpendBundle` `aa651822...` (`1.477B`) kasadan `1.000 XCH` çekerken FFI özetinde kaybı gizler.<br/>**Senaryo B (Multi-Sig Yanıltma):** Tüm imzacılar aynı sahte para üstü özetini görür.<br/>**Senaryo C (`GREEN` FFI Kanıtı):** `Error::NonStandardInnerSpend` ile reddeder. | `RED`: `ffi_parse_vault_tx_accepted: true, masked_vault_drain_mojo: 1000000000000000`<br/>`GREEN`: `Err(NonStandardInnerSpend)`<br/>`cargo test --test clear_signing_ffi_proof` |
+| **29** | [`29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md`](advisories/tr/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md)<br/>`CHIA-CS-06 (POC-7)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (offer pre-split coin destination binding) | `CWE-347 / CWE-451`<br/>**9.1 Critical**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H` | **Kodda Oluşumu:** `clear_signing.rs`, kasa harcamasına kriptografik anonsla bağlanmamış ön-bölme (`pre-split`) alt harcamalarını kabul eder.<br/>**Senaryo A (`1.000 XCH` İmza Sonrası Yönlendirme):** Kurban `476b8e83...` (`1.994B`) paketini imzalar; saldırgan `5b3a3b21...` (`1.701B`) ile `1.000 XCH`'yi aynı BLS imzası altında çalar.<br/>**Senaryo B (Mempool Değişimi):** İmzasız alt bacak ağda değiştirilir.<br/>**Senaryo C (`GREEN` Yaması):** Kriptografik anons bağlamasını zorunlu tutar. | `RED`: `pre_split_sha256: 476b8e83..., spliced_sha256: 5b3a3b21..., redirected_mojo: 1000000000000000`<br/>`GREEN`: `rejected_unbound_presplit: true`<br/>`cargo test clear_signing::tests` |
+| **30** | [`30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md`](advisories/tr/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md)<br/>`CHIA-CS-07 (POC-8)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (Clawback `sender_puzzle_hash` ownership check) | `CWE-345 / CWE-451`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **Kodda Oluşumu:** `clear_signing.rs`, Clawback çıktısındaki `sender_puzzle_hash` alanının imzalayan kasaya ait olduğunu doğrulamaz.<br/>**Senaryo A (`1.000 XCH` Ters-Clawback):** `SpendBundle` `6897c10e...` (`1.218B`) içinde iptal yetkilisi saldırgan yapılır ve `1.000 XCH` anında çekilir.<br/>**Senaryo B (Kendi Adresine Transfer Tuzağı):** Alıcı kurban görünürken iptal hakkı saldırgandadır.<br/>**Senaryo C (`GREEN` Yaması):** `sender_puzzle_hash` sahipliğini zorunlu kılar. | `RED`: `attacker_set_as_clawback_sender: true, hijacked_mojo: 1000000000000000`<br/>`GREEN`: `rejected_foreign_clawback_sender: true`<br/>`cargo test clear_signing::tests` |
+| **31** | [`31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md`](advisories/tr/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md)<br/>`CHIA-CS-08 (POC-9)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/cni-wallet-sdk** (`<= 0.36.0`)<br/>`crates/chia-sdk-driver/src/clear_signing.rs` (external CAT ring TAIL melt/issuance accounting) | `CWE-682 / CWE-451`<br/>**8.6 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **Kodda Oluşumu:** `clear_signing.rs`, dış CAT halkasındaki `RUN_TAIL` eritme/ihraç deltalarını kasa özetine dahil etmez.<br/>**Senaryo A (`750 XCH` Ölçekli CAT Kaybı):** `SpendBundle` `e48c3171...` (`2.541B`) dış halkadaki eritme ile `750,000,000,000,000` mojo çeker.<br/>**Senaryo B (İtfa Soygunu):** Dış halka üyesi kasanın CAT farkını emer.<br/>**Senaryo C (`GREEN` Yaması):** Tam CAT halkası korunumunu zorunlu tutar. | `RED`: `poc9_spend_bundle_sha256: e48c3171..., omitted_cat_ring_delta_mojo: 750000000000000`<br/>`GREEN`: `rejected_unbalanced_external_cat_ring: true`<br/>`cargo test clear_signing::tests` |
+| **32** | [`32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md`](advisories/tr/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md)<br/>`CHIA-VR-01 (POC-10)`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-vault-recover** (`<= 1.0.0-rc9`)<br/>`src/locate.rs:148-219` (`find_launcher_id`) | `CWE-345 / CWE-400`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` | **Kodda Oluşumu:** `find_launcher_id` (`src/locate.rs:148-219`), adresteki ilk `SINGLETON_LAUNCHER_HASH` kaydını kurtarma anahtarıyla eşleşip eşleşmediğine bakmadan seçer.<br/>**Senaryo A (1-Mojo İle Kurtarma Kilidi):** Sahte launcher `2de44601...` yüzünden `chia-vault-recover` (`1.0.0-rc9`) `recovery phrase does not match` hatasıyla çöker.<br/>**Senaryo B (`WLC-02` + `VR-01` Zinciri):** Hem arayüzü hem CLI kurtarmayı kilitler.<br/>**Senaryo C (`GREEN` İkilisi):** Gerçek kasa `e53d0c41...` kurtarılır (`45/45` test). | `RED`: `selected_launcher: 2de44601... (decoy), cli_exit_code: 1`<br/>`GREEN`: `selected_launcher: e53d0c41... (victim), cli_exit_code: 0`<br/>`pytest -k poc10` |
+| **33** | [`33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md`](advisories/tr/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md)<br/>`CHIA-CONS-SP-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/full_node/full_node.py:2220-2310` (`new_peak` / `sync_from_fork_point`) | `CWE-400 / CWE-345`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H` | **Kodda Oluşumu:** `full_node.py:2220-2310`, `sync_from_fork_point` içinde hatalı sub-epoch/weight-proof gönderen P2P eşinin bağlantısını kesmez.<br/>**Senaryo A (Port `8444` Senkron Kilidi):** 3 düğümlü mTLS testinde dürüst düğüm (`height=5`) varken kurban `peak=None` kalır.<br/>**Senaryo B (`10.000 XCH` Reorg Çifte Harcama):** `Branch A` (`26afe149...`) ile borsaya yatırılan `10.000 XCH`, `Branch B` (`ad2eba4d...`) reorg sonrası `0` olur.<br/>**Senaryo C (`GREEN` Yaması):** Saldırgan eşi düşürür ve `32` onay derinliği uygular. | `RED`: `victim_peak: None, reorg_exchange_loss_mojo: 10000000000000000`<br/>`GREEN`: `victim_synced_height: 5, exchange_loss_mojo: 0`<br/>`pytest -k reorg` |
+| **34** | [`34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md`](advisories/tr/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md)<br/>`CHIA-WLT-OFFER-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/rpc/wallet_rpc_api.py` (`take_offer`)<br/>`chia/wallet/trade_manager.py` (`respond_to_offer`) | `CWE-863`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N` | **Kodda Oluşumu:** `take_offer` / `respond_to_offer`, varlık başına `max_authorized_amount` üst sınırı doğrulamadan cüzdandan coin seçip imzalar.<br/>**Senaryo A (Takas Botu Aşımı):** Dış teklif beklenen tutarın üzerinde coin imzalatır.<br/>**Senaryo B (Gizli Ek Varlık Bacağı):** Token takası sırasında cüzdandan ek XCH çekilir.<br/>**Senaryo C (`GREEN` Yaması):** Varlık başına harcama tavanını zorunlu kılar. | `RED`: `unbounded_implicit_coin_spend_signed: true`<br/>`GREEN`: `exceeded_max_authorized_amount_rejected: true`<br/>`pytest -k wallet` |
+| **35** | [`35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md`](advisories/tr/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md)<br/>`CHIA-POS-01`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/farmer/farmer_api.py:85-185` (`FarmerAPI.new_proof_of_space`)<br/>`chiapos` Rust FFI (`size_v2` / `get_quality_string`) | `CWE-248 / CWE-20`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` | **Kodda Oluşumu:** `FarmerAPI.new_proof_of_space` (`farmer_api.py:85-185`), havuz anahtarı XOR ve `check_plot_param` kontrolü yapmadan Rust FFI `size_v2()` / `get_quality_string()` çağırır.<br/>**Scenario A (4/4 Farmer Çöküşü):** Tek bir `445 bayt` paket (`30a0e918...`) `pyo3_runtime.PanicException` fırlatarak 4 Farmer sürecini (`exit_code=1`) çökertir.<br/>**Scenario B (Dilim Sınır Paniği):** Kısa kanıt `range end index 36 out of range` paniği üretir.<br/>**Scenario C (`GREEN` Yaması):** `4/4` Farmer ayakta kalır. | `RED`: `packet_bytes: 445, crashed_farmers: 4/4, PanicException`<br/>`GREEN`: `crashed_farmers: 0/4, alive_farmers: 4`<br/>`pytest -k farmer` |
+| **36** | [`36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md`](advisories/tr/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md)<br/>`CHIA-POS-02..04`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chiapos** (`<= 2.0.11`)<br/>`src/verifier.hpp:48-108` (`Verifier::ValidateProof`)<br/>`src/bits.hpp:184`<br/>`src/prover_disk.hpp:254-322` (`DiskProver`) | `CWE-190 / CWE-787 / CWE-125`<br/>**8.1 High**<br/>`AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H` | **Kodda Oluşumu:** `Verifier::ValidateProof` (`src/verifier.hpp`, `src/bits.hpp:184`) `k=50` (Tablo 4) ve `k>=60` için yığın sınırını aşar; `DiskProver` (`src/prover_disk.hpp`) 64-bit tablo boyutunu 32-bite daraltır.<br/>**Senaryo A (`.plot` Dosyası Heap Taşması):** Zararlı `.plot` dosyası C++ heap taşması tetikler.<br/>**Senaryo B (`k=50` / `k=60` ASan/UBSan Kanıtı):** `chiapos_k_probe` ikilisinde `src/bits.hpp:184` sınır aşımı (`exit_code=1`).<br/>**Senaryo C (`GREEN` Yaması):** Sınır kontrolüyle `exit_code=0` döner. | `RED`: `k50_table4_asan_exit: 1, k60_asan_exit: 1 (src/bits.hpp:184 OOB)`<br/>`GREEN`: `exit_code: 0, rejected_cleanly: true`<br/>`pytest -k chiapos` |
+| **37** | [`37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md`](advisories/tr/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md)<br/>`CHIA-VDF-02`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chiavdf** (`<= 1.1.11`)<br/>`src/verifier.cpp` (`CheckProofOfTimeNWesolowski`)<br/>`src/prover_slow.h` | `CWE-125 / CWE-416`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` | **Kodda Oluşumu:** `CheckProofOfTimeNWesolowski` (`src/verifier.cpp`), `proof_blob_len` ve `num_iterations > 0` kontrolü yapmadan segment okur.<br/>**Senaryo A (Doğrulayıcı OOB Çöküşü):** Kısa VDF kanıtı C++ sınır dışı okuma hatası üretir.<br/>**Senaryo B (Teardown UAF):** `prover_slow.h` içinde serbest bırakılmış belleğe erişilir.<br/>**Senaryo C (`GREEN` Yaması):** Bozuk VDF kanıtını `false` ile güvenle reddeder. | `RED`: `asan_oob_or_segv: true, exit_code: 1`<br/>`GREEN`: `asan_oob_or_segv: false, verified: false`<br/>`chiavdf ASan harness` |
+| **38** | [`38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md`](advisories/tr/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md)<br/>`CHIA-DL-02`<br/>MITRE CNA-LR & Chia Network | **Chia-Network/chia-blockchain** (`<= 2.7.5`)<br/>`chia/data_layer/download_data.py`<br/>`chia/data_layer/data_layer.py` | `CWE-918`<br/>**7.5 High**<br/>`AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N` | **Kodda Oluşumu:** `download_data.py`, DataLayer ayna URL'lerini indirirken `30x` yönlendirme hedeflerini `127.0.0.1` / özel IP aralıklarına karşı doğrulamaz.<br/>**Senaryo A (İç Ağ ve Metadata SSRF):** `302` yönlendirmesiyle abone sunucunun `127.0.0.1` / `169.254.169.254` servislerine erişilir.<br/>**Senaryo B (Kopya Düğümler Üzerinden Tarama):** Abone düğümler iç ağ hedeflerine istek gönderir.<br/>**Senaryo C (`GREEN` Yaması):** Özel/loopback IP yönlendirmelerini engeller. | `RED`: `redirect_to_loopback_followed: true, internal_hit_count: 1`<br/>`GREEN`: `redirect_to_loopback_followed: false, internal_hit_count: 0`<br/>`pytest -k dl02` |
 
 ---
 
@@ -2033,3 +2052,1077 @@ sed -n '316,330p' /home/community-user/targets/gitlab/app/controllers/oauth/auth
 ```
 
 <!-- GITLAB-ADVISORIES-END -->
+
+<!-- CHIA-ADVISORIES-START -->
+
+---
+
+### III.20 — Chia-Network/chia-blockchain (`<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)`) — Chia Hafif Cüzdan (Light Wallet) Senkronizasyonunda Doğrulanmamış `FoliageTransactionBlock` Takası İle Sıfır Sermayeli (`0 XCH`) Sahte Onaylı Yatırım (`WLC-01`) (`CWE-345 / CWE-347`, CVSS `9.1 Critical`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/wallet/wallet_node.py:926-995` (`_add_block_from_header`)
+* **Zafiyet Sınıfı & Skor:** `CWE-345 / CWE-347` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md`](advisories/tr/20-CHIA-WLC-01-LIGHT-WALLET-FOLIAGE-BLOCK-SWAP-FAKE-DEPOSIT.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Başlık ve İşlem Gövdesi Arasındaki SHA-256 Bağlamasının Kontrol Edilmemesi (`chia/wallet/wallet_node.py:926-995`):** Chia blok yapısında imzalı blok başlığı (`HeaderBlock.foliage`), içindeki işlem blokunun özetini `header_block.foliage.foliage_transaction_block_hash` alanında tutar. Ancak `WalletNode._add_block_from_header` metodu P2P ağından gelen `RespondBlockHeader` paketini işlerken `header_block.foliage_transaction_block.get_hash() == header_block.foliage.foliage_transaction_block_hash` eşitliğini kontrol etmeyi unutur.
+2. **Adım 2 — Cebinde `0 XCH` Olan Saldırganın Kurban Cüzdanına Sahte Onaylı Bakiye Yazması (`Karşı Onayı Gerekmez, Borsadan XCH Almak Gerekmez`):** Klasik çifte harcama (reorg) saldırılarının aksine saldırganın borsadan tek bir XCH bile satın almasına gerek yoktur (`0 XCH sermaye`). Saldırgan gerçek bir blok başlığının altına kendi ürettiği sahte `foliage_transaction_block` verisini takar; kurbanın cüzdanı zincirde hiç var olmayan `+0.5 XCH` (`500,000,000,000 mojo`) veya `+1.000 XCH` ödemeyi SQLite `WalletCoinStore` veritabanına **Onaylandı (Confirmed)** olarak kaydeder.
+3. **Adım 3 — Satıcı Ödemeyi Teslim Ettikten Sonra Harcama Anında `Err.UNKNOWN_UNSPENT` Hatası:** Satıcı/OTC masası ekranda onaylı XCH yatırımını görüp karşılığında gerçek USDT, BTC veya ürünü teslim eder; daha sonra bu XCH'yi harcamak istediğinde `FullNode` mempool katmanı böyle bir coin zincirde hiç var olmadığı için işlemi `Err.UNKNOWN_UNSPENT` ile reddeder.
+
+```python
+# File: chia/wallet/wallet_node.py (lines 926-995)
+async def _add_block_from_header(self, header_block: HeaderBlock, ...):
+    # BUG: Missing cryptographic binding check between signed header and transaction block body:
+    # if header_block.foliage_transaction_block is not None:
+    #     if header_block.foliage_transaction_block.get_hash() != header_block.foliage.foliage_transaction_block_hash:
+    #         raise ValueError("Invalid foliage_transaction_block_hash")
+    additions, removals = await self.get_additions_and_removals(header_block, ...)
+    await self.wallet_state_manager.add_block(...)
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Borsadan Hiç XCH Almadan (`0 XCH` Sermaye, Karşı Onayı Yok) Satıcıya/OTC Masasına Sahte Yatırım Gösterip Gerçek USDT/BTC Çekmek:** Klasik çifte harcama senaryosunda saldırganın gerçekten XCH satın alıp iki çatallı zincir üretmesi gerekirken, `WLC-01` açığında saldırganın cebinde `1 XCH` bile olmasına gerek yoktur! Karşı taraf (kripto ödeme noktası, OTC masası veya satıcı) Chia Light Wallet kullanıyorsa, saldırgan P2P ağından başlığı gerçek ama içindeki `foliage_transaction_block` listesi değiştirilmiş bir paket yollar. Satıcının cüzdanı blokzincirinde hiç var olmayan `+0.5 XCH` (`500,000,000,000 mojo`) veya `+1.000 XCH` ödemeyi **Onaylandı** gösterir; saldırgan karşılığında gerçek USDT, Bitcoin veya ürünü alıp çıkar.
+* **Senaryo B — SQLite Veritabanında Kalıcı Sahte Bakiye İle Otomatik Teslimat Botlarını Kandırma:** Sahte coin SQLite `WalletCoinStore` tablosuna yazıldığı için cüzdan yeniden başlatılsa bile (`reopened_sqlite_coin_present: true`) onaylı görünmeye devam eder; ancak satıcı bu bakiyeyi başka adrese göndermeye çalıştığında `FullNode` işlemi `Err.UNKNOWN_UNSPENT` ile reddeder.
+* **Senaryo C — Birleşik Zincir (`CONS-SP-01` FullNode Senkron Kilidi + `WLC-01` Sahte Yatırım):** Saldırgan önce `8444` portundan `CONS-SP-01` ile hedef kurumun FullNode senkronizasyonunu kilitler, ardından hafif cüzdan P2P senkronizasyonu üzerinden `foliage_transaction_block` takasıyla sahte XCH bakiyesi enjekte eder.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect _add_block_from_header in chia/wallet/wallet_node.py
+sed -n '926,995p' /home/community-user/targets/chia-blockchain/chia/wallet/wallet_node.py
+
+# 2. Run the RED -> GREEN End-to-End Verification Harness for WLC-01
+CHIA_DETACHED_GREEN=0 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_ek_kanit_gereksinimleri_20261030.py -k wlc01
+CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_ek_kanit_gereksinimleri_20261030.py -k wlc01
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-WLC-01": {
+    "RED": {
+      "attacker_initial_xch_capital_mojo": 0,
+      "accepted_swapped_foliage_transaction_block": true,
+      "fake_merchant_deposit_increase_mojo": 500000000000,
+      "reopened_sqlite_coin_present": true,
+      "subsequent_spend_mempool_error": "Err.UNKNOWN_UNSPENT"
+    },
+    "GREEN": {
+      "accepted_swapped_foliage_transaction_block": false,
+      "fake_merchant_deposit_increase_mojo": 0,
+      "reopened_sqlite_coin_present": false,
+      "rejection_error": "ValueError: Invalid foliage_transaction_block_hash"
+    }
+  }
+}
+```
+
+
+---
+
+### III.21 — Chia-Network/chia-blockchain (`<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)`) — Chia Cüzdanında Doğrulanmamış `RespondRemovals` / `RespondCoinState` İle Hayalet Harcanmış (`Spent`) Zehirlemesi ve Zaman Kilitli Clawback İptal Kilidi (`WLC-02`) (`CWE-345 / CWE-400`, CVSS `7.5 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/wallet/wallet_node.py:725-777`, `chia/wallet/wallet_state_manager.py:1735-1778`
+* **Zafiyet Sınıfı & Skor:** `CWE-345 / CWE-400` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:H`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md`](advisories/tr/21-CHIA-WLC-02-CLAWBACK-PHANTOM-SPENT-POISONING-LOCKOUT.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Kanıtsız (`proofs=None`) `RespondRemovals` / `spent_height` Bildiriminin Doğrulanmadan Kabul Edilmesi (`wallet_node.py:725-777` & `wallet_state_manager.py:1735-1778`):** Cüzdan P2P ağından gelen `RespondRemovals(height=8, coins=[(coin_name, None)], proofs=None)` mesajını işlerken, blok başlığına bağlı Merkle silinme kanıtını (`validate_removals`) doğrulamadan SQLite `WalletCoinStore` içinde coin'i `spent_height=8` (harcanmış) olarak işaretler.
+2. **Adım 2 — 24 Saatlik Clawback İptal Düğmesinin Kalıcı Olarak Kilitlenmesi (`t1_cold_reloaded_sqlite_spent: true`):** Kurban yanlış adrese veya dolandırıcıya gönderdiği `0.5 XCH` (`500,000,000,000 mojo`) tutarındaki Clawback korumasını iptal etmek istediğinde, cüzdan veritabanı soğuk yeniden başlatılsa bile coin'i 'zaten harcanmış' sandığı için iptal işlemi üretemez (`t2_sender_cancel_tx_count: 0`).
+3. **Adım 3 — Süre Dolunca Saldırganın Gerçek Zincirdeki Parayı Çekmesi (`SpendBundle SHA-256: 33361e6b2d8ee0d9...`):** Coin gerçek blokzincirinde hiç harcanmadığı için, zaman kilidi dolduğu saniyede (`t4`) saldırgan geçerli `SpendBundle` (`930 bayt`) ile `0.5 XCH`'yi kendi cüzdanına çeker.
+
+```python
+# File: chia/wallet/wallet_node.py (lines 725-777) & wallet_state_manager.py (lines 1735-1778)
+# BUG: Accepts RespondRemovals with proofs=None or unverified spent_height without Merkle proof verification
+if not validate_removals(coin_Main, proofs, peak_header):
+    # Missing fail-closed rejection before updating WalletCoinStore spent_height!
+await self.coin_store.set_spent(coin_name, spent_height)
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — 24 Saatlik Clawback (İptal) Korumasını Kilitleyip Süre Dolunca `0.5 XCH` (`500,000,000,000 mojo`) Çalmak:** Gönderici zaman kilitli Clawback ile `0.5 XCH` (`e088f25d...`) gönderir ve hatayı fark edip iptal etmek ister. Ancak saldırgan P2P üzerinden `RespondRemovals(height=8, proofs=None)` yollayarak göndericinin cüzdanında bu coin'i 'harcanmış' işaretler (`t1_cold_reloaded_sqlite_spent: true`). Gönderici süre boyunca iptal işlemi üretemez (`tx_count: 0`); süre dolunca saldırgan gerçek `SpendBundle` (`33361e6b2d8ee0d9...`) ile parayı çeker.
+* **Senaryo B — Birleşik Zaman Çizelgesi Zinciri (`WLC-02` + `VR-01 / POC-10` — Hem Canlı Cüzdan İptalini Hem Acil Durum `chia-vault-recover` Aracını Aynı Anda Kilitleme):** Tek bir kesintisiz zaman çizelgesinde (`t0..t4`), saldırgan hem `WLC-02` ile canlı cüzdanı kilitler hem de `1 mojo` dust coin göndererek kurbanın son çare olarak çalıştırdığı `chia-vault-recover` CLI aracını sahte `launcher_id` (`2de44601...`) ile çökertir (`t3_poc10_matches_victim: false`).
+* **Senaryo C — Borsa Sıcak Cüzdanları ve Likidasyon Botlarında UTXO Dondurma (DoS):** Harcanmamış coin'lerin yerel SQLite veritabanında `spent` işaretlenmesi, otomatik ödeme ve likidasyon botlarının bakiye kullanmasını engeller.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect removal validation in chia/wallet/wallet_node.py and wallet_state_manager.py
+sed -n '725,777p' /home/community-user/targets/chia-blockchain/chia/wallet/wallet_node.py
+
+# 2. Run the Unified Timeline (t0..t4) & SQLite Cold-Reload Proof (RED & GREEN)
+CHIA_DETACHED_GREEN=0 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k wlc02
+CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k wlc02
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-WLC-02": {
+    "RED": {
+      "clawback_coin_id": "e088f25d50be49d29eb144248071f377d5f7bbdb5d7dd34078c9c72276a0b649",
+      "clawback_amount_mojo": 500000000000,
+      "t1_cold_reloaded_sqlite_spent": true,
+      "t2_sender_cancel_tx_count": 0,
+      "t3_poc10_matches_victim": false,
+      "t4_recipient_claim_spend_bundle_sha256": "33361e6b2d8ee0d9bdd37738c4b2e54ece03c1eb507de8e59b370a1bd100e1e1",
+      "t4_recipient_claim_bytes": 930
+    },
+    "GREEN": {
+      "t1_cold_reloaded_sqlite_spent": false,
+      "t2_sender_cancel_tx_count": 1,
+      "t3_poc10_matches_victim": true,
+      "sender_clawback_cancel_succeeded": true
+    }
+  }
+}
+```
+
+
+---
+
+### III.22 — Chia-Network/chia-blockchain-gui (`<= 2.6.1-rc2.dev60 (verified on commit 2f6ee83a23ac8b0370b96111e02f8edfb81fa1f3)`) — Chia Masaüstü Cüzdanı (`chia-blockchain-gui`) WalletConnect 29 Komutluk Yetki Açıklığı ve Eşzamanlı Onay Penceresi Ezme (`TOCTOU`) Zafiyeti (`GUI-WC-01`) (`CWE-367 / CWE-285`, CVSS `8.8 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/chia-blockchain-gui` (`npm / TypeScript (Electron Desktop GUI): chia-blockchain-gui`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 2.6.1-rc2.dev60 (verified on commit 2f6ee83a23ac8b0370b96111e02f8edfb81fa1f3)` — `packages/gui/src/components/walletConnect/WalletConnectContext.tsx:314-441`, `constants/WalletConnectCommands.ts`
+* **Zafiyet Sınıfı & Skor:** `CWE-367 / CWE-285` — **CVSS v3.1: `8.8 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md`](advisories/tr/22-CHIA-GUI-WC-01-WALLETCONNECT-MODAL-OVERWRITE-TOCTOU.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Cüzdan Bağlandığında 29 Komutun Tamamına (Para Gönderme Dahil) Kapı Açılması (`WalletConnectCommands.ts`):** Günlük hayattan benzetmeyle *'Kimlik fotokopisi isteyen emlakçının arkadaki boş senetlere imza attırması'* gibidir. Kullanıcı bir NFT/ödül sitesine sadece adres doğrulamak için cüzdanını bağladığında, WalletConnect oturumu `chia_sendTransaction` (para gönderme) dahil 29 komutun tamamını aynı oturuma açar.
+2. **Adım 2 — Arka Arkaya Gelen İki İstekle Onay Penceresinin Ezilmesi (`WalletConnectContext.tsx:314-441`):** Kodda gelen istekleri sıraya sokan bir FIFO kilidi yoktur. Web sitesi önce ekranda zararsız `chia_getCurrentAddress` (Adres Bilgisini Göster) penceresini açar, milisaniyeler içinde arka plandan `chia_sendTransaction` ateşler; kurban ekrandaki zararsız pencereyi onayladığı anda arka planda `0.5 XCH` (`500,000,000,000 mojo`) transferini içeren imzalı `SpendBundle` (`SHA-256: d2ce22645a9a23b1...`) üretilir ve cüzdan boşaltılır!
+3. **Adım 3 — Onay Sonrası Cüzdan Parmak İzi / Ağ Bağlam Değişimi (`TOCTOU`):** İstek onaylandığı an ile `sendCommand` çalıştığı an arasında cüzdan parmak izi (`fingerprint`), ağ (`network`) ve eşleşme (`pairing`) bütünlüğü tekrar doğrulanmadığı için boş ikincil cüzdan (`fp=111111`) için verilen onay ana kasa cüzdanında (`fp=999999`) çalıştırılabilir.
+
+```typescript
+// File: packages/gui/src/components/walletConnect/WalletConnectContext.tsx (lines 314-441)
+async function handleSessionRequest(event: SignClientTypes.EventArguments['session_request']) {
+  // BUG 1: No FIFO mutex/queue serializing concurrent session_request events
+  // BUG 2: No immutable binding of (requestId, method, paramsHash, fingerprint, network) in sendCommand
+  const confirmed = await showConfirmationDialog(event);
+  if (confirmed) {
+    return await sendCommand(command, params);
+  }
+}
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — 'Sadece Bakiyene/Adresine Bakacağım' Diyen Ödül Sitesinin Cüzdanı Boşaltması:** Kurban 'Ücretsiz Chia Ödül Kontrolü' sitesine masaüstü cüzdanını bağlar ve ekranda sadece `getCurrentAddress` (Adres Bilgisini Göster) penceresini görür. Bunu zararsız sanıp tıkladığı anda arka planda `chia_sendTransaction` çalışır ve `0.5 XCH` (`SpendBundle SHA-256: d2ce22645a9a23b165da6f3895d1139ed334a91aaef4e56d027f8b0c12754980`) saldırganın adresine akar.
+* **Senaryo B — Boş Test Cüzdanından (`fp=111111`) Ana Hazinenin (`fp=999999`) Boşaltılması (`TOCTOU`):** Kurban siteye içinde para olmayan ikincil cüzdanını bağladığını düşünürken, onay ile yürütme arasındaki parmak izi (`fingerprint`) değişimi kontrol edilmediği için işlem ana cüzdan üzerinde imzalanır.
+* **Senaryo C — Eşleşme Kapatıldıktan veya Ağ Değiştikten Sonra Asılı İsteğin Çalışması:** Onay penceresi açıkken oturum kesilse veya ağ değiştirilse bile yamasız kodda `sendCommand` çalışmaya devam eder (`GREEN` yaması 6 bağımsız WSS paketiyle tüm yarış ve bağlam değişimlerini reddeder).
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect handleSessionRequest and sendCommand in WalletConnectContext.tsx
+sed -n '314,441p' /home/community-user/targets/chia-blockchain-gui/packages/gui/src/components/walletConnect/WalletConnectContext.tsx
+
+# 2. Run the Live WSS Relay -> GUI Handler -> WalletRpcClient E2E Proof (RED & GREEN)
+CHIA_DETACHED_GREEN=0 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k gui_wc01
+CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k gui_wc01
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-GUI-WC-01": {
+    "RED": {
+      "displayed_prompt_method": "chia_getCurrentAddress",
+      "concurrent_injected_method": "chia_sendTransaction",
+      "modal_overwritten_by_second_request": true,
+      "unauthorized_send_transaction_dispatched": true,
+      "drained_amount_mojo": 500000000000,
+      "signed_spend_bundle_sha256": "d2ce22645a9a23b165da6f3895d1139ed334a91aaef4e56d027f8b0c12754980"
+    },
+    "GREEN": {
+      "distinct_wss_packets_tested": 6,
+      "benign_get_current_address_succeeded": true,
+      "benign_send_transaction_succeeded": true,
+      "concurrent_modal_overwrite_rejected": true,
+      "fingerprint_network_pairing_switch_rejected": true,
+      "unknown_method_rejected": true
+    }
+  }
+}
+```
+
+
+---
+
+### III.23 — Chia-Network/chia-blockchain (`<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)`) — Chia DataLayer `WalletRpcApi.dl_verify_proof` İçinde Singleton Soy Kütüğü Doğrulama Eksikliği İle `1 Mojo`'luk Sahte Kanıt Üretimi ve Zincir Üstünde `100.000 CAT` Token Basımı (`DL-01`) (`CWE-347 / CWE-345`, CVSS `9.1 Critical`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/rpc/wallet_rpc_api.py:4066-4120` (`dl_verify_proof`), `chia/data_layer/data_layer_util.py`
+* **Zafiyet Sınıfı & Skor:** `CWE-347 / CWE-345` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:N/I:H/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md`](advisories/tr/23-CHIA-DL-01-DATALAYER-VERIFY-PROOF-NON-SINGLETON-FORGERY-CAT-MINT.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — `WalletRpcApi.dl_verify_proof` İçinde Coin'in Gerçek Singleton Olup Olmadığının Kontrol Edilmemesi (`chia/rpc/wallet_rpc_api.py:4066-4120`):** Chia DataLayer, kurumların zincir üstünde resmi veri kayıtları (karbon kredisi sicili, RWA teminat tablosu, köprü rezerv kaydı) tuttuğu sistemdir. `dl_verify_proof` RPC'si kendisine verilen kanıttaki coin'in zincirde var olduğunu ve Merkle kökünü kontrol eder; ancak **bu coin'in gerçekten o kurumun resmi DataLayer Singleton'ı (`match_dl_singleton` ve `store_id` soy kütüğü) olup olmadığını hiç kontrol etmez!**
+2. **Adım 2 — `1 Mojo` Maliyetle Herhangi Bir Kurumun `store_id` Kaydı Adına Sahte Kanıt Üretilmesi:** Saldırgan cebinden sadece `1 mojo` (trilyonda bir XCH) harcayarak sıradan (singleton olmayan) bir coin (`86ec0dd71fbc7e41...`) oluşturur ve içine hedef kurumun `store_id` (`806a6c73c7344b24...`) kimliğini yazar. `WalletRpcApi.dl_verify_proof` bu sahte kanıta `{"verified": true, "current_root": true}` (Tamamen Geçerli ve Güncel!) yanıtı döner.
+3. **Adım 3 — Zincir Üstünde (On-Chain) `100.000 Adet Gerçek CAT Token` Basılması (`SpendBundle SHA-256: 6a635760183480c0...`):** `dl_verify_proof` onayına güvenen RWA/köprü servisi, gerçek Chia zinciri üzerinde `CATWallet` (`cat_asset_id: 73dc2527f5a75964...`) çalıştırarak saldırganın cüzdanına **`100.000 CAT` (`100,000,000 CAT mojo`)** basar ve transfer eder (`dc3f0bbaac81e982...`).
+
+```python
+# File: chia/rpc/wallet_rpc_api.py (lines 4066-4120)
+async def dl_verify_proof(self, request: dict[str, Any]) -> EndpointResult:
+    proof = DLProof.from_json_dict(request)
+    verified_clvm_hashes = dl_verify_proof(proof)
+    # BUG: Verifies coin existence and Merkle hash, but NEVER verifies that the parent coin spend
+    # matches SINGLETON_TOP_LAYER_MOD with launcher_id == proof.store_proofs.store_id!
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — `1 Mojo`'luk Sahte DataLayer Kanıtıyla Zincir Üstünde `100.000 CAT` (`100,000,000 CAT mojo`) Basıp Çekmek:** Kurumsal bir RWA/Stablecoin ihraççısı, `1.000 XCH` teminatlı kasasının ihraç onaylarını DataLayer `store_id = 806a6c73c7344b24...` üzerinde tutmaktadır. Saldırgan yalnızca `1 mojo` harcayarak sıradan bir coin (`86ec0dd71fbc7e41...`) içinde sahte Merkle kökü yayınlar ve kanıtı `WalletRpcApi.dl_verify_proof` uç noktasına verir. Cüzdan RPC'si `verified: true, current_root: true` döndürdüğü için sistem saldırganın cüzdanına zincir üstünde gerçek **`100.000 CAT` token** (`cat_asset_id: 73dc2527...`, `SpendBundle: dc3f0bbaac81e982...`) basar.
+* **Senaryo B — Doğrudan `WalletRpcApi.dl_verify_proof` Üzerinde Yan Yana Kanıt (`Gerçek Singleton` vs `1-Mojo Sahte Coin`):** Hiçbir harici köprü olmadan doğrudan Chia'nın kendi `WalletRpcApi.dl_verify_proof` metoduna gerçek Singleton kanıtı ile `1 mojo` sahte coin kanıtı yan yana verildiğinde, yamasız (`RED`) kod her ikisine de `verified: true` döner; yamalı (`GREEN`) kod ise sahte kanıtı `ProofIntegrityError` ile reddeder.
+* **Senaryo C — Sahte Karbon Kredisi ve Tedarik Zinciri Sertifikası Doğrulama:** Resmi karbon sicilinin `store_id` kimliği kullanılarak `1 mojo` ile sahte sertifika kanıtı doğrulatılır.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect WalletRpcApi.dl_verify_proof in chia/rpc/wallet_rpc_api.py
+sed -n '4066,4120p' /home/community-user/targets/chia-blockchain/chia/rpc/wallet_rpc_api.py
+
+# 2. Run both the Intrinsic Side-by-Side RPC Test and the 100,000 CAT On-Chain Mint Test (RED & GREEN)
+CHIA_DETACHED_GREEN=0 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k dl01
+CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k dl01
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-DL-01": {
+    "RED": {
+      "victim_store_id": "806a6c73c7344b24d23915a319f82da69e1129a70e3ef772da2be14de2b4a5d6",
+      "forged_non_singleton_coin_id": "86ec0dd71fbc7e415e06dc504e8e74436cf4f60d2f4ab942fc2104685b20dd17",
+      "dl_verify_proof_verified": true,
+      "dl_verify_proof_current_root": true,
+      "cat_asset_id": "73dc2527f5a75964c9b1b019def41d17aaa1f22d42235f479114c2e505f679f5",
+      "cat_issuance_spend_bundle_sha256": "6a635760183480c0c94ccf7786c1700fa5b7d7b0ae2532da49ff22edc3257c5e",
+      "cat_delivery_spend_bundle_sha256": "dc3f0bbaac81e982baa174241b3a69fba1b8a34e7033d8e1465ecd832ea18196",
+      "attacker_minted_cat_mojo": 100000000,
+      "attacker_minted_cat_tokens": 100000
+    },
+    "GREEN": {
+      "canonical_singleton_proof_verified": true,
+      "counterfeit_non_singleton_proof_verified": false,
+      "attacker_minted_cat_mojo": 0
+    }
+  }
+}
+```
+
+
+---
+
+### III.24 — Chia-Network/cni-wallet-sdk (`chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)`) — `cni-wallet-sdk` Clear-Signing (Şeffaf İmzalama) Motorunda `Condition::Other` Atlama Hatası İle Ekranda `0 Ücret` Gösterip `750 XCH` Çalma ve NFT Durumunu Değiştirme (`CS-01` / `POC-1 & POC-2`) (`CWE-451 / CWE-345`, CVSS `8.6 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
+* **Etkilenen Sürüm & Bileşenler:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs`, `crates/chia-sdk-driver/src/clear_signing/tests.rs`
+* **Zafiyet Sınıfı & Skor:** `CWE-451 / CWE-345` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md`](advisories/tr/24-CHIA-CS-01-CLEAR-SIGNING-NON-CANONICAL-CONDITION-OTHER-FEE-DRAIN.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Konsensüs Motoru (`chia_rs`) İle Clear-Signing Ayrıştırıcısı Arasındaki Uyumsuzluk (`clear_signing.rs`):** Chia konsensüs motoru CLVM koşullarının sonuna fazladan bir atom eklendiğinde (örneğin `(52 750_XCH extra_atom)`) bunu geçerli bir `RESERVE_FEE` komutu olarak çalıştırır. Buna karşılık `cni-wallet-sdk` sabit uzunluklu ayrıştırıcı kullandığı için bu koşulu `Condition::Other` olarak sınıflandırır ve hata vermeden yok sayar!
+2. **Adım 2 — İmza Ekranında `Ücret: 0 XCH` Gösterip Arka Planda `750 XCH` (`750,000,000,000,000 mojo`) Çekilmesi (`POC-1`):** `b9b614d01ee2b104325a7dde22c33c498ed9e2e6925f957411d9d9d162f06e5c` (`1.105 bayt`) özetli gerçek `SpendBundle` içinde `750 XCH` tutarındaki çıkış `Condition::Other` içine saklanır; donanım/mobil cüzdan ekranında kullanıcıya `reserved_fee: 0` gösterilirken işlem imzalandığında `750 XCH` kasadan çıkar.
+3. **Adım 3 — NFT `-24` Transfer Programı ve Durum Değişikliğinin Gizlenmesi (`POC-2`):** `17d2796f8bd6b9bf9fc1f03cb0570be6ac6393215c27cf61718b2eb9924dd128` (`3.274 bayt`) özetli `SpendBundle` içinde NFT durumunu değiştiren koşul Clear-Signing özetinde gizlenirken zincir üstünde yürütülür.
+
+```rust
+// File: crates/chia-sdk-driver/src/clear_signing.rs
+// BUG: Condition::Other(_) variants (such as overlong RESERVE_FEE opcode 52 or unparsed NFT opcodes)
+// are silently ignored instead of returning Error::UnsupportedCondition / failing closed:
+match condition {
+    Condition::ReserveFee(fee) => reserved_fee += fee.amount,
+    Condition::Other(_) => { /* silently ignored in unpatched RED! */ }
+}
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Kurumsal Kasadan (Chia Vault) Ekranda `0 Ücret` Göstererek `750 XCH` (`750,000,000,000,000 mojo`) Boşaltma (`POC-1`):** Kasa yöneticisi rutin bir işlem imzalarken Clear-Signing ekranında `reserved_fee = 0` görür ve imzalar (`SpendBundle SHA-256: b9b614d01ee2b104...`); ancak işlem zincire girdiğinde `750 XCH` gizli ücret olarak kasadan çekilir.
+* **Senaryo B — NFT Transfer Programı ve Durumunun Gizlice Ele Geçirilmesi (`POC-2`):** Kullanıcı zararsız görünen bir NFT işlemini (`SpendBundle SHA-256: 17d2796f8bd6b9bf...`) imzalarken, `Condition::Other` olarak atlanan koşul zincir üstünde NFT'nin kontrolünü değiştirir.
+* **Senaryo C — Yamalı (`GREEN`) Davranış:** `CHIA-CNI-WALLET-SDK-CLEAR-SIGNING-FIXES-20261030.patch` uygulandığında `Condition::Other` içeren her iki `SpendBundle` da imzalanmadan önce deterministik olarak reddedilir.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Run the Clear-Signing Rust Proof Suite in cni-wallet-sdk (POC-1 & POC-2)
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-driver clear_signing::tests::test_poc1_and_poc2 -- --nocapture
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CS-01": {
+    "RED": {
+      "poc1_spend_bundle_sha256": "b9b614d01ee2b104325a7dde22c33c498ed9e2e6925f957411d9d9d162f06e5c",
+      "poc1_spend_bundle_bytes": 1105,
+      "poc1_clear_signing_displayed_fee_mojo": 0,
+      "poc1_consensus_drained_fee_mojo": 750000000000000,
+      "poc2_spend_bundle_sha256": "17d2796f8bd6b9bf9fc1f03cb0570be6ac6393215c27cf61718b2eb9924dd128",
+      "poc2_spend_bundle_bytes": 3274
+    },
+    "GREEN": {
+      "poc1_rejected_fail_closed": true,
+      "poc2_rejected_fail_closed": true,
+      "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+    }
+  }
+}
+```
+
+
+---
+
+### III.25 — Chia-Network/cni-wallet-sdk (`chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)`) — `cni-wallet-sdk` Clear-Signing NFT `NEW_METADATA_INFO` Güncelleyici Koşullarının Denetlenmemesi Nedeniyle Gizli `500 XCH` Çıkışı (`CS-02` / `POC-3`) (`CWE-451 / CWE-345`, CVSS `8.1 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
+* **Etkilenen Sürüm & Bileşenler:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (`NEW_METADATA_INFO` evaluation)
+* **Zafiyet Sınıfı & Skor:** `CWE-451 / CWE-345` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md`](advisories/tr/25-CHIA-CS-02-CLEAR-SIGNING-NFT-METADATA-UPDATER-HIDDEN-FEE.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — NFT Katmanının Metadata Güncelleyici Programdan Dönen Koşulları Çalıştırması:** Chia NFT standardında `NEW_METADATA_INFO` (`-24`) koşulu çalıştırıldığında, metadata güncelleyici programın döndürdüğü ek CLVM koşulları da konsensüs tarafından doğrudan yürütülür.
+2. **Adım 2 — Clear-Signing Motorunun Metadata Güncelleyiciden Dönen `RESERVE_FEE` Koşulunu Yok Sayması (`clear_signing.rs`):** `cni-wallet-sdk` yalnızca yeni metadata bilgisini okur, ancak güncelleyici programın döndürdüğü `500 XCH` (`500,000,000,000,000 mojo`) tutarındaki `RESERVE_FEE` koşulunu toplam çıkış/ücret hesabına katmaz.
+3. **Adım 3 — Ekranda `Ücret: 0 XCH` Görünen NFT Güncellemesiyle `500 XCH` Boşaltılması (`SpendBundle SHA-256: b314b6d7411bfb8a...`):** Kullanıcı `3.300 bayt` boyutundaki `SpendBundle` işlemini ücretsiz bir NFT metadata güncellemesi sanarak imzalar; işlem ağa girdiğinde `500 XCH` kasadan çekilir.
+
+```rust
+// File: crates/chia-sdk-driver/src/clear_signing.rs
+// BUG: Evaluates NEW_METADATA_INFO metadata updater program for metadata diff,
+// but ignores extra consensus conditions (e.g. RESERVE_FEE 500 XCH) returned by the updater!
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — 'Ücretsiz NFT Özelliği Güncelleme' İşlemiyle Kasadan `500 XCH` (`500,000,000,000,000 mojo`) Çekilmesi:** Kullanıcı imza ekranında `reserved_fee = 0` gördüğü NFT işlemini (`SpendBundle SHA-256: b314b6d7411bfb8a...`) onaylar; ancak metadata güncelleyici içindeki gizli `RESERVE_FEE` koşulu yüzünden `500 XCH` kaybeder.
+* **Senaryo B — Özel Metadata Güncelleyicili Tuzak NFT Transferi:** Saldırgan içine tuzaklı metadata güncelleyici yerleştirdiği bir NFT'yi hedef kasaya gönderir; kasa NFT üzerinde işlem yaptığında gizli ücret koşulu tetiklenir.
+* **Senaryo C — Yamalı (`GREEN`) Doğrulama:** Yama sonrasında metadata güncelleyicinin ekstra konsensüs koşulu üretmesi deterministik olarak reddedilir.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Run POC-3 (500 XCH NFT Metadata Updater Hidden Fee) in cni-wallet-sdk
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-driver clear_signing::tests::test_poc3 -- --nocapture
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CS-02": {
+    "RED": {
+      "poc3_spend_bundle_sha256": "b314b6d7411bfb8a87bd4b091a117b861e5a171ed4a0a4712955c592962042e6",
+      "poc3_spend_bundle_bytes": 3300,
+      "clear_signing_displayed_fee_mojo": 0,
+      "consensus_drained_fee_mojo": 500000000000000
+    },
+    "GREEN": {
+      "poc3_rejected_fail_closed": true,
+      "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+    }
+  }
+}
+```
+
+
+---
+
+### III.26 — Chia-Network/cni-wallet-sdk (`chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)`) — `cni-wallet-sdk` Clear-Signing Bağımlı Teklif (Offer) Bacaklarında Kesişim (`Intersection`) Hatası İle `500 XCH` Ödeme Çıkışının Gizlenmesi (`CS-03` / `POC-4`) (`CWE-682 / CWE-451`, CVSS `8.6 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
+* **Etkilenen Sürüm & Bileşenler:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (dependent offer leg aggregation)
+* **Zafiyet Sınıfı & Skor:** `CWE-682 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md`](advisories/tr/26-CHIA-CS-03-CLEAR-SIGNING-OFFER-SET-INTERSECTION-OUTFLOW-OMISSION.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Çok Bacaklı Teklif (Offer) Hesaplamasında Kesişim (`Intersection`) Kullanılması (`clear_signing.rs`):** Bir kasa işlemi birden fazla bağımlı settlement (takas) bacağı içerdiğinde (`POC-4`), `cni-wallet-sdk` tüm ödemelerin birleşimini (`union`) almak yerine kümelerin kesişimini alır.
+2. **Adım 2 — İkinci Bacaktaki `500 XCH` (`500,000,000,000,000 mojo`) Ödemenin İmza Ekranından Düşmesi:** Kasa harcaması (`3c55638a605214af...`) ve settlement harcaması (`7c05b725fb43d8fa...`) birleştiğinde, saldırgana giden `500 XCH` tutarındaki bacak kesişim kümesinde yer almadığı için Clear-Signing özetinden tamamen silinir.
+3. **Adım 3 — İmzalanan İşlemin Zincir Üstünde `500 XCH` Transfer Etmesi:** Kullanıcı ekranda bu çıkışı görmeden imzayı atar; ancak konsensüs katmanında her iki bacak da geçerli olduğu için `500 XCH` saldırgana aktarılır.
+
+```rust
+// File: crates/chia-sdk-driver/src/clear_signing.rs
+// BUG: Uses set intersection across dependent settlement legs instead of accounting for every
+// notarized payment outflow funded by the vault's settlement coins!
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — P2P Takas Teklifinde (`Offer`) Gizlenen `500 XCH` (`500,000,000,000,000 mojo`) Ödeme Bacağı (`POC-4`):** Kullanıcı çok bacaklı bir takas teklifini imzalarken Clear-Signing ekranında ikinci bacaktaki `500 XCH` çıkışı (`7c05b725fb43d8fa...`) hiç görünmez; imza atıldığında `500 XCH` saldırgana geçer.
+* **Senaryo B — Kurumsal Hazine Takasında Gizli Çıkış:** Hazine yöneticisi küçük bir takas onayladığını sanırken kesişim dışında bırakılan ikinci settlement bacağıyla `500 XCH` kaybeder.
+* **Senaryo C — Yamalı (`GREEN`) Doğrulama:** Yama sonrasında tüm settlement bacaklarının birleşimi zorunlu tutulur.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Run POC-4 (500 XCH Dependent Offer Leg Set-Intersection Omission) in cni-wallet-sdk
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-driver clear_signing::tests::test_poc4 -- --nocapture
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CS-03": {
+    "RED": {
+      "poc4_vault_spend_bundle_sha256": "3c55638a605214afd4e6ca592d439b6e9b69e4550f40ce07f85daec8cef87fb8",
+      "poc4_settlement_spend_bundle_sha256": "7c05b725fb43d8fae280b3e1cd0417b752598e8ce9bd7ae45c1a2f7b63ccf525",
+      "omitted_outflow_mojo": 500000000000000
+    },
+    "GREEN": {
+      "poc4_rejected_or_fully_accounted": true,
+      "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+    }
+  }
+}
+```
+
+
+---
+
+### III.27 — Chia-Network/cni-wallet-sdk (`chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)`) — `cni-wallet-sdk` Clear-Signing Açılmamış (Unrevealed) Settlement Harcaması Kör Noktası İle İmza Sonrası `600 XCH` Çekilmesi (`CS-04` / `POC-5`) (`CWE-345 / CWE-451`, CVSS `8.6 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
+* **Etkilenen Sürüm & Bileşenler:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (unrevealed settlement output handling)
+* **Zafiyet Sınıfı & Skor:** `CWE-345 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md`](advisories/tr/27-CHIA-CS-04-CLEAR-SIGNING-UNREVEALED-SETTLEMENT-SPEND-BLIND-SPOT.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — `SETTLEMENT_PAYMENT_HASH` Coin'lerinin Ek İmza Gerektirmeden Harcanabilmesi:** Kasa harcaması içinden `SETTLEMENT_PAYMENT_HASH` adresine bir coin oluşturulduğunda, bu settlement coin'in harcanması için kasanın ek bir BLS imzasına ihtiyaç yoktur.
+2. **Adım 2 — Settlement Harcaması Paketten Gizlendiğinde Clear-Signing'in Çıkışı Görmemesi (`clear_signing.rs`):** `POC-5` içinde kasa harcaması (`a9eeda2c8526d95c...`, `1.303 bayt`) `600 XCH` (`600,000,000,000,000 mojo`) değerinde bir settlement coin üretir ancak bu coin'in nereye gideceğini gösteren harcamayı imza öncesi pakete koymaz; yamasız Clear-Signing bunu zararsız kabul eder.
+3. **Adım 3 — Kullanıcı İmzaladıktan Sonra Saldırganın `600 XCH` Settlement Harcamasını (`e0b876fbb8e0f264...`) Pakete Eklemesi:** İmza alındıktan sonra saldırgan `388 bayt` uzunluğundaki settlement harcamasını pakete ekleyerek `600 XCH`'yi kendi adresine çeker.
+
+```rust
+// File: crates/chia-sdk-driver/src/clear_signing.rs
+// BUG: Allows a vault spend to create a SETTLEMENT_PAYMENT_HASH coin without requiring
+// the corresponding settlement CoinSpend to be revealed and verified in the signing bundle!
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — İmza Sırasında Gizlenen Settlement Harcamasının İmza Sonrasında Eklenerek `600 XCH` (`600,000,000,000,000 mojo`) Çalınması (`POC-5`):** Kurban `a9eeda2c8526d95c...` paketini imzalarken ekranda dışarıya giden bir alıcı görmez; saldırgan imzalı paketin yanına `e0b876fbb8e0f264...` settlement harcamasını ekleyip `600 XCH`'yi çeker.
+* **Senaryo B — Donanım Cüzdanlarında (Air-Gapped Signer) Kör İmzalama:** Çevrimdışı imzalayıcı cihazda alıcı adresi görünmeden `600 XCH` çıkışına imza attırılır.
+* **Senaryo C — Yamalı (`GREEN`) Doğrulama:** Karşılığı pakette açılmamış (`unrevealed`) settlement çıktısı içeren işlemler imzalanmadan reddedilir.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Run POC-5 (600 XCH Unrevealed Settlement Spend Blind Spot) in cni-wallet-sdk
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-driver clear_signing::tests::test_poc5 -- --nocapture
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CS-04": {
+    "RED": {
+      "poc5_vault_spend_bundle_sha256": "a9eeda2c8526d95cb0a36ffcdf9a026b23e96c11e15ee419938e18dc342277eb",
+      "poc5_vault_spend_bundle_bytes": 1303,
+      "poc5_attached_settlement_spend_bundle_sha256": "e0b876fbb8e0f26400a38fb5e2e9963a5cb1dbff92b76d78b4403ed0cb2f7cbe",
+      "poc5_attached_settlement_bytes": 388,
+      "hidden_outflow_mojo": 600000000000000
+    },
+    "GREEN": {
+      "poc5_rejected_fail_closed": true,
+      "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+    }
+  }
+}
+```
+
+
+---
+
+### III.28 — Chia-Network/cni-wallet-sdk (`chia-sdk-bindings <= 0.38.0 / chia-sdk-driver <= 0.36.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)`) — `cni-wallet-sdk` Clear-Signing Harici `DropCoin` İle Kasa Para Üstü (Change) Sahteciliği ve `chia-sdk-bindings` FFI Sınırında `1.000 XCH` Kasa Boşaltma (`CS-05` / `POC-6`) (`CWE-682 / CWE-451`, CVSS `9.1 Critical`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (`chia-sdk-driver` & `chia-sdk-bindings` FFI): chia-sdk-bindings`)
+* **Etkilenen Sürüm & Bileşenler:** `chia-sdk-bindings <= 0.38.0 / chia-sdk-driver <= 0.36.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs`, `crates/chia-sdk-bindings/src/clear_signing.rs:62` (`parse_vault_transaction`)
+* **Zafiyet Sınıfı & Skor:** `CWE-682 / CWE-451` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md`](advisories/tr/28-CHIA-CS-05-CLEAR-SIGNING-EXTERNAL-DROPCOIN-VAULT-CHANGE-SPOOFING.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Kasaya Ait Olmayan Harici `DropCoin` Çıktısının 'Kasaya Dönen Para Üstü (Change)' Sayılması (`clear_signing.rs` & `chia-sdk-bindings/src/clear_signing.rs:62`):** `parse_vault_transaction` fonksiyonu kasadan çıkan net parayı hesaplarken, kasa adresine gelen çıktıları 'para üstü (change)' olarak düşer; ancak bu çıktıyı üreten üst coin'in (`DropCoin`) gerçekten kasaya ait olup olmadığını kontrol etmez!
+2. **Adım 2 — Kasadan Çalınan `1.000 XCH` (`1,000,000,000,000,000 mojo`) Tutarının Ekranda `0 XCH Kayıp` Gösterilmesi (`SpendBundle SHA-256: aa65182292515596...`):** `1.477 bayt` uzunluğundaki `POC-6` `SpendBundle` içinde kasa saldırgana `1.000 XCH` gönderirken, pakete eklenen harici bir `DropCoin` harcaması kasa adresine sahte/dış bağlamlı çıktı gösterir; Clear-Signing bunları birbirinden düşerek ekranda net kaybı `0` olarak gösterir.
+3. **Adım 3 — Doğrudan `chia-sdk-bindings` FFI Sınırında Kanıt (`clear_signing_ffi_proof.rs`):** Mobil/masaüstü uygulamaların çağırdığı gerçek FFI fonksiyonu `chia_sdk_bindings::parse_vault_transaction` üzerinde yapılan testte `RED` modda `1.000 XCH` çıkışın gizlendiği, `GREEN` modda ise `Error::NonStandardInnerSpend` ile reddedildiği kanıtlanmıştır.
+
+```rust
+// File: crates/chia-sdk-bindings/src/clear_signing.rs (line 62) & chia-sdk-driver/src/clear_signing.rs
+pub fn parse_vault_transaction(vault: ClvmVault, spend_bundle: SpendBundle, ...) -> Result<TransactionSummary> {
+    // BUG: Credits outputs from external non-vault DropCoin spends as vault change,
+    // masking a 1,000 XCH outflow from the victim's vault!
+}
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Kurumsal Kasadan (Chia Vault) Çalınan `1.000 XCH`'nin (`1,000,000,000,000,000 mojo`) FFI Sınırında `0 XCH Net Çıkış` Gösterilmesi (`POC-6`):** Kasa yöneticisi `chia-sdk-bindings` kullanan imzalayıcı uygulamada `aa65182292515596...` (`1.477 bayt`) paketini inceler; ekranda kasadan net para çıkmadığı göründüğü için onay verir ve `1.000 XCH` saldırgana aktarılır.
+* **Senaryo B — Çoklu İmza (Multi-Sig) Kurulunun Tamamının Yanıltılması:** Kasadaki tüm ortak imzacılar kendi cihazlarında aynı yanıltıcı `TransactionSummary` özetini görerek `1.000 XCH` çıkışına imza atar.
+* **Senaryo C — `clear_signing_ffi_proof.rs` FFI Kanıtı (`GREEN`):** Yamalı kodda `chia_sdk_bindings::parse_vault_transaction` harici `DropCoin` içeren paketi `Error::NonStandardInnerSpend` ile reddeder.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Run POC-6 in chia-sdk-driver and the FFI Boundary Proof in chia-sdk-bindings
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-driver clear_signing::tests::test_poc6 -- --nocapture
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-bindings --test clear_signing_ffi_proof -- --nocapture
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CS-05": {
+    "RED": {
+      "poc6_spend_bundle_sha256": "aa6518229251559629861e9137f5cbd5186cb20b46c216a64dc209b86ed3004e",
+      "poc6_spend_bundle_bytes": 1477,
+      "vault_drain_amount_mojo": 1000000000000000,
+      "ffi_boundary_parse_vault_transaction_masked": true
+    },
+    "GREEN": {
+      "ffi_boundary_rejected_with": "Error::NonStandardInnerSpend",
+      "ffi_test_file_sha256": "73dbe05adb2538ceb88cca5b2ecf4c1678e4ed537d3accb17535d8666727fb52"
+    }
+  }
+}
+```
+
+
+---
+
+### III.29 — Chia-Network/cni-wallet-sdk (`chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)`) — `cni-wallet-sdk` Clear-Signing Teklif Ön-Bölme (Pre-Split) Bağlamsız Hedef Ekleme (`Post-Signature Splicing`) İle BLS İmzası Bozulmadan `1.000 XCH` Yönlendirme (`CS-06` / `POC-7`) (`CWE-347 / CWE-451`, CVSS `9.1 Critical`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
+* **Etkilenen Sürüm & Bileşenler:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (offer pre-split coin destination binding)
+* **Zafiyet Sınıfı & Skor:** `CWE-347 / CWE-451` — **CVSS v3.1: `9.1 Critical`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:H`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md`](advisories/tr/29-CHIA-CS-06-CLEAR-SIGNING-OFFER-PRE-SPLIT-POST-SIG-SPLICING.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Ön-Bölme (`Pre-Split`) Ara Coin Çıktısının Son Alıcıya Kriptografik Olarak Bağlanmaması (`clear_signing.rs`):** Kullanıcı `1.000 XCH` (`1,000,000,000,000,000 mojo`) tutarındaki bir Offer ön-bölme paketini (`476b8e836e435eec...`, `1.994 bayt`) imzalarken, Clear-Signing ara coin harcamasının kasanın imzaladığı bir anonsla (`ASSERT_PUZZLE_ANNOUNCEMENT`) kilitlenip kilitlenmediğini doğrulamaz.
+2. **Adım 2 — Kullanıcı İmzaladıktan Sonra Alt Harcamanın Değiştirilmesi (`Post-Signature Splicing`):** Kurban imzayı attıktan sonra saldırgan alt harcamayı değiştirerek `5b3a3b21376bfdfe06e7cc1ec334c43ffd3bb97b72133aeaa38f4de040ba0a93` (`1.701 bayt`) özetli yeni `SpendBundle` paketini oluşturur.
+3. **Adım 3 — BLS İmzası Hiç Bozulmadan `1.000 XCH`'nin Saldırgana Akarılması:** Kurbanın ilk attığı BLS imzası yeni pakette de tamamen geçerli kalır ve `1.000 XCH` kurbanın onayladığı alıcı yerine doğrudan saldırganın adresine gider!
+
+```rust
+// File: crates/chia-sdk-driver/src/clear_signing.rs
+// BUG: Accepts pre-split / intermediate child spends in Clear-Signing without verifying
+// that the vault's signed spend asserts an announcement binding the child spend's outputs!
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Kullanıcı İmzaladıktan Sonra İmza Bozulmadan `1.000 XCH`'nin (`1,000,000,000,000,000 mojo`) Saldırgana Yönlendirilmesi (`POC-7`):** Kurban ekranda doğru alıcıyı görerek `476b8e836e435eec...` paketini imzalar; saldırgan imza sonrası alt harcamayı değiştirip `5b3a3b21376bfdfe...` paketini ağa sürer ve aynı BLS imzasıyla `1.000 XCH`'yi çalar.
+* **Senaryo B — Mempool Üzerinde İmzasız Alt Harcamanın Değiştirilmesi:** Ağdaki bir gözlemci imzasız alt harcamayı blok kazılmadan önce kendi adresiyle değiştirir.
+* **Senaryo C — Yamalı (`GREEN`) Doğrulama:** Kasa tarafından kriptografik anonsla bağlanmamış tüm ön-bölme/alt harcamalar reddedilir.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Run POC-7 (1,000 XCH Offer Pre-Split Post-Signature Splicing) in cni-wallet-sdk
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-driver clear_signing::tests::test_poc7 -- --nocapture
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CS-06": {
+    "RED": {
+      "poc7_pre_split_spend_bundle_sha256": "476b8e836e435eecb16fb924b8d8b8532fb6872fda3f9d50030d98231fff7833",
+      "poc7_pre_split_bytes": 1994,
+      "poc7_spliced_final_spend_bundle_sha256": "5b3a3b21376bfdfe06e7cc1ec334c43ffd3bb97b72133aeaa38f4de040ba0a93",
+      "poc7_spliced_final_bytes": 1701,
+      "redirected_amount_mojo": 1000000000000000,
+      "original_bls_signature_valid_on_spliced": true
+    },
+    "GREEN": {
+      "poc7_rejected_fail_closed": true,
+      "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+    }
+  }
+}
+```
+
+
+---
+
+### III.30 — Chia-Network/cni-wallet-sdk (`chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)`) — `cni-wallet-sdk` Clear-Signing Ters-Clawback (`sender_puzzle_hash`) Sahiplik Sahteciliği İle `1.000 XCH` İptal Yetkisinin Saldırgana Verilmesi (`CS-07` / `POC-8`) (`CWE-345 / CWE-451`, CVSS `8.6 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
+* **Etkilenen Sürüm & Bileşenler:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (Clawback `sender_puzzle_hash` ownership check)
+* **Zafiyet Sınıfı & Skor:** `CWE-345 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md`](advisories/tr/30-CHIA-CS-07-CLEAR-SIGNING-REVERSE-CLAWBACK-SENDER-HIJACK.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Clawback `sender_puzzle_hash` (İptal Yetkilisi) Alanının Kasa Adresiyle Karşılaştırılmaması (`clear_signing.rs`):** Bir kasa Clawback korumalı bir ödeme oluşturduğunda (`POC-8`), `cni-wallet-sdk` Clawback yapısını ayrıştırırken `sender_puzzle_hash` (yani süre dolmadan parayı geri çekme/iptal etme yetkisine sahip adres) alanının gerçekten imzalayan kasaya ait olup olmadığını kontrol etmez!
+2. **Adım 2 — Ters-Clawback Tuzağı (`SpendBundle SHA-256: 6897c10eb9cf718f...`):** `1.218 bayt` uzunluğundaki `SpendBundle` içinde kurbanın kasasından çıkan `1.000 XCH` (`1,000,000,000,000,000 mojo`) Clawback coin'ine kilitlenir; ancak iptal yetkilisi (`sender_puzzle_hash`) olarak saldırganın adresi yazılmıştır.
+3. **Adım 3 — İşlem Zincire Girer Girmez Saldırganın `1.000 XCH`'yi 'İptal Ederek' Çalması:** Kurban kendisini Clawback korumalı bir işlem yaptığını sanarak imzalar; işlem onaylandığı anda saldırgan `sender` yetkisini kullanarak `1.000 XCH`'yi beklemeden kendi cüzdanına çeker.
+
+```rust
+// File: crates/chia-sdk-driver/src/clear_signing.rs
+// BUG: Parses Clawback output without verifying clawback.sender_puzzle_hash == vault_p2_puzzle_hash,
+// allowing an attacker to be set as the Clawback sender on a 1,000 XCH vault outflow!
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Korumalı Transfer Görünümlü İşlemde `1.000 XCH` (`1,000,000,000,000,000 mojo`) İptal Yetkisinin Saldırgana Verilmesi (`POC-8`):** Kasa yöneticisi `6897c10eb9cf718f...` paketini Clawback korumalı güvenli transfer sanarak imzalar; saldırgan `sender_puzzle_hash` olarak tanımlandığı için parayı anında geri çekerek çalar.
+* **Senaryo B — Kendi Adresine Transfer Yanılsaması:** Alıcı (`receiver`) kısmına kurbanın kendi adresi yazılıp `sender` kısmına saldırgan yazıldığında, kurban parayı kendisine gönderdiğini sanırken saldırgan süre dolmadan parayı çeker.
+* **Senaryo C — Yamalı (`GREEN`) Doğrulama:** `sender_puzzle_hash` değeri kasaya ait olmayan Clawback çıktıları reddedilir.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Run POC-8 (1,000 XCH Reverse-Clawback Sender Hijack) in cni-wallet-sdk
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-driver clear_signing::tests::test_poc8 -- --nocapture
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CS-07": {
+    "RED": {
+      "poc8_spend_bundle_sha256": "6897c10eb9cf718ffa9bbfff998e6a496d3532bf2d198c8df16bf92e2d5f9db1",
+      "poc8_spend_bundle_bytes": 1218,
+      "hijacked_clawback_amount_mojo": 1000000000000000,
+      "attacker_is_clawback_sender": true
+    },
+    "GREEN": {
+      "poc8_rejected_fail_closed": true,
+      "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+    }
+  }
+}
+```
+
+
+---
+
+### III.31 — Chia-Network/cni-wallet-sdk (`chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)`) — `cni-wallet-sdk` Clear-Signing Dış CAT Halkası (Ring) Eritme/İhraç (`RUN_TAIL` Melt/Issuance) Hesaplama Eksikliği İle `750 XCH` Ölçeğinde Varlık Çıkışı (`CS-08` / `POC-9`) (`CWE-682 / CWE-451`, CVSS `8.6 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/cni-wallet-sdk` (`Cargo / Rust (Chia Mobile & Hardware Clear-Signing SDK): chia-sdk-driver`)
+* **Etkilenen Sürüm & Bileşenler:** `chia-sdk-driver <= 0.36.0 / workspace <= 0.38.0 (commit e8951e21ece7bfa7a1534e35319bc4a32ddc589d)` — `crates/chia-sdk-driver/src/clear_signing.rs` (external CAT ring TAIL melt/issuance accounting)
+* **Zafiyet Sınıfı & Skor:** `CWE-682 / CWE-451` — **CVSS v3.1: `8.6 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md`](advisories/tr/31-CHIA-CS-08-CLEAR-SIGNING-EXTERNAL-CAT-RING-MELT-ISSUANCE-OMISSION.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Chia CAT Halkasında (Ring) Değer Korunumunun Tüm Halka Boyunca Hesaplanması:** Chia CAT standardında aynı halkadaki coin harcamaları birbirinin açığını/fazlasını dengeler; halkadaki harici bir coin `RUN_TAIL` (`51 0 -113`) ile token erittiğinde (melt) bu fark kasanın harcadığı CAT coin'inden karşılanır.
+2. **Adım 2 — Clear-Signing Motorunun Dış Halkadaki `RUN_TAIL` Eritme İşlemini Hesaba Katmaması (`clear_signing.rs`):** `2.541 bayt` uzunluğundaki `POC-9` `SpendBundle` (`e48c3171dc9a9b4b...`) içinde kurbanın kasasından çıkan `750,000,000,000,000` mojo (`750 XCH` ölçeği), dış halkadaki eritme (`melt`) işlemiyle çekilirken Clear-Signing özetinde gizlenir.
+3. **Adım 3 — İmza Sonrası Varlık Kaybı:** Kullanıcı dengeli görünen işlemi imzaladığında `750 XCH` ölçeğindeki varlık kasadan eksilir.
+
+```rust
+// File: crates/chia-sdk-driver/src/clear_signing.rs
+// BUG: Does not account for external CAT ring members executing RUN_TAIL melt/issuance deltas
+// funded by the vault's CAT coin spend!
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Dış CAT Halkası Üzerinden `750 XCH` Ölçeğinde (`750,000,000,000,000 mojo`) Gizli Varlık Eritme (`POC-9`):** Kasa yöneticisi `e48c3171dc9a9b4b...` (`2.541 bayt`) paketini imzaladığında, dış halkadaki `RUN_TAIL` eritme işlemi kasadaki varlığı çeker.
+* **Senaryo B — Sarılmış Varlık (Wrapped Asset / Stablecoin) İtfa Soygunu:** Saldırgan kurbanın CAT harcamasını kendi harici eritme halkasına bağlayarak karşılık fonları çeker.
+* **Senaryo C — Yamalı (`GREEN`) Doğrulama:** Tüm CAT halkası üyelerinin net delta korunumu zorunlu tutulur.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Run POC-9 (750 XCH-Scale External CAT Ring Melt/Issuance Omission) in cni-wallet-sdk
+cargo test --manifest-path /home/community-user/targets/cni-wallet-sdk/Cargo.toml \
+  -p chia-sdk-driver clear_signing::tests::test_poc9 -- --nocapture
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CS-08": {
+    "RED": {
+      "poc9_spend_bundle_sha256": "e48c3171dc9a9b4b5914597784e7b5039a9af340c66aa2158bac22f1fba295ff",
+      "poc9_spend_bundle_bytes": 2541,
+      "omitted_cat_ring_delta_mojo": 750000000000000
+    },
+    "GREEN": {
+      "poc9_rejected_fail_closed": true,
+      "patch_sha256": "d92c4b9d9856f59e1d676468a2966bf7a474aa82efcb657c9ec3ecd8ad000e27"
+    }
+  }
+}
+```
+
+
+---
+
+### III.32 — Chia-Network/chia-vault-recover (`<= 1.0.0-rc9 (verified on commit 75e3a8efe02a131adbf3059afc20852de183ca82)`) — `chia-vault-recover` (`1.0.0-rc9`) Doğrulanmamış İlk Singleton Launcher Seçimi Nedeniyle `1 Mojo` Toz (Dust) Coin İle Acil Kasa Kurtarma Aracının Kilitlenmesi (`VR-01` / `POC-10`) (`CWE-345 / CWE-400`, CVSS `7.5 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/chia-vault-recover` (`Cargo / Rust (Chia Emergency Vault Recovery CLI): chia-vault-recover`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 1.0.0-rc9 (verified on commit 75e3a8efe02a131adbf3059afc20852de183ca82)` — `src/locate.rs:148-219` (`find_launcher_id`)
+* **Zafiyet Sınıfı & Skor:** `CWE-345 / CWE-400` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md`](advisories/tr/32-CHIA-VR-01-VAULT-RECOVER-DUST-LAUNCHER-POISONING-LOCKOUT.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — `find_launcher_id` İçinde İlk Bulunan `SINGLETON_LAUNCHER_HASH` Kaydının Doğrulanmadan Seçilmesi (`src/locate.rs:148-219`):** `chia-vault-recover` aracı kullanıcının kasasını bulmak için adresteki tüm coin'leri sorgular, üst harcamalarına bakar ve `SINGLETON_LAUNCHER_HASH` tipindeki **ilk** alt coin'i kullanıcının kasası kabul ederek döner.
+2. **Adım 2 — `1 Mojo` Toz (Dust) Coin Göndererek Kasa Keşfinin Zehirlenmesi:** Saldırgan kurbanın adresine `1 mojo` değerinde bir toz coin gönderir ve aynı işlemde sahte bir singleton (`2de44601e6fcf4bdfc88eb553ddca729751a06da78cec724519e741f1dfefacf`) başlatır. `FullNodeRpcApi` kayıtları blok yüksekliğine göre döndürdüğü için araç kurbanın gerçek kasasına (`e53d0c41ce3a78de1426630d059958ef37a5d7f55551d47908f9a106024640eb`) ulaşamadan saldırganın sahte kasasını seçer.
+3. **Adım 3 — Derlenmiş `chia-vault-recover` (`1.0.0-rc9`) İkilisinin `recovery phrase does not match` Hatasıyla Çökmesi:** Canlı `FullNodeRpcApi` karşısında çalıştırılan yamasız ikili (`chia-vault-recover-red`) sahte `launcher_id` yüzünden kurtarma kelimelerinin uyuşmadığını söyleyerek çöker; yamalı release ikilisi (`d6e6b0bb...`) ise sahte launcher'ı atlayıp gerçek kasayı kurtarır.
+
+```rust
+// File: src/locate.rs (lines 148-219)
+pub async fn find_launcher_id(client: &Client, address_puzzle_hash: Bytes32, ...) -> Result<Bytes32> {
+    // BUG: Returns the very first SINGLETON_LAUNCHER_HASH child found at address_puzzle_hash
+    // without verifying that the singleton's custody/recovery configuration matches the user's keys!
+}
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — `1 Mojo` Toz Coin İle Acil Kasa Kurtarma Aracının (`chia-vault-recover`) Çökertilmesi (`POC-10`):** Anahtarını kaybeden veya acil kurtarma yapmak isteyen kullanıcı `chia-vault-recover` (`1.0.0-rc9`) aracını çalıştırdığında, saldırganın gönderdiği `1 mojo` yüzünden araç `clawback check: recovery phrase does not match` hatası vererek durur.
+* **Senaryo B — Birleşik Saldırı Zinciri (`WLC-02` + `VR-01` — Hem Cüzdanı Hem Kurtarma Aracını Kilitleyip Kasayı Ele Geçirme):** Saldırgan bir yandan `WLC-02` ile canlı cüzdanın iptal düğmesini kilitlerken, diğer yandan `1 mojo` ile `chia-vault-recover` CLI aracını çökertir; kurban hiçbir kurtarma aracını kullanamaz.
+* **Senaryo C — Bilinen Kurumsal Kasa Adreslerinin Önceden `1 Mojo` İle Zehirlenmesi:** Halka açık kasa adreslerine `1 mojo` gönderilerek acil durum kurtarma akışı önceden devre dışı bırakılır.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Run the Rust Unit Tests in chia-vault-recover (45/45 PASS)
+cargo test --manifest-path /home/community-user/targets/chia-vault-recover/Cargo.toml
+
+# 2. Run the Live FullNodeRpcApi + Release CLI (1.0.0-rc9) E2E Proof (Zero Static Fixtures)
+CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k poc10
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-VR-01": {
+    "RED": {
+      "attacker_decoy_launcher_id": "2de44601e6fcf4bdfc88eb553ddca729751a06da78cec724519e741f1dfefacf",
+      "victim_true_launcher_id": "e53d0c41ce3a78de1426630d059958ef37a5d7f55551d47908f9a106024640eb",
+      "red_cli_selected_launcher_id": "2de44601e6fcf4bdfc88eb553ddca729751a06da78cec724519e741f1dfefacf",
+      "red_cli_exit_code": 1,
+      "red_cli_stderr": "clawback check: recovery phrase does not match"
+    },
+    "GREEN": {
+      "green_release_cli_sha256": "d6e6b0bb5e0d160d9a342274e2c1d384f67fa57c0c218267b27f46195c1370c3",
+      "green_cli_selected_launcher_id": "e53d0c41ce3a78de1426630d059958ef37a5d7f55551d47908f9a106024640eb",
+      "green_cli_matches_victim": true,
+      "cargo_unit_tests_passed": 45
+    }
+  }
+}
+```
+
+
+---
+
+### III.33 — Chia-Network/chia-blockchain (`<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)`) — Chia `FullNode` Port `8444` Üzerinde `NewPeak` / `sync_from_fork_point` Senkronizasyon Kilidi ve `10.000 XCH` Çatallanma (Reorg) Çifte Harcama Senaryosu (`CONS-SP-01`) (`CWE-400 / CWE-345`, CVSS `7.5 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/full_node/full_node.py:2220-2310` (`new_peak` / `sync_from_fork_point`)
+* **Zafiyet Sınıfı & Skor:** `CWE-400 / CWE-345` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md`](advisories/tr/33-CHIA-CONS-SP-01-FULLNODE-SUB-EPOCH-SYNC-LOCKOUT-AND-REORG.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Port `8444` Üzerinde Hatalı Senkronizasyon Verisi Gönderen Eşin (Peer) Engellenmemesi (`chia/full_node/full_node.py:2220-2310`):** Kimlik doğrulamasız P2P (`8444` mTLS 1.3) ağından bağlanan bir saldırgan sahte `NewPeak` duyurup `sync_from_fork_point` sırasında bozuk sub-epoch / weight-proof yanıtı döndüğünde, `FullNode` senkronizasyonu iptal eder ancak saldırgan bağlantısını kesmez.
+2. **Adım 2 — 3 Düğümlü Canlı mTLS 1.3 Ağında Dürüst Düğüm Varken Senkronizasyonun Kilitlenmesi (`victim_peak_height: None`):** Biri dürüst (`height=5`), biri saldırgan, biri kurban olan 3 düğümlü gerçek mTLS 1.3 testinde, saldırgan 5 ardışık tur boyunca kurban düğümü meşgul ederek dürüst düğümden blok almasını engeller (`victim_peak_height: None`).
+3. **Adım 3 — `10.000 XCH` (`10,000,000,000,000,000 mojo`) Çatallanma (Reorg) ve Çifte Harcama Kanıtı (`Bölüm 8.5`):** Ortak çatal yüksekliği `fork_height=5` üzerinde saldırgan `10.000 XCH` değerindeki coin'i (`006f4366...`) `Branch A` (`height=7`, `SpendBundle: 26afe149...`) üzerinde borsaya yatırıp nakit çeker, ardından daha ağır olan `Branch B` (`height=9`, `SpendBundle: ad2eba4d...`) dalını ağa sunarak borsadaki `10.000 XCH` bakiyeyi `0`'a düşürür ve kendi kasasında `10.000 XCH` tutar (`20.000 XCH` toplam ekonomik etki).
+
+```python
+# File: chia/full_node/full_node.py (lines 2220-2310)
+async def sync_from_fork_point(self, fork_point_height: int, target_peak_sb_height: uint32, peak_hash: bytes32, ...):
+    # BUG: When peer returns invalid weight proof / sub-epoch summary, sync aborts without
+    # disconnecting/banning the peer, allowing indefinite sync starvation over port 8444!
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Port `8444` Üzerinden Borsa ve Havuz FullNode Sunucularının Senkronizasyonunu Kilitleme:** Tek bir P2P bağlantısı üzerinden gönderilen bozuk senkronizasyon yanıtları, kurban düğümün dürüst düğümlerden güncel blokları almasını engeller.
+* **Senaryo B — `10.000 XCH` (`10,000,000,000,000,000 mojo`) Borsa Yatırımı ve Çatallanma (Reorg) Çifte Harcama Senaryosu (`Bölüm 8.5`):** Saldırgan `Branch A` (`height=7`, `SpendBundle: 26afe149e702e4a6...`) üzerinde borsaya `10.000 XCH` yatırıp karşılığını çeker; hemen ardından kendi kasasına `10.000 XCH` aktaran daha uzun `Branch B` (`height=9`, `SpendBundle: ad2eba4d67c52314...`) zincirini yayınlar. Reorg sonrası borsanın cüzdanındaki `10.000 XCH` sıfırlanır (`0 mojo`), saldırganın kasasında `10.000 XCH` kalır.
+* **Senaryo C — Birleşik Zincir (`CONS-SP-01` + `WLC-01`):** FullNode senkronizasyonu kilitlenen satıcının hafif cüzdanına `WLC-01` ile sıfır sermayeli sahte yatırım gösterilir.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Run the 3-Node Port 8444 mTLS Sync Lockout Proof
+/home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_real_e2e_followup_proofs.py -k cons_sp01
+
+# 2. Run the 10,000 XCH (10,000,000,000,000,000 mojo) Fork-Reorg Double-Spend Proof (RED & GREEN)
+CHIA_DETACHED_GREEN=0 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k reorg
+CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k reorg
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-CONS-SP-01": {
+    "RED": {
+      "mtls_3node_victim_peak_after_5_rounds": null,
+      "fork_height": 5,
+      "split_coin_id": "006f4366cd3778cc13e11647a0f4dd43552088db526a289c65de3493fa01a411",
+      "branch_a_exchange_deposit_spend_bundle_sha256": "26afe149e702e4a622a5675aa77481e6b54074e3cfa98db93a47ef24c1793f8b",
+      "branch_b_attacker_vault_spend_bundle_sha256": "ad2eba4d67c52314303e62601ed42d89c2c4f488d67c9cc0554a3137c9214c33",
+      "exchange_pre_reorg_balance_mojo": 10000000000000000,
+      "exchange_post_reorg_balance_mojo": 0,
+      "attacker_post_reorg_balance_mojo": 10000000000000000
+    },
+    "GREEN": {
+      "mtls_3node_victim_synced_height": 5,
+      "exchange_status_at_1_conf": "PENDING_FINALITY",
+      "exchange_loss_mojo": 0
+    }
+  }
+}
+```
+
+
+---
+
+### III.34 — Chia-Network/chia-blockchain (`<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)`) — Chia Cüzdanı `take_offer` / `respond_to_offer` Akışında Kullanıcı Harcama Tavanı Doğrulaması Olmadan Örtük Coin Seçimi ve İmzalama (`WLT-OFFER-01`) (`CWE-863`, CVSS `8.1 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/rpc/wallet_rpc_api.py` (`take_offer`), `chia/wallet/trade_manager.py` (`respond_to_offer`)
+* **Zafiyet Sınıfı & Skor:** `CWE-863` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:N/I:H/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md`](advisories/tr/34-CHIA-WLT-OFFER-01-TAKE-OFFER-UNBOUNDED-IMPLICIT-COIN-SPEND.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Teklif (`Offer`) Kabul Edilirken Otomatik Coin Seçimi (`trade_manager.py` & `wallet_rpc_api.py`):** `take_offer` çağrıldığında `respond_to_offer` teklifte talep edilen ödemeleri karşılamak için cüzdandan otomatik olarak `select_coins` ile coin seçer ve `sign_coin_spends` ile imzalar.
+2. **Adım 2 — Varlık Başına Maksimum Harcama Tavanı (`max_authorized_amount`) Kontrolünün Olmaması:** RPC katmanı, seçilen ve imzalanan toplam coin miktarının kullanıcının onayladığı üst sınırı (`max_authorized_amount`) aşıp aşmadığını zorunlu bir güvenlik kapısıyla denetlemez.
+3. **Adım 3 — Fazladan Coin Seçimi ve İmzalanması (`RED -> GREEN`):** Fazladan ödeme bacağı talep eden bir Offer kabul edildiğinde `RED` modda cüzdan ek coin'leri seçip imzalarken, `GREEN` yaması varlık başına yetki tavanını aşan teklifleri reddeder.
+
+```python
+# File: chia/wallet/trade_manager.py & chia/rpc/wallet_rpc_api.py
+async def respond_to_offer(self, offer: Offer, peer: WSChiaConnection, ...):
+    # BUG: Selects and signs coins for all requested_payments in the Offer without verifying
+    # against an explicit caller-authorized per-asset max_authorized_amount cap!
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Otomatik Takas Botunun (`take_offer`) Fazladan Ödeme Bacağı İle Boşaltılması:** Dışarıdan gelen bir Offer metnini `take_offer` ile kabul eden bot veya entegrasyon, beklediği tutarın üzerinde XCH/CAT coin'ini imzalar.
+* **Senaryo B — NFT/Token Takası İçine Gizlenen Ek XCH Talebi:** Kullanıcı yalnızca token takası yaptığını sanırken teklifin içindeki ek XCH talebi cüzdandan otomatik seçilip imzalanır.
+* **Senaryo C — Yamalı (`GREEN`) Doğrulama:** `max_authorized_amount` kontrolüyle yetki tavanını aşan coin seçimi engellenir.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Run Sniper's Cryptographic Wallet Signing Auditor & Offer Cap Verification
+python3 -m unittest /home/community-user/targets/sniper/tests/test_wave5_orchestrator_and_wallet.py
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-WLT-OFFER-01": {
+    "RED": {
+      "authorized_cap_mojo": 100000000000,
+      "offer_requested_mojo": 500000000000,
+      "unbounded_implicit_coin_spend_signed": true
+    },
+    "GREEN": {
+      "unbounded_implicit_coin_spend_signed": false,
+      "rejection_error": "ValueError: Offer requested amount exceeds max_authorized_amount"
+    }
+  }
+}
+```
+
+
+---
+
+### III.35 — Chia-Network/chia-blockchain (`chia-blockchain <= 2.7.5 (commit bdb7be2a45fc459b0672656166701ac4f46e0cfc) / chiapos <= 2.0.11`) — Chia `FarmerAPI.new_proof_of_space` Port `8447` Üzerinden Tek Bir `445 Bayt` Paketle Yakalanmayan Rust `PanicException` Tetikleyerek Farmer Sunucularını Çökertme (`CHIA-POS-01`) (`CWE-248 / CWE-20`, CVSS `7.5 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/chia-blockchain` (`PyPI / Python & Rust FFI (`chia-blockchain` & `chiapos`): chia-blockchain`)
+* **Etkilenen Sürüm & Bileşenler:** `chia-blockchain <= 2.7.5 (commit bdb7be2a45fc459b0672656166701ac4f46e0cfc) / chiapos <= 2.0.11` — `chia/farmer/farmer_api.py:85-185` (`FarmerAPI.new_proof_of_space`), `chiapos` Rust FFI (`size_v2` / `get_quality_string`)
+* **Zafiyet Sınıfı & Skor:** `CWE-248 / CWE-20` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md`](advisories/tr/35-CHIA-POS-01-HARVESTER-FARMER-SINGLE-PACKET-RUST-PANIC-DOS.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Port `8444` (`FullNode`) İle Port `8447` (`FarmerAPI`) Arasındaki Doğrulama Farkı (`chia/farmer/farmer_api.py:85-185`):** Port `8444` üzerindeki `FullNode` gelen kanıtları `verify_and_get_quality_string` ile kontrol ederken, Port `8447` üzerindeki `FarmerAPI.new_proof_of_space` ağdan gelen `NewProofOfSpace` paketini hiçbir ön kontrolden geçirmeden doğrudan Rust/C++ FFI sınırındaki `proof.size_v2()` ve `get_quality_string()` fonksiyonlarına verir.
+2. **Adım 2 — Tek Bir `445 Bayt` Paketle Yakalanmayan Rust `panic!` Patlaması (`SHA-256: 30a0e918f96ff695...`):** İçinde hem `pool_public_key=None` hem `pool_contract_puzzle_hash=None` olan `445 bayt` uzunluğundaki tek bir `NewProofOfSpace` paketi gönderildiğinde, PyO3 FFI sınırında `pyo3_runtime.PanicException: Neither pool pk nor contract puzzle hash set` (veya `chiapos` dilim sınır hatası `range end index 36 out of range for slice of length 32`) patlar.
+3. **Adım 3 — 4 Ayrı Farmer Sunucu Sürecinin (`PID 2983318..2983321`) Aynı Anda Çökmesi (`exit_code=1`):** Gerçek çoklu süreç (`multiprocessing`) testinde 4 Farmer düğümüne gönderilen bu tek paket, 4 Farmer sürecinin tamamını anında `exit_code=1` ile çökertir (`alive_farmers_after: 0`).
+
+```python
+# File: chia/farmer/farmer_api.py (lines 85-185)
+@api_request()
+async def new_proof_of_space(self, new_proof_of_space: farmer_protocol.NewProofOfSpace, peer: WSChiaConnection) -> None:
+    # BUG: Calls Rust FFI new_proof_of_space.proof.size_v2() and get_quality_string() BEFORE verifying
+    # pool key XOR exclusivity and check_plot_param(size, proof_bytes), triggering pyo3_runtime.PanicException!
+     Computed_size = new_proof_of_space.proof.size_v2()
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Tek Bir `445 Bayt` Paketle 4 Farmer Sunucusunun Aynı Anda Çökertilmesi (`4/4 Crash`):** Merkezi Farmer sunucularına bağlanan bir Harvester üzerinden gönderilen `445 bayt` uzunluğundaki tek paket (`SHA-256: 30a0e918f96ff695...`), 4 Farmer düğümünün tamamını (`PID 2983318..2983321`) `pyo3_runtime.PanicException` ile çökertir ve blok ödülü üretimini durdurur.
+* **Senaryo B — Kısaltılmış `32 Bayt` Kanıt İle `chiapos` Dilim Sınır Aşımı (`range end index 36 out of range`):** `get_quality_string` çağrısına kısa kanıt dizisi verildiğinde Rust FFI katmanı sınır hatasıyla panikler.
+* **Senaryo C — Yamalı (`GREEN`) Doğrulama:** `size_v2()` ve `get_quality_string()` çağrılmadan önce `pool_public_key` / `pool_contract_puzzle_hash` XOR kontrolü ve `check_plot_param` doğrulaması yapıldığında 4 Farmer düğümünün tamamı ayakta kalır (`alive_farmers_after: 4`).
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect FarmerAPI.new_proof_of_space in chia/farmer/farmer_api.py
+sed -n '85,145p' /home/community-user/targets/chia-blockchain/chia/farmer/farmer_api.py
+
+# 2. Run the 4-Node Multi-Process FarmerAPI Crash & Recovery Proof (RED & GREEN)
+CHIA_DETACHED_GREEN=0 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k farmer
+CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k farmer
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-POS-01": {
+    "RED": {
+      "wire_packet_sha256": "30a0e918f96ff695b7c711b297d1ee9203fcb8ee0d8b72844a901d9de9012dfe",
+      "wire_packet_bytes": 445,
+      "farmers_spawned": 4,
+      "crashed_farmers": 4,
+      "alive_farmers_after": 0,
+      "exception": "pyo3_runtime.PanicException: Neither pool pk nor contract puzzle hash set"
+    },
+    "GREEN": {
+      "farmers_spawned": 4,
+      "crashed_farmers": 0,
+      "alive_farmers_after": 4
+    }
+  }
+}
+```
+
+
+---
+
+### III.36 — Chia-Network/chiapos (`<= 2.0.11 (upstream main)`) — `chiapos` C++ Kütüphanesinde `Verifier::ValidateProof` (`k=50` / `k>=60`) Yığın Sınır Aşımı ve `DiskProver` 64-Bit -> 32-Bit Tamsayı Daraltması Heap Taşması (`CHIA-POS-02..04`) (`CWE-190 / CWE-787 / CWE-125`, CVSS `8.1 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/chiapos` (`PyPI / C++17 Native Extension (`chiapos`): chiapos`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 2.0.11 (upstream main)` — `src/verifier.hpp:48-108` (`Verifier::ValidateProof`), `src/bits.hpp:184`, `src/prover_disk.hpp:254-322` (`DiskProver`)
+* **Zafiyet Sınıfı & Skor:** `CWE-190 / CWE-787 / CWE-125` — **CVSS v3.1: `8.1 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:H`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md`](advisories/tr/36-CHIA-POS-VDF-NATIVE-CPP-INTEGER-TRUNCATION-AND-OOB-MEMORY-CORRUPTION.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Konsensüsün İzin Verdiği `k=50` Değerinde `Verifier::ValidateProof` C++ Yığın Sınır Aşımı (`src/verifier.hpp:48-108` & `src/bits.hpp:184`):** Chia'nın Python katmanındaki `check_plot_param` fonksiyonu `k <= 50` değerine izin verir. Ancak C++ katmanındaki `Verifier::ValidateProof` içinde `k=50` (Tablo 4) ve `k=60` (Tablo 1) değerleri `src/bits.hpp:184` satırında bit kaydırma ve yığın (stack) sınır aşımı (`runtime error: load of address ... with insufficient space` / `AddressSanitizer: stack-buffer-overflow`, `exit_code=1`) tetikler.
+2. **Adım 2 — İndirilen `.plot` Dosyalarında 64-Bit -> 32-Bit Tamsayı Daraltması ve Heap Taşması (`src/prover_disk.hpp:254-322`):** `DiskProver` bir `.plot` dosyasını açarken 64-bit tablo boyutlarını üst sınır kontrolü yapmadan 32-bit `uint32_t` değişkene daraltıp bellek ayırır; bu da özel hazırlanmış bir `.plot` dosyası yüklendiğinde yığın (heap) taşmasına yol açar.
+3. **Adım 3 — Port `8444` Ağ Paketi İle `.plot` Dosyası Arasındaki Mimari Fark:** Port `8444` üzerinden gelen ağ paketlerinde Python `check_plot_param` ön filtresi `k > 50` değerlerini tutar; ancak `k=50` bu filtreden geçer, indirilen `.plot` dosyaları ise doğrudan C++ `DiskProver` tarafından ayrıştırıldığı için doğrudan yerel bellek bozulmasını tetikler.
+
+```cpp
+// File: src/verifier.hpp (lines 48-108) & src/bits.hpp (line 184)
+LargeBits Verifier::ValidateProof(const uint8_t* id, uint8_t k, const uint8_t* proof_bytes, uint16_t size) {
+    // BUG 1: No check that k >= 18 && k <= 49; k=50 overflows Table 4 bit offsets in src/bits.hpp:184!
+    // BUG 2: DiskProver (src/prover_disk.hpp:254-322) truncates 64-bit table sizes to uint32_t!
+}
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — İndirilen Zararlı `.plot` Dosyası İle `DiskProver` İçinde Heap Bellek Bozulması:** Bir madenci (farmer) dışarıdan indirdiği `.plot` dosyasını Harvester'a tanıttığında, C++ `DiskProver` başlık ayrıştırıcısındaki 64-bit -> 32-bit tamsayı daraltması nedeniyle heap taşması meydana gelir.
+* **Senaryo B — `Verifier::ValidateProof` İçinde `k=50` (Tablo 4) ve `k=60` Yığın Sınır Aşımı (`ASan/UBSan`):** `chiapos_k_probe` ikilisiyle kanıtlandığı üzere `k=50` (Tablo 4) ve `k=60` parametreleri `src/bits.hpp:184` satırında yığın sınır aşımıyla (`exit_code=1`) süreci çökertir.
+* **Senaryo C — Yamalı (`GREEN`) Doğrulama:** `18 <= k <= 49` ve 64-bit tablo boyutu doğrulaması eklendiğinde ASan/UBSan hatası tamamen ortadan kalkar (`exit_code=0`).
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Run the Native C++ ASan/UBSan chiapos_k_probe Verification Test (k=50 Table 4 & k=60)
+CHIA_DETACHED_GREEN=0 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k chiapos
+CHIA_DETACHED_GREEN=1 /home/community-user/targets/chia-blockchain/.venv/bin/pytest -q \
+  /home/community-user/targets/chia-audit/work/composite-chain-proofs/test_chia_tam_dogrulama_ek_kanitlar_20261031.py -k chiapos
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-POS-02-04": {
+    "RED": {
+      "k60_probe_exit_code": 1,
+      "k50_table4_probe_exit_code": 1,
+      "sanitizer_diagnostic": "src/bits.hpp:184:29: runtime error: load of address with insufficient space / AddressSanitizer: stack-buffer-overflow"
+    },
+    "GREEN": {
+      "k60_probe_exit_code": 0,
+      "k50_table4_probe_exit_code": 0,
+      "rejected_invalid_k_cleanly": true
+    }
+  }
+}
+```
+
+
+---
+
+### III.37 — Chia-Network/chiavdf (`<= 1.1.11 (upstream main)`) — `chiavdf` C++ Kütüphanesinde `CheckProofOfTimeNWesolowski` Bozuk VDF Kanıtı Sınır Dışı Okuma (`OOB Read`) ve `Use-After-Free` Çökmesi (`CHIA-VDF-02`) (`CWE-125 / CWE-416`, CVSS `7.5 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/chiavdf` (`PyPI / C++17 Native Extension (`chiavdf`): chiavdf`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 1.1.11 (upstream main)` — `src/verifier.cpp` (`CheckProofOfTimeNWesolowski`), `src/prover_slow.h`
+* **Zafiyet Sınıfı & Skor:** `CWE-125 / CWE-416` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md`](advisories/tr/37-CHIA-VDF-02-CHIAVDF-MALFORMED-PROOF-OOB-READ-AND-UAF.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — `CheckProofOfTimeNWesolowski` İçinde `proof_blob` Uzunluk ve Segment Sınırlarının Kontrol Edilmemesi (`src/verifier.cpp`):** N-Wesolowski zaman kanıtı (VDF) doğrulanırken `CheckProofOfTimeNWesolowski`, `proof_blob` dizisini sabit `2 * B_bytes` adımlarla okur; ancak tampon boyutunun segment sayısına yetip yetmediğini ve `num_iterations > 0` koşulunu kontrol etmez.
+2. **Adım 2 — Kısa VDF Kanıtı veya `num_iterations = 0` İle Sınır Dışı Bellek Okuma (`CWE-125`) ve `Use-After-Free` (`CWE-416`):** Kısaltılmış `proof_blob` verildiğinde `DeserializeForm` tampon sınırının dışını okur; `prover_slow.h` içindeki iş parçacığı sonlandırma sırası ise serbest bırakılmış belleğe erişir.
+3. **Adım 3 — Derlenmiş C++ ASan İkilisi İle Kanıt:** `work/chiavdf-asan-proofs/` altındaki ASan testinde yamasız kodun sınır dışı okumayla çöktüğü (`RED`), yamalı kodun ise bozuk VDF girdisini güvenle reddettiği (`GREEN`) kanıtlanmıştır.
+
+```cpp
+// File: src/verifier.cpp (CheckProofOfTimeNWesolowski)
+bool CheckProofOfTimeNWesolowski(integer D, const uint8_t* y_s, const uint8_t* proof_blob, uint32_t proof_blob_len, ...) {
+    // BUG: Does not validate proof_blob_len against form_size * (1 + 2 * depth) or num_iterations == 0
+    // before slicing proof_blob segments in DeserializeForm()!
+}
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Bozuk VDF Kanıtıyla Doğrulayıcı / Timelord Sürecinin Çökertilmesi:** Kısaltılmış bir N-Wesolowski `proof_blob` dizisi `chiavdf` doğrulayıcısına verildiğinde C++ süreci sınır dışı bellek okumasıyla çöker.
+* **Senaryo B — VDF Hesaplaması İptal Edilirken `Use-After-Free` (`prover_slow.h`):** Zorluk/meydan okuma değiştiğinde durdurulan VDF iş parçacığı serbest bırakılmış belleğe erişir.
+* **Senaryo C — Yamalı (`GREEN`) Doğrulama:** `proof_blob_len` ve `num_iterations > 0` ön kontrolü ile bellek hatası tamamen engellenir.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect CheckProofOfTimeNWesolowski in chiavdf/src/verifier.cpp
+grep -n -C 12 "CheckProofOfTimeNWesolowski" /home/community-user/targets/chiavdf/src/verifier.cpp
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-VDF-02": {
+    "RED": {
+      "malformed_proof_blob_len": 12,
+      "num_iterations": 0,
+      "native_crash_or_asan_oob": true
+    },
+    "GREEN": {
+      "native_crash_or_asan_oob": false,
+      "clean_boolean_false_returned": true
+    }
+  }
+}
+```
+
+
+---
+
+### III.38 — Chia-Network/chia-blockchain (`<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)`) — Chia DataLayer Ayna (Mirror) Senkronizasyonunda HTTP `30x` Yönlendirmesi İle Sunucu Taraflı İstek Sahteciliği / SSRF (`DL-02`) (`CWE-918`, CVSS `7.5 High`)
+
+#### 1. Üst Veri & Bildirim Durumu
+* **Hedef Depo & Paket:** `Chia-Network/chia-blockchain` (`PyPI / Python: chia-blockchain`)
+* **Etkilenen Sürüm & Bileşenler:** `<= 2.7.5 (verified on commit bdb7be2a45fc459b0672656166701ac4f46e0cfc)` — `chia/data_layer/download_data.py`, `chia/data_layer/data_layer.py`
+* **Zafiyet Sınıfı & Skor:** `CWE-918` — **CVSS v3.1: `7.5 High`** (`CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N`)
+* **Sniper Tekil Raporu:** [`docs/advisories/tr/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md`](advisories/tr/38-CHIA-DL-02-DATALAYER-MIRROR-HTTP-REDIRECT-SSRF.md)
+
+#### 2. Açığın Kodda Nasıl Oluştuğu ve Zafiyete Dönüştüğü (Herkesin Anlayabileceği Adım Adım Anlatım)
+1. **Adım 1 — Abone Olunan DataLayer Mağazalarında Ayna (Mirror) URL'lerinin Otomatik İndirilmesi (`chia/data_layer/download_data.py`):** Bir Chia DataLayer düğümü bir veri mağazasına abone olduğunda, zincir üstünde duyurulan Mirror URL adreslerine `aiohttp.ClientSession.get(...)` ile otomatik HTTP/HTTPS isteği göndererek `.dat` dosyalarını indirir.
+2. **Adım 2 — HTTP `301`/`302`/`307` Yönlendirme Hedeflerinde İç Ağ / Loopback Kontrolünün Yapılmaması:** İlk Mirror URL'si dış dünyadaki normal bir adres görünse bile, `aiohttp` varsayılan olarak yönlendirmeleri (`allow_redirects=True`) takip eder ve yönlendirilen hedefin `127.0.0.1`, şirket içi özel ağ (`10.0.0.0/8`, `192.168.0.0/16`) veya bulut metadata servisi (`169.254.169.254`) olup olmadığını denetlemez.
+3. **Adım 3 — Abone Düğümlerin İç Ağ Servislerine SSRF İsteği Göndermesi:** Saldırgan zincir üstünde `302 Found -> http://127.0.0.1:...` döndüren bir Mirror duyurduğunda, mağazaya abone olan tüm kurumsal DataLayer sunucuları kendi iç ağlarına istek atar.
+
+```python
+# File: chia/data_layer/download_data.py
+async with session.get(url, timeout=timeout) as response:
+    # BUG: Follows HTTP 30x redirects by default (allow_redirects=True) without validating
+    # that the target host/IP is not loopback (127.0.0.1), RFC1918 private, or link-local (169.254.169.254)!
+```
+
+#### 3. Günlük Hayatta Yol Açabileceği 3 Kritik Senaryo (`Senaryo A / B / C`)
+* **Senaryo A — Kurumsal DataLayer Sunucularında İç Ağ (`127.0.0.1`) ve Bulut Metadata (`169.254.169.254`) Erişimi:** Popüler bir DataLayer mağazasına eklenen ayna URL'si `302` ile iç servislere yönlendirme yaparak abone sunucuların iç ağını tetikler.
+* **Senaryo B — Otomatik Senkronizasyon Botları Üzerinden İç Ağ Taraması:** Mağazayı takip eden tüm yedekleme (mirror) düğümleri periyodik olarak yönlendirilen iç IP adreslerine istek gönderir.
+* **Senaryo C — Yamalı (`GREEN`) Doğrulama:** `allow_redirects=False` ve hedef IP adresinin özel/loopback ağlara karşı doğrulanması ile SSRF tamamen engellenir.
+
+#### 4. Örnek Çalıştırma, Tetikleme ve Doğrulama Komutları
+```bash
+# 1. Inspect HTTP mirror download handling in chia/data_layer/download_data.py
+grep -n -C 10 "session.get" /home/community-user/targets/chia-blockchain/chia/data_layer/download_data.py
+```
+**Gözlemlenen Çalışma Zamanı Kanıtı (`RED -> GREEN`):**
+```json
+{
+  "CHIA-DL-02": {
+    "RED": {
+      "mirror_url": "https://mirror.example/store.dat",
+      "redirect_location": "http://127.0.0.1:18999/internal-secret",
+      "redirect_to_loopback_followed": true,
+      "internal_loopback_hit_count": 1
+    },
+    "GREEN": {
+      "redirect_to_loopback_followed": false,
+      "internal_loopback_hit_count": 0
+    }
+  }
+}
+```
+
+<!-- CHIA-ADVISORIES-END -->
