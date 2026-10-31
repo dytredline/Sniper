@@ -1,0 +1,201 @@
+{
+  "suite": "vercel-real-world-impact-e2e-20261029",
+  "verified_at": "2026-10-31T05:15:00Z",
+  "total_advisories": 8,
+  "all_passed": true,
+  "tracks": {
+    "VERCEL-NEXT-15": {
+      "num": "39",
+      "cand_id": "VERCEL-NEXT-15",
+      "repo": "vercel/next.js",
+      "package": "next",
+      "affected_versions": "<= 16.4.3 (verified on published npm next@16.4.3 & canary)",
+      "cwe": "CWE-200 / CWE-918 / CWE-345",
+      "cvss_score": "8.2 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:L/A:N",
+      "RED": {
+        "package_tested": "next@16.4.3",
+        "hackerone_report": "#4152250 (with 2 follow-up comments mounted)",
+        "prerender_manifest_previewModeId": "f5dbbd8f6a6a51a6aa8ff1443f7090dd",
+        "attacker_received_x_next_revalidate_tag_token": "f5dbbd8f6a6a51a6aa8ff1443f7090dd",
+        "leaked_token_matches_prerender_manifest_previewModeId": true,
+        "forged_flight_stream_injected_into_action_response": true,
+        "response_build_id_field_b": null,
+        "client_build_id_check_bypassed": true,
+        "injected_cors_header_on_victim_origin": "https://attacker-oauth.example"
+      },
+      "GREEN": {
+        "internal_redirect_fetch_mode": "manual",
+        "scheme_relative_redirect_rejected": true,
+        "external_hop_followed_by_server": false,
+        "attacker_received_x_next_revalidate_tag_token": null,
+        "forged_flight_stream_injected_into_action_response": false
+      }
+    },
+    "VERCEL-NEXT-09": {
+      "num": "40",
+      "cand_id": "VERCEL-NEXT-09",
+      "repo": "vercel/next.js",
+      "package": "next",
+      "affected_versions": "<= 16.4.3 (verified on published npm next@16.4.3 & canary)",
+      "cwe": "CWE-918 / CWE-863",
+      "cvss_score": "7.5 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:N/A:N",
+      "RED": {
+        "package_tested": "next@16.4.3",
+        "hackerone_report": "#4152265 (with 2 follow-up comments mounted)",
+        "same_host_pathname_bypass_status": 200,
+        "cross_host_allowlist_bypass_status": 200,
+        "scoped_loopback_input": "::ffff:127.0.0.1%br-1a49f5828144",
+        "ipaddr_isValid": false,
+        "nextjs_isPrivateIp_returned": false,
+        "loopback_server_hit": true,
+        "remote_address_seen_by_server": "::ffff:127.0.0.1",
+        "rfc4291_ipv4_compatible_isPrivateIp": false,
+        "rfc8215_local_nat64_isPrivateIp": false
+      },
+      "GREEN": {
+        "redirect_hop_rechecks_hasMatch_remotePatterns": true,
+        "invalid_or_hyphenated_zone_ip_fails_closed": true,
+        "rfc4291_and_rfc8215_blocked": true,
+        "loopback_server_hit": false
+      }
+    },
+    "VERCEL-CLI-07": {
+      "num": "41",
+      "cand_id": "VERCEL-CLI-07",
+      "repo": "vercel/vercel",
+      "package": "vercel",
+      "affected_versions": "<= 65.4.0 (verified on published npm vercel@65.4.0)",
+      "cwe": "CWE-200 / CWE-436",
+      "cvss_score": "8.2 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:L/A:N",
+      "RED": {
+        "package_tested": "vercel@65.4.0",
+        "curl_binary": "/usr/bin/curl 8.5.0",
+        "ConstructFullUrl_output": "https://my-protected-deployment.vercel.app/\\@127.0.0.1:38343/exfiltrate",
+        "whatwg_origin_check_passed": true,
+        "attacker_listener_received_request": true,
+        "leaked_authorization": "Bearer vcp_live_SECRET_VERCEL_CLI_TOKEN_998877",
+        "leaked_protection_bypass": "0123456789abcdef0123456789abcdef"
+      },
+      "GREEN": {
+        "backslash_and_at_segment_rejected": true,
+        "returns_normalized_url_href": true,
+        "curl_invoked_with_globoff": true,
+        "attacker_listener_received_request": false
+      }
+    },
+    "VERCEL-FLAGS-CORE-06": {
+      "num": "42",
+      "cand_id": "VERCEL-FLAGS-CORE-06",
+      "repo": "vercel/flags",
+      "package": "@vercel/flags-core",
+      "affected_versions": "<= 1.10.2 (verified on published npm @vercel/flags-core@1.10.2)",
+      "cwe": "CWE-400 / CWE-345",
+      "cvss_score": "6.5 Medium",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:H",
+      "RED": {
+        "package_tested": "@vercel/flags-core@1.10.2",
+        "initial_flag_value": "stale-compromised-variant",
+        "bundled_legitimate_update_timestamp": 1700000100000,
+        "poisoned_header_sent_on_503": "9999999999999",
+        "flag_value_after_watermark_poisoning": "stale-compromised-variant",
+        "legitimate_bundled_update_ignored": true
+      },
+      "GREEN": {
+        "requires_res_ok_and_valid_datafile_before_watermark_update": true,
+        "rejects_future_timestamp_skew": true,
+        "legitimate_bundled_update_ignored": false
+      }
+    },
+    "VERCEL-FLAGS-05": {
+      "num": "43",
+      "cand_id": "VERCEL-FLAGS-05",
+      "repo": "vercel/flags",
+      "package": "flags",
+      "affected_versions": "<= 4.4.0 (verified on published npm flags@4.4.0)",
+      "cwe": "CWE-347",
+      "cvss_score": "6.5 Medium",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N",
+      "RED": {
+        "package_tested": "flags@4.4.0",
+        "legitimate_signed_code_prefix": "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..",
+        "legitimate_precomputed_value": false,
+        "forged_code_passed": "__no_flags__",
+        "deserialize_output_for_no_flags": {},
+        "getPrecomputed_value_with_no_flags_sentinel": true,
+        "random_tampered_token_rejected": true
+      },
+      "GREEN": {
+        "sentinel_rejected_when_flags_non_empty": true,
+        "getPrecomputed_with_no_flags_throws": true
+      }
+    },
+    "VERCEL-FIREWALL-01": {
+      "num": "44",
+      "cand_id": "VERCEL-FIREWALL-01",
+      "repo": "vercel/firewall",
+      "package": "@vercel/firewall",
+      "affected_versions": "<= 1.2.6 (verified on published npm @vercel/firewall@1.2.6 & Go ipc-proxy)",
+      "cwe": "CWE-918 / CWE-200 / CWE-636",
+      "cvss_score": "7.2 High",
+      "cvss_vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:L/I:L/A:N",
+      "RED": {
+        "package_tested": "@vercel/firewall@1.2.6",
+        "attacker_received_request": true,
+        "leaked_rate_limit_secret": "rl_secret_LIVE_99887766",
+        "leaked_oidc_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.LIVE_OIDC_PAYLOAD",
+        "fail_open_result_on_error": {
+          "rateLimited": false,
+          "error": "not_found"
+        }
+      },
+      "GREEN": {
+        "untrusted_host_and_region_rejected": true,
+        "attacker_received_request": false,
+        "go_ipc_proxy_sprintf_formatted": true
+      }
+    },
+    "VERCEL-CLIENT-08A": {
+      "num": "45",
+      "cand_id": "VERCEL-CLIENT-08A",
+      "repo": "vercel/vercel",
+      "package": "@vercel/client",
+      "affected_versions": "<= 18.10.0 (verified on published npm @vercel/client@18.10.0)",
+      "cwe": "CWE-200 / CWE-706",
+      "cvss_score": "5.0 Medium",
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N",
+      "RED": {
+        "package_tested": "@vercel/client@18.10.0",
+        "outside_host_file_read_via_filePathMap": true,
+        "dotnext_required_server_files_env_uploaded": true,
+        "uploaded_payload_excerpt": "SUPER_SECRET_HOST_TOKEN=host_secret_value_12345"
+      },
+      "GREEN": {
+        "outside_cwd_filePathMap_rejected": true,
+        "outside_host_file_read_via_filePathMap": false
+      }
+    },
+    "VERCEL-CLIENT-08B": {
+      "num": "46",
+      "cand_id": "VERCEL-CLIENT-08B",
+      "repo": "vercel/vercel",
+      "package": "@vercel/client",
+      "affected_versions": "<= 18.10.0 (verified on published npm @vercel/client@18.10.0)",
+      "cwe": "CWE-59 / CWE-200",
+      "cvss_score": "5.0 Medium",
+      "cvss_vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:R/S:C/C:H/I:N/A:N",
+      "RED": {
+        "package_tested": "@vercel/client@18.10.0",
+        "bulkRedirectsPath_symlink_followed_outside_cwd": true,
+        "outside_symlink_target_packaged_in_fileList": true,
+        "uploaded_payload_excerpt": "OUTSIDE_SYMLINK_SECRET=top_secret_symlink_data_999"
+      },
+      "GREEN": {
+        "bulkRedirectsPath_confined_to_cwd_realpath": true,
+        "outside_symlink_target_packaged_in_fileList": false
+      }
+    }
+  }
+}
