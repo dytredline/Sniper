@@ -4,7 +4,7 @@
 
 **English** | [Türkçe](docs/README.tr.md) | [日本語](docs/README.ja.md) | [简体中文](docs/README.zh-CN.md) | [한국어](docs/README.ko.md)
 
-[Project overview at ConverserAI](https://converserai.com/#sniper) · [Capabilities](docs/CAPABILITIES.md) · [Setup](#source-checkout-setup) · [Frequently asked questions](#frequently-asked-questions)
+[VulKill website](https://vulkill.com/) · [Project overview at ConverserAI](https://converserai.com/#vulkill) · [Capabilities](docs/CAPABILITIES.md) · [Setup](#source-checkout-setup) · [Frequently asked questions](#frequently-asked-questions)
 
 VulKill Community is an open-source, local-first defensive application-security toolkit for people who build, own,
 or review applications, APIs, and websites. It helps teams examine supported source code through static application
