@@ -213,9 +213,10 @@ def _rule_id(finding: dict[str, Any]) -> str:
     else:
         base = str(finding.get("cwe") or finding.get("reference") or "")
         if not base:
-            base = "t-" + hashlib.sha256(
-                finding_tracking._norm(finding.get("title")).encode("utf-8")
-            ).hexdigest()
+            title_slug = re.sub(
+                r"[^A-Za-z0-9_.\-]+", "-", finding_tracking._norm(finding.get("title"))
+            ).strip("-")[:160]
+            base = "title-" + (title_slug or "unnamed")
     base = re.sub(r"[^A-Za-z0-9_.\-]+", "-", base).strip("-") or "kural"
     return f"sniper/{group}/{base}"[:255]
 

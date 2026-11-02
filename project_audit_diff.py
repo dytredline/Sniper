@@ -161,6 +161,13 @@ def compare_project_audits(store: Any, audit_1_id: str, audit_2_id: str) -> dict
 SECURITY_SEVERITY = {"critical": "9.5", "high": "8.0", "medium": "5.5", "low": "3.0", "info": "1.0"}
 
 
+def _sarif_fingerprint(rule_id: str, uri: str, start_line: int, title: str) -> str:
+    """Return a stable SARIF identity without treating report text as a secret."""
+    fields = (rule_id[:255], uri[:512], str(start_line), title[:512])
+    return "v1|" + "|".join(re.sub(r"[^A-Za-z0-9_./:@+-]+", "-", field).strip("-")
+                              for field in fields)
+
+
 def _cwe_number(value: str) -> str:
     match = re.search(r"CWE-(\d{1,5})", value or "", re.IGNORECASE)
     return match.group(1) if match else ""
@@ -255,9 +262,7 @@ def render_project_audit_sarif(audit: dict[str, Any]) -> dict[str, Any]:
             },
             "locations": [_sarif_location(uri, start_line)],
             "partialFingerprints": {
-                "sniperFinding/v1": hashlib.sha256(
-                    f"{rule_id}|{uri}|{start_line}|{title}".encode("utf-8")
-                ).hexdigest(),
+                "sniperFinding/v1": _sarif_fingerprint(rule_id, uri, start_line, title),
             },
             "properties": {
                 "id": str(finding.get("id") or ""),

@@ -331,7 +331,7 @@ class ScanDiffCsvWorkflowTests(unittest.TestCase):
             self.assertEqual(resp.status, 200)
             self.assertIn("text/csv", resp.headers.get("Content-Type", ""))
             self.assertIn(
-                f'filename="vulkill-diff-{scan1["id"]}-{scan2["id"]}.csv"',
+                'filename="vulkill-diff.csv"',
                 resp.headers.get("Content-Disposition", ""),
             )
             body = resp.read().decode("utf-8")

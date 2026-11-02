@@ -65,6 +65,7 @@ _MANIFEST_NAMES = {
     ".terraform.lock.hcl", "renovate.json",
 }
 _MANIFEST_SUFFIXES = (".csproj", ".fsproj", ".vbproj", ".deps.json")
+_PATH_COMPONENT_RE = re.compile(r"(?!\.{1,2}\Z)[^/\\\x00]{1,255}\Z")
 
 
 def _sha256_fd(fd: int) -> str:
@@ -243,15 +244,44 @@ def _snapshot_manifests(source: Path, destination: Path) -> tuple[int, int]:
 
     root_fd = -1
     try:
+        account_root = Path.home().resolve(strict=True)
+        relative_source = source.relative_to(account_root)
         root_fd = os.open(
-            source,
+            account_root,
             os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_DIRECTORY", 0)
             | getattr(os, "O_CLOEXEC", 0),
         )
-        if not stat.S_ISDIR(os.fstat(root_fd).st_mode):
-            raise OSError("project root is not a directory")
+        for requested in relative_source.parts:
+            if not _PATH_COMPONENT_RE.fullmatch(requested):
+                raise OSError("unsafe project path component")
+            selected_name = None
+            expected = None
+            with os.scandir(root_fd) as scanner:
+                for entry in scanner:
+                    if entry.name == requested:
+                        info = entry.stat(follow_symlinks=False)
+                        if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+                            raise OSError("project path component is not a directory")
+                        selected_name = entry.name
+                        expected = info
+                        break
+            if selected_name is None or expected is None:
+                raise OSError("project path component is missing")
+            child_fd = os.open(
+                selected_name,
+                os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_DIRECTORY", 0)
+                | getattr(os, "O_CLOEXEC", 0),
+                dir_fd=root_fd,
+            )
+            current = os.fstat(child_fd)
+            if (not stat.S_ISDIR(current.st_mode) or current.st_dev != expected.st_dev
+                    or current.st_ino != expected.st_ino):
+                os.close(child_fd)
+                raise OSError("project path component changed")
+            os.close(root_fd)
+            root_fd = child_fd
         walk(root_fd, Path(), 0)
-    except OSError as exc:
+    except (OSError, ValueError) as exc:
         raise ProjectRejected("Proje dosyaları güvenli biçimde okunamadı.") from exc
     finally:
         if root_fd >= 0:

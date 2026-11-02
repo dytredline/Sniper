@@ -230,15 +230,18 @@ class CodeQLNonPathProductGuardTests(unittest.TestCase):
                     ), self.assertRaises(ValueError):
                 static_handler._static("/proof.weird")
 
-        # #487: a multiline scan identifier reaches the CSV filename formatter,
-        # but is rejected before the response is flushed.
+        # #487: scan identifiers never reach the CSV header; the response uses
+        # one product-owned constant filename.
         diff_handler = self._handler()
-        with self.assertRaises(ValueError):
-            diff_handler._diff_csv_report(
-                {},
-                "scn_0123456789ab",
-                "scn_fedcba987654\n\nX-Injected: yes",
-            )
+        diff_handler._diff_csv_report(
+            {},
+            "scn_0123456789ab",
+            "scn_fedcba987654\n\nX-Injected: yes",
+        )
+        self.assertIn(
+            b'Content-Disposition: attachment; filename="vulkill-diff.csv"',
+            diff_handler.wfile.getvalue(),
+        )
 
         for handler in (json_handler, static_handler, diff_handler):
             buffered = b"".join(getattr(handler, "_headers_buffer", ()))

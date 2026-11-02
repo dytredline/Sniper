@@ -23,7 +23,7 @@ import http.client
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, quote, urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 from scanner import (
     NormalizedTarget,
@@ -54,20 +54,6 @@ from safe_file_read import read_bytes_bounded
 MAX_STATIC_FILE_BYTES = 8 * 1024 * 1024
 MAX_REQUEST_PATH_BYTES = 4096
 MAX_REQUEST_PATH_COMPONENT_BYTES = 255
-_HEADER_FILENAME_SAFE = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_."
-
-
-def _header_filename_token(value: object, *, maximum: int = 128) -> str:
-    """Return an ASCII filename token or reject it before an HTTP header sink."""
-    raw = str(value)
-    if not raw or len(raw) > maximum:
-        raise ValueError("Geçersiz rapor dosyası adı bileşeni.")
-    encoded = quote(raw, safe=_HEADER_FILENAME_SAFE)
-    if encoded != raw:
-        raise ValueError("Geçersiz rapor dosyası adı bileşeni.")
-    return encoded
-
-
 import notifications
 import ops_files
 import license_compliance
@@ -6182,14 +6168,14 @@ class VulKillHandler(BaseHTTPRequestHandler):
         STORE.log("portfolio.exported", fmt, {"count": len(items), "project_path": project_path or None,
                                               "statuses": sorted(statuses)})
         stamp = date.today().strftime("%Y%m%d")
-        safe_format = _header_filename_token(fmt, maximum=24)
-        safe_extension = _header_filename_token(extension, maximum=16)
+        filename = (f"vulkill-bulgular-{stamp}.csv" if fmt == "csv"
+                    else f"vulkill-bulgular-{stamp}.json")
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header(
             "Content-Disposition",
-            f'attachment; filename="vulkill-bulgular-{safe_format}-{stamp}.{safe_extension}"',
+            f'attachment; filename="{filename}"',
         )
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
@@ -7310,14 +7296,12 @@ class VulKillHandler(BaseHTTPRequestHandler):
 
     def _diff_csv_report(self, diff: dict, scan_id_1: str, scan_id_2: str) -> None:
         body = ("\ufeff" + render_diff_csv(diff)).encode("utf-8")
-        safe_scan_id_1 = _header_filename_token(scan_id_1)
-        safe_scan_id_2 = _header_filename_token(scan_id_2)
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/csv; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header(
             "Content-Disposition",
-            f'attachment; filename="vulkill-diff-{safe_scan_id_1}-{safe_scan_id_2}.csv"',
+            'attachment; filename="vulkill-diff.csv"',
         )
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
