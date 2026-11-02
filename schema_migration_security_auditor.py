@@ -8,7 +8,7 @@ parola/sır sütunlarını çevrimdışı olarak denetler.
 
 from __future__ import annotations
 
-import re
+import safe_regex as re
 from typing import Any
 
 FORMAT = "sniper-schema-migration-security-audit/1"

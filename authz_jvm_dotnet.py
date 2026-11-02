@@ -7,7 +7,7 @@ route rather than an inferred security claim.
 
 from __future__ import annotations
 
-import re
+import safe_regex as re
 from typing import Any
 
 

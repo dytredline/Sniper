@@ -22,7 +22,7 @@ birleşir).
 from __future__ import annotations
 
 from dataclasses import dataclass
-import re
+import safe_regex as re
 from typing import Any
 
 import memsafety_c

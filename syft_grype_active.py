@@ -168,12 +168,12 @@ def _snapshot_manifests(source: Path, destination: Path) -> tuple[int, int]:
     files = 0
     total = 0
 
-    def walk(directory: Path, relative_dir: Path, depth: int) -> None:
+    def walk(directory_fd: int, relative_dir: Path, depth: int) -> None:
         nonlocal files, total
         if depth > 40:
             raise ProjectRejected("Proje dizin derinliği güvenli sınırı aşıyor.")
         try:
-            with os.scandir(directory) as scanner:
+            with os.scandir(directory_fd) as scanner:
                 entries = sorted(scanner, key=lambda entry: entry.name)
         except OSError as exc:
             raise ProjectRejected("Proje dosyaları güvenli biçimde okunamadı.") from exc
@@ -187,7 +187,24 @@ def _snapshot_manifests(source: Path, destination: Path) -> tuple[int, int]:
             relative = relative_dir / entry.name
             if stat.S_ISDIR(info.st_mode):
                 if entry.name.casefold() not in _EXCLUDED_DIRECTORIES:
-                    walk(Path(entry.path), relative, depth + 1)
+                    child_fd = -1
+                    try:
+                        child_fd = os.open(
+                            entry.name,
+                            os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_DIRECTORY", 0)
+                            | getattr(os, "O_CLOEXEC", 0),
+                            dir_fd=directory_fd,
+                        )
+                        current = os.fstat(child_fd)
+                        if (not stat.S_ISDIR(current.st_mode) or current.st_dev != info.st_dev
+                                or current.st_ino != info.st_ino):
+                            raise OSError("changed directory")
+                        walk(child_fd, relative, depth + 1)
+                    except OSError as exc:
+                        raise ProjectRejected("Proje dosyaları güvenli biçimde okunamadı.") from exc
+                    finally:
+                        if child_fd >= 0:
+                            os.close(child_fd)
                 continue
             if not stat.S_ISREG(info.st_mode) or not _is_manifest(relative):
                 continue
@@ -198,7 +215,11 @@ def _snapshot_manifests(source: Path, destination: Path) -> tuple[int, int]:
             if files > _MAX_FILES or total > _MAX_TOTAL_BYTES:
                 raise ProjectRejected("Bağımlılık manifesti kapsamı güvenli sınırı aşıyor.")
             try:
-                fd = os.open(entry.path, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0))
+                fd = os.open(
+                    entry.name,
+                    os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0),
+                    dir_fd=directory_fd,
+                )
                 try:
                     current = os.fstat(fd)
                     if (not stat.S_ISREG(current.st_mode) or current.st_dev != info.st_dev
@@ -220,7 +241,21 @@ def _snapshot_manifests(source: Path, destination: Path) -> tuple[int, int]:
             with os.fdopen(descriptor, "wb") as stream:
                 stream.write(data)
 
-    walk(source, Path(), 0)
+    root_fd = -1
+    try:
+        root_fd = os.open(
+            source,
+            os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_DIRECTORY", 0)
+            | getattr(os, "O_CLOEXEC", 0),
+        )
+        if not stat.S_ISDIR(os.fstat(root_fd).st_mode):
+            raise OSError("project root is not a directory")
+        walk(root_fd, Path(), 0)
+    except OSError as exc:
+        raise ProjectRejected("Proje dosyaları güvenli biçimde okunamadı.") from exc
+    finally:
+        if root_fd >= 0:
+            os.close(root_fd)
     return files, total
 
 

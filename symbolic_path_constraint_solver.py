@@ -10,7 +10,7 @@ import ast
 import hashlib
 import json
 import math
-import re
+import safe_regex as re
 from typing import Any
 
 

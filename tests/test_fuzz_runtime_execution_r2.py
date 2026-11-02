@@ -9,6 +9,7 @@ import pytest
 
 import asan_project_proof
 import fuzz_runtime
+import tool_sandbox
 from verified_exec import file_sha256, open_verified_executable
 
 
@@ -162,6 +163,13 @@ def test_generated_harnesses_publish_source_and_harness_digests_and_js_bounds() 
 
 
 def test_real_sandbox_runner_enforces_wall_clock_and_output_edges(tmp_path: Path) -> None:
+    if not Path("/usr/bin/python3.12").is_file():
+        pytest.skip("production Python 3.12 launcher is absent")
+    try:
+        with tool_sandbox.open_bwrap():
+            pass
+    except tool_sandbox.SandboxUnavailable:
+        pytest.skip("verified bwrap is absent")
     timed = fuzz_runtime._run_stage(
         tmp_path,
         "deadline",
@@ -188,6 +196,13 @@ def test_real_sandbox_runner_enforces_wall_clock_and_output_edges(tmp_path: Path
 
 
 def test_pinned_runtime_inode_is_the_one_executed_in_networkless_sandbox(tmp_path: Path) -> None:
+    if not Path("/usr/bin/python3.12").is_file():
+        pytest.skip("production Python 3.12 launcher is absent")
+    try:
+        with tool_sandbox.open_bwrap():
+            pass
+    except tool_sandbox.SandboxUnavailable:
+        pytest.skip("verified bwrap is absent")
     runtime_path = "/usr/bin/python3.12"
     runtime_sha = file_sha256(runtime_path, "Python")
     with open_verified_executable(runtime_path, {runtime_sha: "test"}, label="Python") as runtime:

@@ -15,7 +15,7 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
-import re
+import safe_regex as re
 from typing import Any, Iterable
 import warnings
 

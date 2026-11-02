@@ -68,7 +68,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main() -> int:
-    if os.getuid() == 0 or importlib.metadata.version("schemathesis") != "4.31.0":
+    if os.getuid() == 0 or importlib.metadata.version("schemathesis") != "4.33.0":
         return 3
     server = ThreadingHTTPServer(("127.0.0.1", SHIM_PORT), Handler)
     server.daemon_threads = True

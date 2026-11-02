@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path, PurePosixPath
-import re
+import safe_regex as re
 import textwrap
 import tomllib
 from typing import Any

@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git libseccomp2
 COPY requirements-runtime.lock ./
 RUN pip install --no-cache-dir --disable-pip-version-check --no-deps -r requirements-runtime.lock \
     && python -m pip check \
-    && python -c "import cffi, cryptography, pycparser; assert cryptography.__version__ == '50.0.2'"
+    && python -c "import cffi, cryptography, pycparser, regex; assert cryptography.__version__ == '50.0.2' and regex.__version__ == '2026.9.29'"
 
 # Create a non‑root user to run the application
 RUN addgroup --system sniper && \

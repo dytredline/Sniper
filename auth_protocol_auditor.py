@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
-import re
+import safe_regex as re
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 

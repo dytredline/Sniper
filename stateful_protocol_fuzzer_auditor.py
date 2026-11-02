@@ -17,7 +17,7 @@ WebSocket (`ws.on("message")`, `onmessage`), gRPC akışları (`stream.Recv()`),
 from __future__ import annotations
 
 from itertools import permutations
-import re
+import safe_regex as re
 from typing import Any
 
 AUDIT_FORMAT_VERSION = "sniper-stateful-protocol-audit/1"

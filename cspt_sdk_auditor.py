@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-import re
+import safe_regex as re
 from typing import Any
 
 FORMAT_VERSION = "sniper-cspt-sdk-url-template-audit/1"

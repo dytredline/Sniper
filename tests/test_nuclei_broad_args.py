@@ -12,7 +12,7 @@ def valid_binary(tmp_path):
 
 @pytest.fixture
 def valid_catalog_root(tmp_path):
-    return Path("/home/community-user/.local/state/sniper-tool-runtimes/nuclei-templates-v10.5.0")
+    return Path("/home/community-user/.local/state/sniper-tool-runtimes/nuclei-templates-v10.5.1")
 
 
 @pytest.fixture

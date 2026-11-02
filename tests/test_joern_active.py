@@ -3,6 +3,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -701,6 +702,16 @@ if __name__ == "__main__":
 
 
 class JoernSystemdLaunchTests(unittest.TestCase):
+    def setUp(self):
+        self.system_python = mock.patch.object(joern_active, "SYSTEM_PYTHON", Path(sys.executable))
+        self.trusted_python = mock.patch.object(
+            joern_active, "_trusted_system_python", return_value=sys.executable
+        )
+        self.system_python.start()
+        self.trusted_python.start()
+        self.addCleanup(self.trusted_python.stop)
+        self.addCleanup(self.system_python.stop)
+
     def test_launch_mode_detects_service(self):
         import joern_active
         with mock.patch.dict(os.environ, {"INVOCATION_ID": "x", "SNIPER_JOERN_LAUNCH": "auto"}):

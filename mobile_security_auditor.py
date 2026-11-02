@@ -5,7 +5,7 @@ import hashlib
 import io
 import os
 from pathlib import Path
-import re
+import safe_regex as re
 import stat
 from typing import Any, Iterator
 import zipfile

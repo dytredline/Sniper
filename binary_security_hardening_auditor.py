@@ -8,7 +8,7 @@ library imports, and hardcoded plaintext secrets in .rodata / .data sections.
 from __future__ import annotations
 
 import hashlib
-import re
+import safe_regex as re
 from typing import Any
 
 

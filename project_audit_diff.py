@@ -257,7 +257,7 @@ def render_project_audit_sarif(audit: dict[str, Any]) -> dict[str, Any]:
             "partialFingerprints": {
                 "sniperFinding/v1": hashlib.sha256(
                     f"{rule_id}|{uri}|{start_line}|{title}".encode("utf-8")
-                ).hexdigest()[:32],
+                ).hexdigest(),
             },
             "properties": {
                 "id": str(finding.get("id") or ""),

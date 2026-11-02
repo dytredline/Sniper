@@ -41,7 +41,7 @@ def _make_test_catalog(tmp: Path) -> tuple[Path, Path, int, dict]:
 
     # Construct pin_data without self-reference; sha256 field is a placeholder
     pin_data_body = {
-        "version": "v10.5.0",
+        "version": "v10.5.1",
         "count": 2,
         "paths_and_hashes": paths_and_hashes,
         "scope": "http-templates",

@@ -33,14 +33,14 @@ pinned offline database. Syft can produce a local manifest-only SBOM after insta
 also requires the separately pinned offline database documented by its readiness result. Each upstream license is recorded in the lock file and remains applicable. Review and accept
 those terms before using the flag above.
 
-For the separately downloaded official `nuclei-templates` v10.5.0 tag archive, the checked-in catalog builder verifies
+For the separately downloaded official `nuclei-templates` v10.5.1 tag archive, the checked-in catalog builder verifies
 the archive SHA-256, extracts only regular HTTP YAML files, rejects duplicate template IDs and symlinks, and creates
 deterministic read-only pin/index manifests. It never updates an existing destination in place:
 
 ```bash
 python3 scripts/install_nuclei_catalog.py \
-  --archive /ABSOLUTE/PATH/nuclei-templates-v10.5.0.tar.gz \
-  --destination /ABSOLUTE/PATH/runtimes/nuclei-templates-v10.5.0
+  --archive /ABSOLUTE/PATH/nuclei-templates-v10.5.1.tar.gz \
+  --destination /ABSOLUTE/PATH/runtimes/nuclei-templates-v10.5.1
 ```
 
 The accepted archive SHA-256 is `80fbabceca095fac40afecc7f023748df22b9576b9ff10a4422bd2fbf81f9a41`.

@@ -116,8 +116,11 @@ PHP_SOURCE_SHA256 = "dd54693aa334c5c4d72e9aee96b082c2473750a18a6c1d105789c93a3b1
 PHP_ACCOUNT_HOME = Path(pwd.getpwuid(os.getuid()).pw_dir)
 PHP_HOME_DEFAULT = PHP_ACCOUNT_HOME / ".local" / "share" / "sniper" / "tools" / "php" / PHP_VERSION
 # Kaynak arşivi pininden ayrı aktivasyon sınırı: anahtar derlenmiş ikili SHA-256, değer mimari/onay kanıtıdır.
-# Henüz onaylanmış 8.3.36 derlemesi yok; boş liste bütün PHP runtime'larını fail-closed reddeder.
-PHP_APPROVED_BINARY_SHA256: dict[str, str] = {}
+PHP_APPROVED_BINARY_SHA256: dict[str, str] = {
+    "5f80b719c8f00d1045fbc02b4349011cb75d412b3c6fb033475fd30ef9355416":
+        "Linux aarch64 üzerinde resmî php-8.3.36.tar.xz kaynağından ağ/veritabanı eklentileri kapalı "
+        "CLI derlemesi; kaynak SHA-256 dd54693a…92fd ve gerçek php/Joern çalışma zamanı kanıtı",
+}
 MAX_PHP_BYTES = 100_000_000
 MAX_FILES = int(os.environ.get("SNIPER_JOERN_MAX_FILES", "5000"))
 MAX_FILE_BYTES = int(os.environ.get("SNIPER_JOERN_MAX_FILE_BYTES", "2000000"))

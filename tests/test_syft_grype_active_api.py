@@ -12,6 +12,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 import server
+import syft_grype_active
 from storage import Store
 from tool_runtime_readiness import _runtime_check
 
@@ -176,6 +177,20 @@ out.write_text(json.dumps(report), encoding="utf-8")
         self.assertEqual(body["manifest_count"], 1)
         self.assertNotIn("outside-private-marker", json.dumps(body, sort_keys=True))
         self.assertNotIn("do-not-copy", json.dumps(body, sort_keys=True))
+
+    def test_snapshot_rejects_a_symlinked_project_root(self):
+        outside = self.root / "outside-project"
+        outside.mkdir()
+        (outside / "package-lock.json").write_text("private", encoding="utf-8")
+        linked = self.root / "linked-project"
+        linked.symlink_to(outside, target_is_directory=True)
+        destination = self.root / "snapshot"
+        destination.mkdir()
+
+        with self.assertRaises(syft_grype_active.ProjectRejected):
+            syft_grype_active._snapshot_manifests(linked, destination)
+
+        self.assertEqual(list(destination.iterdir()), [])
 
     def test_binary_digest_mismatch_fails_closed_before_execution(self):
         os.environ["SNIPER_SYFT_BINARY_SHA256"] = "0" * 64

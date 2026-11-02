@@ -8,7 +8,7 @@ from typing import Dict, Set, Tuple
 
 
 # Constants per spec
-EXPECTED_INDEX_VERSION = "v10.5.0"
+EXPECTED_INDEX_VERSION = "v10.5.1"
 HTTP_PREFIX = "http"
 YAML_SUFFIXES = (".yaml", ".yml")
 MIN_ID_LENGTH = 1

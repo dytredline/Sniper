@@ -11,13 +11,19 @@ from unittest import mock
 
 import asan_project_proof
 import server
+import tool_sandbox
 from storage import Store
 
 
 class AsanProjectProofTests(unittest.TestCase):
     def setUp(self) -> None:
-        if shutil.which("gcc") is None or shutil.which("bwrap") is None:
-            self.skipTest("gcc veya bwrap yok")
+        if shutil.which("gcc") is None:
+            self.skipTest("gcc yok")
+        try:
+            with tool_sandbox.open_bwrap():
+                pass
+        except tool_sandbox.SandboxUnavailable:
+            self.skipTest("doğrulanmış bwrap yok")
         self.temp = tempfile.TemporaryDirectory(dir=Path.home())
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name) / "project"

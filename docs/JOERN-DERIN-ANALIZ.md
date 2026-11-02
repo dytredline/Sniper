@@ -198,7 +198,8 @@ verisini günlüğe yazan çok sayıda düşük önemli CWE-117 bulgusu raporlan
   `pending_architecture_binary_approval` olarak kaydeder ve onay iş akışına çıktı verir; derleme tek başına
   runtime'ı etkinleştirmez. Her çalıştırmada home/bin dizin sahipliği ve yazma izinleri, provenance ve ikili
   özeti doğrulanır; ayrıca bu SHA-256'nın kod içindeki ayrı mimari onay kaydında bulunması zorunludur.
-  Henüz onaylı PHP 8.3.36 derlemesi olmadığı için liste boştur ve bütün runtime'lar fail-closed reddedilir.
+  Linux aarch64 için resmî kaynak arşivinden üretilen minimal CLI derlemesinin ikili SHA-256 değeri
+  `5f80b719…5416` olarak onaylıdır; başka mimari veya ikili fail-closed reddedilir.
   Onay sonrası yalnız aynı doğrulanmış baytlar çalışma dizinine kopyalanır ve php2cpg yalnız
   bu kopyayı (PATH) görür. Kurulu değilse PHP dosyaları atlanır ve sonuçta `skipped_languages` ile bildirilir.
 - **Go araç zinciri gerekmez:** gosrc2cpg, Joern arm64 dağıtımındaki statik `goastgen` ikilisini kullanır

@@ -17,6 +17,7 @@ RUNTIME_PINS = {
     "packaging==26.3",
     "pycparser==3.12",
     "PyYAML==6.0.3",
+    "regex==2026.9.29",
 }
 
 

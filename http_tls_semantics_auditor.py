@@ -12,7 +12,7 @@
 
 from __future__ import annotations
 
-import re
+import safe_regex as re
 from typing import Any
 
 FORMAT_VERSION = "sniper-http-tls-semantics-audit/1"

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-import re
+import safe_regex as re
 from typing import Any
 
 from project_analyzer import SKIP_DIRS, validate_project_path

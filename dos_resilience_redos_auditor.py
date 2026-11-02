@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import bisect
 from pathlib import Path
-import re
+import safe_regex as re
 import unicodedata
 from typing import Any
 

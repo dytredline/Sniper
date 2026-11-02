@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from pathlib import PurePosixPath
 import posixpath
-import re
+import safe_regex as re
 import threading
 import time
 import tokenize
@@ -2570,11 +2570,7 @@ def _analyze_project(
                 rust_unsafe_files[0] += 1
 
         # Kurumsal v2 saldırı zinciri ve yapısal dedektörler (Kategori A: 1, 2, 3, 4)
-        _is_sniper_self_detector = (
-            (root / "project_analyzer.py").is_file()
-            and (root / "report_renderers.py").is_file()
-        )
-        if not _is_sniper_self_detector and suffix in {".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs"}:
+        if suffix in {".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs"}:
             cors_m = re.search(
                 r'(?i)(?:allow_origins\s*=\s*\[\s*["\']\*["\']\s*\]|Access-Control-Allow-Origin["\']?\s*[:=]\s*["\']\*["\'])',
                 text,
@@ -4209,10 +4205,6 @@ def _analyze_project(
     clang_analysis = None
     if c_family_files and not partial_info:
         clang_analysis = _add_clang_findings(root, c_family_files, findings, add)
-
-    if (root / "project_analyzer.py").is_file() and (root / "report_renderers.py").is_file():
-        findings.clear()
-        api_contract_findings = 0
 
     findings.sort(
         key=lambda item: (

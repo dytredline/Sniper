@@ -6,7 +6,7 @@ from typing import List, Dict
 
 
 # Constants per spec
-EXPECTED_INDEX_VERSION = "v10.5.0"
+EXPECTED_INDEX_VERSION = "v10.5.1"
 MIN_ID_LENGTH = 1
 MAX_ID_LENGTH = 128
 MAX_IDS = 1000

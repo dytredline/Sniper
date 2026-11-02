@@ -41,9 +41,9 @@ _PORTABLE_RUNTIME_ROOT = Path(os.environ.get(
 )).expanduser()
 ST_EXECUTABLE = Path(os.environ.get(
     "SNIPER_SCHEMATHESIS_BINARY",
-    str(_PORTABLE_RUNTIME_ROOT / "schemathesis-4.31.0" / "venv" / "bin" / "st"),
+    str(_PORTABLE_RUNTIME_ROOT / "schemathesis-4.33.0" / "venv" / "bin" / "st"),
 )).expanduser()
-ST_EXECUTABLE_SHA256 = "cd07ef9ca68ee5759f8c448c4667ee5a341b7f658fa681439860ef1891745245"
+ST_EXECUTABLE_SHA256 = "ba97f7abc3529c2d94d9cbb9e12b8e00276a9cae2aaecedb0f1f76eba38d48ad"
 WORK_PARENT = Path.home() / ".local/state/sniper/schemathesis-local"
 MAX_SCHEMA_BYTES = 65_536
 MAX_REPORT_BYTES = 60_000

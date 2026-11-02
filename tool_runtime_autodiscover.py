@@ -596,7 +596,7 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
     st_bin = _first_valid_file(
         ([Path(dropin_defaults["SNIPER_SCHEMATHESIS_BINARY"])]
          if "SNIPER_SCHEMATHESIS_BINARY" in dropin_defaults else [])
-        + [r / "schemathesis-4.31.0" / "venv" / "bin" / "st" for r in portable_roots]
+        + [r / "schemathesis-4.33.0" / "venv" / "bin" / "st" for r in portable_roots]
         + [r / "schemathesis" / "venv" / "bin" / "st" for r in portable_roots],
         executable=True,
     )

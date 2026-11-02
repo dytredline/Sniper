@@ -27,7 +27,7 @@ def _make_test_catalog(tmp_path: pathlib.Path, real_file_id: str, real_file_cont
     
     # Build index
     index_data = {
-        "version": "v10.5.0",
+        "version": "v10.5.1",
         "count": count,
         "sha256": "b" * 64,
         "ids_paths_hashes": rows
@@ -63,7 +63,7 @@ def test_resolve_http_template_paths_accepts_pinned_yml_file(tmp_path: pathlib.P
     content = b"id: alternate\n"
     digest = hashlib.sha256(content).hexdigest()
     index_data = {
-        "version": "v10.5.0", "count": 1, "sha256": "b" * 64,
+        "version": "v10.5.1", "count": 1, "sha256": "b" * 64,
         "ids_paths_hashes": [["alternate", relative, digest]],
     }
     index_bytes = json.dumps(index_data, separators=(",", ":")).encode("utf-8")

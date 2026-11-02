@@ -29,7 +29,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 import os
 from pathlib import PurePosixPath
-import re
+import safe_regex as re
 from typing import Any, Callable, Iterable
 
 GO_SUFFIXES = frozenset({".go"})

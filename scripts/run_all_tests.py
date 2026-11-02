@@ -48,7 +48,7 @@ def _pytest_python() -> str | None:
             # interpreter.  Probe with the same isolation so an ambient
             # PYTHONPATH/user-site cannot make an incomplete test venv look
             # runtime-complete and then fail only inside the real child.
-            [candidate, "-I", "-c", "import pytest, cryptography, packaging, yaml"],
+            [candidate, "-I", "-c", "import pytest, cryptography, packaging, regex, yaml"],
             capture_output=True,
         )
         if probe.returncode == 0:

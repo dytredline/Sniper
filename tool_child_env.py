@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-import re
+import safe_regex as re
 from typing import Mapping
 
 

@@ -23,7 +23,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import posixpath
-import re
+import safe_regex as re
 import zipfile
 from typing import Any, Iterable, Iterator, Mapping
 

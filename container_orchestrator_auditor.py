@@ -10,7 +10,7 @@ Python, TypeScript/JS, Go, Rust ve Shell kaynak kodlarında dinamik olarak oluş
 
 from __future__ import annotations
 
-import re
+import safe_regex as re
 from typing import Any
 
 FORMAT_VERSION = "sniper-container-orchestrator-audit/1"
