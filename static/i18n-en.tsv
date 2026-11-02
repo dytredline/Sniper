@@ -633,7 +633,7 @@ S	Dosya:	File:
 S	Dosya:satır	File:line
 S	Dosyalar	Files
 S	Dosyalar (1–16, her biri ≤ 64 KiB)	Files (1–16, each ≤ 64 KiB)
-S	Dosyalar arası veri akışı analizi; sabitlenmiş Joern 4.0.647 + JDK 21, iş kuyruğunda, en çok 6 GB bellek ve 15 dakika. Kaynak satır içeriği saklanmaz.	Cross-file data-flow analysis; pinned Joern 4.0.647 + JDK 21, in the job queue, at most 6 GB memory and 15 minutes. Source line contents are not stored.
+S	Dosyalar arası veri akışı analizi; sabitlenmiş Joern 4.0.670 + Temurin JDK 25 LTS, iş kuyruğunda, en çok 6 GB bellek ve 15 dakika. Kaynak satır içeriği saklanmaz.	Cross-file data-flow analysis; pinned Joern 4.0.670 + Temurin JDK 25 LTS, in the job queue, at most 6 GB memory and 15 minutes. Source line contents are not stored.
 S	Doğrudan bağımlılık olarak listeleniyor ama kodda kullanılmıyor; önem bir derece düşürüldü (gizlenmedi).	Listed as a direct dependency but not used in the code; severity lowered by one level (not hidden).
 S	Doğrudan ekleme	Direct insertion
 S	Doğrudan extractall çağrısı ile arşiv içeriğinin hedef dizin kontrolü olmadan çıkartıldığı görüldü.	Archive content extracted without target directory checks via a direct extractall call was seen.
@@ -3262,7 +3262,7 @@ S	resmi node-v22.23.2-linux-arm64 arşivindeki bin/node (taint JS köprüsüyle 
 S	resmi npm paketi playwright-core-1.56.1.tgz (registry.npmjs.org; integrity sha512-hutrayny…gvmQ==, tgz SHA-256 fa648e54…8238); Codex host kopyasıyla birebir aynı	official npm package playwright-core-1.56.1.tgz (registry.npmjs.org; integrity sha512-hutrayny…gvmQ==, tgz SHA-256 fa648e54…8238); identical to the Codex host copy
 S	resmi sürüm arşivindeki k6 (k6-v2.3.0-linux-arm64.tar.gz, k6-v2.3.0-checksums.txt 5ca3433e…9b90 ile doğrulandı)	k6 from the official release archive (k6-v2.3.0-linux-arm64.tar.gz, verified with k6-v2.3.0-checksums.txt 5ca3433e…9b90)
 S	resmi sürüm ikilisi (gitleaks_8.30.1_linux_arm64.tar.gz, checksums.txt e4a487ee…b080 ile doğrulandı)	official release binary (gitleaks_8.30.1_linux_arm64.tar.gz, verified with checksums.txt e4a487ee…b080)
-S	resmi sürüm ikilisi (trufflehog_3.99.0_linux_arm64.tar.gz, cosign imzalı checksums ad6fb802…dfb7 ile doğrulandı)	official release binary (trufflehog_3.99.0_linux_arm64.tar.gz, verified with cosign-signed checksums ad6fb802…dfb7)
+S	resmi sürüm ikilisi (trufflehog_3.99.7_linux_arm64.tar.gz, cosign imzalı checksums ad6fb802…dfb7 ile doğrulandı)	official release binary (trufflehog_3.99.7_linux_arm64.tar.gz, verified with cosign-signed checksums ad6fb802…dfb7)
 S	resmi sürüm varlığı opengrep_manylinux_aarch64 (GitHub varlık özeti ve cosign sertifika kimliği doğrulandı)	official release asset opengrep_manylinux_aarch64 (GitHub asset digest and cosign certificate identity verified)
 S	resmi sürüm varlığı opengrep_manylinux_x86 (GitHub varlık özeti)	official release asset opengrep_manylinux_x86 (GitHub asset digest)
 S	results bir liste olmalı	results must be a list
@@ -5573,3 +5573,4 @@ S	Olay verisini komut ifadesine yerleştirmeyin; değeri env ile aktarın, sabit
 S	GitLab CI dotenv zinciri güvenilmeyen veriyi kabuk komutuna taşıyor	GitLab CI dotenv chain carries untrusted data into a shell command
 S	Merge request verisi dotenv yapıtına yazılıp sonraki işin script komutunda kullanılıyor.	Merge request data is written to a dotenv artifact and used in a later job script command.
 S	Dotenv ile taşınan olay verisini kabuk kodu olarak yorumlamayın; argüman sınırlarını koruyun ve izin verilen değerleri doğrulayın.	Do not interpret event data carried by dotenv as shell code; preserve argument boundaries and validate allowed values.
+S	Kurumsal hesapla giriş yap	Sign in with enterprise account

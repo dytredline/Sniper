@@ -12,21 +12,21 @@ import tool_pins
 from scripts import install_joern
 
 
-JDK_ARCHIVE_SHA256 = "69df11a02cfa3ef7d7ca645e03edce6778ec090e100f6ae2b42097865730ac52"
-JAVA_SHA256 = "e8201aed7118cbf3a77b9cb308a3cbe135fe97b055968b3b4797162fed1ca818"
-JAVA = Path.home() / ".local" / "opt" / "temurin-jdk-25.0.4.1+1" / "bin" / "java"
+JDK_ARCHIVE_SHA256 = "bb5b2ded252f21c6090cf780b0a408ad0d83bbb557e702955643557f13231880"
+JAVA_SHA256 = "9773d145ea1adce8da70e0f9e87ecddad5446f7e5ac05b44a95cecf902b42cb9"
+JAVA = Path(__file__).resolve().parents[2] / "runtimes" / "jdk" / "25.0.5+8" / "bin" / "java"
 
 
 class JoernJdk25SecurityPinTests(unittest.TestCase):
     def test_installer_and_runtime_pin_have_one_temurin_25_contract(self):
         pin = tool_pins.PINS["joern-jdk"]
-        self.assertEqual(pin.version, "25.0.4.1+1")
-        self.assertEqual(pin.source_url, "https://github.com/adoptium/temurin25-binaries/releases/tag/jdk-25.0.4%2B1")
+        self.assertEqual(pin.version, "25.0.5+8")
+        self.assertEqual(pin.source_url, "https://github.com/adoptium/temurin25-binaries/releases/tag/jdk-25.0.5%2B8")
         self.assertIn(JAVA_SHA256, pin.digests["aarch64"])
         self.assertEqual(install_joern.JDK_VERSION, pin.version)
         self.assertEqual(
             install_joern.JDK_ARCHIVES["aarch64"],
-            ("OpenJDK25U-jdk_aarch64_linux_hotspot_25.0.4.1_1.tar.gz", JDK_ARCHIVE_SHA256),
+            ("OpenJDK25U-jdk_aarch64_linux_hotspot_25.0.5_8.tar.gz", JDK_ARCHIVE_SHA256),
         )
 
     @unittest.skipUnless(JAVA.is_file(), "yerel Temurin 25 kanıt ikilisi yok")
@@ -45,8 +45,8 @@ class JoernJdk25SecurityPinTests(unittest.TestCase):
                     timeout=10,
                     **runtime.popen_kwargs(env={"PATH": "/usr/bin:/bin"}),
                 )
-        self.assertIn('openjdk version "25.0.4.1"', result.stderr)
-        self.assertIn("Temurin-25.0.4.1+1", result.stderr)
+        self.assertIn('openjdk version "25.0.5"', result.stderr)
+        self.assertIn("Temurin-25.0.5+8", result.stderr)
 
     def test_operator_pinned_java_still_obeys_25_security_floor_and_major(self):
         with tempfile.TemporaryDirectory(dir=Path.home()) as temp:
@@ -56,7 +56,7 @@ class JoernJdk25SecurityPinTests(unittest.TestCase):
                 build = build or version
                 binary.write_text(
                     "#!/bin/sh\n"
-                    f"printf '%s\\n' 'openjdk version \"{version}\" 2026-08-18 LTS' >&2\n"
+                    f"printf '%s\\n' 'openjdk version \"{version}\" 2026-10-20 LTS' >&2\n"
                     f"printf '%s\\n' 'OpenJDK Runtime Environment {vendor}-{build} (build {build}-LTS)' >&2\n"
                     f"printf '%s\\n' 'OpenJDK 64-Bit Server VM {vendor}-{build} "
                     f"(build {build}-LTS, mixed mode, sharing)' >&2\n",
@@ -68,9 +68,9 @@ class JoernJdk25SecurityPinTests(unittest.TestCase):
             for version, vendor, build in (
                 ("25.0.3", "Temurin", "25.0.3+9"),
                 ("21.0.12.1", "Temurin", "21.0.12.1+1"),
-                ("25.0.4.1-ea", "Temurin", "25.0.4.1-ea+1"),
-                ("25.0.4.1", "Temurin", "25.0.4.1+1-internal"),
-                ("25.0.4.1", "OpenLogic", "25.0.4.1+1"),
+                ("25.0.5-ea", "Temurin", "25.0.5-ea+8"),
+                ("25.0.5", "Temurin", "25.0.5+8-internal"),
+                ("25.0.5", "OpenLogic", "25.0.5+8"),
             ):
                 with self.subTest(version=version, vendor=vendor, build=build):
                     digest = write_version(version, vendor=vendor, build=build)
@@ -79,7 +79,7 @@ class JoernJdk25SecurityPinTests(unittest.TestCase):
                             tool_pins.open_pinned("joern-jdk", str(binary))
                     self.assertIn(raised.exception.reason, {"binary_version_unsupported", "binary_version_output_invalid"})
 
-            digest = write_version("25.0.4.1", build="25.0.4.1+1")
+            digest = write_version("25.0.5", build="25.0.5+8")
             with mock.patch.dict(os.environ, {"SNIPER_JOERN_JDK_SHA256": digest}):
                 with tool_pins.open_pinned("joern-jdk", str(binary)) as verified:
                     self.assertEqual(verified.sha256, digest)

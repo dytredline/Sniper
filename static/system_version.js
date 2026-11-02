@@ -81,7 +81,7 @@
     }
   }
 
-  scope.SniperSystemVersion = { render, facts, load };
+  scope.VulKillSystemVersion = { render, facts, load };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load);
     else load();

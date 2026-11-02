@@ -201,7 +201,7 @@ def test_tampered_payload_wrong_subject_and_wrong_identity_fail_closed_without_l
             result = _scan(image, base, expected_provenance_identity=expected_identity)
         provenance = result["container"]["provenance"]
         assert provenance["status"] == "invalid"
-        finding = next(item for item in result["findings"] if item.get("control_id") == "SNIPER-OCI-PROVENANCE-01")
+        finding = next(item for item in result["findings"] if item.get("control_id") == "VULKILL-OCI-PROVENANCE-01")
         rendered = json.dumps(finding, sort_keys=True)
         assert IDENTITY not in rendered
         assert expected_identity not in rendered

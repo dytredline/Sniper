@@ -379,7 +379,7 @@ class MCPCancelApiTests(unittest.TestCase):
         self.previous_store = server.STORE
         server.STORE = Store(self.data_dir / "sniper.db")
         self.addCleanup(setattr, server, "STORE", self.previous_store)
-        self.handler = server.SniperHandler.__new__(server.SniperHandler)
+        self.handler = server.VulKillHandler.__new__(server.VulKillHandler)
         self.responses: list[tuple[int, dict]] = []
         self.handler._json = lambda body, status=200, **_kw: self.responses.append((int(status), body))
         self.handler._error = lambda status, message: self.responses.append((int(status), {"error": message}))

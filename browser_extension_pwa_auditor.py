@@ -18,20 +18,20 @@ MAX_COLLECTED_PATHS = 15_000
 LISTENER_WINDOW_LINES = 25
 
 EXTENSION_MANIFEST_CONTROLS: list[str] = [
-    "SNIPER-EXT-01",
-    "SNIPER-EXT-02",
-    "SNIPER-EXT-03",
-    "SNIPER-EXT-04",
-    "SNIPER-EXT-05",
+    "VULKILL-EXT-01",
+    "VULKILL-EXT-02",
+    "VULKILL-EXT-03",
+    "VULKILL-EXT-04",
+    "VULKILL-EXT-05",
 ]
 EXTENSION_SCRIPT_CONTROLS: list[str] = [
-    "SNIPER-EXT-02",
-    "SNIPER-EXT-03",
-    "SNIPER-EXT-06",
+    "VULKILL-EXT-02",
+    "VULKILL-EXT-03",
+    "VULKILL-EXT-06",
 ]
 SERVICE_WORKER_CONTROLS: list[str] = [
-    "SNIPER-PWA-01",
-    "SNIPER-PWA-02",
+    "VULKILL-PWA-01",
+    "VULKILL-PWA-02",
 ]
 EXTENSION_PWA_CONTROLS_EVALUATED: list[str] = sorted(
     set(EXTENSION_MANIFEST_CONTROLS) | set(EXTENSION_SCRIPT_CONTROLS) | set(SERVICE_WORKER_CONTROLS)
@@ -450,7 +450,7 @@ def audit_extension_manifest_inline(
     broad_content = [m for m in content_script_matches if _is_broad_host(m)]
     has_broad_hosts = bool(broad_mv3 or broad_perm_hosts or broad_content)
 
-    # SNIPER-EXT-05: deprecated Manifest V2.
+    # VULKILL-EXT-05: deprecated Manifest V2.
     if manifest_version == 2:
         _emit(
             "medium",
@@ -460,11 +460,11 @@ def audit_extension_manifest_inline(
             '"manifest_version": 2',
             "Eklentiyi Manifest V3'e taşıyın (service_worker arka planı, host_permissions ayrımı, katı CSP).",
             "CWE-1104",
-            "SNIPER-EXT-05",
+            "VULKILL-EXT-05",
             _line_of(raw, None, after_key="manifest_version"),
         )
 
-    # SNIPER-EXT-01: broad host access.
+    # VULKILL-EXT-01: broad host access.
     if broad_mv3 or broad_perm_hosts:
         pattern = (broad_mv3 or broad_perm_hosts)[0]
         key = "host_permissions" if broad_mv3 else "permissions"
@@ -477,7 +477,7 @@ def audit_extension_manifest_inline(
             "Host izinlerini yalnızca gerekli alan adlarıyla sınırlayın; mümkünse activeTab veya "
             "optional_host_permissions ile çalışma zamanında izin isteyin.",
             "CWE-250",
-            "SNIPER-EXT-01",
+            "VULKILL-EXT-01",
             _line_of(raw, _json_needle(pattern), after_key=key),
         )
     if broad_content:
@@ -491,11 +491,11 @@ def audit_extension_manifest_inline(
             "İçerik betiği eşleşmelerini yalnızca gereken alan adlarına daraltın veya scripting API ile "
             "kullanıcı eylemi sonrası enjekte edin.",
             "CWE-250",
-            "SNIPER-EXT-01",
+            "VULKILL-EXT-01",
             _line_of(raw, _json_needle(pattern), after_key="content_scripts"),
         )
 
-    # SNIPER-EXT-01: dangerous API permissions (one finding per permission).
+    # VULKILL-EXT-01: dangerous API permissions (one finding per permission).
     risk_permissions: list[str] = []
     for permission in sorted(set(api_permissions)):
         spec = DANGEROUS_PERMISSIONS.get(permission)
@@ -514,11 +514,11 @@ def audit_extension_manifest_inline(
             "İzni gerçekten gerekmiyorsa kaldırın; gerekiyorsa optional_permissions ile çalışma zamanında, "
             "kullanıcı onayıyla isteyin ve kullanımını en aza indirin.",
             "CWE-250",
-            "SNIPER-EXT-01",
+            "VULKILL-EXT-01",
             _line_of(raw, _json_needle(permission), after_key="permissions"),
         )
 
-    # SNIPER-EXT-02: content security policy.
+    # VULKILL-EXT-02: content security policy.
     csp_raw = data.get("content_security_policy")
     csp_text = ""
     csp_key = "content_security_policy"
@@ -541,7 +541,7 @@ def audit_extension_manifest_inline(
                 csp_text,
                 "CSP'den 'unsafe-eval' ifadesini kaldırın ve dinamik kod üretimini statik koda dönüştürün.",
                 "CWE-95",
-                "SNIPER-EXT-02",
+                "VULKILL-EXT-02",
                 csp_line,
             )
         elif "'wasm-unsafe-eval'" in lowered:
@@ -553,7 +553,7 @@ def audit_extension_manifest_inline(
                 csp_text,
                 "WebAssembly gerekmiyorsa 'wasm-unsafe-eval' ifadesini kaldırın.",
                 "CWE-95",
-                "SNIPER-EXT-02",
+                "VULKILL-EXT-02",
                 csp_line,
             )
         if "'unsafe-inline'" in lowered:
@@ -564,7 +564,7 @@ def audit_extension_manifest_inline(
                 csp_text,
                 "'unsafe-inline' ifadesini kaldırın; betikleri ayrı dosyalara taşıyın.",
                 "CWE-79",
-                "SNIPER-EXT-02",
+                "VULKILL-EXT-02",
                 csp_line,
             )
         remote = _remote_script_sources(csp_text)
@@ -577,11 +577,11 @@ def audit_extension_manifest_inline(
                 csp_text,
                 "Tüm betikleri eklenti paketine dahil edin; script-src 'self' dışında kaynak bırakmayın.",
                 "CWE-829",
-                "SNIPER-EXT-02",
+                "VULKILL-EXT-02",
                 csp_line,
             )
 
-    # SNIPER-EXT-03: externally_connectable.
+    # VULKILL-EXT-03: externally_connectable.
     externally = data.get("externally_connectable")
     if isinstance(externally, dict):
         ec_matches = _str_list(externally.get("matches"))
@@ -602,11 +602,11 @@ def audit_extension_manifest_inline(
                 "externally_connectable.matches ve ids listelerini yalnızca güvenilen kökenler ve eklenti "
                 "kimlikleriyle sınırlayın.",
                 "CWE-346",
-                "SNIPER-EXT-03",
+                "VULKILL-EXT-03",
                 _line_of(raw, None, after_key="externally_connectable"),
             )
 
-    # SNIPER-EXT-04: web_accessible_resources exposure.
+    # VULKILL-EXT-04: web_accessible_resources exposure.
     war = data.get("web_accessible_resources")
     war_reasons: list[str] = []
     if isinstance(war, list):
@@ -633,7 +633,7 @@ def audit_extension_manifest_inline(
             "Yalnızca gereken dosyaları listeleyin, matches alanını belirli kökenlerle sınırlayın ve "
             "use_dynamic_url: true kullanın.",
             "CWE-200",
-            "SNIPER-EXT-04",
+            "VULKILL-EXT-04",
             _line_of(raw, None, after_key="web_accessible_resources"),
         )
 
@@ -648,7 +648,7 @@ def audit_extension_manifest_inline(
                 '"all_frames": true',
                 "all_frames seçeneğini kapatın veya eşleşmeleri belirli alan adlarıyla sınırlayın.",
                 "CWE-1021",
-                "SNIPER-EXT-01",
+                "VULKILL-EXT-01",
                 _line_of(raw, '"all_frames"', after_key="content_scripts"),
             )
             break
@@ -661,7 +661,7 @@ def audit_extension_manifest_inline(
             '"persistent": true',
             "Olay tabanlı arka plan (persistent: false) veya MV3 service_worker kullanın.",
             "CWE-400",
-            "SNIPER-EXT-05",
+            "VULKILL-EXT-05",
             _line_of(raw, '"persistent"', after_key="background"),
         )
 
@@ -675,7 +675,7 @@ def audit_extension_manifest_inline(
             update_url.strip()[:200],
             "update_url için yalnızca HTTPS kullanın ve paket imzasını doğrulayın.",
             "CWE-494",
-            "SNIPER-EXT-05",
+            "VULKILL-EXT-05",
             _line_of(raw, None, after_key="update_url"),
         )
 
@@ -749,7 +749,7 @@ def audit_extension_script_inline(
                 "İşleyicinin başında sender.id / sender.origin değerini izin listesine göre doğrulayın ve "
                 "mesaj şemasını katı biçimde kontrol edin.",
                 "CWE-346",
-                "SNIPER-EXT-03",
+                "VULKILL-EXT-03",
                 idx + 1,
             )
 
@@ -763,7 +763,7 @@ def audit_extension_script_inline(
                 "event.origin değerini beklenen kökenle karşılaştırın ve event.source === window kontrolüne "
                 "ek olarak mesaj türünü doğrulayın.",
                 "CWE-345",
-                "SNIPER-EXT-03",
+                "VULKILL-EXT-03",
                 idx + 1,
             )
 
@@ -776,7 +776,7 @@ def audit_extension_script_inline(
                 stripped,
                 "Dinamik kod yerine JSON.parse ve önceden tanımlı fonksiyon eşlemeleri kullanın.",
                 "CWE-95",
-                "SNIPER-EXT-02",
+                "VULKILL-EXT-02",
                 idx + 1,
             )
 
@@ -793,7 +793,7 @@ def audit_extension_script_inline(
                     "Paketlenmiş dosyaları (files: [...]) veya chrome.scripting.executeScript({func}) kullanın; "
                     "dış veriyi yalnızca args ile ve doğrulayarak geçirin.",
                     "CWE-94",
-                    "SNIPER-EXT-02",
+                    "VULKILL-EXT-02",
                     idx + 1,
                 )
 
@@ -810,7 +810,7 @@ def audit_extension_script_inline(
                     "Enjekte edilen fonksiyonu sabit tutun, mesaj verisini şema doğrulamasından geçirin ve "
                     "hedef sekmeyi izin listesine göre kontrol edin.",
                     "CWE-94",
-                    "SNIPER-EXT-02",
+                    "VULKILL-EXT-02",
                     idx + 1,
                 )
 
@@ -826,7 +826,7 @@ def audit_extension_script_inline(
                     stripped,
                     "textContent kullanın veya DOMPurify gibi bir temizleyiciyle HTML'i arındırın.",
                     "CWE-79",
-                    "SNIPER-EXT-02",
+                    "VULKILL-EXT-02",
                     idx + 1,
                 )
 
@@ -843,7 +843,7 @@ def audit_extension_script_inline(
                     "Uzun ömürlü gizli bilgileri saklamayın; gerekirse chrome.storage.session veya kısa ömürlü, "
                     "sunucu tarafında iptal edilebilir token kullanın.",
                     "CWE-312",
-                    "SNIPER-EXT-06",
+                    "VULKILL-EXT-06",
                     idx + 1,
                 )
 
@@ -858,7 +858,7 @@ def audit_extension_script_inline(
                 "Eklenti içinde çerez değerlerini harici sunuculara iletmeyin; oturum doğrulamasını tarayıcının "
                 "kendi çerez mekanizmasına bırakın ve cookies iznini kaldırın.",
                 "CWE-359",
-                "SNIPER-EXT-06",
+                "VULKILL-EXT-06",
                 idx + 1,
             )
 
@@ -876,7 +876,7 @@ def audit_extension_script_inline(
                     "debugger API'sini üretim eklentilerinde kullanmayın; standart scripting veya declarativeNetRequest "
                     "API'lerini tercih edin.",
                     "CWE-94",
-                    "SNIPER-EXT-02",
+                    "VULKILL-EXT-02",
                     idx + 1,
                 )
 
@@ -944,7 +944,7 @@ def audit_service_worker_inline(
                     stripped,
                     "Betikleri aynı kökenden (same-origin) ve HTTPS ile sunun; harici kodu pakete dahil edin.",
                     "CWE-829",
-                    "SNIPER-PWA-01",
+                    "VULKILL-PWA-01",
                     idx + 1,
                 )
             elif ABSOLUTE_URL_RE.search(arguments):
@@ -956,7 +956,7 @@ def audit_service_worker_inline(
                     stripped,
                     "Bağımlılığı yerel olarak paketleyin (ör. workbox-cli/injectManifest) ve aynı kökenden yükleyin.",
                     "CWE-829",
-                    "SNIPER-PWA-01",
+                    "VULKILL-PWA-01",
                     idx + 1,
                 )
 
@@ -968,7 +968,7 @@ def audit_service_worker_inline(
                 stripped,
                 "Service worker betiğini yalnızca HTTPS ve aynı kökenden kaydedin.",
                 "CWE-829",
-                "SNIPER-PWA-01",
+                "VULKILL-PWA-01",
                 idx + 1,
             )
 
@@ -987,7 +987,7 @@ def audit_service_worker_inline(
                     "Yalnızca statik varlıkları önbelleğe alın; API ve hesap uç noktaları için NetworkOnly "
                     "stratejisi kullanın ve oturum kapanışında önbelleği temizleyin.",
                     "CWE-524",
-                    "SNIPER-PWA-02",
+                    "VULKILL-PWA-02",
                     idx + 1,
                 )
 
@@ -1003,7 +1003,7 @@ def audit_service_worker_inline(
                     stripped,
                     "Kimlik doğrulamalı rotalarda NetworkOnly (veya kısa ömürlü NetworkFirst + Vary) kullanın.",
                     "CWE-524",
-                    "SNIPER-PWA-02",
+                    "VULKILL-PWA-02",
                     idx + 1,
                 )
 
@@ -1034,7 +1034,7 @@ def audit_service_worker_inline(
                     "Authorization başlığı içeren veya API'ye giden istekleri önbelleğe almayın; gerekiyorsa "
                     "Cache-Control: no-store başlığına uyun ve oturum kapanışında caches.delete çağırın.",
                     "CWE-524",
-                    "SNIPER-PWA-02",
+                    "VULKILL-PWA-02",
                     idx + 1,
                 )
             elif unchecked:
@@ -1046,7 +1046,7 @@ def audit_service_worker_inline(
                     stripped,
                     "Önbelleğe yazmadan önce response.ok && response.type === 'basic' kontrolü yapın.",
                     "CWE-524",
-                    "SNIPER-PWA-02",
+                    "VULKILL-PWA-02",
                     idx + 1,
                 )
 
@@ -1058,7 +1058,7 @@ def audit_service_worker_inline(
                 stripped,
                 "postMessage çağrılarında hedef kökeni açıkça belirtin.",
                 "CWE-345",
-                "SNIPER-PWA-01",
+                "VULKILL-PWA-01",
                 idx + 1,
             )
 
@@ -1226,7 +1226,7 @@ def audit_cross_stack_web_security(
             line_no = raw_content.count("\n", 0, match.start()) + 1
             findings.append(
                 {
-                    "control_id": "SNIPER-XSTACK-SA-01",
+                    "control_id": "VULKILL-XSTACK-SA-01",
                     "severity": "high",
                     "cwe": "CWE-862",
                     "reference": "CWE-862",
@@ -1255,7 +1255,7 @@ def audit_cross_stack_web_security(
             line_no = raw_content.count("\n", 0, match.start()) + 1
             findings.append(
                 {
-                    "control_id": "SNIPER-XSTACK-MSG-02",
+                    "control_id": "VULKILL-XSTACK-MSG-02",
                     "severity": "high",
                     "cwe": "CWE-346",
                     "reference": "CWE-346",
@@ -1283,7 +1283,7 @@ def audit_cross_stack_web_security(
             line_no = raw_content.count("\n", 0, match.start()) + 1
             findings.append(
                 {
-                    "control_id": "SNIPER-XSTACK-SSR-03",
+                    "control_id": "VULKILL-XSTACK-SSR-03",
                     "severity": "high",
                     "cwe": "CWE-200",
                     "reference": "CWE-200",

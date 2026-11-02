@@ -221,7 +221,7 @@ class DependencyFindingWorkflowTests(unittest.TestCase):
         self.store = Store(self.db_path)
         self.prev_store = server.STORE
         server.STORE = self.store
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.port = self.httpd.server_address[1]
         self.base_url = f"http://127.0.0.1:{self.port}"
         self.server_thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)

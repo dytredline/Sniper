@@ -113,8 +113,8 @@ m.audit_dos_resilience_inline('(/[/' * 45000, filename='app.js')
             "def settle(order):\n    order.status = 'paid'\n"
         )
         logic_controls = {item["control_id"] for item in logic["findings"]}
-        self.assertIn("SNIPER-BUSL-01", logic_controls)
-        self.assertIn("SNIPER-BUSL-03", logic_controls)
+        self.assertIn("VULKILL-BUSL-01", logic_controls)
+        self.assertIn("VULKILL-BUSL-03", logic_controls)
         guarded_logic = business.audit_business_logic_inline(
             "with transaction.atomic():\n"
             "    account = Account.objects.select_for_update().get()\n"
@@ -123,8 +123,8 @@ m.audit_dos_resilience_inline('(/[/' * 45000, filename='app.js')
             "    order.status = 'paid'\n"
         )
         guarded_controls = {item["control_id"] for item in guarded_logic["findings"]}
-        self.assertNotIn("SNIPER-BUSL-01", guarded_controls)
-        self.assertNotIn("SNIPER-BUSL-03", guarded_controls)
+        self.assertNotIn("VULKILL-BUSL-01", guarded_controls)
+        self.assertNotIn("VULKILL-BUSL-03", guarded_controls)
 
         cloud_report = cloud.audit_cloud_iam_and_k8s_rbac(
             'resource "aws_ebs_volume" "data" { size = 8 }\n'
@@ -153,14 +153,14 @@ m.audit_dos_resilience_inline('(/[/' * 45000, filename='app.js')
             "DROP TABLE old_orders CASCADE;\n"
         )
         db_controls = {item["control_id"] for item in db_report["findings"]}
-        self.assertIn("SNIPER-CONF-08", db_controls)
-        self.assertIn("SNIPER-INFR-03", db_controls)
+        self.assertIn("VULKILL-CONF-08", db_controls)
+        self.assertIn("VULKILL-INFR-03", db_controls)
         self.assertFalse([
             item for item in db_report["findings"]
-            if item["control_id"] == "SNIPER-AUTHZ-04" and "orders" in item["title"]
+            if item["control_id"] == "VULKILL-AUTHZ-04" and "orders" in item["title"]
         ])
         multiline_grant = database.audit_database_schema_inline("GRANT\nALL PRIVILEGES ON app.* TO worker;\n")
-        self.assertIn("SNIPER-CONF-08", {item["control_id"] for item in multiline_grant["findings"]})
+        self.assertIn("VULKILL-CONF-08", {item["control_id"] for item in multiline_grant["findings"]})
 
         ws_open = desktop.audit_realtime_and_binary_protocols(
             "func CheckOrigin(r *http.Request) bool { return true }\n",
@@ -205,7 +205,7 @@ m.audit_dos_resilience_inline('(/[/' * 45000, filename='app.js')
 
         self.assertFalse(business._has_state_guard(content))
         report = business.audit_business_logic_inline(content, filename="payment.py")
-        self.assertIn("SNIPER-BUSL-03", {item["control_id"] for item in report["findings"]})
+        self.assertIn("VULKILL-BUSL-03", {item["control_id"] for item in report["findings"]})
 
 
 if __name__ == "__main__":

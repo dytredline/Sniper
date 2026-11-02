@@ -25,7 +25,7 @@ class OSVOfflineApiTests(unittest.TestCase):
             data = Path(tmp)
             saved_store = server.STORE
             server.STORE = Store(data / "sniper.db")
-            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
             thread = threading.Thread(target=httpd.serve_forever, daemon=True)
             thread.start()
             root = f"http://127.0.0.1:{httpd.server_address[1]}"
@@ -161,7 +161,11 @@ class OSVOfflineApiTests(unittest.TestCase):
             child = int(pid_file.read_text())
             for _ in range(20):
                 stat_path = Path(f"/proc/{child}/stat")
-                if not stat_path.exists() or stat_path.read_text().split()[2] == "Z":
+                try:
+                    state = stat_path.read_text().split()[2]
+                except (FileNotFoundError, ProcessLookupError):
+                    break
+                if state == "Z":
                     break
                 time.sleep(0.05)
             else:

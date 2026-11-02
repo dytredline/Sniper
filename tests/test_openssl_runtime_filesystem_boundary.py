@@ -9,6 +9,7 @@ import unittest
 from unittest import mock
 
 import openssl_loopback_active as active
+from verified_exec import VerifiedExecutable
 
 
 class OpenSSLRuntimeFilesystemBoundaryTests(unittest.TestCase):
@@ -33,9 +34,13 @@ class OpenSSLRuntimeFilesystemBoundaryTests(unittest.TestCase):
 
     def test_private_runtime_directory_and_lock_are_accepted(self) -> None:
         data_dir, ca_bytes, binary = active._pinned_runtime()
-        self.assertEqual(data_dir, self.data_dir)
-        self.assertEqual(ca_bytes, b"synthetic-local-ca\n")
-        self.assertEqual(binary, Path("/usr/bin/openssl"))
+        try:
+            self.assertEqual(data_dir, self.data_dir)
+            self.assertEqual(ca_bytes, b"synthetic-local-ca\n")
+            self.assertIsInstance(binary, VerifiedExecutable)
+            self.assertEqual(binary.path, str(Path("/usr/bin/openssl")))
+        finally:
+            binary.close()
 
         fd = active._lock(data_dir)
         try:

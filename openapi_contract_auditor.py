@@ -438,7 +438,7 @@ def _audit_graphql_sdl(raw_content: str, source_name: str) -> dict[str, Any]:
         }
         if not (found_directives & GRAPHQL_AUTH_DIRECTIVES):
             findings.append({
-                "rule_id": "SNIPER-APIT-02",
+                "rule_id": "VULKILL-APIT-02",
                 "owasp_category": "OWASP API2:2023",
                 "severity": "medium",
                 "title": "GraphQL mutasyon alanında yetkilendirme direktifi (@auth/@authorized/@hasRole) eksik",
@@ -475,7 +475,7 @@ def _audit_graphql_sdl(raw_content: str, source_name: str) -> dict[str, Any]:
     for type_name in sorted(domain_types):
         if _has_cycle_to_self(type_name):
             findings.append({
-                "rule_id": "SNIPER-APIT-06",
+                "rule_id": "VULKILL-APIT-06",
                 "owasp_category": "OWASP API4:2023",
                 "severity": "medium",
                 "title": "GraphQL şemasında döngüsel tip referansı (Derin sorgu DoS riski)",
@@ -491,7 +491,7 @@ def _audit_graphql_sdl(raw_content: str, source_name: str) -> dict[str, Any]:
             normalized = field_name.casefold().replace("-", "_")
             if normalized in GRAPHQL_SENSITIVE_FIELDS or field_name.casefold() in GRAPHQL_SENSITIVE_FIELDS:
                 findings.append({
-                    "rule_id": "SNIPER-APIT-09",
+                    "rule_id": "VULKILL-APIT-09",
                     "owasp_category": "OWASP API3:2023",
                     "severity": "high",
                     "title": "GraphQL nesne tipinde hassas veri alanı maruziyeti",
@@ -515,9 +515,9 @@ def _audit_graphql_sdl(raw_content: str, source_name: str) -> dict[str, Any]:
         "finding_groups": summarize_finding_groups(findings),
         "findings": cap_findings(findings, INLINE_FINDING_LIMIT)[0],
         "controls_evaluated": [
-            "SNIPER-APIT-02",
-            "SNIPER-APIT-06",
-            "SNIPER-APIT-09",
+            "VULKILL-APIT-02",
+            "VULKILL-APIT-06",
+            "VULKILL-APIT-09",
         ],
     }
 
@@ -618,7 +618,7 @@ def _append_ruby_lookup_findings(
             continue
         for root_type in sorted(root_fields[field_name]):
             findings.append({
-                "rule_id": "SNIPER-APIT-10",
+                "rule_id": "VULKILL-APIT-10",
                 "owasp_category": "OWASP API1:2023",
                 "severity": "high",
                 "title": "GraphQL resolver nesne sorgusunda görünür sahiplik/tenant yetkilendirmesi eksik",
@@ -748,7 +748,7 @@ def _audit_openapi_or_swagger(doc: dict[str, Any], detected_type: str, source_na
                 url = srv.get("url", "") if isinstance(srv, dict) else str(srv)
                 if isinstance(url, str) and url.strip().casefold().startswith("http://"):
                     findings.append({
-                        "rule_id": "SNIPER-CRYP-02",
+                        "rule_id": "VULKILL-CRYP-02",
                         "owasp_category": "OWASP API8:2023",
                         "severity": "high",
                         "title": "API sözleşmesinde şifrelenmemiş HTTP sunucu adresi",
@@ -761,7 +761,7 @@ def _audit_openapi_or_swagger(doc: dict[str, Any], detected_type: str, source_na
             for scheme in schemes:
                 if str(scheme).strip().casefold() == "http":
                     findings.append({
-                        "rule_id": "SNIPER-CRYP-02",
+                        "rule_id": "VULKILL-CRYP-02",
                         "owasp_category": "OWASP API8:2023",
                         "severity": "high",
                         "title": "API sözleşmesinde şifrelenmemiş HTTP sunucu adresi",
@@ -799,7 +799,7 @@ def _audit_openapi_or_swagger(doc: dict[str, Any], detected_type: str, source_na
             op_security = operation.get("security")
             if op_has_security_key and isinstance(op_security, list) and len(op_security) == 0:
                 findings.append({
-                    "rule_id": "SNIPER-APIT-02",
+                    "rule_id": "VULKILL-APIT-02",
                     "owasp_category": "OWASP API2:2023",
                     "severity": "high",
                     "title": "Durum değiştiren API uç noktasında kimlik doğrulama tanımı yok",
@@ -812,7 +812,7 @@ def _audit_openapi_or_swagger(doc: dict[str, Any], detected_type: str, source_na
                 ) if op_has_security_key else has_global_security
                 if not effective_security:
                     findings.append({
-                        "rule_id": "SNIPER-APIT-02",
+                        "rule_id": "VULKILL-APIT-02",
                         "owasp_category": "OWASP API2:2023",
                         "severity": "high",
                         "title": "Durum değiştiren API uç noktasında kimlik doğrulama tanımı yok",
@@ -843,7 +843,7 @@ def _audit_openapi_or_swagger(doc: dict[str, Any], detected_type: str, source_na
                             break
             if bola_flagged:
                 findings.append({
-                    "rule_id": "SNIPER-APIT-03",
+                    "rule_id": "VULKILL-APIT-03",
                     "owasp_category": "OWASP API1:2023",
                     "severity": "medium",
                     "title": "Nesne kimliği parametresi alan uç noktada BOLA/IDOR yetki doğrulaması gerekli",
@@ -862,7 +862,7 @@ def _audit_openapi_or_swagger(doc: dict[str, Any], detected_type: str, source_na
                     if isinstance(body_schema, dict):
                         if (body_schema.get("type") == "object" or "properties" in body_schema) and body_schema.get("additionalProperties") is not False:
                             findings.append({
-                                "rule_id": "SNIPER-APIT-09",
+                                "rule_id": "VULKILL-APIT-09",
                                 "owasp_category": "OWASP API3:2023",
                                 "severity": "low",
                                 "title": "API girdi şemasında additionalProperties: false kısıtlaması yok (Mass Assignment riski)",
@@ -903,7 +903,7 @@ def _audit_openapi_or_swagger(doc: dict[str, Any], detected_type: str, source_na
                         # 5. Mass Assignment check (additionalProperties: false missing on object requestBody)
                         if (resolved_schema.get("type") == "object" or isinstance(props, dict)) and resolved_schema.get("additionalProperties") is not False:
                             findings.append({
-                                "rule_id": "SNIPER-APIT-09",
+                                "rule_id": "VULKILL-APIT-09",
                                 "owasp_category": "OWASP API3:2023",
                                 "severity": "low",
                                 "title": "API girdi şemasında additionalProperties: false kısıtlaması yok (Mass Assignment riski)",
@@ -913,7 +913,7 @@ def _audit_openapi_or_swagger(doc: dict[str, Any], detected_type: str, source_na
 
             if unbounded_flagged:
                 findings.append({
-                    "rule_id": "SNIPER-APIT-05",
+                    "rule_id": "VULKILL-APIT-05",
                     "owasp_category": "OWASP API4:2023",
                     "severity": "medium",
                     "title": "API parametresinde veya dizi şemasında üst sınır (maxItems/maxLength/maximum) eksik",
@@ -965,7 +965,7 @@ def _audit_openapi_or_swagger(doc: dict[str, Any], detected_type: str, source_na
 
             if ssrf_params:
                 findings.append({
-                    "rule_id": "SNIPER-APIT-07",
+                    "rule_id": "VULKILL-APIT-07",
                     "owasp_category": "OWASP API7:2023",
                     "severity": "high",
                     "title": "API sözleşmesinde kısıtlanmamış dış URL/Webhook parametresi (SSRF riski - OWASP API7:2023)",
@@ -994,7 +994,7 @@ def _audit_openapi_or_swagger(doc: dict[str, Any], detected_type: str, source_na
                                 sensitive_exposed.extend(_collect_schema_sensitive_fields(doc, media_obj["schema"]))
                 if sensitive_exposed:
                     findings.append({
-                        "rule_id": "SNIPER-APIT-09",
+                        "rule_id": "VULKILL-APIT-09",
                         "owasp_category": "OWASP API3:2023",
                         "severity": "high",
                         "title": "API yanıt şemasında hassas veri alanı maruziyeti",
@@ -1015,12 +1015,12 @@ def _audit_openapi_or_swagger(doc: dict[str, Any], detected_type: str, source_na
         "finding_groups": summarize_finding_groups(findings),
         "findings": cap_findings(findings, INLINE_FINDING_LIMIT)[0],
         "controls_evaluated": [
-            "SNIPER-CRYP-02",
-            "SNIPER-APIT-02",
-            "SNIPER-APIT-03",
-            "SNIPER-APIT-05",
-            "SNIPER-APIT-07",
-            "SNIPER-APIT-09",
+            "VULKILL-CRYP-02",
+            "VULKILL-APIT-02",
+            "VULKILL-APIT-03",
+            "VULKILL-APIT-05",
+            "VULKILL-APIT-07",
+            "VULKILL-APIT-09",
         ],
     }
 
@@ -1178,9 +1178,9 @@ def audit_shadow_api_and_bopla(
                 if route_path not in known_paths:
                     line_no = raw_content.count("\n", 0, match.start()) + 1
                     findings.append({
-                        "id": "SNIPER-OPENAPI-SHADOW-01",
-                        "rule_id": "SNIPER-OPENAPI-SHADOW-01",
-                        "control_id": "SNIPER-OPENAPI-SHADOW-01",
+                        "id": "VULKILL-OPENAPI-SHADOW-01",
+                        "rule_id": "VULKILL-OPENAPI-SHADOW-01",
+                        "control_id": "VULKILL-OPENAPI-SHADOW-01",
                         "severity": "high",
                         "cwe": "CWE-285",
                         "reference": "CWE-285",
@@ -1205,9 +1205,9 @@ def audit_shadow_api_and_bopla(
     for match in _BOPLA_CODE_RE.finditer(raw_content):
         line_no = raw_content.count("\n", 0, match.start()) + 1
         findings.append({
-            "id": "SNIPER-API-BOPLA-03",
-            "rule_id": "SNIPER-API-BOPLA-03",
-            "control_id": "SNIPER-API-BOPLA-03",
+            "id": "VULKILL-API-BOPLA-03",
+            "rule_id": "VULKILL-API-BOPLA-03",
+            "control_id": "VULKILL-API-BOPLA-03",
             "severity": "high",
             "cwe": "CWE-915",
             "reference": "CWE-915",
@@ -1285,16 +1285,16 @@ def audit_graphql_advanced_authorization(
     manifest = persisted_Manifest if persisted_Manifest is not None else persisted_manifest
     findings: list[dict[str, Any]] = []
 
-    # (a) SNIPER-GQL-FRAG-01: Fragment/Spread or Subscription unscoped tenant lookup
+    # (a) VULKILL-GQL-FRAG-01: Fragment/Spread or Subscription unscoped tenant lookup
     frag_or_sub_match = _GQL_FRAGMENT_OR_SUB_RE.search(sdl_text) or _GQL_FRAGMENT_OR_SUB_RE.search(combined_resolvers)
     if frag_or_sub_match and combined_resolvers:
         target_type = frag_or_sub_match.group(1) or frag_or_sub_match.group(2) or "Subscription"
         lookup_match = _GQL_UNSCOPED_LOOKUP_RE.search(combined_resolvers)
         if lookup_match and not _GQL_TENANT_GUARD_RE.search(combined_resolvers):
             findings.append({
-                "id": "SNIPER-GQL-FRAG-01",
-                "rule_id": "SNIPER-GQL-FRAG-01",
-                "control_id": "SNIPER-GQL-FRAG-01",
+                "id": "VULKILL-GQL-FRAG-01",
+                "rule_id": "VULKILL-GQL-FRAG-01",
+                "control_id": "VULKILL-GQL-FRAG-01",
                 "severity": "high",
                 "cwe": "CWE-862",
                 "reference": "CWE-862",
@@ -1309,7 +1309,7 @@ def audit_graphql_advanced_authorization(
                 "location": f"graphql:{target_type}",
             })
 
-    # (b) SNIPER-GQL-FED-02: Apollo Federation (@key / __resolveReference) missing tenant/owner check
+    # (b) VULKILL-GQL-FED-02: Apollo Federation (@key / __resolveReference) missing tenant/owner check
     if _GQL_FED_KEY_RE.search(sdl_text) and combined_resolvers:
         for src_name, src_text in source_items:
             fed_match = _GQL_FED_RESOLVER_RE.search(src_text)
@@ -1317,9 +1317,9 @@ def audit_graphql_advanced_authorization(
                 window = src_text[max(0, fed_match.start() - 100):min(len(src_text), fed_match.end() + 300)]
                 if not _GQL_FED_AUTH_RE.search(window):
                     findings.append({
-                        "id": "SNIPER-GQL-FED-02",
-                        "rule_id": "SNIPER-GQL-FED-02",
-                        "control_id": "SNIPER-GQL-FED-02",
+                        "id": "VULKILL-GQL-FED-02",
+                        "rule_id": "VULKILL-GQL-FED-02",
+                        "control_id": "VULKILL-GQL-FED-02",
                         "severity": "critical",
                         "cwe": "CWE-639",
                         "reference": "CWE-639",
@@ -1335,16 +1335,16 @@ def audit_graphql_advanced_authorization(
                     })
                     break
 
-    # (c) SNIPER-GQL-PERSIST-03: Persisted GraphQL query manifest unprotected mutation / admin query
+    # (c) VULKILL-GQL-PERSIST-03: Persisted GraphQL query manifest unprotected mutation / admin query
     if isinstance(manifest, dict) and manifest:
         for query_id, query_body in manifest.items():
             q_text = str(query_body or "")
             if _GQL_PERSISTED_SENSITIVE_OP_RE.search(q_text):
                 if not _GQL_RESOLVER_AUTH_GUARD_RE.search(combined_resolvers):
                     findings.append({
-                        "id": "SNIPER-GQL-PERSIST-03",
-                        "rule_id": "SNIPER-GQL-PERSIST-03",
-                        "control_id": "SNIPER-GQL-PERSIST-03",
+                        "id": "VULKILL-GQL-PERSIST-03",
+                        "rule_id": "VULKILL-GQL-PERSIST-03",
+                        "control_id": "VULKILL-GQL-PERSIST-03",
                         "severity": "high",
                         "cwe": "CWE-285",
                         "reference": "CWE-285",

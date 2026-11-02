@@ -14,6 +14,7 @@ from typing import Any
 
 from process_group_runner import kill_process_group
 from tool_pins import open_pinned
+from tool_child_env import isolated_tool_environment
 from verified_exec import VerificationError
 from project_analyzer import validate_project_path, ProjectRejected
 
@@ -166,8 +167,7 @@ def run_local_trufflehog_filesystem(project_path: str) -> dict[str, Any]:
                 str(input_dir),
             ]
 
-            env = os.environ.copy()
-            env["HOME"] = str(snapshot_root)
+            env = isolated_tool_environment(home=snapshot_root, tmpdir=snapshot_root)
 
             # Run bounded subprocess: nonblocking read, deadline, 64KiB chunks, 2MB cap
             try:

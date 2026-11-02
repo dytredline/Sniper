@@ -17,6 +17,7 @@ import stat
 from typing import Any
 
 from engine_identity import engine_fingerprint
+import product_identity
 
 
 FORMAT = "sniper-community-version/1"
@@ -172,6 +173,7 @@ def system_version_payload(
     app_root = Path(app_root)
     backups = Path(backup_dir) if backup_dir is not None else app_root.parent / "backups"
     return {
+        **product_identity.public_identity(),
         "format": FORMAT,
         "product_version": _product_version(app_root),
         "distribution": "community-source",

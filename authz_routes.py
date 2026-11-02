@@ -15,7 +15,7 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
-import re
+import safe_regex as re
 from typing import Any, Iterable
 import warnings
 
@@ -781,16 +781,9 @@ def _ruby_underscore(name: str) -> str:
     """Rails controller sabitini route DSL'deki ``admin/orders`` biçimine indirger."""
     parts = []
     for component in name.split("::"):
-        snake: list[str] = []
-        for index, char in enumerate(component):
-            previous = component[index - 1] if index else ""
-            following = component[index + 1] if index + 1 < len(component) else ""
-            if char.isupper() and snake and (
-                previous.islower() or previous.isdigit() or (previous.isupper() and following.islower())
-            ):
-                snake.append("_")
-            snake.append(char.casefold())
-        parts.append("".join(snake))
+        component = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", component)
+        component = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", component)
+        parts.append(component.casefold())
     return "/".join(parts)
 
 
@@ -878,7 +871,7 @@ def _rails_prepass(relpath: str, text: str, project: _Project) -> None:
                     _rails_add_route(project, controller, action, methods, base + suffix.replace("/:id", ""))
             continue
         explicit = re.match(
-            r"(get|post|put|patch|delete)\s++['\"]([^'\"]++)['\"]\s*+,?\s*+(?:to:\s*+|=>\s*+)['\"]([^'#]++)#(\w++[!?]?)['\"]",
+            r"(get|post|put|patch|delete)\s+['\"]([^'\"]+)['\"]\s*,?\s*(?:to:\s*|=>\s*)['\"]([^'#]+)#(\w+[!?]?)['\"]",
             line,
         )
         if explicit:
@@ -908,7 +901,7 @@ def _ruby_method_blocks(text: str) -> dict[str, tuple[int, str]]:
             else:
                 if _RUBY_BLOCK_START_RE.match(code):
                     depth += 1
-                depth += len(re.findall(r"\bdo\s*+(?:\|[^|]*+\|)?\s*+(?:$|#)", code))
+                depth += len(re.findall(r"\bdo\s*(?:\|[^|]*\|)?\s*(?:$|#)", code))
             j += 1
         if depth == 0:
             methods[name] = (i + 1, "\n".join(lines[i:j + 1]))
@@ -1747,7 +1740,7 @@ _NEST_EXPRESS_ROUTE_RE = re.compile(
     r"(?:@(?:Get|Post|Put|Delete|Patch)\s*\(|\b(?:app|router)\s*\.\s*(?:get|post|put|delete|patch)\s*\()"
 )
 _PRISMA_ID_LOOKUP_RE = re.compile(
-    r"\b(?:this\.)?prisma\s*+\.\s*+\w++\s*+\.\s*+(?:findUnique|findFirst|update|delete)\s*+\(\s*+\{\s*+where\s*+:\s*+\{([^}]*+)\}",
+    r"\b(?:this\.)?prisma\s*\.\s*\w+\s*\.\s*(?:findUnique|findFirst|update|delete)\s*\(\s*\{\s*where\s*:\s*\{([^}]*)\}",
     re.DOTALL,
 )
 _NEST_TENANT_SAFE_RE = re.compile(
@@ -1755,9 +1748,9 @@ _NEST_TENANT_SAFE_RE = re.compile(
 )
 
 _PY_ID_LOOKUP_RE = re.compile(
-    r"(?:\b[A-Z]\w*\.objects\.get\s*+\(([^)]*+)"
-    r"|\bget_object_or_404\s*+\(\s*+[A-Z]\w*\s*+,([^)]*+)"
-    r"|\b(?:session|db)\.get\s*+\(\s*+[A-Z]\w*\s*+,\s*+([^)]*+)\))"
+    r"(?:\b[A-Z]\w*\.objects\.get\s*\(([^)]*)"
+    r"|\bget_object_or_404\s*\(\s*[A-Z]\w*\s*,([^)]*)"
+    r"|\b(?:session|db)\.get\s*\(\s*[A-Z]\w*\s*,\s*([^)]*)\))"
 )
 _PY_TENANT_SAFE_RE = re.compile(
     r"(?:\b(?:user|owner|tenant|tenant_id|organization|organization_id|user_id|account_id)\s*="
@@ -1794,9 +1787,9 @@ def audit_multilang_route_tenant_authz(
             if lookup and not _SPRING_SAFE_RE.search(window):
                 line_no = raw_content.count("\n", 0, m.start()) + 1
                 findings.append({
-                    "id": "SNIPER-AUTHZ-SPRING-01",
-                    "rule_id": "SNIPER-AUTHZ-SPRING-01",
-                    "control_id": "SNIPER-AUTHZ-SPRING-01",
+                    "id": "VULKILL-AUTHZ-SPRING-01",
+                    "rule_id": "VULKILL-AUTHZ-SPRING-01",
+                    "control_id": "VULKILL-AUTHZ-SPRING-01",
                     "severity": "high",
                     "cwe": "CWE-639",
                     "reference": "CWE-639",
@@ -1819,9 +1812,9 @@ def audit_multilang_route_tenant_authz(
             if lookup and not _ASPNET_SAFE_RE.search(window):
                 line_no = raw_content.count("\n", 0, m.start()) + 1
                 findings.append({
-                    "id": "SNIPER-AUTHZ-ASPNET-02",
-                    "rule_id": "SNIPER-AUTHZ-ASPNET-02",
-                    "control_id": "SNIPER-AUTHZ-ASPNET-02",
+                    "id": "VULKILL-AUTHZ-ASPNET-02",
+                    "rule_id": "VULKILL-AUTHZ-ASPNET-02",
+                    "control_id": "VULKILL-AUTHZ-ASPNET-02",
                     "severity": "high",
                     "cwe": "CWE-639",
                     "reference": "CWE-639",
@@ -1843,9 +1836,9 @@ def audit_multilang_route_tenant_authz(
                     if not _NEST_TENANT_SAFE_RE.search(window):
                         line_no = raw_content.count("\n", 0, lookup.start()) + 1
                         findings.append({
-                            "id": "SNIPER-AUTHZ-NEST-03",
-                            "rule_id": "SNIPER-AUTHZ-NEST-03",
-                            "control_id": "SNIPER-AUTHZ-NEST-03",
+                            "id": "VULKILL-AUTHZ-NEST-03",
+                            "rule_id": "VULKILL-AUTHZ-NEST-03",
+                            "control_id": "VULKILL-AUTHZ-NEST-03",
                             "severity": "high",
                             "cwe": "CWE-639",
                             "reference": "CWE-639",
@@ -1867,9 +1860,9 @@ def audit_multilang_route_tenant_authz(
             if not _PY_TENANT_SAFE_RE.search(args_text) and not _PY_TENANT_SAFE_RE.search(window):
                 line_no = raw_content.count("\n", 0, lookup.start()) + 1
                 findings.append({
-                    "id": "SNIPER-AUTHZ-PY-04",
-                    "rule_id": "SNIPER-AUTHZ-PY-04",
-                    "control_id": "SNIPER-AUTHZ-PY-04",
+                    "id": "VULKILL-AUTHZ-PY-04",
+                    "rule_id": "VULKILL-AUTHZ-PY-04",
+                    "control_id": "VULKILL-AUTHZ-PY-04",
                     "severity": "high",
                     "cwe": "CWE-639",
                     "reference": "CWE-639",

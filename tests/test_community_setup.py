@@ -34,7 +34,7 @@ def _fixture_repo(tmp_path: Path) -> tuple[Path, Path]:
     installer = root / "scripts" / "install-community-tools"
     installer.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
     installer.chmod(0o755)
-    for entrypoint in ("sniper-mcp", "sniper-project-audit"):
+    for entrypoint in ("vulkill-mcp", "vulkill-project-audit"):
         path = root / "scripts" / entrypoint
         path.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
         path.chmod(0o755)
@@ -82,15 +82,15 @@ def test_setup_installs_locked_runtime_and_local_tools_without_starting_sniper(
             str(root / "runtimes"),
             "--accept-third-party-licenses",
         ],
-        [python, str(root / "scripts" / "sniper-mcp"), "--help"],
-        [python, str(root / "scripts" / "sniper-project-audit"), "--help"],
+        [python, str(root / "scripts" / "vulkill-mcp"), "--help"],
+        [python, str(root / "scripts" / "vulkill-project-audit"), "--help"],
     ]
     assert result == {
         "format": "sniper-community-setup-result-v1",
         "status": "ready",
         "venv": ".venv",
         "tools_profile": "local",
-        "verified_entrypoints": ["scripts/sniper-mcp", "scripts/sniper-project-audit"],
+        "verified_entrypoints": ["scripts/vulkill-mcp", "scripts/vulkill-project-audit"],
     }
 
 

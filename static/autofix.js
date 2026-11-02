@@ -71,7 +71,7 @@
     const url = URL.createObjectURL(blob);
     const link = el("a");
     link.href = url;
-    link.download = /^[\w.-]{1,120}$/.test(filename || "") ? filename : "sniper-fix.patch";
+    link.download = /^[\w.-]{1,120}$/.test(filename || "") ? filename : "vulkill-fix.patch";
     document.body.append(link);
     link.click();
     link.remove();
@@ -257,6 +257,6 @@
     }
   }
 
-  scope.SniperAutofix = Object.freeze({ suggest, render, verify, renderVerification, groups, bulk });
+  scope.VulKillAutofix = Object.freeze({ suggest, render, verify, renderVerification, groups, bulk });
   if (typeof document !== "undefined") document.addEventListener("click", onClick);
 })();

@@ -66,7 +66,7 @@ class ParseAndConvertTests(unittest.TestCase):
         locations = run["results"][0]["codeFlows"][0]["threadFlows"][0]["locations"]
         self.assertEqual([loc["location"]["physicalLocation"]["region"]["startLine"] for loc in locations], [5, 9, 12])
         self.assertEqual(locations[0]["location"]["message"]["text"], "Kaynak: getenv")
-        rule = next(r for r in run["tool"]["driver"]["rules"] if r["id"] == "SNIPER-JOERN-COMMAND")
+        rule = next(r for r in run["tool"]["driver"]["rules"] if r["id"] == "VULKILL-JOERN-COMMAND")
         self.assertIn("external/cwe/cwe-78", rule["properties"]["tags"])
         self.assertEqual(len(run["results"][0]["partialFingerprints"]["sniperJoern/v1"]), 32)
 
@@ -209,7 +209,7 @@ class RunOrchestrationTests(unittest.TestCase):
         self.assertEqual(len(commands), 3)
         frontend, capture, query = (cmd for cmd, _env in commands)
         self.assertIn("-jar", frontend)
-        self.assertTrue(frontend[frontend.index("-jar") + 1].endswith("c2cpg-4.0.647-launcher.jar"))
+        self.assertTrue(frontend[frontend.index("-jar") + 1].endswith("c2cpg-4.0.670-launcher.jar"))
         self.assertTrue(all(cmd[0] == "/proc/self/fd/9" for cmd, _env in commands))
         self.assertTrue(any(str(a).startswith("-Xmx") for a in query))
         self.assertIn("replpp.scripting.NonForkingScriptRunner", query)
@@ -273,7 +273,7 @@ class JoernRouteTests(unittest.TestCase):
         self.old_store, self.old_limiter = server.STORE, server.LIMITER
         server.STORE = Store(Path(self.temp.name) / "fixture.db")
         server.LIMITER = server.RateLimiter()
-        self.httpd = server.SniperHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = server.VulKillHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.port = self.httpd.server_address[1]
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()
@@ -347,8 +347,8 @@ class SpringModelTests(unittest.TestCase):
         self.assertEqual(sorted(f["reference"] for f in findings), ["CWE-601", "CWE-611"])
 
     def test_java_frontend_disables_delombok(self):
-        manifest = {"files": {"frontends/javasrc2cpg/lib/io.joern.javasrc2cpg-4.0.647-launcher.jar": "x",
-                              "frontends/c2cpg/lib/io.joern.c2cpg-4.0.647-launcher.jar": "x"}}
+        manifest = {"files": {"frontends/javasrc2cpg/lib/io.joern.javasrc2cpg-4.0.670-launcher.jar": "x",
+                              "frontends/c2cpg/lib/io.joern.c2cpg-4.0.670-launcher.jar": "x"}}
         java = joern_active._frontend_command("/proc/self/fd/3", Path("/h"), manifest, "java", Path("/s"), Path("/c"), Path("/w"))
         self.assertEqual(java[-2:], ["--delombok-mode", "no-delombok"])
         c = joern_active._frontend_command("/proc/self/fd/3", Path("/h"), manifest, "c", Path("/s"), Path("/c"), Path("/w"))
@@ -493,7 +493,7 @@ class PatternAndModelTests(unittest.TestCase):
         sarif = joern_active.render_sarif(findings)
         result = sarif["runs"][0]["results"][0]
         self.assertNotIn("codeFlows", result)
-        self.assertEqual(result["ruleId"], "SNIPER-JOERN-INSECURECOOKIE")
+        self.assertEqual(result["ruleId"], "VULKILL-JOERN-INSECURECOOKIE")
 
 
 class BenchmarkScoringTests(unittest.TestCase):
@@ -687,7 +687,7 @@ class JoernIntegrationTests(unittest.TestCase):
     def test_fixtures(self):
         with tempfile.TemporaryDirectory() as data, mock.patch.dict(os.environ, {"SNIPER_DATA_DIR": data}):
             result = joern_active.run_joern_deep(str(FIXTURES))
-        got = {(f["file"], f["line"], f["control_id"].split("SNIPER-JOERN-")[1].lower()) for f in result["findings"]}
+        got = {(f["file"], f["line"], f["control_id"].split("VULKILL-JOERN-")[1].lower()) for f in result["findings"]}
         expected = set()
         for path in FIXTURES.rglob("*"):
             if path.is_file():
@@ -701,24 +701,20 @@ if __name__ == "__main__":
     unittest.main()
 
 
-@unittest.skipUnless(sys.platform.startswith("linux"), "systemd launch payload is Linux-only")
 class JoernSystemdLaunchTests(unittest.TestCase):
     def setUp(self):
-        # The systemd orchestration tests simulate the service and execute the
-        # payload locally.  Container Python lives outside /usr/bin; its exact
-        # package path is not part of the behavior under test here.
-        patcher = mock.patch.multiple(
-            joern_active,
-            SYSTEM_PYTHON=Path(sys.executable),
-            _trusted_system_python=lambda: sys.executable,
+        self.system_python = mock.patch.object(joern_active, "SYSTEM_PYTHON", Path(sys.executable))
+        self.trusted_python = mock.patch.object(
+            joern_active, "_trusted_system_python", return_value=sys.executable
         )
-        patcher.start()
-        self.addCleanup(patcher.stop)
+        self.system_python.start()
+        self.trusted_python.start()
+        self.addCleanup(self.trusted_python.stop)
+        self.addCleanup(self.system_python.stop)
 
     def test_launch_mode_detects_service(self):
         import joern_active
-        with mock.patch.object(joern_active, "SYSTEMD_RUN", Path(sys.executable)), \
-                mock.patch.dict(os.environ, {"INVOCATION_ID": "x", "SNIPER_JOERN_LAUNCH": "auto"}):
+        with mock.patch.dict(os.environ, {"INVOCATION_ID": "x", "SNIPER_JOERN_LAUNCH": "auto"}):
             self.assertEqual(joern_active.launch_mode(), "systemd-run")
         with mock.patch.dict(os.environ, {"SNIPER_JOERN_LAUNCH": "direct", "INVOCATION_ID": "x"}):
             self.assertEqual(joern_active.launch_mode(), "direct")
@@ -796,11 +792,11 @@ class JoernSystemdLaunchTests(unittest.TestCase):
             java.write_text(
                 "#!/bin/sh\n"
                 "if [ \"$1\" = -version ]; then\n"
-                "  printf '%s\\n' 'openjdk version \"25.0.4.1-ea\" 2026-08-18 LTS' >&2\n"
-                "  printf '%s\\n' 'OpenJDK Runtime Environment Temurin-25.0.4.1-ea+1 "
-                "(build 25.0.4.1-ea+1-LTS)' >&2\n"
-                "  printf '%s\\n' 'OpenJDK 64-Bit Server VM Temurin-25.0.4.1-ea+1 "
-                "(build 25.0.4.1-ea+1-LTS, mixed mode, sharing)' >&2\n"
+                "  printf '%s\\n' 'openjdk version \"25.0.5-ea\" 2026-10-20 LTS' >&2\n"
+                "  printf '%s\\n' 'OpenJDK Runtime Environment Temurin-25.0.5-ea+8 "
+                "(build 25.0.5-ea+8-LTS)' >&2\n"
+                "  printf '%s\\n' 'OpenJDK 64-Bit Server VM Temurin-25.0.5-ea+8 "
+                "(build 25.0.5-ea+8-LTS, mixed mode, sharing)' >&2\n"
                 "  exit 0\n"
                 "fi\n"
                 f"printf PWNED > '{marker}'\n",
@@ -836,11 +832,11 @@ class JoernSystemdLaunchTests(unittest.TestCase):
                 "#!/usr/bin/python3\n"
                 "import os, sys\n"
                 "if sys.argv[1:] == ['-version']:\n"
-                "    sys.stderr.write('openjdk version \\\"25.0.4.1\\\" 2026-08-18 LTS\\n')\n"
-                "    sys.stderr.write('OpenJDK Runtime Environment Temurin-25.0.4.1+1 "
-                "(build 25.0.4.1+1-LTS)\\n')\n"
-                "    sys.stderr.write('OpenJDK 64-Bit Server VM Temurin-25.0.4.1+1 "
-                "(build 25.0.4.1+1-LTS, mixed mode, sharing)\\n')\n"
+                "    sys.stderr.write('openjdk version \\\"25.0.5\\\" 2026-10-20 LTS\\n')\n"
+                "    sys.stderr.write('OpenJDK Runtime Environment Temurin-25.0.5+8 "
+                "(build 25.0.5+8-LTS)\\n')\n"
+                "    sys.stderr.write('OpenJDK 64-Bit Server VM Temurin-25.0.5+8 "
+                "(build 25.0.5+8-LTS, mixed mode, sharing)\\n')\n"
                 "    raise SystemExit(0)\n"
                 "with open(sys.argv[1], 'wb') as stream:\n"
                 "    stream.write(b'\\n'.join(key + b'=' + value for key, value in "
@@ -903,11 +899,11 @@ class JoernSystemdLaunchTests(unittest.TestCase):
             java.write_text(
                 "#!/bin/sh\n"
                 "if [ \"$1\" = -version ]; then\n"
-                "  printf '%s\\n' 'openjdk version \"25.0.4.1\" 2026-08-18 LTS' >&2\n"
-                "  printf '%s\\n' 'OpenJDK Runtime Environment Temurin-25.0.4.1+1 "
-                "(build 25.0.4.1+1-LTS)' >&2\n"
-                "  printf '%s\\n' 'OpenJDK 64-Bit Server VM Temurin-25.0.4.1+1 "
-                "(build 25.0.4.1+1-LTS, mixed mode, sharing)' >&2\n"
+                "  printf '%s\\n' 'openjdk version \"25.0.5\" 2026-10-20 LTS' >&2\n"
+                "  printf '%s\\n' 'OpenJDK Runtime Environment Temurin-25.0.5+8 "
+                "(build 25.0.5+8-LTS)' >&2\n"
+                "  printf '%s\\n' 'OpenJDK 64-Bit Server VM Temurin-25.0.5+8 "
+                "(build 25.0.5+8-LTS, mixed mode, sharing)' >&2\n"
                 "  exit 0\n"
                 "fi\n"
                 f"printf PWNED > '{marker}'\n",

@@ -1,6 +1,6 @@
 """Offline scope and boundary verifier for SSL Labs, testssl.sh loopback, and Trivy DB freshness.
 
-Enforces explicit scope boundaries documented in SNIPER-KALAN-ISLER-2026-10-17.md:
+Enforces explicit scope boundaries documented in VULKILL-KALAN-ISLER-2026-10-17.md:
 - SSL Labs operates strictly on saved host assessment reports; live network queries are disabled.
 - testssl.sh active checks are restricted to IPv4 loopback (127.0.0.1:<port>); external HTTPS targets are denied.
 - Trivy vulnerability database freshness is evaluated offline from metadata.json timestamps relative to a reference UTC clock.

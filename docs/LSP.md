@@ -35,7 +35,7 @@ Tanılama içeriği:
   aşılırsa süreç grubu sonlandırılır, önceki tanılamalar korunur, editöre bir günlük iletisi düşer.
 * **Önbellek:**
   * Yeniden açılan, değişmemiş dosya bellekteki sonuçtan anında döner.
-  * Python projelerinde dosyalar arası taint sonucu `~/.cache/sniper-lsp/taint-cache` altında diskte tutulur
+  * Python projelerinde dosyalar arası taint sonucu `~/.cache/vulkill-lsp/taint-cache` altında diskte tutulur
     (dizin 0700); proje değişmediyse yeniden hesaplanmaz.
   * Kaydedilen dosya değiştiyse proje bağlamı yeniden kurulur.
   * Ölçüm (bu makinede):
@@ -60,7 +60,7 @@ Seçenekler:
 
 * `--data-dir`: VulKill veri dizini; yalnız kalıcı tarama kapsamı okunur. Varsayılan `$SNIPER_DATA_DIR` ya da
   `~/.local/share/sniper/data`.
-* `--cache-dir`: varsayılan `~/.cache/sniper-lsp`.
+* `--cache-dir`: varsayılan `~/.cache/vulkill-lsp`.
 * `--timeout`: dosya başına süre sınırı, 2–300 sn.
 
 İstemci `initializationOptions` ile de ayar verebilir:

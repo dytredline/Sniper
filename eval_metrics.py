@@ -998,7 +998,7 @@ def annotate_corroboration(
         control = str(finding.get("control_id") or "")
         declared_engine = str(finding.get("engine") or "").strip().casefold()
         primary_engine = declared_engine if declared_engine in {"sniper", "semgrep", "joern", "runtime"} \
-            else ("joern" if control.startswith("SNIPER-JOERN-") else "sniper")
+            else ("joern" if control.startswith("VULKILL-JOERN-") else "sniper")
         engines = {primary_engine}
         if primary_engine == "joern" and (
                 finding.get("fast_engine_match") is True

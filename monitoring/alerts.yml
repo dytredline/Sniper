@@ -1,21 +1,21 @@
 groups:
   - name: sniper
     rules:
-      - alert: SniperUnavailable
+      - alert: VulKillUnavailable
         expr: up{job="sniper"} == 0
         for: 2m
         labels:
           severity: critical
         annotations:
           summary: VulKill has been unreachable for two minutes
-      - alert: SniperHighErrorRate
+      - alert: VulKillHighErrorRate
         expr: sum(rate(sniper_http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(sniper_http_requests_total[5m])), 0.001) > 0.05
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: VulKill HTTP 5xx rate is above five percent
-      - alert: SniperSlowResponses
+      - alert: VulKillSlowResponses
         expr: histogram_quantile(0.95, sum by (le) (rate(sniper_http_request_duration_seconds_bucket[5m]))) > 1
         for: 5m
         labels:

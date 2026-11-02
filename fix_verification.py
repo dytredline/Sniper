@@ -34,7 +34,7 @@ import scan_scope
 import taint_autofix as ta
 from taint_autofix import AutofixError
 
-FORMAT = "sniper-fix-verification-v1"
+FORMAT = "vulkill-fix-verification-v1"
 VERDICT_LABELS = {"verified": "doğrulandı", "partial": "kısmen", "failed": "başarısız"}
 SCOPE_NOTE = ("Doğrulama güvenlik bulgusu ve sözdizimi içindir; işlevsel davranış (uygulamanın kendi testleri) "
               "denetlenmez. Yamayı uygulamadan önce gözden geçirip testlerinizi çalıştırın.")
@@ -365,7 +365,7 @@ def verify_finding_fix(audit: dict[str, Any], index: int, *, allowed_roots: tupl
     suggestion, new_text = ta.compute_fix(text, relpath, line, kind, flow=flow)
     header = {"finding_index": index, "title": str(finding.get("title") or ""), "strategy": suggestion.get("strategy"),
               "confidence": suggestion.get("confidence"), "notes": suggestion.get("notes", []),
-              "patch_filename": f"sniper-fix-{audit.get('id', 'analiz')}-{index}.patch"}
+              "patch_filename": f"vulkill-fix-{audit.get('id', 'analiz')}-{index}.patch"}
     if new_text is None:
         return {"format": FORMAT, "verdict": "failed", "verdict_label": VERDICT_LABELS["failed"],
                 "reasons": ["Otomatik yama üretilemedi; yalnız metinsel öneri var."], "targets": [], "new_findings": [],
@@ -479,7 +479,7 @@ def verify_bulk_fix(audit: dict[str, Any], *, group: str | None = None, indices:
         if current != original:
             patches[relpath] = (original, current)
 
-    header = {"group": group, "selected": selected, "patch_filename": f"sniper-bulk-fix-{audit.get('id', 'analiz')}.patch"}
+    header = {"group": group, "selected": selected, "patch_filename": f"vulkill-bulk-fix-{audit.get('id', 'analiz')}.patch"}
     if not patches:
         return {"format": FORMAT, "verdict": "failed", "verdict_label": VERDICT_LABELS["failed"],
                 "reasons": ["Seçilen bulguların hiçbiri için otomatik yama üretilemedi."],

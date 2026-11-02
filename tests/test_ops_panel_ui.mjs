@@ -24,7 +24,7 @@ function load() {
   const window = {};
   class Option { constructor(label, value) { this.label = label; this.value = value; } }
   vm.runInNewContext(source, { window, globalThis: window, document, Option, Intl, Date, Number, String, Boolean, Object, Promise });
-  return { ids, ops: window.SniperOps };
+  return { ids, ops: window.VulKillOps };
 }
 
 test('index.html görünümleri, menüyü ve betiği içerir; app.js gezinmesi yeni görünümleri tanır', () => {
@@ -38,7 +38,7 @@ test('index.html görünümleri, menüyü ve betiği içerir; app.js gezinmesi y
   assert.match(appJs, /notifications:\s*Object\.freeze\(\{ view: "notifications", hash: "#notifications"/);
   assert.match(appJs, /case "schedules": return NAVIGATION_DESTINATIONS\.schedules/);
   assert.match(appJs, /case "notifications": return NAVIGATION_DESTINATIONS\.notifications/);
-  assert.match(appJs, /SniperOps\.show\(view\)/);
+  assert.match(appJs, /VulKillOps\.show\(view\)/);
 });
 
 test('planlar ve bildirimler textContent ile yazılır; okunmamış rozeti güncellenir', () => {

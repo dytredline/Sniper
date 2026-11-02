@@ -175,7 +175,7 @@
       state.suggestions = list.suggestions || [];
       globalThis.sniperAiLocalEnabled = Boolean(settings.local && settings.local.enabled) && state.role.analyst;
       const wrapper = document.createElement("div");
-      wrapper.innerHTML = /* sniper-reviewed: html-safe (yalnız esc'li ayar alanları; ajan metni renderList'te textContent) */ cardHtml();
+      wrapper.innerHTML = /* vulkill-reviewed: html-safe (yalnız esc'li ayar alanları; ajan metni renderList'te textContent) */ cardHtml();
       const fresh = wrapper.firstElementChild;
       if (root) root.replaceWith(fresh); else view.appendChild(fresh);
       root = fresh;

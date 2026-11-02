@@ -92,14 +92,14 @@ class TestWave3DepthAndBountyEngines(unittest.TestCase):
 
     def test_synthesize_standalone_reproducer_script_redacts_tokens(self) -> None:
         finding = {
-            "id": "SNIPER-RUBY-SSRF-01",
+            "id": "VULKILL-RUBY-SSRF-01",
             "file": "app/services/import_url_service.rb",
             "cwe": "CWE-918",
             "description": "Authenticated request using glpat-SecretToken123456 reaches internal metadata",
         }
         bundle = cve_submission_pipeline.synthesize_standalone_reproducer_script(finding)
         self.assertEqual(bundle["format"], "sniper-standalone-reproducer/1")
-        self.assertEqual(bundle["finding_id"], "SNIPER-RUBY-SSRF-01")
+        self.assertEqual(bundle["finding_id"], "VULKILL-RUBY-SSRF-01")
         self.assertEqual(bundle["language"], "ruby")
         self.assertEqual(bundle["script_filename"], "reproduce.sh")
         self.assertIn("[REDACTED_TEST_TOKEN_SHA256:", bundle["script_content"])
@@ -163,7 +163,7 @@ class TestWave3DepthAndBountyEngines(unittest.TestCase):
         self.assertEqual(audit_res["silent_fix_count"], 2)
 
         f0, f1 = audit_res["findings"]
-        self.assertEqual(f0["rule_id"], "SNIPER-SILENT-PATCH-01")
+        self.assertEqual(f0["rule_id"], "VULKILL-SILENT-PATCH-01")
         self.assertEqual(f0["cwe"], "CWE-918")
         self.assertEqual(f0["matched_guard"], "UrlBlocker")
         self.assertEqual(f0["introduced_in_commit"], "00112233445566778899aabbccddeeff00112233")
@@ -307,7 +307,7 @@ class TestWave3DepthAndBountyEngines(unittest.TestCase):
         di_res = authz_jvm_dotnet.resolve_di_interface_implementations(files_map)
         self.assertEqual(di_res["format"], "sniper-di-authz-resolution/1")
         self.assertGreaterEqual(di_res["finding_count"], 1)
-        self.assertEqual(di_res["findings"][0]["id"], "SNIPER-AUTHZ-DI-IDOR-01")
+        self.assertEqual(di_res["findings"][0]["id"], "VULKILL-AUTHZ-DI-IDOR-01")
         self.assertEqual(di_res["findings"][0]["implementation"], "InvoiceServiceImpl")
 
         cone_res = incremental_scan_plan.expand_cone_with_di_bindings(

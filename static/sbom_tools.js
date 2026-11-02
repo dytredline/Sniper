@@ -135,7 +135,7 @@
     }
   }
 
-  scope.SniperSbomTools = { spdxHref, vexHref, decorateSources, renderScanResult, mount };
+  scope.VulKillSbomTools = { spdxHref, vexHref, decorateSources, renderScanResult, mount };
   if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount);
     else mount();

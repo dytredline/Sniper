@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS community-runtime
+FROM python:3.15-slim AS community-runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git libseccomp2
 COPY requirements-runtime.lock ./
 RUN pip install --no-cache-dir --disable-pip-version-check --no-deps -r requirements-runtime.lock \
     && python -m pip check \
-    && python -c "import cffi, cryptography, pycparser; assert cryptography.__version__ == '50.0.2'"
+    && python -c "import cffi, cryptography, pycparser, regex; assert cryptography.__version__ == '50.0.2' and regex.__version__ == '2026.9.29'"
 
 # Create a non‑root user to run the application
 RUN addgroup --system sniper && \
@@ -43,9 +43,9 @@ COPY taint_js_bridge.cjs ./
 
 # Create the data directory and give ownership to the non‑root user
 # Denetim anahtarı ve çapaları veritabanı biriminden ayrı, kalıcı bir birimde durur.
-RUN mkdir -p /app/projects /var/lib/sniper /var/lib/sniper-integrity /var/lib/sniper-secrets \
+RUN mkdir -p /var/lib/sniper /var/lib/sniper-integrity /var/lib/sniper-secrets \
     && chown -R sniper:sniper /app /var/lib/sniper /var/lib/sniper-integrity /var/lib/sniper-secrets \
-    && chmod 0700 /app/projects /var/lib/sniper /var/lib/sniper-integrity /var/lib/sniper-secrets \
+    && chmod 0700 /var/lib/sniper /var/lib/sniper-integrity /var/lib/sniper-secrets \
     && chmod 0700 /app/plugins/user && chmod 0600 /app/plugins/user/*.py
 
 USER sniper

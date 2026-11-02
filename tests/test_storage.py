@@ -60,7 +60,7 @@ class StorageTests(unittest.TestCase):
         )
         self.assertGreaterEqual(engagement["coverage"]["total"], 159)
         self.assertTrue(any(category["slug"] == "logging" for category in engagement["categories"]))
-        self.assertTrue(any(test["control_id"] == "SNIPER-SAFE-DATA-01" for test in engagement["tests"]))
+        self.assertTrue(any(test["control_id"] == "VULKILL-SAFE-DATA-01" for test in engagement["tests"]))
         first = engagement["tests"][0]
         self.store.update_manual_test(
             engagement["id"], first["control_id"], status="passed", notes="Kontrol edildi", evidence="İşlem kaydı #1",

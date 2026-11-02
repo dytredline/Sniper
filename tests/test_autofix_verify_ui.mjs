@@ -29,7 +29,7 @@ const VERIFIED = {
   verdict: 'verified', duration_ms: 12, reasons: ['Hedef bulgu(lar) kapandı <b>x</b>'],
   targets: [{ index: 2, file: 'app.py', line: 10, title: 'SQL', applied: true, closed: true }],
   new_findings: [], new_notes: [{ title: 'Not', file: 'app.py', line: 1, severity: 'low' }], also_closed: [],
-  diff: '--- a/app.py\n+++ b/app.py\n@@ -1 +1 @@\n-a\n+b', patch_filename: 'sniper-fix-prj_1-2.patch',
+  diff: '--- a/app.py\n+++ b/app.py\n@@ -1 +1 @@\n-a\n+b', patch_filename: 'vulkill-fix-prj_1-2.patch',
 };
 
 test('doğrulama isteği gönderilir, rozet ve gerekçeler textContent ile çizilir', async () => {
@@ -40,7 +40,7 @@ test('doğrulama isteği gönderilir, rozet ve gerekçeler textContent ile çizi
   const button = new Node('button');
   button.dataset = { autofixVerifyAudit: 'prj_1', autofixVerify: '2' };
   button.closest = () => article;
-  const data = await window.SniperAutofix.verify(button);
+  const data = await window.VulKillAutofix.verify(button);
   assert.equal(data.verdict, 'verified');
   assert.equal(calls[0].path, '/api/project-audits/prj_1/findings/2/autofix/verify');
   assert.equal(calls[0].options.method, 'POST');
@@ -59,7 +59,7 @@ test('başarısız doğrulamada hata mesajı gösterilir', async () => {
   const button = new Node('button');
   button.dataset = { autofixVerifyAudit: 'prj_1', autofixVerify: '3' };
   button.closest = () => ({ querySelector: sel => (sel === '[data-autofix-result="3"]' ? result : null) });
-  assert.equal(await window.SniperAutofix.verify(button), null);
+  assert.equal(await window.VulKillAutofix.verify(button), null);
   assert.match(flat(result), /Doğrulama yapılamadı: Bulgu bulunamadı/);
 });
 
@@ -74,7 +74,7 @@ test('gruplar listelenir ve toplu düzeltme grup anahtarıyla istenir', async ()
   const button = new Node('button');
   button.dataset = { autofixGroups: 'prj_1' };
   button.parentElement = holder;
-  await window.SniperAutofix.groups(button);
+  await window.VulKillAutofix.groups(button);
   assert.equal(calls[0].path, '/api/project-audits/prj_1/autofix-groups');
   assert.equal(calls[0].options, undefined);
   assert.match(flat(container), /Parametreli sorgu · CWE-89 · execute/);

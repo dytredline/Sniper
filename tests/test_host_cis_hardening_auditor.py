@@ -45,8 +45,8 @@ class HostCisHardeningTests(unittest.TestCase):
         )
         self.assertEqual(result["format"], "sniper-host-cis-hardening-inline-v1")
         self.assertEqual(result["config_type"], "sshd")
-        self.assertIn(("SNIPER-CONF-09", "high"), _controls(result))
-        self.assertIn(("SNIPER-CONF-09", "critical"), _controls(result))
+        self.assertIn(("VULKILL-CONF-09", "high"), _controls(result))
+        self.assertIn(("VULKILL-CONF-09", "critical"), _controls(result))
         self.assertTrue(any("Ciphers" in f["title"] for f in result["findings"]))
 
     def test_hardened_sshd_and_service_have_no_findings(self):
@@ -61,12 +61,12 @@ class HostCisHardeningTests(unittest.TestCase):
 
     def test_sysctl_sudoers_and_cron_rules(self):
         sysctl = audit_host_config_inline("kernel.randomize_va_space = 0\n", filename="sysctl.conf")
-        self.assertIn(("SNIPER-CONF-11", "high"), _controls(sysctl))
+        self.assertIn(("VULKILL-CONF-11", "high"), _controls(sysctl))
         sudo = audit_host_config_inline("deploy ALL=(ALL) NOPASSWD: ALL\nDefaults !authenticate\n", filename="sudoers")
-        self.assertIn(("SNIPER-AUTHZ-05", "high"), _controls(sudo))
-        self.assertIn(("SNIPER-AUTHZ-05", "critical"), _controls(sudo))
+        self.assertIn(("VULKILL-AUTHZ-05", "high"), _controls(sudo))
+        self.assertIn(("VULKILL-AUTHZ-05", "critical"), _controls(sudo))
         cron = audit_host_config_inline("*/5 * * * * root /tmp/run.sh\n", filename="crontab")
-        self.assertIn(("SNIPER-CONF-12", "high"), _controls(cron))
+        self.assertIn(("VULKILL-CONF-12", "high"), _controls(cron))
 
     def test_detect_config_type_and_empty_input(self):
         self.assertEqual(detect_config_type("sshd_config", ""), "sshd")
@@ -86,7 +86,7 @@ class HostCisHardeningTests(unittest.TestCase):
         self.assertEqual(result["format"], "sniper-host-cis-hardening-audit-v1")
         self.assertEqual(result["scanned_files"], 1)
         self.assertIn("sshd", result["config_types_detected"])
-        self.assertIn(("SNIPER-CONF-09", "high"), _controls(result))
+        self.assertIn(("VULKILL-CONF-09", "high"), _controls(result))
 
 
 if __name__ == "__main__":

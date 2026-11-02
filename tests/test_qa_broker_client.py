@@ -34,7 +34,11 @@ class FakeBroker:
         with conn:
             self.received = conn.makefile("rb").readline(600)
             if self.reply is not None:
-                conn.sendall(self.reply)
+                try:
+                    conn.sendall(self.reply)
+                except (BrokenPipeError, ConnectionResetError):
+                    # Bazı olumsuz istemci testleri, yanıt doğrulanmadan önce bilinçli olarak kapatır.
+                    pass
 
     def close(self) -> None:
         self.thread.join(timeout=5)

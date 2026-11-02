@@ -26,10 +26,10 @@ class PrivacyDataflowInlineTests(unittest.TestCase):
 
         self.assertEqual(result["format"], "sniper-privacy-dataflow-inline-v1")
         by_line = {item["line"]: item for item in result["findings"]}
-        self.assertEqual(by_line[4]["control_id"], "SNIPER-LOGG-02")
+        self.assertEqual(by_line[4]["control_id"], "VULKILL-LOGG-02")
         self.assertEqual(by_line[4]["severity"], "high")
         self.assertEqual(by_line[4]["cwe"], "CWE-532")
-        self.assertEqual(by_line[5]["control_id"], "SNIPER-LOGG-02")
+        self.assertEqual(by_line[5]["control_id"], "VULKILL-LOGG-02")
         self.assertEqual(by_line[5]["severity"], "critical")
         self.assertTrue(by_line[5]["special_category"])
         self.assertTrue(result["special_category_detected"])
@@ -49,7 +49,7 @@ class PrivacyDataflowInlineTests(unittest.TestCase):
             "    return client.chat.completions.create(model='gpt-4o', messages=[{'role': 'user', 'content': prompt}])\n"
         )
         result = audit_privacy_inline(content, filename="ai.py")
-        llm = [item for item in result["findings"] if item["control_id"] == "SNIPER-AI-06"]
+        llm = [item for item in result["findings"] if item["control_id"] == "VULKILL-AI-06"]
         self.assertEqual(len(llm), 1)
         self.assertEqual(llm[0]["severity"], "high")
         self.assertEqual(llm[0]["cwe"], "CWE-359")
@@ -63,7 +63,7 @@ class PrivacyDataflowInlineTests(unittest.TestCase):
         )
         result = audit_privacy_inline(content, filename="signup.js")
         controls = {item["control_id"] for item in result["findings"]}
-        self.assertIn("SNIPER-DATA-05", controls)
+        self.assertIn("VULKILL-DATA-05", controls)
 
     def test_tracking_without_consent_is_medium(self) -> None:
         content = (
@@ -76,7 +76,7 @@ class PrivacyDataflowInlineTests(unittest.TestCase):
         result = audit_privacy_inline(content, filename="index.html")
         self.assertEqual(result["finding_count"], 1, result["findings"])
         finding = result["findings"][0]
-        self.assertEqual(finding["control_id"], "SNIPER-DATA-07")
+        self.assertEqual(finding["control_id"], "VULKILL-DATA-07")
         self.assertEqual(finding["severity"], "medium")
         self.assertEqual(finding["title"], "Kullanıcı rızası alınmadan izleme betiği yükleniyor")
 
@@ -140,8 +140,8 @@ class PrivacyDataflowProjectTests(unittest.TestCase):
             self.assertEqual(result["format"], "sniper-privacy-dataflow-audit-v1")
             self.assertEqual(result["scanned_files"], 1)
             controls = {item["control_id"] for item in result["findings"]}
-            self.assertIn("SNIPER-DATA-02", controls)
-            self.assertIn("SNIPER-DATA-08", controls)
+            self.assertIn("VULKILL-DATA-02", controls)
+            self.assertIn("VULKILL-DATA-08", controls)
             self.assertFalse(result["erasure_flow_detected"])
             self.assertTrue(result["special_category_detected"])
             ropa = {entry["data_category"]: entry for entry in result["ropa"]}
@@ -155,8 +155,8 @@ class PrivacyDataflowProjectTests(unittest.TestCase):
             )
             second = audit_privacy_project(str(root), allowed_roots=allowed)
             second_controls = {item["control_id"] for item in second["findings"]}
-            self.assertNotIn("SNIPER-DATA-08", second_controls)
-            self.assertIn("SNIPER-DATA-02", second_controls)
+            self.assertNotIn("VULKILL-DATA-08", second_controls)
+            self.assertIn("VULKILL-DATA-02", second_controls)
             self.assertTrue(second["erasure_flow_detected"])
 
 

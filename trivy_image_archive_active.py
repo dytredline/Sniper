@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from project_analyzer import validate_project_path, ProjectRejected
+from tool_child_env import isolated_tool_environment
 from project_tree import ProjectTreeError
 from trivy_config_active import _open_trusted_binary
 from trivy_vuln_active import (
@@ -174,9 +175,10 @@ def run_local_trivy_image_archive_vulnerability(
                 "--timeout", "60s",
             ]
 
-            env = os.environ.copy()
-            env["HOME"] = str(snapshot_root)
-            env["XDG_CACHE_HOME"] = str(snapshot_root / "cache")
+            env = isolated_tool_environment(
+                home=snapshot_root, tmpdir=snapshot_root,
+                overrides={"XDG_CACHE_HOME": snapshot_root / "cache"},
+            )
 
             # Run bounded runner
             try:

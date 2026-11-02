@@ -51,7 +51,7 @@ def test_dry_run_reports_exact_locked_profile_without_starting_docker() -> None:
         "compose_files": ["docker-compose.yml", "docker-compose.tools.yml"],
         "service": "sniper",
         "build_target": "community-tools",
-        "image": "sniper-community-tools:local",
+        "image": "vulkill-community-tools:local",
         "platform_source": "linux-container-runtime",
         "tools": lock["profiles"]["local"],
         "tool_count": 7,
@@ -95,19 +95,17 @@ def test_compose_override_requires_acceptance_and_preserves_loopback_and_volumes
     )
     assert accepted.returncode == 0, accepted.stderr
     config = json.loads(accepted.stdout)
-    sniper = config["services"]["sniper"]
-    assert sniper["build"]["target"] == "community-tools"
-    assert sniper["build"]["args"] == {"SNIPER_ACCEPT_THIRD_PARTY_LICENSES": "1"}
-    assert sniper["image"] == "sniper-community-tools:local"
-    assert sniper["ports"] == [{
+    vulkill = config["services"]["vulkill"]
+    assert vulkill["build"]["target"] == "community-tools"
+    assert vulkill["build"]["args"] == {"SNIPER_ACCEPT_THIRD_PARTY_LICENSES": "1"}
+    assert vulkill["image"] == "vulkill-community-tools:local"
+    assert vulkill["ports"] == [{
         "mode": "ingress", "target": 8787, "published": "8787", "protocol": "tcp",
         "host_ip": "127.0.0.1",
     }]
-    assert {item["target"] for item in sniper["volumes"]} == {
-        "/app/projects", "/var/lib/sniper", "/var/lib/sniper-integrity", "/var/lib/sniper-secrets",
+    assert {item["target"] for item in vulkill["volumes"]} == {
+        "/var/lib/sniper", "/var/lib/sniper-integrity", "/var/lib/sniper-secrets",
     }
-    assert any(item["source"] == "sniper_projects" and item["target"] == "/app/projects"
-               for item in sniper["volumes"])
 
 
 def test_default_dockerfile_target_stays_core_and_tools_target_is_license_gated() -> None:

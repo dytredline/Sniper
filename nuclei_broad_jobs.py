@@ -387,7 +387,7 @@ class BroadNucleiJobs:
             (nuclei_cfg_dir / ".templates-config.json").write_text(
                 json.dumps({
                     "nuclei-templates-directory": str(self._catalog_root),
-                    "nuclei-templates-version": "v10.5.0",
+                    "nuclei-templates-version": "v10.5.1",
                 }),
                 encoding="utf-8",
             )

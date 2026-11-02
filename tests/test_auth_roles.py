@@ -95,7 +95,7 @@ class AuthTestBase(unittest.TestCase):
             patch.start()
             self.addCleanup(patch.stop)
         auth._MANAGERS.clear()
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
         self.port = self.httpd.server_address[1]
 

@@ -49,12 +49,12 @@ const now = () => Number(process.hrtime.bigint()) / 1e6;
 
 // Compile an in-memory test copy with a private Parser export so the two hardened
 // lookahead methods themselves, rather than only the public parser, are exercised.
-const instrumented = fs.readFileSync(parserPath, "utf8") + "\nexports.__SniperParser = Parser;\n";
+const instrumented = fs.readFileSync(parserPath, "utf8") + "\nexports.__VulKillParser = Parser;\n";
 const testModule = new Module(parserPath, module);
 testModule.filename = parserPath;
 testModule.paths = Module._nodeModulePaths(path.dirname(parserPath));
 testModule._compile(instrumented, parserPath);
-const Parser = testModule.exports.__SniperParser;
+const Parser = testModule.exports.__VulKillParser;
 
 function scan(text, sameLine) {
   const instance = new Parser({}, text, new Map());

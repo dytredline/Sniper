@@ -16,6 +16,8 @@ import subprocess
 from pathlib import Path
 
 from tool_report_openssl_x509 import parse_openssl_x509_summary
+from tool_child_env import isolated_tool_environment
+from verified_exec import VerifiedExecutable, VerificationError, open_verified_executable
 
 _TARGET = re.compile(r"127\.0\.0\.1:([0-9]{1,5})\Z")
 _HEX = re.compile(r"[0-9a-f]{64}\Z")
@@ -62,7 +64,7 @@ def _regular_bytes(path: Path, *, limit: int, executable: bool = False) -> bytes
         raise OpenSSLUnavailable("Sabitlenmiş çalışma zamanı kullanılamıyor") from exc
 
 
-def _pinned_runtime() -> tuple[Path, bytes, Path]:
+def _pinned_runtime() -> tuple[Path, bytes, VerifiedExecutable]:
     data_text = os.environ.get("SNIPER_DATA_DIR")
     if not data_text:
         raise OpenSSLUnavailable("VulKill veri dizini yapılandırılmamış")
@@ -82,10 +84,17 @@ def _pinned_runtime() -> tuple[Path, bytes, Path]:
     if not _HEX.fullmatch(ca_sha) or not _HEX.fullmatch(binary_sha):
         raise OpenSSLUnavailable("OpenSSL hash değerleri yapılandırılmamış")
     ca_bytes = _regular_bytes(ca_path, limit=_MAX_CA_BYTES)
-    binary_bytes = _regular_bytes(_OPENSSL, limit=2_000_000, executable=True)
-    if hashlib.sha256(ca_bytes).hexdigest() != ca_sha or hashlib.sha256(binary_bytes).hexdigest() != binary_sha:
+    if hashlib.sha256(ca_bytes).hexdigest() != ca_sha:
         raise OpenSSLUnavailable("Sabitlenmiş OpenSSL çalışma zamanı hash değeri uyuşmuyor")
-    return data_dir, ca_bytes, _OPENSSL
+    try:
+        binary = open_verified_executable(
+            _OPENSSL,
+            {binary_sha: "configured-openssl-sha256"},
+            label="OpenSSL",
+        )
+    except VerificationError as exc:
+        raise OpenSSLUnavailable("Sabitlenmiş OpenSSL çalışma zamanı hash değeri uyuşmuyor") from exc
+    return data_dir, ca_bytes, binary
 
 
 def _lock(data_dir: Path) -> int:
@@ -130,8 +139,9 @@ def verify_pinned_tls_peer(*, connect_host: str, identity: str, port: int,
                      "not_after_utc", "days_until_expiry", "report_sha256"}:
         raise ValueError("Geçersiz TLS doğrulama planı")
     data_dir, ca_bytes, binary = _pinned_runtime()
-    lock_fd = _lock(data_dir)
+    lock_fd = -1
     try:
+        lock_fd = _lock(data_dir)
         try:
             trust = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
             trust.minimum_version = ssl.TLSVersion.TLSv1_2
@@ -154,9 +164,11 @@ def verify_pinned_tls_peer(*, connect_host: str, identity: str, port: int,
             raise OpenSSLExecutionError("Yerel eş sertifikası geçersiz")
         try:
             result = subprocess.run(
-                [str(binary), "x509", "-inform", "DER", "-noout", "-dates", "-fingerprint", "-sha256"],
+                [binary.argv0, "x509", "-inform", "DER", "-noout", "-dates", "-fingerprint", "-sha256"],
                 input=der, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 timeout=3.0, check=False,
+                env=isolated_tool_environment(home=data_dir, tmpdir=data_dir),
+                **binary.popen_kwargs(),
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
             raise OpenSSLExecutionError("Sabitlenmiş OpenSSL x509 başarısız oldu") from exc
@@ -182,8 +194,10 @@ def verify_pinned_tls_peer(*, connect_host: str, identity: str, port: int,
         summary["report_sha256"] = hashlib.sha256(canonical).hexdigest()
         return summary
     finally:
-        fcntl.flock(lock_fd, fcntl.LOCK_UN)
-        os.close(lock_fd)
+        if lock_fd >= 0:
+            fcntl.flock(lock_fd, fcntl.LOCK_UN)
+            os.close(lock_fd)
+        binary.close()
 
 
 def run_openssl_x509_loopback(target: str) -> dict:

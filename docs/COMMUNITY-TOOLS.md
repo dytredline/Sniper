@@ -15,15 +15,11 @@ For a new checkout, `python3 scripts/setup-community --accept-third-party-licens
 It does not start the server or execute a scanner. Prepared offline Python wheels and tool artifacts can be supplied
 with `--wheelhouse` and `--tool-cache-dir`.
 
-The source core can be prepared without optional tools on Linux, macOS, or Windows with
-`python3 scripts/setup-community --core-only`. Optional Linux engines on Windows or macOS run through WSL2 or
-Docker Desktop's Linux-container path. For the seven-engine container image, review the lock-file licenses and run
+The source core can be prepared without optional tools on Linux, or experimentally on macOS, with
+`python3 scripts/setup-community --core-only`. Native Windows is intentionally rejected; use WSL2 or Docker Desktop's
+Linux-container path. For an optional seven-engine container image, review the same lock-file licenses and run
 `python3 scripts/build-community-tools-image --accept-third-party-licenses`; see `DEPLOYMENT.md` for the exact profile
 and evidence boundary.
-
-On macOS Apple Silicon, the five Linux binaries run inside Docker Desktop rather than as native Mac executables.
-`./scripts/deploy-community-tools --accept-third-party-licenses` builds, starts, and verifies their local readiness;
-see `DEPLOYMENT.md` for the explicit project-copy path when Docker Desktop cannot mount a protected Mac folder.
 
 The command downloads only artifacts listed in `COMMUNITY-TOOLS.lock.json`, verifies each complete artifact before
 extracting its declared executable, and never executes a scanner. It installs into the ignored `runtimes/` directory;
@@ -37,14 +33,14 @@ pinned offline database. Syft can produce a local manifest-only SBOM after insta
 also requires the separately pinned offline database documented by its readiness result. Each upstream license is recorded in the lock file and remains applicable. Review and accept
 those terms before using the flag above.
 
-For the separately downloaded official `nuclei-templates` v10.5.0 tag archive, the checked-in catalog builder verifies
+For the separately downloaded official `nuclei-templates` v10.5.1 tag archive, the checked-in catalog builder verifies
 the archive SHA-256, extracts only regular HTTP YAML files, rejects duplicate template IDs and symlinks, and creates
 deterministic read-only pin/index manifests. It never updates an existing destination in place:
 
 ```bash
 python3 scripts/install_nuclei_catalog.py \
-  --archive /ABSOLUTE/PATH/nuclei-templates-v10.5.0.tar.gz \
-  --destination /ABSOLUTE/PATH/runtimes/nuclei-templates-v10.5.0
+  --archive /ABSOLUTE/PATH/nuclei-templates-v10.5.1.tar.gz \
+  --destination /ABSOLUTE/PATH/runtimes/nuclei-templates-v10.5.1
 ```
 
 The accepted archive SHA-256 is `80fbabceca095fac40afecc7f023748df22b9576b9ff10a4422bd2fbf81f9a41`.

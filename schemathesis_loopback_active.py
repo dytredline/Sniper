@@ -28,8 +28,8 @@ from schemathesis_active import (_SCANNER_LOCK, _bounded_child, _checked_executa
 from tool_report_schemathesis_junit import parse_schemathesis_junit_summary
 
 DOCKER_EXE = Path("/usr/bin/docker")
-# Offline, hash-locked wheelhouse image; it contains Schemathesis 4.31.0.
-DOCKER_IMAGE_ID = "sha256:457cbb3f7549658d9b0dafcff5f1e8f6eefc3a6367303ab1f19ee0cfdebc4351"
+# Offline, hash-locked wheelhouse image; it contains Schemathesis 4.33.0.
+DOCKER_IMAGE_ID = "sha256:6cd257797e2aa4b59497614799f7c2ac7cdce4a066d0781503c5c0799af7e906"
 CONTAINER_SCRIPT = Path(__file__).with_name("schemathesis_loopback_container.py")
 WORK_PARENT = Path.home() / ".local/state/sniper/schemathesis-loopback"
 MAX_SCHEMA_BYTES = 32_768

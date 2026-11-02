@@ -41,7 +41,7 @@ def _make_test_catalog(tmp: Path) -> tuple[Path, Path, int, dict]:
 
     # Construct pin_data without self-reference; sha256 field is a placeholder
     pin_data_body = {
-        "version": "v10.5.0",
+        "version": "v10.5.1",
         "count": 2,
         "paths_and_hashes": paths_and_hashes,
         "scope": "http-templates",
@@ -51,7 +51,7 @@ def _make_test_catalog(tmp: Path) -> tuple[Path, Path, int, dict]:
     pin_json = json.dumps(pin_data_body, separators=(',', ':'))
     pin_sha = hashlib.sha256(pin_json.encode("utf-8")).hexdigest()
 
-    pin_path = tmp / "SNIPER-HTTP-ID-INDEX.json"
+    pin_path = tmp / "VULKILL-HTTP-ID-INDEX.json"
     pin_path.write_text(pin_json)
 
     return tmp, pin_path, 2, {"t1": t1_sha, "t2": t2_sha, "mapping": mapping_sha, "pin": pin_sha}
@@ -149,7 +149,7 @@ def test_relative_root_fails():
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
         root = Path("relative-catalog")  # explicitly relative
-        pin_path = tmp / "SNIPER-HTTP-ID-INDEX.json"
+        pin_path = tmp / "VULKILL-HTTP-ID-INDEX.json"
         pin_path.write_text("{}")
 
         with pytest.raises(ValueError, match="root mutlak olmalı"):

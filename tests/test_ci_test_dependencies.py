@@ -15,9 +15,9 @@ RUNNER = ROOT / "scripts" / "run_all_tests.py"
 
 EXPECTED_TEST_DEPENDENCIES = {
     "iniconfig": "2.3.1",
-    "pluggy": "1.6.0",
+    "pluggy": "1.7.0",
     "Pygments": "2.21.0",
-    "pytest": "9.1.1",
+    "pytest": "9.2.0",
 }
 
 
@@ -62,7 +62,7 @@ class CiTestDependencyContractTests(unittest.TestCase):
     def test_tag_release_runs_the_same_dependency_and_full_test_gates(self) -> None:
         workflow = RELEASE_WORKFLOW.read_text(encoding="utf-8")
         for fragment in (
-            'node-version: "22.23.4"',
+            'node-version: "26.13.0"',
             "python -m pip install --no-deps -r requirements-runtime.lock",
             "python -m pip install --no-deps -r requirements-test.lock",
             "python -m pip check",
@@ -92,9 +92,13 @@ class CiTestDependencyContractTests(unittest.TestCase):
             self.assertEqual(runner._pytest_python(), "/test/python")
 
         probe = run.call_args.args[0]
-        self.assertEqual(probe[:2], ["/test/python", "-c"])
+        # The integration contract launches an isolated child (``python -I``).
+        # The runner must therefore prove that pytest and runtime dependencies
+        # belong to the candidate interpreter itself, not an ambient
+        # PYTHONPATH/user-site that the real test will ignore.
+        self.assertEqual(probe[:3], ["/test/python", "-I", "-c"])
         for module in ("pytest", "cryptography", "packaging", "yaml"):
-            self.assertIn(module, probe[2])
+            self.assertIn(module, probe[3])
 
     def test_node_24_summary_is_counted(self) -> None:
         runner = _load_runner()

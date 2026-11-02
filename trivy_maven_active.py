@@ -15,6 +15,7 @@ from typing import Any
 
 from project_analyzer import validate_project_path
 from tool_report_trivy import parse_trivy_native_json_summary
+from tool_child_env import isolated_tool_environment
 from trivy_vuln_active import (
     TrivyVulnBusy,
     TrivyVulnExecutionError,
@@ -243,9 +244,10 @@ def run_local_trivy_maven_vulnerability(project_path: str) -> dict[str, Any]:
                 "--output", str(report_path), "--cache-dir", str(cache_path), "--timeout", "60s",
                 str(staged),
             ]
-            env = os.environ.copy()
-            env["HOME"] = str(scratch)
-            env["XDG_CACHE_HOME"] = str(scratch / "cache")
+            env = isolated_tool_environment(
+                home=scratch, tmpdir=scratch,
+                overrides={"XDG_CACHE_HOME": scratch / "cache"},
+            )
             try:
                 process = subprocess.run(argv, env=env, stdout=subprocess.DEVNULL,
                                          stderr=subprocess.DEVNULL, timeout=90, check=False,

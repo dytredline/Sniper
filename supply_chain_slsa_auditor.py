@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path, PurePosixPath
-import re
+import safe_regex as re
 import textwrap
 import tomllib
 from typing import Any
@@ -135,10 +135,10 @@ PACKAGE_JSON_HOOK_SCRIPT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 WORKFLOW_RUN_TRIGGER_PATTERN = re.compile(
-    r"(?m)^\s*+workflow_run\s*+:|\bon\s*+:\s*+\[?[^\n\]]{0,2048}\bworkflow_run\b",
+    r"(?m)^\s*workflow_run\s*:|\bon\s*:\s*\[?[^\n\]]*\bworkflow_run\b",
 )
 DOWNLOAD_ARTIFACT_PATTERN = re.compile(
-    r"uses\s*+:\s*+['\"]?actions/download-artifact(?:@[^'\"\s#]++)?['\"]?",
+    r"uses\s*:\s*['\"]?actions/download-artifact(?:@[^'\"\s#]+)?['\"]?",
     re.IGNORECASE,
 )
 ARTIFACT_SHELL_EXEC_PATTERN = re.compile(
@@ -157,21 +157,19 @@ WORKFLOW_MIRROR_MAX_LOCK_BYTES = 256 * 1024
 WORKFLOW_MIRROR_MAX_WORKFLOW_BYTES = 1_000_000
 WORKFLOW_MIRROR_MAX_ENTRIES = 128
 _REMOTE_WORKFLOW_PATTERN = re.compile(
-    r"(?P<repository>[a-z0-9_.-]++/[a-z0-9_.-]++)/"
-    r"(?P<workflow>\.github/workflows/[A-Za-z0-9_.-]{1,240}\.ya?ml)@(?P<commit>[0-9a-f]{40})\Z"
+    r"(?P<repository>[a-z0-9_.-]+/[a-z0-9_.-]+)/"
+    r"(?P<workflow>\.github/workflows/[A-Za-z0-9_.-]+\.ya?ml)@(?P<commit>[0-9a-f]{40})\Z"
 )
 
 
 def _yaml_entry(raw_line: str) -> tuple[int, str, str] | None:
     if not raw_line.strip() or raw_line.lstrip().startswith("#"):
         return None
-    indentation = len(raw_line) - len(raw_line.lstrip())
-    key_raw, separator, value_raw = raw_line.lstrip().partition(":")
-    key = key_raw.strip()
-    if not separator or re.fullmatch(r"[A-Za-z0-9_.-]++", key) is None:
+    match = re.match(r"^(\s*)([A-Za-z0-9_.-]+)\s*:\s*(.*?)\s*$", raw_line)
+    if match is None:
         return None
-    value = value_raw.split(" #", 1)[0].strip().strip("'\"")
-    return indentation, key, value
+    value = match.group(3).split(" #", 1)[0].strip().strip("'\"")
+    return len(match.group(1)), match.group(2), value
 
 
 def _permission_set_at_indent(lines: list[str], indent: int) -> tuple[bool, set[str]]:
@@ -185,7 +183,7 @@ def _permission_set_at_indent(lines: list[str], indent: int) -> tuple[bool, set[
         if value and value not in {"{}", "null", "read-all"}:
             return True, {
                 match.group(1).casefold()
-                for match in re.finditer(r"([A-Za-z0-9_-]++)\s*+:\s*+write\b", value, re.IGNORECASE)
+                for match in re.finditer(r"([A-Za-z0-9_-]+)\s*:\s*write\b", value, re.IGNORECASE)
             }
         writes: set[str] = set()
         for nested_line in lines[index + 1:]:
@@ -285,23 +283,6 @@ def _local_workflow_path(spec: str) -> str | None:
     return relative.as_posix()
 
 
-def _has_remote_workflow_path_shape(value: str) -> bool:
-    parts = value.split("/")
-    if len(parts) != 5 or parts[2:4] != [".github", "workflows"]:
-        return False
-    owner, repository, _github, _workflows, filename = parts
-    allowed = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-")
-    return (
-        bool(owner)
-        and bool(repository)
-        and all(character in allowed for character in owner)
-        and all(character in allowed for character in repository)
-        and filename.endswith((".yml", ".yaml"))
-        and len(filename) > 4
-        and all(character in allowed for character in filename)
-    )
-
-
 def _remote_workflow_reference(spec: str) -> dict[str, str] | None:
     """Classify a remote reusable-workflow reference without echoing unsafe input."""
     normalized = spec.strip().strip("'\"")
@@ -322,7 +303,10 @@ def _remote_workflow_reference(spec: str) -> dict[str, str] | None:
             "resolution": "pending_mirror",
         }
     repository_and_path, separator, ref = normalized.rpartition("@")
-    if separator and _has_remote_workflow_path_shape(repository_and_path):
+    if separator and re.fullmatch(
+        r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/\.github/workflows/[A-Za-z0-9_.-]+\.ya?ml",
+        repository_and_path,
+    ):
         if SHA40_PATTERN.fullmatch(ref):
             return {**base, "resolution": "noncanonical_identity"}
         return {**base, "resolution": "mutable_ref"}
@@ -545,7 +529,7 @@ def _workflow_call_trust_graph(
                     "reusable workflow izinlerini contents: read seviyesine daraltın."
                 ),
                 "reference": "CWE-250",
-                "control_id": "SNIPER-SLSA-WORKFLOW-CALL-04",
+                "control_id": "VULKILL-SLSA-WORKFLOW-CALL-04",
                 "caller": caller_name,
                 "caller_job": job_name,
                 "callee": callee_name,
@@ -894,13 +878,13 @@ def audit_supply_chain_enterprise_inline(
     if not text.strip():
         return {"findings": findings, "count": 0, "filename": filename}
 
-    # 1. SNIPER-SLSA-CONFUSION-01: --extra-index-url / extra-index-url without --require-hashes
+    # 1. VULKILL-SLSA-CONFUSION-01: --extra-index-url / extra-index-url without --require-hashes
     extra_match = EXTRA_INDEX_URL_PATTERN.search(text)
     if extra_match is not None and not REQUIRE_HASHES_PATTERN.search(text):
         findings.append({
-            "id": "SNIPER-SLSA-CONFUSION-01",
-            "rule_id": "SNIPER-SLSA-CONFUSION-01",
-            "control_id": "SNIPER-SLSA-CONFUSION-01",
+            "id": "VULKILL-SLSA-CONFUSION-01",
+            "rule_id": "VULKILL-SLSA-CONFUSION-01",
+            "control_id": "VULKILL-SLSA-CONFUSION-01",
             "severity": "high",
             "category": "supplychain",
             "cwe": "CWE-427",
@@ -919,7 +903,7 @@ def audit_supply_chain_enterprise_inline(
             "file": filename,
         })
 
-    # 2. SNIPER-SLSA-HOOK-02: Install hook RCE in package.json (preinstall/postinstall/install) or setup.py (cmdclass)
+    # 2. VULKILL-SLSA-HOOK-02: Install hook RCE in package.json (preinstall/postinstall/install) or setup.py (cmdclass)
     hook_evidence: str | None = None
     try:
         parsed_json = json.loads(text)
@@ -952,9 +936,9 @@ def audit_supply_chain_enterprise_inline(
 
     if hook_evidence is not None:
         findings.append({
-            "id": "SNIPER-SLSA-HOOK-02",
-            "rule_id": "SNIPER-SLSA-HOOK-02",
-            "control_id": "SNIPER-SLSA-HOOK-02",
+            "id": "VULKILL-SLSA-HOOK-02",
+            "rule_id": "VULKILL-SLSA-HOOK-02",
+            "control_id": "VULKILL-SLSA-HOOK-02",
             "severity": "critical",
             "category": "supplychain",
             "cwe": "CWE-506",
@@ -972,19 +956,19 @@ def audit_supply_chain_enterprise_inline(
             "file": filename,
         })
 
-    # 3. SNIPER-SLSA-ARTIFACT-03: GitHub Actions workflow_run + actions/download-artifact + shell execution
+    # 3. VULKILL-SLSA-ARTIFACT-03: GitHub Actions workflow_run + actions/download-artifact + shell execution
     if WORKFLOW_RUN_TRIGGER_PATTERN.search(text):
         dl_match = DOWNLOAD_ARTIFACT_PATTERN.search(text)
         if dl_match is not None:
             after_download = text[dl_match.end():]
-            run_match = re.search(r"(?m)^\s*+(?:-\s*+)?run\s*+:", after_download)
+            run_match = re.search(r"(?m)^\s*(?:-\s*)?run\s*:", after_download)
             if run_match is not None:
                 exec_match = ARTIFACT_SHELL_EXEC_PATTERN.search(after_download[run_match.start():])
                 if exec_match is not None:
                     findings.append({
-                        "id": "SNIPER-SLSA-ARTIFACT-03",
-                        "rule_id": "SNIPER-SLSA-ARTIFACT-03",
-                        "control_id": "SNIPER-SLSA-ARTIFACT-03",
+                        "id": "VULKILL-SLSA-ARTIFACT-03",
+                        "rule_id": "VULKILL-SLSA-ARTIFACT-03",
+                        "control_id": "VULKILL-SLSA-ARTIFACT-03",
                         "severity": "critical",
                         "category": "supplychain",
                         "cwe": "CWE-829",
@@ -1306,7 +1290,7 @@ def audit_supply_chain_slsa(
                 "GitHub token izinlerini açıkça salt-okunur kapsamla sınırlandırın."
             ),
             "reference": "CWE-829",
-            "control_id": "SNIPER-SLSA-ARTIFACT-GRAPH-04",
+            "control_id": "VULKILL-SLSA-ARTIFACT-GRAPH-04",
             "file": consumer_file,
             "line": evidence["download_line"],
         })
@@ -1344,7 +1328,7 @@ def audit_supply_chain_slsa(
                 "evidence": f"{manifest}: {raw_name}@{version or '*'}",
                 "recommendation": f"Paket adını '{target_pkg}' olarak doğrulayın ve şüpheli paketi derhal kaldırın.",
                 "reference": "CWE-829",
-                "control_id": "SNIPER-SUPP-01",
+                "control_id": "VULKILL-SUPP-01",
             })
 
         if (
@@ -1369,7 +1353,7 @@ def audit_supply_chain_slsa(
                 "evidence": f"{manifest}: {raw_name}",
                 "recommendation": "İç paketlerde organizasyon kapsamı (@corp/pkg) kullanın ve kayıt defteri önceliğini sabitleyin.",
                 "reference": "CWE-427",
-                "control_id": "SNIPER-SUPP-01",
+                "control_id": "VULKILL-SUPP-01",
             })
 
         raw_lic = comp.get("license") or comp.get("licenses") or ""
@@ -1400,7 +1384,7 @@ def audit_supply_chain_slsa(
                         "evidence": f"{pkg_name}: license={lic_str}",
                         "recommendation": "Ticari dağıtım politikasına uygun (MIT, Apache-2.0, BSD-3-Clause) bir alternatif kullanın veya hukuki inceleme yapın.",
                         "reference": "CWE-1104",
-                        "control_id": "SNIPER-SUPP-01",
+                        "control_id": "VULKILL-SUPP-01",
                     })
 
     # 3: SLSA v1.0 Provenance & GitHub Actions Commit SHA Pinning
@@ -1443,7 +1427,7 @@ def audit_supply_chain_slsa(
                 "evidence": f"{wf_name}: uses: {action_spec}",
                 "recommendation": f"'{repo_part}' eylemini tam 40 karakterlik git commit SHA özeti ile sabitleyin.",
                 "reference": "CWE-829",
-                "control_id": "SNIPER-SUPP-05",
+                "control_id": "VULKILL-SUPP-05",
             })
 
         if PR_TARGET_TRIGGER_PATTERN.search(content) and UNTRUSTED_PR_CHECKOUT_PATTERN.search(content):
@@ -1455,7 +1439,7 @@ def audit_supply_chain_slsa(
                 "evidence": f"{wf_name}: pull_request_target + github.event.pull_request.head checkout",
                 "recommendation": "pull_request_target içinde PR dalını checkout etmeyin veya ayrıcalıksız pull_request iş akışı kullanın.",
                 "reference": "CWE-829",
-                "control_id": "SNIPER-SUPP-05",
+                "control_id": "VULKILL-SUPP-05",
             })
 
         expr_match = GHA_EXPRESSION_INJECTION_PATTERN.search(content)
@@ -1468,7 +1452,7 @@ def audit_supply_chain_slsa(
                 "evidence": f"{wf_name}: {expr_match.group(0)}",
                 "recommendation": "Güvenilmeyen GitHub bağlam değerlerini doğrudan run: bloğuna yazmak yerine env: ortam değişkeni olarak aktarın ve kabukta çift tırnak içinde okuyun.",
                 "reference": "CWE-78",
-                "control_id": "SNIPER-SUPP-05",
+                "control_id": "VULKILL-SUPP-05",
             })
 
     workflow_call_graph, workflow_call_findings = _workflow_call_trust_graph(
@@ -1482,14 +1466,14 @@ def audit_supply_chain_slsa(
     for ent_filename, ent_content in [*enterprise_files, *workflows]:
         inline_res = audit_supply_chain_enterprise_inline(ent_content, filename=ent_filename)
         for ent_finding in inline_res.get("findings") or []:
-            if ent_finding.get("control_id") == "SNIPER-SLSA-ARTIFACT-03" and ent_filename in graph_consumer_files:
+            if ent_finding.get("control_id") == "VULKILL-SLSA-ARTIFACT-03" and ent_filename in graph_consumer_files:
                 continue  # dosyalar arası graph aynı tüketiciyi daha kesin kontrol/kanıtla değerlendirir
             key = (str(ent_finding.get("control_id") or ""), str(ent_finding.get("evidence") or ""))
             if key in seen_enterprise_keys:
                 continue
             seen_enterprise_keys.add(key)
             findings.append(ent_finding)
-            if ent_finding.get("control_id") == "SNIPER-SLSA-CONFUSION-01":
+            if ent_finding.get("control_id") == "VULKILL-SLSA-CONFUSION-01":
                 confusion.append({
                     "package": "--extra-index-url",
                     "version": "",
@@ -1512,7 +1496,7 @@ def audit_supply_chain_slsa(
             "evidence": "bom.json / *.cdx.json / *.spdx.json bulunamadı (2 düzey derinlik)",
             "recommendation": "CI'da CycloneDX SBOM üretip sürüm artefaktına ekleyin (VulKill: SBOM dışa aktarma).",
             "reference": "CWE-1104",
-            "control_id": "SNIPER-SUPP-02",
+            "control_id": "VULKILL-SUPP-02",
         })
 
     if has_provenance or (len(workflows) > 0 and len(unpinned) == 0):
@@ -1538,8 +1522,8 @@ def audit_supply_chain_slsa(
         "findings_truncated": len(findings) > INLINE_FINDING_LIMIT,
         "finding_groups": summarize_finding_groups(findings),
         "findings": cap_findings(findings, INLINE_FINDING_LIMIT)[0],
-        "controls_evaluated": ["SNIPER-SUPP-01", "SNIPER-SUPP-02", "SNIPER-SUPP-05",
-                               "SNIPER-SLSA-WORKFLOW-CALL-04", "SNIPER-SLSA-ARTIFACT-GRAPH-04"],
+        "controls_evaluated": ["VULKILL-SUPP-01", "VULKILL-SUPP-02", "VULKILL-SUPP-05",
+                               "VULKILL-SLSA-WORKFLOW-CALL-04", "VULKILL-SLSA-ARTIFACT-GRAPH-04"],
         "workflow_call_graph": workflow_call_graph,
         "workflow_mirror": workflow_mirror,
         "artifact_trust_graph": artifact_trust_graph,
@@ -1647,7 +1631,7 @@ def verify_offline_workflow_and_sigstore_provenance(
                     ),
                     "reference": "CWE-829",
                     "cwe": "CWE-829",
-                    "control_id": "SNIPER-SLSA-MIRROR-01",
+                    "control_id": "VULKILL-SLSA-MIRROR-01",
                 })
     elif has_secrets_inherit:
         findings.append({
@@ -1659,7 +1643,7 @@ def verify_offline_workflow_and_sigstore_provenance(
             "recommendation": "Yalnızca gerekli sırları açık anahtarlarla aktarın.",
             "reference": "CWE-829",
             "cwe": "CWE-829",
-            "control_id": "SNIPER-SLSA-MIRROR-01",
+            "control_id": "VULKILL-SLSA-MIRROR-01",
         })
 
     sig_ok = False
@@ -1744,7 +1728,7 @@ def verify_offline_workflow_and_sigstore_provenance(
                 ),
                 "reference": "CWE-347",
                 "cwe": "CWE-347",
-                "control_id": "SNIPER-SLSA-COSIGN-02",
+                "control_id": "VULKILL-SLSA-COSIGN-02",
             })
     elif sigstore_bundle is not None or mirror_workflows is None:
         findings.append({
@@ -1756,7 +1740,7 @@ def verify_offline_workflow_and_sigstore_provenance(
             "recommendation": "Sürüm artefaktlarını Cosign / Sigstore DSSE provenance zarfı ile imzalayın.",
             "reference": "CWE-347",
             "cwe": "CWE-347",
-            "control_id": "SNIPER-SLSA-COSIGN-02",
+            "control_id": "VULKILL-SLSA-COSIGN-02",
         })
 
     return {

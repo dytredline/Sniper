@@ -151,7 +151,7 @@
     scope.renderLicenseSummary = wrapped;
   }
 
-  scope.SniperContainerScan = { renderContainerSummary, buildPanel, mount, chain };
+  scope.VulKillContainerScan = { renderContainerSummary, buildPanel, mount, chain };
   if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", () => { mount(); chain(); });

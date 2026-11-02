@@ -54,7 +54,7 @@ def audit_dom_invader_cspp_and_gadgets(raw_content: str, *, filename: str = "app
     merge_m = _DEEP_MERGE_RE.search(text)
     if src_m and merge_m and not _PROTO_GUARD_RE.search(text):
         findings.append({
-            "control_id": "SNIPER-DOM-CSPP-01",
+            "control_id": "VULKILL-DOM-CSPP-01",
             "cwe": "CWE-1321",
             "reference": "CWE-1321",
             "severity": "high",
@@ -70,7 +70,7 @@ def audit_dom_invader_cspp_and_gadgets(raw_content: str, *, filename: str = "app
     gadget_m = _GADGET_SINK_RE.search(text)
     if gadget_m and "hasOwnProperty" not in text and "Object.hasOwn" not in text:
         findings.append({
-            "control_id": "SNIPER-DOM-GADGET-02",
+            "control_id": "VULKILL-DOM-GADGET-02",
             "cwe": "CWE-79",
             "reference": "CWE-79",
             "severity": "high",
@@ -86,7 +86,7 @@ def audit_dom_invader_cspp_and_gadgets(raw_content: str, *, filename: str = "app
     clobber_m = _DOM_CLOBBER_RE.search(text)
     if clobber_m and re.search(r"\b(?:src|href|innerHTML|fetch|import)\b", text):
         findings.append({
-            "control_id": "SNIPER-DOM-CLOBBER-03",
+            "control_id": "VULKILL-DOM-CLOBBER-03",
             "cwe": "CWE-79",
             "reference": "CWE-79",
             "severity": "high",
@@ -106,7 +106,7 @@ def audit_dom_invader_cspp_and_gadgets(raw_content: str, *, filename: str = "app
         has_sink = bool(_DOM_EXEC_SINK_RE.search(window_slice))
         if has_sink and not has_origin_check:
             findings.append({
-                "control_id": "SNIPER-DOM-POSTMSG-04",
+                "control_id": "VULKILL-DOM-POSTMSG-04",
                 "cwe": "CWE-346",
                 "reference": "CWE-346",
                 "severity": "high",

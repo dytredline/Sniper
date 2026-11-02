@@ -5,7 +5,7 @@ tedarik zinciri için yerel-öncelikli bir savunma güvenliği araç takımıdı
 bağımlılıkları, SBOM dosyalarını, konteyner arşivlerini ve desteklenen kayıtlı araç raporlarını inceler; sonuçları
 CLI, loopback web arayüzü veya stdio MCP üzerinden insan incelemesine sunar.
 
-Bu sayfa **v1.1.0 kaynak sözleşmesini** açıklar. Bir özelliğin katalogda bulunması, gerekli motorun veya verinin o
+Bu sayfa **v1.0.0 kaynak sözleşmesini** açıklar. Bir özelliğin katalogda bulunması, gerekli motorun veya verinin o
 makinede hazır olduğu ya da bir dış hedef için izin bulunduğu anlamına gelmez.
 
 ## Yetenek etiketleri
@@ -173,7 +173,7 @@ ekiplere ortak bir güvenlik kontrol noktası sunar.
 
 | Tür | Girdi | Doğrulanmış kontrol alanları |
 | --- | --- | --- |
-| **Yerleşik** | Terraform ve yerel modüller | AWS/GCP/Azure ve belgelenmiş diğer sağlayıcılarda genel güvenlik duvarı/ACL, depolama görünürlüğü, bekleyen veri şifrelemesi, IMDSv2, herkese açık veritabanı, geniş IAM/`Principal`, KMS döndürme, CloudFront HTTP/eski TLS, CloudTrail, EKS/GKE/AKS, Lambda URL, seri konsol ve sabit sır ipuçları; değişken, tfvars, locals ve sınırlı yerel modül çıktı çözümü |
+| **Yerleşik** | Terraform, yerel modüller ve doğrulanmış çevrimdışı uzak-modül aynası | AWS/GCP/Azure ve belgelenmiş diğer sağlayıcılarda genel güvenlik duvarı/ACL, depolama görünürlüğü, bekleyen veri şifrelemesi, IMDSv2, herkese açık veritabanı, geniş IAM/`Principal`, KMS döndürme, CloudFront HTTP/eski TLS, CloudTrail, EKS/GKE/AKS, Lambda URL, seri konsol ve sabit sır ipuçları; değişken, tfvars, locals ve sınırlı modül çıktı çözümü. Uzak içerik yalnız exact kaynak+sürüm ve proje içi modül ağacının SHA-256 özeti `.sniper/terraform-module-mirror.json` içinde doğrulanırsa incelenir; ağ erişimi, kayan sürüm ve doğrulanmamış ayna güvenilir sayılmaz. |
 | **Yerleşik** | Kubernetes YAML ve kısmi Helm render | `privileged`, privilege escalation, host namespace/hostPath, tehlikeli capability, root UID, seccomp/AppArmor, sabitlenmemiş imaj, ortam sırrı, sertleştirme eksikleri, geniş RBAC ve cluster-admin bağları |
 | **Yerleşik** | Kubernetes proje grafiği | Ingress/Gateway API route → Service → Workload → ServiceAccount → Role ilişkisi; NodePort/LoadBalancer/genel `externalIPs`, listener protokolü, namespace seçicisi ve `ReferenceGrant` koşulları |
 | **Yerleşik** | Dockerfile/Containerfile | Sabitlenmemiş taban, `curl | sh`, root kullanıcı, uzak `ADD`, `sudo`, ENV/ARG sırrı, `chmod 777`, TLS/imza doğrulamasını kapatma, SSH portu ve HEALTHCHECK bilgisi |
@@ -211,15 +211,15 @@ yinelenen, yanlış özetli, sembolik bağlı veya sınırı aşan mirror fail-c
 
 | Tür | Girdi | İncelenen alan |
 | --- | --- | --- |
-| **Yerleşik + önkoşullu OSV verisi** | `docker save` tar, OCI image layout/tar, açılmış rootfs veya rootfs tar | Docker daemon ve ağ olmadan katman/manifest bütünlüğü; dpkg, apk ve desteklenen RPM SQLite paket envanteri; Debian, Ubuntu, Alpine/Wolfi/Chainguard, Alma/Rocky, RHEL, Amazon Linux, SLES/openSUSE eşlemesi |
+| **Yerleşik + önkoşullu OSV verisi** | `docker save` tar, OCI image layout/tar, açılmış rootfs veya rootfs tar | Docker daemon ve ağ olmadan katman/manifest bütünlüğü; dpkg, apk, RPM SQLite ve sistemdeki gerçek DB_File/Berkeley DB 5 runtime'ıyla eski RPM `Packages` hash envanteri; Debian, Ubuntu, Alpine/Wolfi/Chainguard, Alma/Rocky, RHEL, Amazon Linux, SLES/openSUSE eşlemesi |
 | **Yerleşik** | Aynı konteyner girdileri | PyPI metadata, npm paketleri ve jar/war içindeki Maven bileşenleri; CycloneDX SBOM üretimi |
 | **Yerleşik** | OCI/tar katmanları | SHA-256 ve boyut doğrulama; whiteout/opaque dizin semantiği; kök dışına çıkma, aygıt/FIFO ve güvensiz sembolik bağ engeli; dosya, katman ve toplam boyut bütçeleri |
 | **Yerleşik + isteğe bağlı yerel güven kökü** | OCI in-toto/SLSA DSSE provenance | Seçilen imaj subject özeti, builder kimliği ve artifact lineage için sınırlandırılmış yerel yapısal doğrulama; exact SHA-256 ile sabitlenmiş no-follow Ed25519 PEM verilirse gerçek DSSE PAE imza doğrulaması. Anahtar yoksa `structural_only/not_run`, komut adı hiçbir zaman `verified` değildir. |
 | **Yerleşik** | İsteğe bağlı Dockerfile | Son aşamada kurulan/kaldırılan paketleri gerçek imaj envanteriyle ilişkilendirme |
 | **İsteğe bağlı yerel motor + önkoşullu DB** | Trivy image profile | Ayrı sabitlenmiş çevrimdışı Trivy veritabanı hazırsa imaj zafiyet profili |
 
-Eski BerkeleyDB/NDB RPM veritabanları tam ayrıştırılmıyorsa işletim sistemi paket kontrolü `pass` olmaz; neden
-`na`/sınırlama olarak kalır.
+Berkeley DB runtime yoksa/açılamazsa veya NDB girdisi algılanırsa işletim sistemi paket kontrolü `pass` olmaz;
+neden `na`/sınırlama olarak kalır. Native Berkeley sayfa ayrıştırması ana süreçte yapılmaz; sınırlı ayrı işlem kullanılır.
 
 ### Web, API ve TLS
 
@@ -278,7 +278,7 @@ kilitli profili kurmayı dener. İndirilen artefakt tam SHA-256 değeriyle doğr
 - **Çıktı sınırı:** Doğrulanmış JSONL kayıtlarından sınırlı özet ve rapor hash'i; kayıtlı JSONL ayrıca ayrıştırılabilir.
   Varsayılan kurulum geniş bir internet şablon koleksiyonu veya her zafiyet sınıfının tarandığı anlamına gelmez.
 
-### Trivy 0.75.0 — Apache-2.0
+### Trivy 0.76.1 — Apache-2.0
 
 - **Tür:** İsteğe bağlı yerel motor; zafiyet profilleri önkoşulludur.
 - **Görev:** Bağımlılık/kilit dosyası, sır, image archive ve Dockerfile/Terraform/Kubernetes yapılandırma profilleri.
@@ -299,7 +299,7 @@ kilitli profili kurmayı dener. İndirilen artefakt tam SHA-256 değeriyle doğr
   değeri veya ham rapor saklanmaz/döndürülmez. Dosya profilinde en çok 2.000 dosya, dosya başına 1 MB ve toplam
   25 MB hazırlama bütçesi uygulanır.
 
-### TruffleHog 3.99.0 — AGPL-3.0
+### TruffleHog 3.99.7 — AGPL-3.0
 
 - **Tür:** İsteğe bağlı yerel motor.
 - **Görev:** Yerel dosya sistemi veya güvenli hazırlanmış yerel Git geçmişinde sır adayları.
@@ -308,7 +308,7 @@ kilitli profili kurmayı dener. İndirilen artefakt tam SHA-256 değeriyle doğr
 - **Çıktı sınırı:** Maskeli ve boyut sınırlı özet/rapor hash'i. Profil çevrimdışı çalışır ve bulunan kimlik
   bilgisini sağlayıcıya göndererek doğrulamaz; “doğrulandı” sonucu üretmez.
 
-### Opengrep 1.30.1 — LGPL-2.1-only
+### Opengrep 1.33.1 — LGPL-2.1-only
 
 - **Tür:** İsteğe bağlı yerel motor.
 - **Görev:** VulKill'ın 39 kurallı yerel paketini kullanarak Python, JavaScript/TypeScript, Go ve Java kaynaklarında
@@ -468,22 +468,22 @@ yazılı kapsam, zaman aralığı, hız sınırı, veri işleme ve durdurma koş
 
 ## Doğrulama kanıtı
 
-[`VALIDATION.md`](../VALIDATION.md) içindeki **2026-10-29** Community v1.1.0 doğrulama anlık görüntüsü:
+[`VALIDATION.md`](../VALIDATION.md) içindeki **2026-10-24** Community v1.0.0 yayın adayı anlık görüntüsü:
 
 | Kanıt kapısı | Gözlenen sonuç |
 | --- | --- |
 | Community metadata/yayın yüzeyi | PASS — 43 gerekli yayın dosyası |
 | Deterministik kaynak oluşturma ve release-tree taraması | PASS |
-| Python `unittest` launcher | 3.079 test, 0 hata, 0 başarısızlık |
-| Python `pytest` modülleri | 337 geçti |
-| JavaScript/Node testleri | 517 geçti, 0 başarısızlık |
-| Kilitli araç kurulumu smoke | PASS — Linux ARM64 için yedi araç çevrimdışı cache'den kurulup yeniden doğrulandı; tarayıcı çalıştırılmadı |
-| Tek komut çevrimdışı setup smoke | PASS — parse edilebilir JSON, yedi köken-bağlı araç ve iki gerçek help entrypoint |
+| Python `unittest` launcher | 2.812 test, 0 hata, 0 başarısızlık |
+| Python `pytest` modülleri | 204 geçti |
+| JavaScript/Node testleri | 432 geçti, 0 başarısızlık |
+| Kilitli araç kurulumu smoke | PASS — Linux ARM64 için beş araç çevrimdışı cache'den kurulup yeniden doğrulandı; tarayıcı çalıştırılmadı |
+| Tek komut çevrimdışı setup smoke | PASS — parse edilebilir JSON, beş köken-bağlı araç ve iki gerçek help entrypoint |
 | Beş dilli gerçek Chromium düzeni | PASS — masaüstü/mobil 10/10 görünüm |
 | Platform ve yayın-sırrı kapıları | PASS — Linux/macOS/Windows politika yolları ile `.env`/anahtar dışlama sözleşmeleri |
 | Compose yapılandırması | Varsayılan ve lisans-kapılı tools override yerelde PASS |
-| Community container build | PASS — son birleştirilmiş kaynak, ağ kullanmadan doğrulanmış R66 runtime'a yerleştirildi; imaj sağlıklı duruma ulaştı |
-| CodeQL | Yayınlanmış main tabanı Actions, JavaScript/TypeScript ve Python için PASS; v1.1.0 PR #19 yeni CI/CodeQL geçişi tamamlanmadan etiketlenmez |
+| Community container build | Önceki main core build PASS; bu aday başlığı için yeni PR CI bekleniyor |
+| CodeQL | PR #7 Actions, JavaScript/TypeScript ve Python işleri PASS; dal ve PR ref'lerinde açık alarm 0 |
 
 Bu sayılar ürünün bulduğu açık sayısı değildir ve yalnız o kaynak anlık görüntüsü/fixture'ları için geçerlidir.
 Gelecek commitler test toplamlarını değiştirebilir; bir motorun CI'da veya başka mimaride atlanması o motora ilişkin

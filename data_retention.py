@@ -301,7 +301,7 @@ def cache_bases(data_dir: Path, environ: dict[str, str] | None = None) -> dict[s
     raw_osv = str(env.get("SNIPER_OSV_DB_ROOT", "") or "").strip()
     osv = Path(raw_osv).expanduser() if raw_osv else Path.home() / ".local" / "state" / "sniper" / "osv-db"
     xdg = str(env.get("XDG_CACHE_HOME", "") or "").strip()
-    lsp = (Path(xdg) if xdg else Path.home() / ".cache") / "sniper-lsp"
+    lsp = (Path(xdg) if xdg else Path.home() / ".cache") / "vulkill-lsp"
     return {"data": Path(data_dir), "osv": osv, "lsp": lsp}
 
 
@@ -311,7 +311,7 @@ def _cache_deletions(data_dir: Path, rules: dict[str, Any], now: float,
     * ``data/cache/osv-malware-*.json`` ve OSV kökündeki ``index-cache/*.json.gz``: yalnız güncel arşivlerle EŞLEŞMEYENLER
       (eski nesillere ait); güncel arşivler okunamazsa hiçbiri.
     * ``data/sandbox-runs/pdf-*``: çökmeden kalan PDF iş dizinleri (süreden eski).
-    * LSP önbelleği (``~/.cache/sniper-lsp``): süreden eski dosyalar."""
+    * LSP önbelleği (``~/.cache/vulkill-lsp``): süreden eski dosyalar."""
     bases = cache_bases(data_dir, environ)
     limit = now - rules["older_than_days"] * 86400
     grace = now - RECENT_GRACE_SECONDS

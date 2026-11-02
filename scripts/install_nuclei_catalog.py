@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a deterministic, read-only Nuclei v10.5.0 HTTP catalog from its official tag archive."""
+"""Build a deterministic, read-only Nuclei v10.5.1 HTTP catalog from its official tag archive."""
 
 from __future__ import annotations
 
@@ -16,13 +16,13 @@ import tempfile
 from typing import Any
 
 
-VERSION = "v10.5.0"
-ARCHIVE_SHA256 = "80fbabceca095fac40afecc7f023748df22b9576b9ff10a4422bd2fbf81f9a41"
-EXPECTED_TEMPLATE_COUNT = 11_655
-ARCHIVE_PREFIX = "nuclei-templates-10.5.0"
+VERSION = "v10.5.1"
+ARCHIVE_SHA256 = "30fe1cfaced4635f886e4a2673641bba86998dceec28e468274524e789aa56eb"
+EXPECTED_TEMPLATE_COUNT = 11_718
+ARCHIVE_PREFIX = "nuclei-templates-10.5.1"
 MAPPING_PATH = "http/technologies/wappalyzer-mapping.yml"
 PIN_NAME = "SNIPER-HTTP-CATALOG-PIN-v2.json"
-INDEX_NAME = "SNIPER-HTTP-ID-INDEX.json"
+INDEX_NAME = "VULKILL-HTTP-ID-INDEX.json"
 _HEX64 = re.compile(r"[0-9a-f]{64}\Z")
 _TEMPLATE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}\Z")
 _MAX_ARCHIVE_BYTES = 100_000_000
@@ -80,7 +80,7 @@ def _member_relative(member: tarfile.TarInfo) -> str | None:
     if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
         raise CatalogInstallError("Archive contains an unsafe path")
     if not path.parts or path.parts[0] != ARCHIVE_PREFIX:
-        raise CatalogInstallError("Archive root does not match Nuclei v10.5.0")
+        raise CatalogInstallError("Archive root does not match Nuclei v10.5.1")
     inner = PurePosixPath(*path.parts[1:])
     if not inner.parts or inner.parts[0] != "http":
         return None

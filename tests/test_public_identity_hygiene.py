@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILDER = ROOT / "scripts" / "build-community-source.py"
 VALIDATOR = ROOT / ".github" / "scripts" / "validate-community-release.py"
 PORTABLE_CONTAINER_LABEL = "org.sniper.community.k6.local"
-PORTABLE_TEMPLATE_AUTHOR = "sniper-community"
+PORTABLE_TEMPLATE_AUTHOR = "vulkill-community"
 ACTIVE_TARGET_TESTS = (
     "tests/test_wave20_sqlite_wal_concurrency_stress.py",
     "tests/test_zap_actor_job_lease.py",

@@ -25,7 +25,7 @@ export class PlaylistsEndpoints extends EndpointsBase {
         self.assertEqual(red["format"], "sniper-cspt-sdk-url-template-audit/1")
         self.assertEqual(red["finding_count"], 1)
         finding = red["findings"][0]
-        self.assertEqual(finding["rule_id"], "SNIPER-CSPT-SDK-01")
+        self.assertEqual(finding["rule_id"], "VULKILL-CSPT-SDK-01")
         self.assertEqual(finding["cwe"], "CWE-22")
         self.assertEqual(finding["reference"], "CWE-22")
         self.assertEqual(finding["severity"], "high")
@@ -66,7 +66,7 @@ export async function fetchDeploymentData(region: string, token: string) {
         )
         self.assertEqual(red_region["finding_count"], 1)
         f_region = red_region["findings"][0]
-        self.assertEqual(f_region["rule_id"], "SNIPER-URL-TMPL-02")
+        self.assertEqual(f_region["rule_id"], "VULKILL-URL-TMPL-02")
         self.assertEqual(f_region["cwe"], "CWE-918")
         self.assertEqual(f_region["reference"], "CWE-918")
         self.assertEqual(f_region["severity"], "high")
@@ -88,7 +88,7 @@ export async function probeFirewallFlags(firewallHost: string, pathPrefix: strin
             filename="firewall-probe.ts",
         )
         self.assertEqual(red_host["finding_count"], 1)
-        self.assertEqual(red_host["findings"][0]["rule_id"], "SNIPER-URL-TMPL-02")
+        self.assertEqual(red_host["findings"][0]["rule_id"], "VULKILL-URL-TMPL-02")
 
         remediated_region_ts = """
 export async function fetchDeploymentData(region: string, token: string) {
@@ -121,7 +121,7 @@ export async function fetchExternalMetadata(targetUrl: string) {
         )
         self.assertEqual(red["finding_count"], 1)
         finding = red["findings"][0]
-        self.assertEqual(finding["rule_id"], "SNIPER-HTTP-DNSREBIND-04")
+        self.assertEqual(finding["rule_id"], "VULKILL-HTTP-DNSREBIND-04")
         self.assertEqual(finding["cwe"], "CWE-367")
         self.assertEqual(finding["reference"], "CWE-367")
         self.assertEqual(finding["severity"], "high")
@@ -159,7 +159,7 @@ router.get("/v1/sessions/:sessionId", async (req, res) => {
         )
         self.assertEqual(red["finding_count"], 1)
         finding = red["findings"][0]
-        self.assertEqual(finding["rule_id"], "SNIPER-HTTP-REFETCH-05")
+        self.assertEqual(finding["rule_id"], "VULKILL-HTTP-REFETCH-05")
         self.assertEqual(finding["cwe"], "CWE-367")
         self.assertEqual(finding["reference"], "CWE-367")
         self.assertEqual(finding["severity"], "high")

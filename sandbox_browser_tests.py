@@ -19,7 +19,7 @@ from tool_sandbox import DRIVER, SandboxExecutionError, check_target, read_outpu
 
 MAX_PATHS = 10
 MAX_SCREENSHOT = 600_000
-USER_AGENT = "Mozilla/5.0 (X11; Linux aarch64) SniperBrowserTest/1.0"
+USER_AGENT = "Mozilla/5.0 (X11; Linux aarch64) VulKillBrowserTest/1.0"
 
 
 def driver_sha256() -> str:

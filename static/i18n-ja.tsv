@@ -330,3 +330,4 @@ S	Doğrulama kodu (6 hane)	確認コード（6桁）
 S	ya da kurtarma kodu	またはリカバリーコード
 S	Hesabınızı kaybettiyseniz yönetici, sunucuda	アカウントにアクセスできない場合、管理者はサーバー上で
 S	ile sıfırlayabilir.	を使ってリセットできます。
+S	Kurumsal hesapla giriş yap	法人アカウントでログイン

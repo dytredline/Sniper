@@ -337,7 +337,7 @@ class ApiTests(unittest.TestCase):
         self.previous_store = server.STORE
         server.STORE = Store(Path(self.data.name) / "sniper-test.db")
         server.SCHEDULER = None
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
         self.base = f"http://127.0.0.1:{self.httpd.server_address[1]}"
 

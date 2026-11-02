@@ -65,6 +65,15 @@ class SkipInsteadOfRejectTests(unittest.TestCase):
         self.assertEqual(result["skipped_files"], {})
         self.assertEqual(result["warnings"], [])
 
+    def test_product_like_filenames_do_not_clear_real_findings(self):
+        (self.root / "project_analyzer.py").write_text(VULN, encoding="utf-8")
+        (self.root / "report_renderers.py").write_text("def render(): return 'ok'\n", encoding="utf-8")
+
+        result = self.analyze()
+
+        self.assertTrue(result["findings"])
+        self.assertTrue(any(item["file"] == "project_analyzer.py" for item in result["findings"]))
+
     def test_only_skipped_files_still_explains(self):
         (self.root / "big.py").write_text("x = 1\n" * 200_000)
         with self.assertRaises(ProjectRejected) as caught:

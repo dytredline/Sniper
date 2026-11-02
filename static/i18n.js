@@ -533,7 +533,7 @@
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     _compilePattern: compilePattern,
   };
-  global.SniperI18n = api;
+  global.VulKillI18n = api;
 
   if (global.document) {
     if (global.document.readyState === "loading") global.document.addEventListener("DOMContentLoaded", () => init(global.document));

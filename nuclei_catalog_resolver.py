@@ -6,7 +6,7 @@ from typing import List, Dict
 
 
 # Constants per spec
-EXPECTED_INDEX_VERSION = "v10.5.0"
+EXPECTED_INDEX_VERSION = "v10.5.1"
 MIN_ID_LENGTH = 1
 MAX_ID_LENGTH = 128
 MAX_IDS = 1000
@@ -149,7 +149,7 @@ def resolve_http_template_paths(
     if not catalog_root.is_dir():
         raise ValueError("catalog_root bir dizin olmalı")
 
-    index_path = catalog_root / "SNIPER-HTTP-ID-INDEX.json"
+    index_path = catalog_root / "VULKILL-HTTP-ID-INDEX.json"
     if not index_path.is_absolute():
         raise ValueError("Dizin yolu mutlak olmalı (catalog_root mutlak)")
     if index_path.is_symlink():

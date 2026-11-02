@@ -85,7 +85,7 @@ class Faz2R2R3R4R5Tests(unittest.TestCase):
         rule_ids = {f["rule_id"] for f in report["findings"]}
         self.assertEqual(
             rule_ids,
-            {"SNIPER-GQL-FRAG-01", "SNIPER-GQL-FED-02", "SNIPER-GQL-PERSIST-03"},
+            {"VULKILL-GQL-FRAG-01", "VULKILL-GQL-FED-02", "VULKILL-GQL-PERSIST-03"},
         )
 
         safe_resolvers = {
@@ -189,7 +189,7 @@ class Faz2R2R3R4R5Tests(unittest.TestCase):
         r_spring_v = audit_multilang_route_tenant_authz(spring_vuln, filename="OrderController.java")
         r_spring_s = audit_multilang_route_tenant_authz(spring_safe, filename="OrderController.java")
         self.assertEqual(r_spring_v["finding_count"], 1)
-        self.assertEqual(r_spring_v["findings"][0]["rule_id"], "SNIPER-AUTHZ-SPRING-01")
+        self.assertEqual(r_spring_v["findings"][0]["rule_id"], "VULKILL-AUTHZ-SPRING-01")
         self.assertEqual(r_spring_s["finding_count"], 0)
 
         # 2. ASP.NET Core
@@ -215,7 +215,7 @@ class Faz2R2R3R4R5Tests(unittest.TestCase):
         r_aspnet_v = audit_multilang_route_tenant_authz(aspnet_vuln, filename="InvoicesController.cs")
         r_aspnet_s = audit_multilang_route_tenant_authz(aspnet_safe, filename="InvoicesController.cs")
         self.assertEqual(r_aspnet_v["finding_count"], 1)
-        self.assertEqual(r_aspnet_v["findings"][0]["rule_id"], "SNIPER-AUTHZ-ASPNET-02")
+        self.assertEqual(r_aspnet_v["findings"][0]["rule_id"], "VULKILL-AUTHZ-ASPNET-02")
         self.assertEqual(r_aspnet_s["finding_count"], 0)
 
         # 3. Express / NestJS
@@ -240,7 +240,7 @@ class Faz2R2R3R4R5Tests(unittest.TestCase):
         r_nest_v = audit_multilang_route_tenant_authz(nest_vuln, filename="projects.controller.ts")
         r_nest_s = audit_multilang_route_tenant_authz(nest_safe, filename="projects.controller.ts")
         self.assertEqual(r_nest_v["finding_count"], 1)
-        self.assertEqual(r_nest_v["findings"][0]["rule_id"], "SNIPER-AUTHZ-NEST-03")
+        self.assertEqual(r_nest_v["findings"][0]["rule_id"], "VULKILL-AUTHZ-NEST-03")
         self.assertEqual(r_nest_s["finding_count"], 0)
 
         # 4. Django / FastAPI
@@ -257,7 +257,7 @@ class Faz2R2R3R4R5Tests(unittest.TestCase):
         r_py_v = audit_multilang_route_tenant_authz(py_vuln, filename="views.py")
         r_py_s = audit_multilang_route_tenant_authz(py_safe, filename="views.py")
         self.assertEqual(r_py_v["finding_count"], 1)
-        self.assertEqual(r_py_v["findings"][0]["rule_id"], "SNIPER-AUTHZ-PY-04")
+        self.assertEqual(r_py_v["findings"][0]["rule_id"], "VULKILL-AUTHZ-PY-04")
         self.assertEqual(r_py_s["finding_count"], 0)
 
 

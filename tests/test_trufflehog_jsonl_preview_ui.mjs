@@ -4,7 +4,7 @@ import vm from 'node:vm';
 
 const appJsPath = process.env.SNIPER_UI_APP_JS || new URL('../static/app.js', import.meta.url).pathname;
 
-export async function loadSniperApp(reportResponse = null) {
+export async function loadVulKillApp(reportResponse = null) {
   const elements = new Map();
   const documentListeners = new Map();
   const requests = [];
@@ -121,7 +121,7 @@ export async function loadSniperApp(reportResponse = null) {
 }
 
 async function runTest() {
-  const app = await loadSniperApp();
+  const app = await loadVulKillApp();
   const {document, dispatchDocument, requests} = app;
 
   // Create DOM elements

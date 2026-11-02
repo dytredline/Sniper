@@ -35,6 +35,7 @@ PINS_FILE = "runtime-bindings-pins.json"
 PINS_FORMAT = "sniper-runtime-bindings-pins-v1"
 _MAX_PINS_BYTES = 64_000
 _MAX_INSTALL_MANIFEST_BYTES = 1_000_000
+_MAX_VERIFIED_TOOLCHAIN_BYTES = 256_000
 
 
 def _pins_path() -> Path | None:
@@ -190,6 +191,47 @@ def _load_secure_install_manifest(root: Path) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
+def _verified_toolchain_digests(app_dir: Path, platform_key: str) -> dict[str, str]:
+    """Return product-approved rebuild digests for this platform.
+
+    The Community installer manifest proves which upstream archive produced a
+    binary.  This second allowlist prevents automatic discovery from silently
+    selecting a known superseded upstream binary when the product has recorded
+    a hardened same-release rebuild.  Explicit operator configuration remains
+    a separate trust decision outside auto-discovery.
+    """
+    path = app_dir / "VERIFIED-TOOLCHAIN.lock.json"
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
+    except OSError:
+        return {}
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_mode & 0o022:
+            return {}
+        raw = os.read(fd, _MAX_VERIFIED_TOOLCHAIN_BYTES + 1)
+    finally:
+        os.close(fd)
+    if not raw or len(raw) > _MAX_VERIFIED_TOOLCHAIN_BYTES:
+        return {}
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return {}
+    if not isinstance(payload, dict) or payload.get("schema") != "vulkill-verified-toolchain-v1" \
+            or payload.get("platform") != platform_key:
+        return {}
+    tools = payload.get("tools")
+    if not isinstance(tools, dict):
+        return {}
+    result: dict[str, str] = {}
+    for tool_id, record in tools.items():
+        digest = record.get("binary_sha256") if isinstance(record, dict) else None
+        if isinstance(tool_id, str) and isinstance(digest, str) and re.fullmatch(r"[0-9a-f]{64}", digest):
+            result[tool_id] = digest
+    return result
+
+
 def _trusted_runtime_member(root: Path, relative: PurePosixPath) -> Path | None:
     """Resolve a runtime member only when every existing component is non-symlink."""
     try:
@@ -221,6 +263,7 @@ def _verified_community_runtimes(
         platform_key = current_platform_key()
     except InstallError:
         return {}
+    hardened_digests = _verified_toolchain_digests(app_dir, platform_key)
     selected = lock.get("profiles", {}).get("local")
     if not isinstance(selected, list) or any(not isinstance(item, str) for item in selected):
         return {}
@@ -260,6 +303,9 @@ def _verified_community_runtimes(
             binary = _trusted_runtime_member(root, installed_rel)
             digest = _sha256_file(binary) if binary is not None else None
             if digest is None or digest != record.get("binary_sha256"):
+                continue
+            hardened = hardened_digests.get(tool_id)
+            if hardened is not None and digest != hardened:
                 continue
             verified[tool_id] = (binary, digest)
     return verified
@@ -493,7 +539,7 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
     node_bin, node_sha = _first_valid_unrevoked_executable(
         ([Path(dropin_defaults["SNIPER_NODE_BINARY"])] if "SNIPER_NODE_BINARY" in dropin_defaults else [])
         + [r / "node" / "bin" / "node" for r in portable_roots]
-        + [home / ".local" / "opt" / "node-v22.23.4-linux-arm64" / "bin" / "node", Path("/usr/bin/node")],
+        + [home / ".local" / "opt" / "node-v26.13.0-linux-arm64" / "bin" / "node", Path("/usr/bin/node")],
         PINS["node"].revoked_digests,
     )
     matching_npm = node_bin.parent.parent / "lib" / "node_modules" / "npm" / "bin" / "npm-cli.js" if node_bin else None
@@ -501,7 +547,7 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
         ([matching_npm] if matching_npm is not None else [])
         + ([Path(dropin_defaults["SNIPER_NPM_CLI"])] if "SNIPER_NPM_CLI" in dropin_defaults else [])
         + [r / "node" / "lib" / "node_modules" / "npm" / "bin" / "npm-cli.js" for r in portable_roots]
-        + [home / ".local" / "opt" / "node-v22.23.4-linux-arm64" / "lib" / "node_modules" / "npm" / "bin" / "npm-cli.js"],
+        + [home / ".local" / "opt" / "node-v26.13.0-linux-arm64" / "lib" / "node_modules" / "npm" / "bin" / "npm-cli.js"],
         executable=False,
     )
     npm_sha = _sha256_file(npm_cli) if npm_cli else None
@@ -550,7 +596,7 @@ def _discover_bindings() -> tuple[dict[str, str], list[dict[str, Any]]]:
     st_bin = _first_valid_file(
         ([Path(dropin_defaults["SNIPER_SCHEMATHESIS_BINARY"])]
          if "SNIPER_SCHEMATHESIS_BINARY" in dropin_defaults else [])
-        + [r / "schemathesis-4.31.0" / "venv" / "bin" / "st" for r in portable_roots]
+        + [r / "schemathesis-4.33.0" / "venv" / "bin" / "st" for r in portable_roots]
         + [r / "schemathesis" / "venv" / "bin" / "st" for r in portable_roots],
         executable=True,
     )
@@ -713,8 +759,8 @@ def portable_bundle_manifest() -> dict[str, Any]:
         },
         {
             "id": "trivy",
-            "name": "Trivy 0.75.0 (Yapılandırma; zafiyet profilleri ayrıca sabitlenmiş çevrimdışı DB ister)",
-            "bundle_relpath": "runtimes/trivy-0.75.0/trivy",
+            "name": "Trivy 0.76.1 (Yapılandırma; zafiyet profilleri ayrıca sabitlenmiş çevrimdışı DB ister)",
+            "bundle_relpath": "runtimes/trivy-0.76.1/trivy",
             "packaging_type": "single_static_binary_optional_offline_db",
             "requires_separate_install": False,
             "requires_docker": False,
@@ -736,7 +782,7 @@ def portable_bundle_manifest() -> dict[str, Any]:
         {
             "id": "gitleaks",
             "name": "Gitleaks 8.30.1 (Yerel Dosya ve Git Geçmişi Sır Tarayıcı)",
-            "bundle_relpath": "runtimes/gitleaks-8.30.1-stdlib/gitleaks",
+            "bundle_relpath": "runtimes/gitleaks-8.30.1/gitleaks",
             "packaging_type": "single_static_binary",
             "requires_separate_install": False,
             "requires_docker": False,
@@ -746,8 +792,8 @@ def portable_bundle_manifest() -> dict[str, Any]:
         },
         {
             "id": "trufflehog",
-            "name": "TruffleHog 3.99.0 (Yerel Dosya ve Git Geçmişi Sır Tarayıcı)",
-            "bundle_relpath": "runtimes/trufflehog-3.99.0-unpacked/trufflehog",
+            "name": "TruffleHog 3.99.7 (Yerel Dosya ve Git Geçmişi Sır Tarayıcı)",
+            "bundle_relpath": "runtimes/trufflehog-3.99.7/trufflehog",
             "packaging_type": "single_static_binary",
             "requires_separate_install": False,
             "requires_docker": False,
@@ -757,8 +803,8 @@ def portable_bundle_manifest() -> dict[str, Any]:
         },
         {
             "id": "semgrep",
-            "name": "Opengrep 1.30.1 + VulKill Yerel Güvenlik Kural Paketi",
-            "bundle_relpath": "runtimes/opengrep-1.30.1/opengrep + rules/opengrep/sniper-core.yaml",
+            "name": "Opengrep 1.33.1 + VulKill Yerel Güvenlik Kural Paketi",
+            "bundle_relpath": "runtimes/opengrep-1.33.1/opengrep + rules/opengrep/sniper-core.yaml",
             "packaging_type": "single_static_binary_and_builtin_rulepack",
             "requires_separate_install": False,
             "requires_docker": False,

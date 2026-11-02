@@ -39,16 +39,18 @@ yalnız kaydedilir ve içerikleri okunmaz.
 | Debian | `var/lib/dpkg/status`, distroless `status.d/*` | `Debian:12` … |
 | Ubuntu | `var/lib/dpkg/status` | `Ubuntu:24.04:LTS`, `Ubuntu:24.10` … |
 | Alpine / Wolfi / Chainguard | `lib/apk/db/installed` | `Alpine:v3.19` …, `Wolfi`, `Chainguard` |
-| AlmaLinux / Rocky | `var/lib/rpm/rpmdb.sqlite` | `AlmaLinux:9`, `Rocky Linux:9` (indirme: taban arşiv `AlmaLinux` / `Rocky Linux`) |
-| RHEL | `var/lib/rpm/rpmdb.sqlite`, `usr/lib/sysimage/rpm/rpmdb.sqlite` | `Red Hat Enterprise Linux:8`, `:9` … |
+| AlmaLinux / Rocky | `var/lib/rpm/rpmdb.sqlite` veya eski Berkeley DB `Packages` | `AlmaLinux:9`, `Rocky Linux:9` (indirme: taban arşiv `AlmaLinux` / `Rocky Linux`) |
+| RHEL | `var/lib/rpm/rpmdb.sqlite`, `usr/lib/sysimage/rpm/rpmdb.sqlite` veya eski Berkeley DB `Packages` | `Red Hat Enterprise Linux:8`, `:9` … |
 | Amazon Linux | rpm sqlite | `Amazon Linux:2`, `Amazon Linux:2023` |
 | SLES / openSUSE Leap | rpm sqlite | `SUSE Linux Enterprise Server:15.5`, `openSUSE Leap:15.6` … |
 
 RPM SQLite okuyucu yalnız gerçek `Packages` tablosunu kabul eder; view/sanal tabloyu reddeder, satırları akışla
 ve 100.000 paket sınırıyla okur. Standart rpm `8e ad e8` magic/version önekli Header export satırları ile eski
 öneksiz satırları ayrıştırır; bozuk tür/başlık satırını ve NUL sonlandırıcısı olmayan string etiketini güvenli
-biçimde atlar. Eski BerkeleyDB/NDB rpm veritabanı paketleri henüz ayrıştırılmaz. BerkeleyDB, DB_HASH
-metadata magic/sürüm/sayfa boyutu birlikte doğrulanarak; `Packages.db` ise doğrulanmış NDB magic'i
+biçimde atlar. Eski Berkeley DB `Packages` hash veritabanı, DB_HASH metadata magic/sürüm/sayfa boyutu birlikte
+doğrulandıktan sonra güvenilir sistem Perl `DB_File`/Berkeley DB 5 runtime'ıyla sınırlı ayrı işlemde okunur.
+Ana süreç native sayfa ayrıştırmaz; yardımcı dosya ve runtime kimliği doğrulanır, satır/boyut/süre/çıktı sınırları
+uygulanır. Runtime eksikliği/çökmesi veya bozuk kayıt fail-closed olur. `Packages.db`, doğrulanmış NDB okuyucusu
 bulunmadığı için yalnız `ndb_candidate` olarak raporlanır. Bu durumda ve desteklenen paket veritabanının
 bulunmadığı diğer durumlarda `os_packages` kontrolü **pass olmaz**; `na` ve
 `container.package_inventory.reason` (`legacy_rpmdb_unsupported` / `package_database_missing`) döner.

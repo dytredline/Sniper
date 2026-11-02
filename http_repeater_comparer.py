@@ -111,7 +111,7 @@ def compare_http_responses(
     # 1. Başarısız/yasaklı (401/403/404) durumdan 2xx durumuna geçiş (Auth / Guard Bypass)
     if base_status in {401, 403, 404} and 200 <= mut_status < 300:
         anomalies.append({
-            "control_id": "SNIPER-REPEATER-BYPASS-01",
+            "control_id": "VULKILL-REPEATER-BYPASS-01",
             "cwe": "CWE-285",
             "severity": "critical",
             "title": "Paket mutasyonu ile erişim kontrolü / durum kodu atlaması (401/403 -> 2xx)",
@@ -129,7 +129,7 @@ def compare_http_responses(
                 mut_val = diff["mutated"]
                 if any(tok in leaf for tok in ("price", "amount", "total", "cost")) and isinstance(mut_val, (int, float)) and mut_val <= 0:
                     anomalies.append({
-                        "control_id": "SNIPER-REPEATER-LOGIC-02",
+                        "control_id": "VULKILL-REPEATER-LOGIC-02",
                         "cwe": "CWE-840",
                         "severity": "critical",
                         "title": "Paket mutasyonu ile negatif veya sıfır fiyat/tutar kabul edildi (Business Logic Bypass)",
@@ -138,7 +138,7 @@ def compare_http_responses(
                     })
                 elif any(tok in leaf for tok in ("role", "admin", "verified")) and mut_val in {"admin", "superadmin", True, 1}:
                     anomalies.append({
-                        "control_id": "SNIPER-REPEATER-MASS-03",
+                        "control_id": "VULKILL-REPEATER-MASS-03",
                         "cwe": "CWE-915",
                         "severity": "high",
                         "title": "Paket mutasyonu ile yetki/rol alanı (Mass Assignment) yükseltildi",

@@ -32,7 +32,7 @@ class ZapTargetActiveApiTests(unittest.TestCase):
             authorization_ref="FIXTURE-AUTHORIZATION", scope_notes="One exact URL",
             out_of_scope="", test_window=valid_window, special_approvals={},
         )
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.httpd.daemon_threads = True
         server.PORT = self.httpd.server_address[1]
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)

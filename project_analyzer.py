@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from pathlib import PurePosixPath
 import posixpath
-import re
+import safe_regex as re
 import threading
 import time
 import tokenize
@@ -159,21 +159,6 @@ def validate_project_path(value: str, allowed_roots: tuple[Path, ...] | None = N
     if not any(resolved != root and root in resolved.parents for root in roots):
         raise ProjectRejected("Proje yalnızca kullanıcı dizini veya bağlı yerel disk içinde olabilir.")
     return resolved
-
-
-def _is_sniper_source_tree(tree: ProjectTree) -> bool:
-    """Recognize VulKill itself through the already pinned project descriptor.
-
-    The recognition check must not reopen attacker-controlled absolute paths:
-    the same descriptor-anchored tree used by the scanner performs both file
-    checks and rejects symlink/non-regular replacements.
-    """
-    try:
-        for relative in ("project_analyzer.py", "report_renderers.py"):
-            tree.read_bytes(relative, 1, allow_empty=True, truncate=True)
-    except ProjectTreeError:
-        return False
-    return True
 
 
 # Üretilmiş/küçültülmüş paketler: kaynak analizi için gürültü (bağımlılık taraması ayrı yapılır).
@@ -504,60 +489,16 @@ _HASH_COMMENT_SUFFIXES = frozenset({
 _LLM_TOKEN_METRIC_RE = re.compile(
     r"(?i)\b(?:(?:prompt|completion|total|max|input|output|cached|reasoning|num)[_-]?tokens?|token[_-]?(?:count|usage|limit|budget)s?|tokens[_-]?used)\b"
 )
-def _is_benign_secret_literal(raw_value: str) -> bool:
-    value = raw_value.strip()
-    lowered = value.casefold()
-    prefix_markers = (
-        "placeholder", "changeme", "your_", "your ", "your-", "example", "dummy",
-        "no_api_key", "no-api-key", "noapikey", "oauth client secret",
-    )
-    if lowered.startswith(prefix_markers):
-        return True
-    if lowered in {"not_used_at_runtime", "not-used-at-runtime", "build_only", "build-only", "[redacted]"}:
-        return True
-    if lowered.endswith(("-not-configured", "_not_configured", "-not_configured", "_not-configured")):
-        return True
-    if value and all(character == "*" for character in value):
-        return True
-    if len(value) > 1 and value.startswith("/") and all(
-        character in "_./-" or character.isascii() and character.isalnum()
-        for character in value[1:]
-    ):
-        return True
-    if len(value) >= 3 and value.startswith("<") and value.endswith(">") and ">" not in value[1:-1]:
-        return True
-    if len(value) >= 4 and value.startswith("${") and value.endswith("}") and "}" not in value[2:-1]:
-        return True
-    if len(value) >= 6 and value.startswith("{{") and value.endswith("}}") and "}" not in value[2:-2]:
-        return True
-    return len(value.split()) >= 3
+_BENIGN_SECRET_LITERAL_RE = re.compile(
+    r"(?i)^(?:placeholder.*|changeme.*|your[_\s-].*|example.*|dummy.*|no[_-]?api[_-]?key.*|"
+    r"not[_-]?used[_-]?at[_-]?runtime|build[_-]?only|oauth\s+client\s+secret.*|"
+    r".*[-_]not[-_]configured|\[redacted\]|\*+|/[A-Za-z0-9_./-]+|"
+    r"<[^>]+>|\$\{[^}]+\}|\{\{[^}]+\}\}|\S+\s+\S+\s+.*)$"
+)
 _SQL_CONTEXT_LINE_RE = re.compile(
     r"(?i)(?:\b(?:SELECT|INSERT|UPDATE|DELETE|FROM|WHERE|JOIN|INTO|VALUES|CREATE|ALTER|DROP|TABLE|SET|UNION)\b"
-    r"|\b(?:db|sql|conn|connection|cursor|cur|stmt|pool|tx|session|engine|knex|sequelize|prisma|repo|store)\s*\.(?:\w+\s*\.)?\s*(?:execute|query)\s*\()"
+    r"|\b(?:db|sql|conn|connection|cursor|cur|stmt|pool|tx|session|engine|knex|sequelize|prisma|repo|store)\s*(?:\.\w+)?\s*\.\s*(?:execute|query)\s*\()"
 )
-_JWT_INSECURE_OPTION_RE = re.compile(
-    r"(?i)(?:verify\s*=\s*false|verify_signature[\"']?\s*[:=]\s*false)"
-)
-_JWT_ALGORITHMS_OPEN_RE = re.compile(r"(?i)algorithms\s*[:=]\s*\[")
-_JWT_NONE_LITERAL_RE = re.compile(r"(?i)[\"']none[\"']")
-
-
-def _jwt_none_algorithm(text: str) -> bool:
-    """Find a quoted none algorithm before the next ']' without rescanning a long list."""
-    offset = 0
-    while match := _JWT_ALGORITHMS_OPEN_RE.search(text, offset):
-        close = text.find("]", match.end())
-        end = len(text) if close == -1 else close
-        if _JWT_NONE_LITERAL_RE.search(text, match.end(), end):
-            return True
-        if close == -1:
-            return False
-        offset = close + 1
-    return False
-
-
-def _has_unsafe_jwt_option(text: str) -> bool:
-    return bool(_JWT_INSECURE_OPTION_RE.search(text)) or _jwt_none_algorithm(text)
 
 
 def _non_python_code_only_lines(text: str, suffix: str) -> list[str]:
@@ -1629,7 +1570,6 @@ def _analyze_project(
     try:
         with ProjectTree(root) as activation_tree:
             taint_flow.activate_project_js_handlers(root, SKIP_DIRS, project_tree=activation_tree)
-            is_sniper_source_tree = _is_sniper_source_tree(activation_tree)
     except ProjectTreeError as exc:
         raise ProjectRejected("Proje ağacı güvenli biçimde açılamadı veya doğrulamadan sonra değişti.") from exc
     findings: list[dict[str, Any]] = []
@@ -1710,6 +1650,7 @@ def _analyze_project(
             "crypto", "high", "JWT imza doğrulaması devre dışı veya alg:none izni",
             re.compile(
                 r"(?i)(verify_signature[\"']?\s*[:=]\s*false"
+                r"|algorithms\s*[:=]\s*\[[^\]]*[\"']none[\"']"
                 r"|jwt\.decode\s*\([^\n]*verify\s*=\s*false"
                 r"|jwt\.get_unverified_claims\s*\()"
             ),
@@ -2091,7 +2032,7 @@ def _analyze_project(
                                 and len(value.value) >= 8
                                 and not (
                                     isinstance(value.value, str)
-                                    and _is_benign_secret_literal(value.value)
+                                    and _BENIGN_SECRET_LITERAL_RE.match(value.value.strip())
                                 )
                             ):
                                 add(
@@ -2343,7 +2284,7 @@ def _analyze_project(
                         )
             has_verified_jwt_in_file = bool(
                 re.search(r"(?i)\b(?:jwt\.decode|PyJWKClient|get_signing_key|jwk)\b", text)
-                and not _has_unsafe_jwt_option(text)
+                and not re.search(r"(?i)(?:verify\s*=\s*false|verify_signature[\"']?\s*[:=]\s*false|algorithms\s*[:=]\s*\[[^\]]*[\"']none[\"'])", text)
             )
             python_rules = tuple(rule for rule in _rules_present(extra_line_rules, _fold_for_literals(lower))
                                  if rule[2] not in NON_PYTHON_RULE_TITLES)
@@ -2351,12 +2292,7 @@ def _analyze_project(
             python_code_lines = _python_code_only_lines(text) if python_rules else ()
             for line_number, line in enumerate(python_code_lines, 1):
                 for category, severity, title, pattern, evidence, recommendation, reference in python_rules:
-                    if per_rule_count.get(title, 0) >= 4:
-                        continue
-                    if not pattern.search(line) and not (
-                        title == "JWT imza doğrulaması devre dışı veya alg:none izni"
-                        and _jwt_none_algorithm(line)
-                    ):
+                    if per_rule_count.get(title, 0) >= 4 or not pattern.search(line):
                         continue
                     if (
                         title == "JWT imza doğrulaması devre dışı veya alg:none izni"
@@ -2375,7 +2311,7 @@ def _analyze_project(
             has_origin_check = bool(origin_check_pattern.search(text))
             has_verified_jwt_in_file = bool(
                 re.search(r"(?i)\b(?:jwt\.decode|PyJWKClient|get_signing_key|jwk|jwtVerify)\b", text)
-                and not _has_unsafe_jwt_option(text)
+                and not re.search(r"(?i)(?:verify\s*=\s*false|verify_signature[\"']?\s*[:=]\s*false|algorithms\s*[:=]\s*\[[^\]]*[\"']none[\"'])", text)
             )
             folded = _fold_for_literals(lower)
             active_rules = () if normalized_name.endswith((".d.ts", ".md")) else tuple(
@@ -2391,12 +2327,7 @@ def _analyze_project(
             for line_number, line in enumerate(source_lines, 1):
                 raw_line_text = raw_source_lines[line_number - 1] if line_number - 1 < len(raw_source_lines) else line
                 for category, severity, title, pattern, evidence, recommendation, reference in active_rules:
-                    if per_rule_count.get(title, 0) >= 4:
-                        continue
-                    if not pattern.search(line) and not (
-                        title == "JWT imza doğrulaması devre dışı veya alg:none izni"
-                        and _jwt_none_algorithm(line)
-                    ):
+                    if per_rule_count.get(title, 0) >= 4 or not pattern.search(line):
                         continue
                     if title == DOM_XSS_RULE_TITLE and _dom_sink_is_safe(raw_source_lines, line_number - 1):
                         continue
@@ -2416,18 +2347,18 @@ def _analyze_project(
                         ):
                             continue
                         m_sec = re.search(
-                            r"(?i)\b(?:api[_-]?key|client[_-]?secret|private[_-]?key|password|passwd)\b\s*+[:=]\s*+[\"']([^\"']{8,}+)[\"']",
+                            r"(?i)\b(?:api[_-]?key|client[_-]?secret|private[_-]?key|password|passwd)\b\s*[:=]\s*[\"']([^\"']{8,})[\"']",
                             line,
                         )
-                        if m_sec and _is_benign_secret_literal(m_sec.group(1)):
+                        if m_sec and _BENIGN_SECRET_LITERAL_RE.match(m_sec.group(1).strip()):
                             continue
                     if title == "Günlüğe hassas veri yazma olasılığı":
                         line_without_metrics = _LLM_TOKEN_METRIC_RE.sub("", line)
-                        line_without_literals = re.sub(r"""(?:"(?:\\.|[^"\\]++)*+"|'(?:\\.|[^'\\]++)*+')""", '""', line_without_metrics)
+                        line_without_literals = re.sub(r"""(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')""", '""', line_without_metrics)
                         if not pattern.search(line_without_literals):
                             continue
                     if title == "Servis tüm ağ arayüzlerinde dinliyor" and re.search(
-                        r"""(?:[=!]==?\s*+["']0\.0\.0\.0["']|["']0\.0\.0\.0["']\s*+[=!]==?|\.(?:replace|includes|contains|startsWith|equals)\s*+\(\s*+["']0\.0\.0\.0["']|\b(?:in|case)\s++[^\n]{0,2048}["']0\.0\.0\.0["'])""",
+                        r"""(?:[=!]==?\s*["']0\.0\.0\.0["']|["']0\.0\.0\.0["']\s*[=!]==?|\.(?:replace|includes|contains|startsWith|equals)\s*\(\s*["']0\.0\.0\.0["']|\b(?:in|case)\s+[^\n]*["']0\.0\.0\.0["'])""",
                         line,
                     ):
                         continue
@@ -2639,7 +2570,7 @@ def _analyze_project(
                 rust_unsafe_files[0] += 1
 
         # Kurumsal v2 saldırı zinciri ve yapısal dedektörler (Kategori A: 1, 2, 3, 4)
-        if not is_sniper_source_tree and suffix in {".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs"}:
+        if suffix in {".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".go", ".rs"}:
             cors_m = re.search(
                 r'(?i)(?:allow_origins\s*=\s*\[\s*["\']\*["\']\s*\]|Access-Control-Allow-Origin["\']?\s*[:=]\s*["\']\*["\'])',
                 text,
@@ -2703,7 +2634,7 @@ def _analyze_project(
                     findings[-1]["exploitability"] = "proven_exploitable"
 
             ws_cswsh_m = re.search(
-                r"CheckOrigin\s*+:\s*+func\s*+\([^)]*+\)\s*+bool\s*+\{\s*+return\s++true\s*+\}",
+                r"CheckOrigin\s*:\s*func\s*\([^)]*\)\s*bool\s*\{\s*return\s+true\s*\}",
                 text,
             )
             if not ws_cswsh_m:
@@ -2807,7 +2738,7 @@ def _analyze_project(
 
                 bl_res = business_logic_auditor.audit_business_logic_inline(text, filename=file_rel_posix)
                 for bf in bl_res.get("findings") or []:
-                    if bf.get("control_id") == "SNIPER-AUTHZ-BOLA-04":
+                    if bf.get("control_id") == "VULKILL-AUTHZ-BOLA-04":
                         add(
                             "authz", "high", bf["title"], path, int(bf.get("line", 1) or 1),
                             bf.get("evidence", ""), bf.get("recommendation", ""), "CWE-639",
@@ -2824,7 +2755,7 @@ def _analyze_project(
 
                 ai_res = ai_llm_security_auditor.audit_ai_llm_inline(text, filename=file_rel_posix)
                 for af in ai_res.get("findings") or []:
-                    if af.get("control_id") == "SNIPER-AI-CHAIN-01":
+                    if af.get("control_id") == "VULKILL-AI-CHAIN-01":
                         add(
                             "command_data", "critical", af["title"], path, int(af.get("line", 1) or 1),
                             af.get("evidence", ""), af.get("recommendation", ""), "CWE-77",
@@ -3389,16 +3320,9 @@ def _analyze_project(
                 or "migrate" in file_rel_posix
                 or "migration" in file_rel_posix
                 or "alembic" in file_rel_posix
-            ) and (
-                re.search(
-                    r"(?i)(?:ROW\s++LEVEL\s++SECURITY|CREATE\s++POLICY|DROP\s++COLUMN|DROP\s++NOT\s++NULL|remove_column|op\.drop_column)",
-                    text,
-                )
-                or any(
-                    re.search(r"(?i)ADD\s++COLUMN", source_line)
-                    and re.search(r"(?i)\b(?:password|api_key|secret_key|private_key)\b", source_line)
-                    for source_line in text.splitlines()
-                )
+            ) and re.search(
+                r"(?i)(?:ROW\s+LEVEL\s+SECURITY|CREATE\s+POLICY|DROP\s+COLUMN|DROP\s+NOT\s+NULL|remove_column|op\.drop_column|ADD\s+COLUMN.*(?:password|api_key|secret_key|private_key))",
+                text,
             ):
                 try:
                     import schema_migration_security_auditor
@@ -3452,9 +3376,9 @@ def _analyze_project(
                 )
             )
             asym_join_m = re.search(
-                r"(?:\.join\s*+\([^;\n)]*+\)\s*+\.join\s*+\(\s*+&?\s*+(?:upload_id|part_number|version_id|session_id|token)\b"
-                r"|\bPaths\.get\s*+\([^,;\n)]*+,\s*+(?:keyId|uploadId|getOptionValue\s*+\([^)]*+\)|[a-zA-Z0-9_]*+Id)\s*+\)"
-                r"|\b(?:remove_dir_all|read_to_string|write|readAllBytes|deleteIfExists|newInputStream)\s*+\([^;\n)]{0,2048}(?:upload_id|keyId|getOptionValue))",
+                r"(?:\.join\s*\([^;\n)]*\)\s*\.join\s*\(\s*&?\s*(?:upload_id|part_number|version_id|session_id|token)\b"
+                r"|\bPaths\.get\s*\([^;\n)]*,\s*(?:keyId|uploadId|getOptionValue\s*\([^)]*\)|[a-zA-Z0-9_]*Id)\s*\)"
+                r"|\b(?:remove_dir_all|read_to_string|write|readAllBytes|deleteIfExists|newInputStream)\s*\([^;\n)]*(?:upload_id|keyId|getOptionValue))",
                 text,
             )
             if has_partial_path_guard and asym_join_m:
@@ -3717,8 +3641,7 @@ def _analyze_project(
                         has_pr_trigger
                         and has_checkout
                         and not has_same_repo_guard
-                        and re.search(r"(?i)\bruns-on\s*+:", raw_line)
-                        and "self-hosted" in raw_line.casefold()
+                        and re.search(r"(?i)\bruns-on\s*:[^\n#]*\bself-hosted\b", raw_line)
                     ):
                         add(
                             "supplychain", "high", "CI/CD iş akışında self-hosted runner üzerinde çatal (fork) PR kodu çalıştırma riski",
@@ -3728,7 +3651,7 @@ def _analyze_project(
                             "CWE-829",
                         )
                     uses_m = re.search(
-                        r"(?i)^\s*+-?\s*+uses\s*+:\s*+[\"']?([a-z0-9_.-]++)/([a-z0-9_.-]++)(?:/[^\s@\"'#]++)?@([^\s\"'#]++)",
+                        r"(?i)^\s*-?\s*uses\s*:\s*[\"']?([a-z0-9_.-]+)/([a-z0-9_.-]+)(?:/[^\s@\"'#]+)?@([^\s\"'#]+)",
                         raw_line,
                     )
                     if uses_m and (has_write_perms or has_prt_trigger or has_self_hosted):
@@ -4282,10 +4205,6 @@ def _analyze_project(
     clang_analysis = None
     if c_family_files and not partial_info:
         clang_analysis = _add_clang_findings(root, c_family_files, findings, add)
-
-    if is_sniper_source_tree:
-        findings.clear()
-        api_contract_findings = 0
 
     findings.sort(
         key=lambda item: (

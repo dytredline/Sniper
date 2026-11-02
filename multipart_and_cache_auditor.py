@@ -1,15 +1,15 @@
 """Wave 5 — Çok Parçalı Yükleme (uploadId) Koşulsuz Silme ve P2P Durum Önbelleği Zehirlenmesi Denetleyicisi.
 
 İki yüksek etkili gerçek dünya zafiyet sınıfını tespit eder:
-- SNIPER-UPLOAD-DEL-01: Çok parçalı yükleme (uploadId) işleyicisinde doğrulanmamış
+- VULKILL-UPLOAD-DEL-01: Çok parçalı yükleme (uploadId) işleyicisinde doğrulanmamış
   ikincil parametre ile yol geçişi ve koşulsuz dizin silme (CUA Daytona GHSA-3x8g-6h2v-8qx9 sınıfı).
-- SNIPER-P2P-CACHE-02: P2P/Konsensüs mesaj işleyicisinde kriptografik kanıt
+- VULKILL-P2P-CACHE-02: P2P/Konsensüs mesaj işleyicisinde kriptografik kanıt
   doğrulanmadan önce paylaşılan durum önbelleğinin güncellenmesi (Cache Poisoning DoS).
 """
 
 from __future__ import annotations
 
-import re
+import safe_regex as re
 from typing import Any
 
 FORMAT_VERSION = "sniper-multipart-and-cache-audit/1"
@@ -19,33 +19,23 @@ _UPLOAD_PARAM_RE = re.compile(r"\b(?:uploadId|upload_id)\b")
 _UNSAFE_UPLOAD_JOIN_RE = re.compile(
     r"(?:"
     r"\.join\s*\(\s*\"uploads\"\s*\)\s*\.join\s*\(\s*&?\s*(?:id|upload_id|uploadId)\b"
-    r"|os\.path\.join\s*+\([^,)]*+,\s*+upload_id\s*+\)"
-    r"|Path\s*+\([^)]*+\)\s*+(?:/\s*+[\"']uploads[\"']\s*+)?/\s*+upload_id\b"
-    r"|path\.join\s*+\([^,)]*+,\s*+uploadId\s*+\)"
+    r"|os\.path\.join\s*\([^)]*,\s*upload_id\s*\)"
+    r"|Path\s*\([^)]*\)\s*(?:/\s*[\"']uploads[\"']\s*)?/\s*upload_id\b"
+    r"|path\.join\s*\([^)]*,\s*uploadId\s*\)"
     r")"
 )
 
-def _has_safe_upload_id_guard(content: str) -> bool:
-    compact = "".join(content.split())
-    direct_markers = (
-        "fnupload_dir(", "self.upload_dir(", "upload_dir(&self,&id", "upload_dir(&self,id",
-        "upload_dir(&id", "upload_dir(id", "upload_dir(&upload_id", "upload_dir(upload_id",
-        "upload_dir(&uploadId", "upload_dir(uploadId", "validate_upload_id(",
-        "is_valid_upload_id(", "is_ascii_alphanumeric(",
-    )
-    if any(marker in compact for marker in direct_markers):
-        return True
-    cursor = 0
-    while True:
-        start = compact.find("re.fullmatch(", cursor)
-        if start < 0:
-            return False
-        call = compact[start:start + 512]
-        if "[a-zA-Z0-9_-]+" in call and any(
-            marker in call for marker in (",upload_id)", ",uploadId)")
-        ):
-            return True
-        cursor = start + len("re.fullmatch(")
+_SAFE_UPLOAD_ID_GUARD_RE = re.compile(
+    r"(?:"
+    r"\bfn\s+upload_dir\s*\("
+    r"|\bself\.upload_dir\s*\("
+    r"|\bupload_dir\s*\(\s*&?\s*(?:self\s*,\s*)?&?\s*(?:id|upload_id|uploadId)\b"
+    r"|\bvalidate_upload_id\s*\("
+    r"|\bis_valid_upload_id\s*\("
+    r"|\bis_ascii_alphanumeric\s*\("
+    r"|re\.fullmatch\s*\(\s*r?[\"']\^?\[a-zA-Z0-9_-]+\+\$?[\"']\s*,\s*(?:upload_id|uploadId)\s*\)"
+    r")"
+)
 
 _UNCONDITIONAL_DELETE_SINK_RE = re.compile(
     r"\b(?:tokio::fs::remove_dir_all|std::fs::remove_dir_all|fs::remove_dir_all|remove_dir_all|shutil\.rmtree|fs\.rmSync|fs\.rmdirSync)\s*\("
@@ -54,7 +44,7 @@ _UNCONDITIONAL_DELETE_SINK_RE = re.compile(
 _SAFE_DELETE_GUARD_RE = re.compile(
     r"(?:"
     r"\bif\s+removed\.is_some\s*\(\s*\)"
-    r"|\bif\s++let\s++Some\s*+\([^)]*+\)\s*+=\s*+(?:removed|[A-Za-z0-9_.]*+remove\s*+\()"
+    r"|\bif\s+let\s+Some\s*\([^)]*\)\s*=\s*(?:removed|[A-Za-z0-9_.]*remove\s*\()"
     r"|\bif\s+(?:upload_id|uploadId)\s+in\s+[A-Za-z0-9_.]+"
     r"|\bif\s*\(\s*[A-Za-z0-9_.]+\.(?:delete|has)\s*\(\s*(?:uploadId|upload_id)\s*\)\s*\)"
     r")"
@@ -101,11 +91,11 @@ def audit_multipart_upload_and_state_cache(
     content = str(raw_content or "")
     findings: list[dict[str, Any]] = []
 
-    # (a) SNIPER-UPLOAD-DEL-01
+    # (a) VULKILL-UPLOAD-DEL-01
     if _UPLOAD_PARAM_RE.search(content):
         join_match = _UNSAFE_UPLOAD_JOIN_RE.search(content)
         delete_match = _UNCONDITIONAL_DELETE_SINK_RE.search(content)
-        has_upload_id_guard = _has_safe_upload_id_guard(content)
+        has_upload_id_guard = bool(_SAFE_UPLOAD_ID_GUARD_RE.search(content))
         has_delete_guard = bool(_SAFE_DELETE_GUARD_RE.search(content))
 
         unsafe_join = bool(join_match and not has_upload_id_guard)
@@ -123,8 +113,8 @@ def audit_multipart_upload_and_state_cache(
             )
             findings.append(
                 {
-                    "control_id": "SNIPER-UPLOAD-DEL-01",
-                    "rule_id": "SNIPER-UPLOAD-DEL-01",
+                    "control_id": "VULKILL-UPLOAD-DEL-01",
+                    "rule_id": "VULKILL-UPLOAD-DEL-01",
                     "cwe": "CWE-22",
                     "reference": "CWE-22",
                     "severity": "high",
@@ -145,7 +135,7 @@ def audit_multipart_upload_and_state_cache(
                 }
             )
 
-    # (b) SNIPER-P2P-CACHE-02
+    # (b) VULKILL-P2P-CACHE-02
     handler_match = _P2P_HANDLER_RE.search(content)
     if handler_match:
         tail = content[handler_match.start() :]
@@ -166,8 +156,8 @@ def audit_multipart_upload_and_state_cache(
                 )
                 findings.append(
                     {
-                        "control_id": "SNIPER-P2P-CACHE-02",
-                        "rule_id": "SNIPER-P2P-CACHE-02",
+                        "control_id": "VULKILL-P2P-CACHE-02",
+                        "rule_id": "VULKILL-P2P-CACHE-02",
                         "cwe": "CWE-400",
                         "reference": "CWE-400",
                         "severity": "high",

@@ -47,11 +47,11 @@ class JvmFuzzHarnessTests(unittest.TestCase):
         self.assertEqual(result["target_class"], "com.acme.codec.PacketDecoder")
         self.assertEqual(result["target_method"], "decode")
         self.assertEqual(result["target_signature"], "byte[]")
-        self.assertEqual(result["harness_class"], "com.acme.codec.SniperJazzerHarness")
+        self.assertEqual(result["harness_class"], "com.acme.codec.VulKillJazzerHarness")
         self.assertEqual(result["source_sha256"], hashlib.sha256(BYTE_SOURCE.encode("utf-8")).hexdigest())
         self.assertIn("PacketDecoder.decode(data);", result["harness_code"])
         self.assertIn("fuzzerTestOneInput(byte[] data)", result["harness_code"])
-        self.assertIn("--target_class=com.acme.codec.SniperJazzerHarness", result["compile_command"])
+        self.assertIn("--target_class=com.acme.codec.VulKillJazzerHarness", result["compile_command"])
         self.assertEqual(result["execution"], "not_run")
 
     def test_string_target_uses_deterministic_utf8_input(self) -> None:

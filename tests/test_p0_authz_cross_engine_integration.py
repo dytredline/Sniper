@@ -68,7 +68,7 @@ def test_one_fixture_keeps_rails_routes_and_graphql_resolvers_separate() -> None
         )
 
     resolver_findings = [
-        item for item in api_report["findings"] if item["rule_id"] == "SNIPER-APIT-10"
+        item for item in api_report["findings"] if item["rule_id"] == "VULKILL-APIT-10"
     ]
     assert [(item["location"], item["source_name"]) for item in resolver_findings] == [
         ("Query.order -> Types::QueryType#order", "app/graphql/types/query_type.rb"),

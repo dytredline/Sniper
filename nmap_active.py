@@ -14,7 +14,9 @@ from xml.etree import ElementTree as ET
 
 from process_group_runner import run_in_process_group
 from scanner import resolve_public_ips, TargetRejected
+from tool_child_env import isolated_tool_environment
 from tool_report_nmap import parse_nmap_inline_summary
+from verified_exec import VerifiedExecutable, VerificationError, open_verified_executable
 
 
 # Fixed profile for bounded TCP-connect scan
@@ -38,50 +40,54 @@ _HOST_LABEL = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z")
 NMAP_LOCK = object()
 
 
-def _find_nmap_binary() -> Path | None:
-    """Locate Nmap binary per contract: SNIPER_NMAP_BINARY, sibling tools/nmap-7.94/bin/nmap, or PATH."""
+def _find_nmap_binary() -> VerifiedExecutable | None:
+    """Locate and open a SHA-pinned Nmap binary from configured, bundled or PATH locations."""
+    expected = os.environ.get("SNIPER_NMAP_SHA256", PINNED_NMAP_SHA256)
+    if re.fullmatch(r"[0-9a-f]{64}", expected) is None:
+        return None
+    candidates: list[Path] = []
     # 1. Explicit env override
     env_bin = os.getenv("SNIPER_NMAP_BINARY")
     if env_bin:
-        p = Path(env_bin)
-        if p.is_file() and os.access(p, os.X_OK):
-            return p
+        candidates.append(Path(env_bin))
 
     # 2. Sibling tools/nmap-7.94/bin/nmap under VulKill root
     # Use Path(__file__).resolve().parent.parent to locate relative to this module
-    candidate = Path(__file__).resolve().parent.parent / "tools" / "nmap-7.94" / "bin" / "nmap"
-    if candidate.is_file() and os.access(candidate, os.X_OK):
-        return candidate
+    candidates.append(Path(__file__).resolve().parent.parent / "tools" / "nmap-7.94" / "bin" / "nmap")
 
     # 3. System PATH
     import shutil
     path = shutil.which("nmap")
     if path:
-        return Path(path)
+        candidates.append(Path(path))
 
+    for candidate in candidates:
+        try:
+            return open_verified_executable(
+                candidate,
+                {expected: "Nmap çalışma zamanının sabit SHA-256 değeri"},
+                label="Nmap",
+            )
+        except VerificationError:
+            continue
     return None
 
 
-def _trusted_authorized_nmap_binary() -> Path:
+def _trusted_authorized_nmap_binary() -> VerifiedExecutable:
     """Resolve a pinned Nmap executable for the direct authorized-target profile."""
     configured = os.environ.get("SNIPER_NMAP_BINARY")
     path = Path(configured) if configured else PINNED_NMAP_PATH
     expected = os.environ.get("SNIPER_NMAP_SHA256", PINNED_NMAP_SHA256) if configured else PINNED_NMAP_SHA256
-    if (
-        not path.is_absolute()
-        or path.is_symlink()
-        or not path.is_file()
-        or not os.access(path, os.X_OK)
-        or not re.fullmatch(r"[0-9a-f]{64}", expected)
-    ):
+    if not re.fullmatch(r"[0-9a-f]{64}", expected):
         raise RuntimeError("sabitlenmiş nmap ikilisi kullanılamıyor")
     try:
-        actual = hashlib.sha256(path.read_bytes()).hexdigest()
-    except OSError as exc:
-        raise RuntimeError("sabitlenmiş nmap ikilisi okunamıyor") from exc
-    if actual != expected:
-        raise RuntimeError("sabitlenmiş nmap ikilisi hash değeri uyuşmuyor")
-    return path
+        return open_verified_executable(
+            path,
+            {expected: "yetkili Nmap profilinin sabit SHA-256 değeri"},
+            label="Nmap",
+        )
+    except VerificationError as exc:
+        raise RuntimeError(str(exc)) from exc
 
 
 def normalize_authorized_nmap_target(value: Any) -> str:
@@ -239,21 +245,24 @@ def _run_nmap(
     ipv6: bool,
     ports: list[int] | None = None,
     service_version: bool = False,
-    binary: Path | None = None,
+    binary: Path | VerifiedExecutable | None = None,
 ) -> tuple[str, int, int, int, list[int]]:
     """Run bounded Nmap and return sanitized summary data."""
     sv_enabled = validate_service_version(service_version)
     selected_ports = FIXED_PORTS if ports is None else validate_custom_ports(ports)
-    binary = binary or _find_nmap_binary()
+    owned_binary: VerifiedExecutable | None = None
+    if binary is None:
+        binary = _find_nmap_binary()
+        if isinstance(binary, VerifiedExecutable):
+            owned_binary = binary
     if binary is None:
         raise RuntimeError("nmap ikilisi kullanılamıyor")
 
-    env = os.environ.copy()
+    executable = binary.argv0 if isinstance(binary, VerifiedExecutable) else str(binary)
+    binary_path = Path(binary.path) if isinstance(binary, VerifiedExecutable) else binary
     # Set the library path next to the exact verified/runtime-selected binary.
-    lib_dir = binary.parent.parent / "lib"
-    if lib_dir.is_dir():
-        ld = env.get("LD_LIBRARY_PATH", "")
-        env["LD_LIBRARY_PATH"] = f"{lib_dir}:{ld}" if ld else str(lib_dir)
+    lib_dir = binary_path.parent.parent / "lib"
+    overrides = {"LD_LIBRARY_PATH": str(lib_dir)} if lib_dir.is_dir() else None
 
     args = (
         _build_args(pinned_ip, ipv6, selected_ports, service_version=True)
@@ -262,19 +271,29 @@ def _run_nmap(
     )
 
     try:
-        proc = run_in_process_group(
-            [str(binary), *args],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            timeout=SUBPROCESS_TIMEOUT_SECONDS,
-            env=env,
-            check=False,
-            cwd="/",
-        )
+        with tempfile.TemporaryDirectory(prefix="vulkill_nmap_") as scratch:
+            env = isolated_tool_environment(home=scratch, tmpdir=scratch, overrides=overrides)
+            popen_kwargs: dict[str, Any] = {
+                "stdout": subprocess.PIPE,
+                "stderr": subprocess.PIPE,
+                "env": env,
+                "check": False,
+                "cwd": "/",
+            }
+            if isinstance(binary, VerifiedExecutable):
+                popen_kwargs = binary.popen_kwargs(**popen_kwargs)
+            proc = run_in_process_group(
+                [executable, *args],
+                timeout=SUBPROCESS_TIMEOUT_SECONDS,
+                **popen_kwargs,
+            )
     except subprocess.TimeoutExpired as exc:
         raise RuntimeError("nmap zaman aşımına uğradı") from exc
     except Exception as exc:
         raise RuntimeError("nmap çalıştırma hatası") from exc
+    finally:
+        if owned_binary is not None:
+            owned_binary.close()
 
     if proc.returncode != 0:
         raise RuntimeError(f"nmap {proc.returncode} koduyla çıktı")
@@ -352,15 +371,15 @@ def run_authorized_nmap_scan(target: Any, *, profile: Any) -> dict[str, Any]:
     canonical = normalize_authorized_nmap_target(target)
     if not isinstance(profile, str) or profile not in AUTHORIZED_PROFILES:
         raise ValueError("profile default veya service-light olmalı")
-    binary = _trusted_authorized_nmap_binary()
-    pinned_ip, ipv6 = _resolve_authorized_target(canonical)
-    service_version = profile == "service-light"
-    xml_str, host_count, up_host_count, open_port_count, open_ports = _run_nmap(
-        pinned_ip,
-        ipv6,
-        service_version=service_version,
-        binary=binary,
-    )
+    with _trusted_authorized_nmap_binary() as binary:
+        pinned_ip, ipv6 = _resolve_authorized_target(canonical)
+        service_version = profile == "service-light"
+        xml_str, host_count, up_host_count, open_port_count, open_ports = _run_nmap(
+            pinned_ip,
+            ipv6,
+            service_version=service_version,
+            binary=binary,
+        )
     result: dict[str, Any] = {
         "profile": f"authorized-{'service-light' if service_version else 'default'}-v1",
         "host_count": host_count,

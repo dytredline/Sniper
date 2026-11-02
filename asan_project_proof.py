@@ -21,6 +21,7 @@ import sandbox_seccomp
 import taint_autofix
 import tool_sandbox
 import fuzz_runtime
+from tool_child_env import isolated_tool_environment
 
 FORMAT = "sniper-asan-project-proof/1"
 SOURCE_FORMAT = "sniper-asan-source-proof/1"
@@ -1095,7 +1096,7 @@ def _go_fuzz_harness(
     if len(matching) != 1:
         raise ValueError("Go fuzz hedefi tek bir top-level []byte veya string fonksiyona çözülmeli.")
     target, input_type = matching[0]
-    fuzz_name = f"Fuzz{target}" if target[0].isupper() else f"FuzzSniper{target[0].upper()}{target[1:]}"
+    fuzz_name = f"Fuzz{target}" if target[0].isupper() else f"FuzzVulKill{target[0].upper()}{target[1:]}"
     if re.search(rf"(?m)^[ \t]*func[ \t]+{re.escape(fuzz_name)}[ \t]*\(", cleaned):
         raise ValueError("Üretilecek Go fuzz hedefi kaynakta zaten tanımlı.")
     if input_type == "[]byte":
@@ -1126,7 +1127,7 @@ def _go_fuzz_harness(
         "cwe": cwe,
         "compile_command": "go test -run=^$ ./...",
         "fuzz_command": f"go test -run=^$ -fuzz=^{fuzz_name}$ -fuzztime=60s ./...",
-        "harness_filename": f"{stem}_sniper_fuzz_test.go",
+        "harness_filename": f"{stem}_vulkill_fuzz_test.go",
         "harness_code": harness_code,
         "network_required": False,
     }
@@ -1445,7 +1446,7 @@ def _java_target(finding: dict[str, Any], source: str) -> tuple[str, str, str, s
 
 def _java_fuzz_harness(finding: dict[str, Any], source_snippet: str, cwe: str) -> dict[str, Any]:
     package, class_name, method, signature = _java_target(finding, source_snippet)
-    harness_name = "SniperJazzerHarness"
+    harness_name = "VulKillJazzerHarness"
     fq_harness = f"{package}.{harness_name}" if package else harness_name
     package_line = f"package {package};\n\n" if package else ""
     if signature == "String":
@@ -1627,6 +1628,7 @@ def _node_package_available(package_name: str) -> bool:
             stderr=subprocess.DEVNULL,
             timeout=3,
             check=False,
+            env=isolated_tool_environment(home="/tmp", tmpdir="/tmp"),
         )
     except (OSError, subprocess.TimeoutExpired):
         return False
@@ -1935,6 +1937,14 @@ def execute_bounded_fuzz_harness(
 
     with tempfile.TemporaryDirectory(prefix="sniper_bounded_fuzz_") as tmp_dir:
         root = Path(tmp_dir).resolve()
+        child_env = isolated_tool_environment(
+            home=root,
+            tmpdir=root,
+            overrides={
+                "PYTHONNOUSERSITE": "1",
+                "PYTHONDONTWRITEBYTECODE": "1",
+            },
+        )
         target_file_path = (root / target_rel.as_posix()).resolve()
         harness_file_path = (root / harness_rel.as_posix()).resolve()
         target_file_path.relative_to(root)
@@ -1972,6 +1982,7 @@ def execute_bounded_fuzz_harness(
                 text=True,
                 timeout=bounded_timeout,
                 check=False,
+                env=child_env,
             )
             rc = proc.returncode
             stdout_text = proc.stdout or ""
@@ -2040,6 +2051,7 @@ def execute_bounded_fuzz_harness(
                     text=True,
                     timeout=bounded_timeout,
                     check=False,
+                    env=child_env,
                 )
                 if seed_proc.returncode != 0:
                     crash_reproduced = True
@@ -2066,6 +2078,7 @@ def execute_bounded_fuzz_harness(
                         text=True,
                         timeout=bounded_timeout,
                         check=False,
+                        env=child_env,
                     )
                     rc = fuzz_proc.returncode
                     if rc != 0:

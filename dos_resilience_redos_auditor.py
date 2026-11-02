@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import bisect
 from pathlib import Path
-import re
+import safe_regex as re
 import unicodedata
 from typing import Any
 
@@ -29,12 +29,12 @@ _REDOS_MAX_EXTRA_SAMPLES = 256
 _MAX_REGEX_PER_FILE = 500
 
 DOS_CONTROLS_EVALUATED: list[str] = [
-    "SNIPER-DOS-01",
-    "SNIPER-DOS-02",
-    "SNIPER-DOS-03",
-    "SNIPER-DOS-04",
-    "SNIPER-DOS-05",
-    "SNIPER-DOS-06",
+    "VULKILL-DOS-01",
+    "VULKILL-DOS-02",
+    "VULKILL-DOS-03",
+    "VULKILL-DOS-04",
+    "VULKILL-DOS-05",
+    "VULKILL-DOS-06",
 ]
 
 DOS_EXTENSIONS: set[str] = {
@@ -1296,7 +1296,7 @@ class _DosContext:
 
 
 # --------------------------------------------------------------------------------------
-# 1. ReDoS (SNIPER-DOS-01, CWE-1333)
+# 1. ReDoS (VULKILL-DOS-01, CWE-1333)
 # --------------------------------------------------------------------------------------
 
 def _detect_redos(ctx: _DosContext) -> None:
@@ -1338,7 +1338,7 @@ def _detect_redos(ctx: _DosContext) -> None:
                 "possessive niceleyici kullanın ve eşleştirmeye zaman aşımı uygulayın."
             ),
             cwe="CWE-1333",
-            control_id="SNIPER-DOS-01",
+            control_id="VULKILL-DOS-01",
             line_no=line_no,
             discriminator=analysis["pattern"][:80],
             extra={
@@ -1372,7 +1372,7 @@ def _detect_dynamic_regex(ctx: _DosContext) -> None:
                 "kaçışlayın, uzunluğu sınırlayın ve RE2 gibi doğrusal zamanlı bir motor tercih edin."
             ),
             cwe="CWE-1333",
-            control_id="SNIPER-DOS-01",
+            control_id="VULKILL-DOS-01",
             line_no=flow.line,
             discriminator=f"taint:{flow.source}",
             extra={"taint_flow": flow.as_dict()},
@@ -1380,7 +1380,7 @@ def _detect_dynamic_regex(ctx: _DosContext) -> None:
 
 
 # --------------------------------------------------------------------------------------
-# 2. HTTP istemci zaman aşımı (SNIPER-DOS-02, CWE-400)
+# 2. HTTP istemci zaman aşımı (VULKILL-DOS-02, CWE-400)
 # --------------------------------------------------------------------------------------
 
 _PY_HTTP_CALL = re.compile(
@@ -1404,7 +1404,7 @@ _HTTP_TIMEOUT_RECOMMENDATION = (
 
 def _detect_http_timeouts(ctx: _DosContext) -> None:
     content = ctx.content
-    control = "SNIPER-DOS-02"
+    control = "VULKILL-DOS-02"
     cwe = "CWE-400"
     if _lang(ctx.language, "python"):
         for match in _PY_HTTP_CALL.finditer(content):
@@ -1558,7 +1558,7 @@ def _detect_http_timeouts(ctx: _DosContext) -> None:
 
 
 # --------------------------------------------------------------------------------------
-# 3. Sıkıştırma bombası (SNIPER-DOS-03, CWE-409)
+# 3. Sıkıştırma bombası (VULKILL-DOS-03, CWE-409)
 # --------------------------------------------------------------------------------------
 
 _SIZE_GUARD_RE = re.compile(
@@ -1589,7 +1589,7 @@ _BOMB_RECOMMENDATION = (
 
 def _detect_decompression(ctx: _DosContext) -> None:
     content = ctx.content
-    control = "SNIPER-DOS-03"
+    control = "VULKILL-DOS-03"
     cwe = "CWE-409"
 
     def guarded(line_no: int) -> bool:
@@ -1669,7 +1669,7 @@ def _detect_decompression(ctx: _DosContext) -> None:
 
 
 # --------------------------------------------------------------------------------------
-# 4. XML varlık genişletme (SNIPER-DOS-04, CWE-776)
+# 4. XML varlık genişletme (VULKILL-DOS-04, CWE-776)
 # --------------------------------------------------------------------------------------
 
 _DEFUSEDXML_RE = re.compile(r"\bdefusedxml\b")
@@ -1691,7 +1691,7 @@ _XML_RECOMMENDATION = (
 
 def _detect_xml_entity_expansion(ctx: _DosContext) -> None:
     content = ctx.content
-    control = "SNIPER-DOS-04"
+    control = "VULKILL-DOS-04"
     cwe = "CWE-776"
     if _lang(ctx.language, "python") and not _DEFUSEDXML_RE.search(content):
         lxml_safe = bool(_RESOLVE_ENTITIES_FALSE_RE.search(content))
@@ -1747,7 +1747,7 @@ def _detect_xml_entity_expansion(ctx: _DosContext) -> None:
 
 
 # --------------------------------------------------------------------------------------
-# 5. Sınırsız istek gövdesi / yükleme (SNIPER-DOS-05, CWE-770)
+# 5. Sınırsız istek gövdesi / yükleme (VULKILL-DOS-05, CWE-770)
 # --------------------------------------------------------------------------------------
 
 _FLASK_IMPORT_RE = re.compile(r"^[ \t]*(?:from[ \t]+flask[ \t]+import\b|import[ \t]+flask\b)", re.MULTILINE)
@@ -1767,7 +1767,7 @@ _BODY_TITLE = "İstek gövdesi / dosya yükleme boyutu sınırsız"
 
 def _detect_body_limits(ctx: _DosContext) -> None:
     content = ctx.content
-    control = "SNIPER-DOS-05"
+    control = "VULKILL-DOS-05"
     cwe = "CWE-770"
     if _lang(ctx.language, "python"):
         if _FLASK_IMPORT_RE.search(content) and "MAX_CONTENT_LENGTH" not in content:
@@ -1848,7 +1848,7 @@ def _detect_body_limits(ctx: _DosContext) -> None:
 
 
 # --------------------------------------------------------------------------------------
-# 6. Derin özyineleme / sonsuz döngü (SNIPER-DOS-06, CWE-674 / CWE-835)
+# 6. Derin özyineleme / sonsuz döngü (VULKILL-DOS-06, CWE-674 / CWE-835)
 # --------------------------------------------------------------------------------------
 
 _RECURSION_LIMIT_RE = re.compile(r"\bsys\.setrecursionlimit\s*\(\s*(?P<value>\d[\d_]*)\s*\)")
@@ -1866,7 +1866,7 @@ _TIMEOUT_HINT_RE = re.compile(r"[Tt]imeout|SetDeadline|SetReadDeadline|setSoTime
 
 def _detect_recursion_and_loops(ctx: _DosContext) -> None:
     content = ctx.content
-    control = "SNIPER-DOS-06"
+    control = "VULKILL-DOS-06"
     if _lang(ctx.language, "python") and _JSON_LOADS_RE.search(content) and _REQUEST_DATA_HINT_RE.search(content):
         for match in _RECURSION_LIMIT_RE.finditer(content):
             try:
@@ -1998,15 +1998,15 @@ def audit_dos_resilience_project(
 
 
 _REDOS_STAR_HEIGHT_RE = re.compile(
-    r"""(?<!\\)\((?:\\.|[^()\\"\'\n]){0,600}(?<!\\)(?:\+|\*|\{\d{1,12},)(?:\\.|[^()\\"\'\n]){0,600}(?<!\\)\)\s{0,32}(?:\+|\*|\{\d{1,12},)"""
+    r"""(?<!\\)\((?:\\.|[^()\\"\'\n])*(?<!\\)(?:\+|\*|\{\d+,)(?:\\.|[^()\\"\'\n])*(?<!\\)\)\s*(?:\+|\*|\{\d+,)"""
 )
 _REDOS_OVERLAPPING_ALT_RE = re.compile(
-    r"(?<!\\)\((?:\?:)?([^|()\n]{1,600})\|\1[^()\n]{0,600}(?<!\\)\)\s{0,32}(?:\+|\*|\{\d{1,12},)"
+    r"(?<!\\)\((?:\?:)?([^|()\n]+)\|\1[^()\n]*(?<!\\)\)\s*(?:\+|\*|\{\d+,)"
 )
 
 
 _REDOS_CONTEXT_RE = re.compile(
-    r"(?:\b(?:re\.(?:compile|search|match|fullmatch|sub|findall|finditer)|RegExp|MustCompile|Compile|Regex::new|Pattern\.compile)\s*+\(|/[^/\n]{1,600}/[gimsuy]*+\.(?:test|exec|match)\s*+\(|^\s*+r?['\"]?\^?\()"
+    r"(?:\b(?:re\.(?:compile|search|match|fullmatch|sub|findall|finditer)|RegExp|MustCompile|Compile|Regex::new|Pattern\.compile)\s*\(|/[^/\n]+/[gimsuy]*\.(?:test|exec|match)\s*\(|^\s*r?['\"]?\^?\()"
 )
 
 
@@ -2035,7 +2035,7 @@ def analyze_regex_redos_automata(
         if matched is not None:
             findings.append(
                 {
-                    "control_id": "SNIPER-REDOS-AUTO-01",
+                    "control_id": "VULKILL-REDOS-AUTO-01",
                     "cwe": "CWE-1333",
                     "reference": "CWE-1333",
                     "severity": "high",

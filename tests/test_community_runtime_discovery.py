@@ -10,10 +10,10 @@ def _write_lock_and_manifest(app_dir: Path, runtimes: Path, binaries: dict[str, 
     platform_key = installer.current_platform_key()
     tool_contracts = {
         "nuclei": ("3.11.1", "nuclei-3.11.1", "nuclei", "SNIPER_NUCLEI_BINARY", "SNIPER_NUCLEI_SHA256"),
-        "trivy": ("0.75.0", "trivy-0.75.0", "trivy", "SNIPER_TRIVY_BINARY", "SNIPER_TRIVY_BINARY_SHA256"),
-        "gitleaks": ("8.30.1", "gitleaks-8.30.1-stdlib", "gitleaks", "SNIPER_GITLEAKS_BINARY", "SNIPER_GITLEAKS_SHA256"),
-        "trufflehog": ("3.99.0", "trufflehog-3.99.0-unpacked", "trufflehog", "SNIPER_TRUFFLEHOG_BINARY", "SNIPER_TRUFFLEHOG_SHA256"),
-        "opengrep": ("1.30.1", "opengrep-1.30.1", "opengrep", "SNIPER_OPENGREP_BINARY", "SNIPER_OPENGREP_SHA256"),
+        "trivy": ("0.76.1", "trivy-0.76.1", "trivy", "SNIPER_TRIVY_BINARY", "SNIPER_TRIVY_BINARY_SHA256"),
+        "gitleaks": ("8.30.1", "gitleaks-8.30.1", "gitleaks", "SNIPER_GITLEAKS_BINARY", "SNIPER_GITLEAKS_SHA256"),
+        "trufflehog": ("3.99.7", "trufflehog-3.99.7", "trufflehog", "SNIPER_TRUFFLEHOG_BINARY", "SNIPER_TRUFFLEHOG_SHA256"),
+        "opengrep": ("1.33.1", "opengrep-1.33.1", "opengrep", "SNIPER_OPENGREP_BINARY", "SNIPER_OPENGREP_SHA256"),
         "syft": ("1.55.0", "syft-1.55.0", "syft", "SNIPER_SYFT_BINARY", "SNIPER_SYFT_BINARY_SHA256"),
         "grype": ("0.121.0", "grype-0.121.0", "grype", "SNIPER_GRYPE_BINARY", "SNIPER_GRYPE_BINARY_SHA256"),
     }
@@ -143,10 +143,10 @@ def test_portable_manifest_reports_zero_setup_only_for_complete_verified_profile
     runtimes = tmp_path / "runtimes"
     binaries = {
         "SNIPER_NUCLEI": runtimes / "nuclei-3.11.1" / "nuclei",
-        "SNIPER_TRIVY": runtimes / "trivy-0.75.0" / "trivy",
-        "SNIPER_GITLEAKS": runtimes / "gitleaks-8.30.1-stdlib" / "gitleaks",
-        "SNIPER_TRUFFLEHOG": runtimes / "trufflehog-3.99.0-unpacked" / "trufflehog",
-        "SNIPER_OPENGREP": runtimes / "opengrep-1.30.1" / "opengrep",
+        "SNIPER_TRIVY": runtimes / "trivy-0.76.1" / "trivy",
+        "SNIPER_GITLEAKS": runtimes / "gitleaks-8.30.1" / "gitleaks",
+        "SNIPER_TRUFFLEHOG": runtimes / "trufflehog-3.99.7" / "trufflehog",
+        "SNIPER_OPENGREP": runtimes / "opengrep-1.33.1" / "opengrep",
         "SNIPER_SYFT": runtimes / "syft-1.55.0" / "syft",
         "SNIPER_GRYPE": runtimes / "grype-0.121.0" / "grype",
     }
@@ -186,10 +186,10 @@ def test_installed_local_profile_binds_each_binary_to_its_computed_digest(
     runtimes = tmp_path / "runtimes"
     binaries = {
         "SNIPER_NUCLEI": runtimes / "nuclei-3.11.1" / "nuclei",
-        "SNIPER_TRIVY": runtimes / "trivy-0.75.0" / "trivy",
-        "SNIPER_GITLEAKS": runtimes / "gitleaks-8.30.1-stdlib" / "gitleaks",
-        "SNIPER_TRUFFLEHOG": runtimes / "trufflehog-3.99.0-unpacked" / "trufflehog",
-        "SNIPER_OPENGREP": runtimes / "opengrep-1.30.1" / "opengrep",
+        "SNIPER_TRIVY": runtimes / "trivy-0.76.1" / "trivy",
+        "SNIPER_GITLEAKS": runtimes / "gitleaks-8.30.1" / "gitleaks",
+        "SNIPER_TRUFFLEHOG": runtimes / "trufflehog-3.99.7" / "trufflehog",
+        "SNIPER_OPENGREP": runtimes / "opengrep-1.33.1" / "opengrep",
         "SNIPER_SYFT": runtimes / "syft-1.55.0" / "syft",
         "SNIPER_GRYPE": runtimes / "grype-0.121.0" / "grype",
     }
@@ -265,10 +265,10 @@ def test_manifest_tracked_binary_is_rejected_after_content_change(monkeypatch, t
     runtimes = tmp_path / "runtimes"
     binaries = {
         "SNIPER_NUCLEI": runtimes / "nuclei-3.11.1" / "nuclei",
-        "SNIPER_TRIVY": runtimes / "trivy-0.75.0" / "trivy",
-        "SNIPER_GITLEAKS": runtimes / "gitleaks-8.30.1-stdlib" / "gitleaks",
-        "SNIPER_TRUFFLEHOG": runtimes / "trufflehog-3.99.0-unpacked" / "trufflehog",
-        "SNIPER_OPENGREP": runtimes / "opengrep-1.30.1" / "opengrep",
+        "SNIPER_TRIVY": runtimes / "trivy-0.76.1" / "trivy",
+        "SNIPER_GITLEAKS": runtimes / "gitleaks-8.30.1" / "gitleaks",
+        "SNIPER_TRUFFLEHOG": runtimes / "trufflehog-3.99.7" / "trufflehog",
+        "SNIPER_OPENGREP": runtimes / "opengrep-1.33.1" / "opengrep",
         "SNIPER_SYFT": runtimes / "syft-1.55.0" / "syft",
         "SNIPER_GRYPE": runtimes / "grype-0.121.0" / "grype",
     }

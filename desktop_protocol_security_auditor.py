@@ -209,7 +209,7 @@ def audit_desktop_app_project(
                             f"{rel_file}:{line_no}",
                             "Tauri allowlist izinlerini yalnızca gerekli komutlarla sınırlandırın ve katı bir CSP politikası tanımlayın.",
                             "CWE-250",
-                            "SNIPER-CONF-07",
+                            "VULKILL-CONF-07",
                             rel_file,
                             line_no,
                         )
@@ -238,7 +238,7 @@ def audit_desktop_app_project(
                             f"{rel_file}:{line_no}",
                             "nodeIntegration: false ayarlayın ve yalnızca güvenli contextBridge API'lerini preload üzerinden açın.",
                             "CWE-250",
-                            "SNIPER-CLNT-01",
+                            "VULKILL-CLNT-01",
                             rel_file,
                             line_no,
                         )
@@ -252,7 +252,7 @@ def audit_desktop_app_project(
                             f"{rel_file}:{line_no}",
                             "contextIsolation: true ayarını zorunlu kılın ve iletişim için contextBridge.exposeInMainWorld kullanın.",
                             "CWE-668",
-                            "SNIPER-CLNT-01",
+                            "VULKILL-CLNT-01",
                             rel_file,
                             line_no,
                         )
@@ -266,7 +266,7 @@ def audit_desktop_app_project(
                             f"{rel_file}:{line_no}",
                             "webSecurity: true ve allowRunningInsecureContent: false ayarlarını koruyun.",
                             "CWE-346",
-                            "SNIPER-CONF-07",
+                            "VULKILL-CONF-07",
                             rel_file,
                             line_no,
                         )
@@ -280,7 +280,7 @@ def audit_desktop_app_project(
                             f"{rel_file}:{line_no}",
                             "sandbox: true ayarını etkinleştirin ve enableRemoteModule yerine güvenli IPC kanalları kullanın.",
                             "CWE-250",
-                            "SNIPER-CLNT-01",
+                            "VULKILL-CLNT-01",
                             rel_file,
                             line_no,
                         )
@@ -294,7 +294,7 @@ def audit_desktop_app_project(
                             f"{rel_file}:{line_no}",
                             "shell.openExternal öncesinde URL'yi new URL() ile ayrıştırıp yalnızca https: protokolüne izin verin.",
                             "CWE-78",
-                            "SNIPER-INPV-07",
+                            "VULKILL-INPV-07",
                             rel_file,
                             line_no,
                         )
@@ -311,7 +311,7 @@ def audit_desktop_app_project(
                             f"{rel_file}:{line_no}",
                             "Ham ipcRenderer nesnesini asla exposeInMainWorld içine vermeyin; yalnızca sabit kanal adlarına bağlı dar kapsamlı sarmalayıcı (wrapper) fonksiyonlar açın.",
                             "CWE-250",
-                            "SNIPER-CLNT-01",
+                            "VULKILL-CLNT-01",
                             rel_file,
                             line_no,
                         )
@@ -328,7 +328,7 @@ def audit_desktop_app_project(
                             f"{rel_file}:{line_no}",
                             "TLS sertifika doğrulamasını devre dışı bırakan anahtarları ve özel doğrulama atlamalarını kaldırın.",
                             "CWE-295",
-                            "SNIPER-CONF-07",
+                            "VULKILL-CONF-07",
                             rel_file,
                             line_no,
                         )
@@ -342,7 +342,7 @@ def audit_desktop_app_project(
                             f"{rel_file}:{line_no}",
                             "webviewTag: false ayarlayın ve harici içerik için BrowserView / WebContentsView veya sandboxed iframe kullanın.",
                             "CWE-250",
-                            "SNIPER-CLNT-01",
+                            "VULKILL-CLNT-01",
                             rel_file,
                             line_no,
                         )
@@ -370,10 +370,10 @@ def audit_desktop_app_project(
         "finding_counts": counts,
         "findings": cap_findings(findings, PROJECT_FINDING_LIMIT)[0],
         "controls_evaluated": [
-            "SNIPER-CLNT-01",
-            "SNIPER-CONF-07",
-            "SNIPER-INPV-07",
-            "SNIPER-SUPP-05",
+            "VULKILL-CLNT-01",
+            "VULKILL-CONF-07",
+            "VULKILL-INPV-07",
+            "VULKILL-SUPP-05",
         ],
     }
 
@@ -461,7 +461,7 @@ def audit_realtime_and_binary_protocols(
                 "message içinde password/secret/token/private_key/cvv alanı tanımlı",
                 "Hassas kimlik ve ödeme alanlarını genel yanıt mesajlarından ayırın ve alan düzeyinde maskeleme uygulayın.",
                 "CWE-200",
-                "SNIPER-APIT-09",
+                "VULKILL-APIT-09",
             )
         if re.search(r"\brepeated\s+\w+", raw_content) and not re.search(
             r"(?i)\b(?:page_size|page_token|limit|max_results)\b", raw_content
@@ -474,7 +474,7 @@ def audit_realtime_and_binary_protocols(
                 "repeated alan mevcut; page_size / limit alanı görülmedi",
                 "Büyük koleksiyon mesajlarında page_size ve page_token ile sayfalama sınırı zorunlu kılın.",
                 "CWE-400",
-                "SNIPER-APIT-05",
+                "VULKILL-APIT-05",
             )
         if re.search(
             r"(?i)\b(?:grpc\.insecure_channel|usePlaintext\s*\(|WithInsecure\s*\(|createInsecure\s*\()",
@@ -488,7 +488,7 @@ def audit_realtime_and_binary_protocols(
                 "grpc.insecure_channel / usePlaintext / WithInsecure kullanımı",
                 "gRPC iletişiminde TLS veya mTLS (ssl_channel_credentials) zorunlu kılın.",
                 "CWE-319",
-                "SNIPER-CRYP-02",
+                "VULKILL-CRYP-02",
             )
         if re.search(r"(?i)\b(?:ServerReflection|enable_server_reflection|reflection\.Register)\b", raw_content):
             add_proto_finding(
@@ -499,7 +499,7 @@ def audit_realtime_and_binary_protocols(
                 "ServerReflection / enable_server_reflection etkin",
                 "Üretim ortamında gRPC Server Reflection özelliğini kapatın veya yalnızca yetkili iç ağlarla sınırlandırın.",
                 "CWE-200",
-                "SNIPER-INFO-02",
+                "VULKILL-INFO-02",
             )
 
     elif detected_type == "websocket":
@@ -512,7 +512,7 @@ def audit_realtime_and_binary_protocols(
                 "ws:// bağlantı tanımı",
                 "Tüm üretim WebSocket bağlantılarında wss:// (TLS) zorunlu kılın.",
                 "CWE-319",
-                "SNIPER-CRYP-02",
+                "VULKILL-CRYP-02",
             )
         if _has_insecure_websocket_origin(raw_content) or "origin" not in raw_content.casefold():
             add_proto_finding(
@@ -523,7 +523,7 @@ def audit_realtime_and_binary_protocols(
                 "CheckOrigin => true veya Origin doğrulaması eksik",
                 "WebSocket el sıkışmasında Origin başlığını güvenilir origin allowlist'i ile karşılaştırın.",
                 "CWE-1385",
-                "SNIPER-CLNT-07",
+                "VULKILL-CLNT-07",
             )
         if not re.search(r"(?i)\b(?:maxPayload|ReadLimit|max_size|max_message_size|maxFrameSize)\b", raw_content):
             add_proto_finding(
@@ -534,7 +534,7 @@ def audit_realtime_and_binary_protocols(
                 "maxPayload / ReadLimit / max_size ayarı görülmedi",
                 "WebSocket sunucusunda maxPayload veya ReadLimit ile maksimum mesaj boyutunu sınırlandırın.",
                 "CWE-400",
-                "SNIPER-APIT-05",
+                "VULKILL-APIT-05",
             )
 
     elif detected_type == "webhook":
@@ -553,7 +553,7 @@ def audit_realtime_and_binary_protocols(
                 "hmac.compare_digest / crypto.timingSafeEqual doğrulaması görülmedi",
                 "Webhook yükünü ham gövde (raw body) üzerinden HMAC-SHA256 ile doğrulayın ve sabit zamanlı karşılaştırma kullanın.",
                 "CWE-347",
-                "SNIPER-CRYP-06",
+                "VULKILL-CRYP-06",
             )
         if not re.search(
             r"(?i)\b(?:timestamp|tolerance|replay|x-slack-request-timestamp|svix-timestamp|stripe-signature)\b",
@@ -567,7 +567,7 @@ def audit_realtime_and_binary_protocols(
                 "Zaman damgası (timestamp/tolerance) kontrolü görülmedi",
                 "Webhook başlığındaki zaman damgasını imzaya dahil edin ve eski istekleri reddedin.",
                 "CWE-294",
-                "SNIPER-AUTH-11",
+                "VULKILL-AUTH-11",
             )
 
     score, grade, counts = calculate_score(findings)
@@ -584,12 +584,12 @@ def audit_realtime_and_binary_protocols(
         "finding_counts": counts,
         "findings": cap_findings(findings, INLINE_FINDING_LIMIT)[0],
         "controls_evaluated": [
-            "SNIPER-APIT-05",
-            "SNIPER-APIT-09",
-            "SNIPER-CRYP-02",
-            "SNIPER-CLNT-07",
-            "SNIPER-CRYP-06",
-            "SNIPER-AUTH-11",
+            "VULKILL-APIT-05",
+            "VULKILL-APIT-09",
+            "VULKILL-CRYP-02",
+            "VULKILL-CLNT-07",
+            "VULKILL-CRYP-06",
+            "VULKILL-AUTH-11",
         ],
     }
 
@@ -646,7 +646,7 @@ def audit_desktop_ipc_rce_chains(
         if sink_m is not None and not has_ipc_guard:
             sink_line = raw_content[: ipc_m.start() + sink_m.start()].count("\n") + 1
             _append_chain(
-                "SNIPER-DESK-IPC-01",
+                "VULKILL-DESK-IPC-01",
                 "critical",
                 "CWE-94",
                 "command_data",
@@ -663,7 +663,7 @@ def audit_desktop_ipc_rce_chains(
         raw_content,
     ):
         _append_chain(
-            "SNIPER-DESK-ISOL-02",
+            "VULKILL-DESK-ISOL-02",
             "critical",
             "CWE-250",
             "web_hardening",
@@ -684,7 +684,7 @@ def audit_desktop_ipc_rce_chains(
     )
     if has_custom_proto and not has_proto_norm:
         _append_chain(
-            "SNIPER-DESK-PROTO-03",
+            "VULKILL-DESK-PROTO-03",
             "high",
             "CWE-78",
             "command_data",

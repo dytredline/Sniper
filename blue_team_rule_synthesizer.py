@@ -67,7 +67,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901001,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE SQL/NoSQL Injection Attempt"; flow:established,to_server; '
+            '(msg:"VULKILL-BLUE SQL/NoSQL Injection Attempt"; flow:established,to_server; '
             'http.uri; pcre:"/(?:union\\s+(?:all\\s+)?select|\\$(?:where|ne|gt|regex))/i"; '
             'classtype:web-application-attack; sid:9901001; rev:1;)'
         ),
@@ -124,7 +124,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901002,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE Cross-Site Scripting (XSS) Vector"; flow:established,to_server; '
+            '(msg:"VULKILL-BLUE Cross-Site Scripting (XSS) Vector"; flow:established,to_server; '
             'http.uri; pcre:"/(?:<script[^>]*>|javascript\\s*:|on(?:error|load)\\s*=)/i"; '
             'classtype:web-application-attack; sid:9901002; rev:1;)'
         ),
@@ -180,7 +180,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901003,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE SSRF Cloud Metadata Probe (169.254.169.254)"; '
+            '(msg:"VULKILL-BLUE SSRF Cloud Metadata Probe (169.254.169.254)"; '
             'flow:established,to_server; content:"169.254.169.254"; nocase; '
             'classtype:web-application-attack; sid:9901003; rev:1;)'
         ),
@@ -239,7 +239,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901004,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE Command Injection or Path Traversal"; flow:established,to_server; '
+            '(msg:"VULKILL-BLUE Command Injection or Path Traversal"; flow:established,to_server; '
             'http.uri; pcre:"/(?:(?:\\.\\.|%2e%2e)(?:\\/|%2f)|\\/etc\\/passwd|(?:;|\\||&&)\\s*(?:id|whoami|cat|sh)\\b)/i"; '
             'classtype:web-application-attack; sid:9901004; rev:1;)'
         ),
@@ -296,7 +296,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901005,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE JWT alg=none Authentication Bypass Attempt"; '
+            '(msg:"VULKILL-BLUE JWT alg=none Authentication Bypass Attempt"; '
             'flow:established,to_server; http.header; content:"eyJhbGciOiJub25l"; '
             'classtype:attempted-admin; sid:9901005; rev:1;)'
         ),
@@ -353,7 +353,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901006,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE XXE or Object Deserialization Payload"; '
+            '(msg:"VULKILL-BLUE XXE or Object Deserialization Payload"; '
             'flow:established,to_server; http.request_body; '
             'pcre:"/(?:<!ENTITY\\s+[^>]*SYSTEM|rO0ABX|!!python\\/object)/i"; '
             'classtype:web-application-attack; sid:9901006; rev:1;)'
@@ -412,7 +412,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901007,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE AI/LLM Prompt Injection Payload"; '
+            '(msg:"VULKILL-BLUE AI/LLM Prompt Injection Payload"; '
             'flow:established,to_server; http.request_body; '
             'pcre:"/(?:ignore\\s+(?:all\\s+)?(?:previous|prior)\\s+instructions|<\\|im_start\\|>\\s*system)/i"; '
             'classtype:web-application-attack; sid:9901007; rev:1;)'
@@ -477,7 +477,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901008,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE Business Logic Concurrent Burst on Financial Endpoint"; '
+            '(msg:"VULKILL-BLUE Business Logic Concurrent Burst on Financial Endpoint"; '
             'flow:established,to_server; http.method; content:"POST"; '
             'http.uri; pcre:"/\\/(?:withdraw|transfer|checkout|redeem)/i"; '
             'threshold:type both,track by_src,count 10,seconds 2; '
@@ -535,7 +535,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901009,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE CI/CD Webhook Command Injection Payload"; '
+            '(msg:"VULKILL-BLUE CI/CD Webhook Command Injection Payload"; '
             'flow:established,to_server; http.request_body; '
             'pcre:"/(?:\\$\\(\\s*(?:curl|wget|sh|bash)|`\\s*(?:curl|wget|sh|bash))/i"; '
             'classtype:web-application-attack; sid:9901009; rev:1;)'
@@ -594,7 +594,7 @@ THREAT_FAMILY_PACKS: tuple[dict[str, Any], ...] = (
         "suricata_sid": 9901010,
         "suricata_rule": (
             'alert http $EXTERNAL_NET any -> $HOME_NET any '
-            '(msg:"SNIPER-BLUE Container Socket or K8s Escape Probe"; '
+            '(msg:"VULKILL-BLUE Container Socket or K8s Escape Probe"; '
             'flow:established,to_server; http.request_body; '
             'pcre:"/(?:\\/var\\/run\\/(?:docker|containerd)\\.sock|\"privileged\"\\s*:\\s*true)/i"; '
             'classtype:attempted-admin; sid:9901010; rev:1;)'
@@ -808,7 +808,7 @@ def synthesize_blue_team_rules(
 
 
 _ROUTE_PATH_RE = re.compile(r"/(?:api|ws)/[A-Za-z0-9_/{}:.-]+")
-_VPATCH_CWE_RE = re.compile(r"\b(CWE-\d+|LLM\d+|SNIPER-[A-Z0-9-]+)\b", re.IGNORECASE)
+_VPATCH_CWE_RE = re.compile(r"\b(CWE-\d+|LLM\d+|VULKILL-[A-Z0-9-]+)\b", re.IGNORECASE)
 _DANGEROUS_PARAMS: tuple[str, ...] = (
     "upload_id",
     "redirect_uri",
@@ -939,7 +939,7 @@ def synthesize_precision_virtual_patches(findings: list[dict[str, Any]]) -> dict
 
         sig = f"{cwe}|{route_path}|{param_name}"
         digest = hashlib.sha256(sig.encode("utf-8")).hexdigest()[:8]
-        patch_id = f"SNIPER-VPATCH-{digest}"
+        patch_id = f"VULKILL-VPATCH-{digest}"
         modsec_id = 995000 + (int(digest[:4], 16) % 4900)
 
         if route_path == "/*":

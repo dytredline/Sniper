@@ -60,7 +60,7 @@ def nuclei_broad_runtime_paths() -> tuple[Path, Path]:
     )).expanduser()
     catalog = Path(os.environ.get(
         "SNIPER_NUCLEI_CATALOG_DIR",
-        str(portable_root / "nuclei-templates-v10.5.0"),
+        str(portable_root / "nuclei-templates-v10.5.1"),
     )).expanduser()
     return binary, catalog
 

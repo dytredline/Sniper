@@ -401,7 +401,7 @@ export async function requestSecretBundleManifest(api, files) {
 // app.js'teki aynı adlı yardımcıları ezmemek için tek bir ad alanı altında yayımlanır
 // (gelişmiş araç akışları paneli bu işleyicileri kullanır).
 if (typeof globalThis !== "undefined") {
-  globalThis.SniperToolBoundary = Object.freeze({
+  globalThis.VulKillToolBoundary = Object.freeze({
     renderNucleiVerificationCoverageHtml,
     renderBurpHandoffManifestHtml,
     renderDependencyRemediationPlanHtml,

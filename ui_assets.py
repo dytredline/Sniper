@@ -15,7 +15,7 @@ başında ``"use strict"`` varsa katı kip, dosyayı saran işlevde korunur.
 ``SNIPER_UI_BUNDLE=0`` paketlemeyi kapatır (özgün index.html aynen sunulur).
 
 ``BOOTSTRAP_PATHS``: ilk açılışta arayüzün istediği salt okunur GET'ler; ``/api/bootstrap`` bunları tek yanıtta
-toplar (her alt yol için oturum/rol denetimi ayrıca yapılır; bkz. ``server.SniperHandler._bootstrap_get``).
+toplar (her alt yol için oturum/rol denetimi ayrıca yapılır; bkz. ``server.VulKillHandler._bootstrap_get``).
 """
 from __future__ import annotations
 

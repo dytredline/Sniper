@@ -29,6 +29,7 @@
         return;
       }
       if (status.authenticated) { location.href = "/"; return; }
+      if (status.oidc_enabled) { $("#auth-oidc-login").classList.remove("hidden"); }
     } catch (error) { say("Sunucuya ulaşılamadı.", "error"); }
     $("#auth-username").focus();
   }

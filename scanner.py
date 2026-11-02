@@ -16,7 +16,7 @@ from typing import Iterable
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
 
-USER_AGENT = "SniperAudit/1.0 (authorized defensive assessment)"
+USER_AGENT = "VulKillAudit/1.0 (authorized defensive assessment)"
 MAX_BODY_BYTES = 1_500_000
 MAX_REDIRECTS = 3
 REQUEST_TIMEOUT = 8

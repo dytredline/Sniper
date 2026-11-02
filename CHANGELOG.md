@@ -5,27 +5,15 @@ Community releases.
 
 ## Unreleased
 
-## VulKill Community 1.1.0 — 2026-10-29
+## VulKill Community 1.2.1 — 2026-11-02
 
-- Expanded authorization review across supported Rails inheritance, Spring and ASP.NET routes, and GraphQL
-  resolvers; added bounded multi-repository trust graphs for CI artifacts, webhooks, services, and dependency lineage.
-- Added reviewable fuzz-target generation and bounded local runtimes for supported C/C++, Rust, Go, Python, Java,
-  and JavaScript/TypeScript targets, plus memory-safety and runtime-evidence correlation improvements.
-- Added local supply-chain, OCI provenance, Kubernetes, migration, protocol, archive/symlink, and binary-hardening
-  checks, together with Syft/Grype integration and seven-tool Linux Community profiles.
-- Added Community MCP tools for local response comparison, authorization matrices, token sequencing, traffic
-  decoding, GHSA/OpenVEX preparation, and bounty-readiness review. Every advertised tool now declares its MCP
-  read-only, destructive, idempotent, and open-world effects.
-- Hardened deterministic source assembly so Git worktree pointer files are excluded before they can be read or
-  copied, and the assembled-tree validator rejects any manifest-listed `.git` artifact.
-- Added GitHub OIDC provenance attestation for tagged source archives while preserving SHA-256 release checksums.
-- Verified both the macOS Apple Silicon native `--core-only` source setup and the macOS Apple Silicon + Docker Desktop
-  setup path for the five license-gated local engines, with health/readiness checks, persistent project volume, and
-  end-to-end local SAST audit verification.
-- Added an explicit project-import command for macOS folders that Docker Desktop cannot bind-mount, without changing
-  the original project or accepting an existing target name.
-- Fixed the local Nuclei template invocation so the pinned Nuclei binary recognizes the verified template while
-  preserving the open-file identity check; added a real-binary regression test.
+- Refreshed the verified local scanner toolchain to Gitleaks 8.30.1, Nuclei 3.11.1, Syft 1.55.0,
+  Grype 0.121.0, Trivy 0.76.1, TruffleHog 3.99.7, and Opengrep 1.33.1.
+- Raised the verified analysis runtimes to Node.js 26.13.0 LTS, Temurin JDK 25.0.5+8, and Joern 4.0.670.
+- Updated the Community container and CI baselines to Python 3.15, pytest 9.2.0, pluggy 1.7.0,
+  Prometheus 3.15.1, and Grafana 13.3.0.
+- Added fail-closed child-process environment hardening and machine-readable verified-toolchain provenance.
+
 - Clarified IDOR (CWE-639), missing-authorization (CWE-862), and authorized manual penetration-testing support across
   the public README, AI discovery index, use cases, capability map, and localized introductions, with validation
   guidance for separate test identities, roles, and synthetic objects.
@@ -33,9 +21,6 @@ Community releases.
   supply chain, containers and infrastructure, risk prioritization, reporting, and AI/CLI/web workflows.
 - Added multilingual AI-assisted release-preflight guidance for mobile store submissions, website/API launches, and
   release pull requests.
-- Synchronized the v1.1 capability tags and feature summaries across English, Turkish, Japanese, Simplified Chinese,
-  and Korean READMEs; added a contributor note and an automated parity gate so future public feature additions must
-  update all five language documents together.
 
 ## VulKill Community 1.0.0 — 2026-10-24
 
@@ -44,7 +29,8 @@ Community releases.
 - Added the loopback web interface and manual command-line entrypoints.
 - Added deterministic Community source assembly with SHA-256 manifests and fail-closed release validation.
 - Added a one-command rootless setup plus a SHA-256-locked installer for the supported local third-party tool profile.
-- Added a Linux, macOS, and Windows core-only source setup plus WSL2/Docker Desktop guidance for the five-engine Linux container profile.
+- Added a Linux core-only setup, an experimental macOS core-only source path, and a fail-closed Windows-native
+  refusal with WSL2/Docker guidance.
 - Added separate `community-core` and license-gated `community-tools` container targets for Docker Desktop/WSL2;
   the optional target installs exactly the five SHA-256-locked engines and never executes them during the build.
 - Added Japanese, Simplified Chinese, and Korean interface language packs with English fallback and desktop/mobile

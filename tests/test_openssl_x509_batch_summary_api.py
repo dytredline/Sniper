@@ -27,7 +27,7 @@ class OpenSslX509BatchSummaryApiTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(dir=Path.home())
         self.previous_store = server.STORE
         server.STORE = Store(Path(self.temp.name) / "sniper.db")
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()
         self.batch_url = f"http://127.0.0.1:{self.httpd.server_address[1]}/api/tool-reports/openssl-x509/batch-summary"

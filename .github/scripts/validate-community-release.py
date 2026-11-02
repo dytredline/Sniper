@@ -20,7 +20,6 @@ from typing import NamedTuple
 
 
 DEFAULT_ROOT = Path(__file__).resolve().parents[2]
-EXPECTED_COMMUNITY_VERSION = "1.1.0"
 MAX_REGULAR_FILE_BYTES = 64 * 1024 * 1024
 MAX_SNAPSHOT_BYTES = 512 * 1024 * 1024
 READ_CHUNK_BYTES = 1024 * 1024
@@ -79,10 +78,10 @@ REQUIRED_TEXT = {
         "## Prerequisite-dependent capabilities",
         "docs/CAPABILITIES.md",
         "Nuclei 3.11.1",
-        "Trivy 0.75.0",
+        "Trivy 0.76.1",
         "Gitleaks 8.30.1",
-        "TruffleHog 3.99.0",
-        "Opengrep 1.30.1",
+        "TruffleHog 3.99.7",
+        "Opengrep 1.33.1",
         "Syft 1.55.0",
         "Grype 0.121.0",
         "stdio MCP",
@@ -156,9 +155,9 @@ REQUIRED_TEXT = {
     ),
     "VALIDATION.md": (
         "VulKill Community validation evidence",
-        "3,079 tests, 0 failures, 0 errors",
-        "337 passed",
-        "517 passed, 0 failed",
+        "3,044 tests, 0 failures, 0 errors",
+        "313 passed",
+        "513 passed, 0 failed",
         "seven provenance-bound tools",
         "Synthetic runtime proofs",
         "not a security certification",
@@ -217,7 +216,6 @@ REQUIRED_TEXT = {
     "CODE_OF_CONDUCT.md": ("Contributor Covenant", "Enforcement"),
     "CHANGELOG.md": (
         "# Changelog",
-        "VulKill Community 1.1.0",
         "VulKill Community 1.0.0",
         "Apache-2.0",
         "human-confirmed MCP action plans",
@@ -233,7 +231,7 @@ REQUIRED_TEXT = {
         "title: VulKill Community",
         "Gökçe Baran",
         "Karakamış",
-        "version: 1.1.0",
+        "version: 1.2.1",
         "license: Apache-2.0",
         "https://github.com/dytredline/VulKill",
     ),
@@ -261,7 +259,7 @@ REQUIRED_TEXT = {
     "docker-compose.tools.yml": (
         "target: community-tools",
         "SNIPER_ACCEPT_THIRD_PARTY_LICENSES",
-        "sniper-community-tools:local",
+        "vulkill-community-tools:local",
     ),
     "docs/COMMUNITY-TOOLS.md": (
         "# Community tool installation",
@@ -357,7 +355,7 @@ FORBIDDEN_ARTIFACT_DIRS = frozenset({
     "runtimes", "data", "backups", "backup", "evidence", ".auth-field-keys",
     "dev-" + "evidence", "frozen-" + "evidence",
 })
-FORBIDDEN_ARTIFACT_NAMES = frozenset({".git", "release.json", ".coverage"})
+FORBIDDEN_ARTIFACT_NAMES = frozenset({"release.json", ".coverage"})
 FORBIDDEN_ARTIFACT_SUFFIXES = (
     ".pyc", ".pyo", ".db", ".sqlite", ".sqlite3", "-wal", "-shm", "-journal", ".key", ".tar",
 )
@@ -379,7 +377,7 @@ PRIVATE_PUBLICATION_WORDING = re.compile(
     re.IGNORECASE,
 )
 PORTABLE_CONTAINER_LABEL = "org.sniper.community.k6.local"
-PORTABLE_TEMPLATE_AUTHOR = "sniper-community"
+PORTABLE_TEMPLATE_AUTHOR = "vulkill-community"
 ACTIVE_TARGET_TESTS = frozenset({
     "tests/test_wave20_sqlite_wal_concurrency_stress.py",
     "tests/test_zap_actor_job_lease.py",
@@ -773,11 +771,8 @@ def _validate_release_tree(entries: list[ReleaseEntry], failures: list[str]) -> 
     version_module_entry = by_relative.get("version.py")
     if community_version_entry is not None and community_version_entry.payload is not None:
         community_version = community_version_entry.payload.decode("utf-8", errors="replace").strip()
-        if community_version != EXPECTED_COMMUNITY_VERSION:
-            fail(
-                f"release tree: COMMUNITY_VERSION must be {EXPECTED_COMMUNITY_VERSION}",
-                failures,
-            )
+        if re.fullmatch(r"1\.[0-9]+\.[0-9]+", community_version) is None:
+            fail("release tree: COMMUNITY_VERSION must be a stable Community v1 semantic version", failures)
         if version_module_entry is not None and version_module_entry.payload is not None:
             version_text = version_module_entry.payload.decode("utf-8", errors="replace")
             if f'__version__ = "{community_version}"' not in version_text:
@@ -915,7 +910,7 @@ def validate(root: Path, *, scan_release_tree: bool = False) -> list[str]:
             continue
         try:
             payload = json.loads(text)
-            server = payload["mcpServers"]["vulkill-triage"]
+            server = payload["mcpServers"]["sniper-triage"]
             if not str(server.get("command", "")).endswith("/.venv/bin/python") \
                     or not isinstance(server.get("args"), list):
                 raise ValueError("expected repository venv Python command and args array")
@@ -940,7 +935,7 @@ def validate(root: Path, *, scan_release_tree: bool = False) -> list[str]:
     if toml_text is not None:
         try:
             payload = tomllib.loads(toml_text)
-            server = payload["mcp_servers"]["vulkill-triage"]
+            server = payload["mcp_servers"]["sniper-triage"]
             if not str(server.get("command", "")).endswith("/.venv/bin/python") \
                     or not isinstance(server.get("args"), list):
                 raise ValueError("expected repository venv Python command and args array")

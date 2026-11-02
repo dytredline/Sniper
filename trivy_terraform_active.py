@@ -18,7 +18,7 @@ from project_analyzer import validate_project_path
 from tool_report_trivy import parse_trivy_native_json_summary
 
 
-EXPECTED_TRIVY_SHA256 = "869e310e208f0f2e3e90e4f842cc6adaa2b2c046fecbaade481e6b23fcc8f2a9"
+EXPECTED_TRIVY_SHA256 = "67ebe2978898505e4cf48ec0c3280907d933e206c290aeeef7a3be0f8d269d84"
 MAX_DOCKERFILE_BYTES = 1_000_000
 MAX_TERRAFORM_FILE_BYTES = 1_000_000
 MAX_TERRAFORM_BATCH_FILES = 8
@@ -590,7 +590,7 @@ def run_local_trivy_terraform_batch(project_path: str, terraform_files: list[str
                         raise ValueError("yanlış yapılandırma sayıları tutarsız")
                     if target == "." and failures:
                         raise ValueError("beklenmeyen kök bulgular")
-                # Trivy 0.75.0 omits selected clean .tf target rows when another
+                # Trivy 0.76.1 omits selected clean .tf target rows when another
                 # staged file has findings. The root row is always required;
                 # every emitted file target must belong to the staged set.
                 if "." not in observed_targets:

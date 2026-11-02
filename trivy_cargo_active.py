@@ -18,6 +18,7 @@ from trivy_vuln_active import (
     TrivyVulnUnavailable,
 )
 from tool_report_trivy import parse_trivy_native_json_summary
+from tool_child_env import isolated_tool_environment
 
 MAX_LOCK_BYTES = 5_000_000
 MAX_REPORT_BYTES = 2_000_000
@@ -223,9 +224,10 @@ def run_local_trivy_cargo_lock_vulnerability(project_path: str) -> dict[str, Any
                 "--ignorefile=", "--format", "json", "--output", str(report_file),
                 "--cache-dir", str(cache), "--timeout", "60s", str(input_dir),
             ]
-            env = os.environ.copy()
-            env["HOME"] = str(scratch)
-            env["XDG_CACHE_HOME"] = str(scratch / "cache")
+            env = isolated_tool_environment(
+                home=scratch, tmpdir=scratch,
+                overrides={"XDG_CACHE_HOME": scratch / "cache"},
+            )
             try:
                 process = subprocess.run(cmd, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=90, check=False, pass_fds=(binary_fd,))
             except (OSError, subprocess.TimeoutExpired) as exc:

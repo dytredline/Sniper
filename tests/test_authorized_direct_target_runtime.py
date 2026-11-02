@@ -14,12 +14,12 @@ from nuclei_broad_jobs import BroadNucleiJobs, normalize_authorized_http_origin
 
 NMAP = Path.home() / ".local/share/sniper/tools/nmap-7.94/bin/nmap"
 NUCLEI = Path("/home/community-user/.local/state/sniper-tool-runtimes/nuclei-3.11.1/nuclei")
-CATALOG = Path("/home/community-user/.local/state/sniper-tool-runtimes/nuclei-templates-v10.5.0")
+CATALOG = Path("/home/community-user/.local/state/sniper-tool-runtimes/nuclei-templates-v10.5.1")
 
 
 def _prepare_nuclei_catalog(temp_root: Path) -> dict[str, object]:
     pin_file = CATALOG / "SNIPER-HTTP-CATALOG-PIN-v2.json"
-    idx_file = CATALOG / "SNIPER-HTTP-ID-INDEX.json"
+    idx_file = CATALOG / "VULKILL-HTTP-ID-INDEX.json"
     if pin_file.is_file() and idx_file.is_file():
         return {
             "catalog_root": CATALOG,
@@ -110,7 +110,7 @@ def _prepare_nuclei_catalog(temp_root: Path) -> dict[str, object]:
     ids_paths_hashes.sort(key=lambda item: item[0])
 
     pin_doc = {
-        "version": "v10.5.0",
+        "version": "v10.5.1",
         "scope": "http",
         "count": len(paths_and_hashes),
         "sha256": "0" * 64,
@@ -121,13 +121,13 @@ def _prepare_nuclei_catalog(temp_root: Path) -> dict[str, object]:
     pin_out.write_bytes(pin_bytes)
 
     idx_doc = {
-        "version": "v10.5.0",
+        "version": "v10.5.1",
         "count": len(ids_paths_hashes),
         "sha256": "0" * 64,
         "ids_paths_hashes": ids_paths_hashes,
     }
     idx_bytes = json.dumps(idx_doc, sort_keys=True).encode("utf-8")
-    idx_out = catalog_root / "SNIPER-HTTP-ID-INDEX.json"
+    idx_out = catalog_root / "VULKILL-HTTP-ID-INDEX.json"
     idx_out.write_bytes(idx_bytes)
 
     return {

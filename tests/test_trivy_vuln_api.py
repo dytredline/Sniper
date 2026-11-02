@@ -25,6 +25,7 @@ class TrivyVulnerabilityApiTests(unittest.TestCase):
         self.data_dir.mkdir(parents=True)
         self.bin_dir = self.base / "bin"
         self.bin_dir.mkdir(parents=True)
+        self.fail_marker = self.base / "force-trivy-failure"
         self.cache_dir = self.base / "cache"
         self.cache_dir.mkdir(parents=True)
         self.db_dir = self.cache_dir / "db"
@@ -56,7 +57,7 @@ class TrivyVulnerabilityApiTests(unittest.TestCase):
         # Setup server
         self.previous_store = server.STORE
         server.STORE = Store(self.base / "sniper.db")
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.httpd.daemon_threads = True
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()
@@ -115,7 +116,7 @@ def main():
         sys.exit(1)
 
     # Check for fake failure marker
-    if "_SNIPER_FAKE_FAIL" in os.environ:
+    if Path("__VULKILL_FAIL_MARKER__").exists():
         sys.exit(1)
 
     report = {
@@ -155,7 +156,7 @@ def main():
 
 if __name__ == "__main__":
     main()
-'''.strip()
+'''.strip().replace("__VULKILL_FAIL_MARKER__", str(self.fail_marker))
         self.fake_bin.write_text(content)
         self.fake_bin.chmod(0o755)
 
@@ -289,7 +290,7 @@ if __name__ == "__main__":
 
     def test_trivy_failure_returns_502(self):
         # Force fake Trivy to fail
-        os.environ["_SNIPER_FAKE_FAIL"] = "1"
+        self.fail_marker.write_text("1", encoding="ascii")
         try:
             status, body = self.request_json(
                 "/api/tool-runs/trivy-vulnerability",
@@ -301,8 +302,7 @@ if __name__ == "__main__":
             self.assertEqual(status, 502)
             self.assertIn("Trivy zafiyet taraması başarısız oldu", body["error"])
         finally:
-            if "_SNIPER_FAKE_FAIL" in os.environ:
-                del os.environ["_SNIPER_FAKE_FAIL"]
+            self.fail_marker.unlink(missing_ok=True)
 
     def test_missing_project_path_returns_400(self):
         status, body = self.request_json(

@@ -6,6 +6,7 @@ from pathlib import Path
 import pwd
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -18,7 +19,7 @@ from storage import Store
 from tests.test_finding_tracking_collab import finding, make_audit, tracked_ids
 
 
-PYTHON = "/usr/bin/python3"
+PYTHON = sys.executable
 APP_DIR = Path(__file__).resolve().parents[1]
 
 

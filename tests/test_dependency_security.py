@@ -48,7 +48,7 @@ class DependencySecurityTests(unittest.TestCase):
             encoding="utf-8",
         )
         (self.project / "requirements-test.lock").write_text(
-            "pytest==9.1.1\npluggy==1.6.0\n",
+            "pytest==9.2.0\npluggy==1.7.0\n",
             encoding="utf-8",
         )
 
@@ -232,6 +232,10 @@ class DependencySecurityTests(unittest.TestCase):
         payload = json.loads(run.call_args.kwargs["input"])
         self.assertEqual(payload["queries"][0]["package"]["name"], "demo")
         self.assertEqual(payload["queries"][0]["version"], "1.0")
+        child_env = run.call_args.kwargs["env"]
+        self.assertEqual(child_env["NO_PROXY"], "*")
+        self.assertNotIn("AWS_SECRET_ACCESS_KEY", child_env)
+        self.assertNotIn("PYTHONPATH", child_env)
         with self.assertRaisesRegex(DependencySecurityError, "yalnızca yerel Tor"):
             query_osv_batch_via_tor([], proxy="http://127.0.0.1:8080")
 
@@ -360,11 +364,11 @@ class DependencySecurityTests(unittest.TestCase):
         self.assertEqual(oa_result["format"], "sniper-api-contract-audit-v1")
         self.assertEqual(oa_result["contract_type"], "openapi3")
         oa_rules = {f["rule_id"] for f in oa_result["findings"]}
-        self.assertIn("SNIPER-CRYP-02", oa_rules)
-        self.assertIn("SNIPER-APIT-02", oa_rules)
-        self.assertIn("SNIPER-APIT-03", oa_rules)
-        self.assertIn("SNIPER-APIT-05", oa_rules)
-        self.assertIn("SNIPER-APIT-09", oa_rules)
+        self.assertIn("VULKILL-CRYP-02", oa_rules)
+        self.assertIn("VULKILL-APIT-02", oa_rules)
+        self.assertIn("VULKILL-APIT-03", oa_rules)
+        self.assertIn("VULKILL-APIT-05", oa_rules)
+        self.assertIn("VULKILL-APIT-09", oa_rules)
 
         gql_sdl = """
         type Query {
@@ -383,7 +387,7 @@ class DependencySecurityTests(unittest.TestCase):
         gql_result = audit_api_contract(gql_sdl, source_name="schema.graphql")
         self.assertEqual(gql_result["contract_type"], "graphql")
         gql_rules = {f["rule_id"] for f in gql_result["findings"]}
-        self.assertEqual(gql_rules, {"SNIPER-APIT-02", "SNIPER-APIT-06", "SNIPER-APIT-09"})
+        self.assertEqual(gql_rules, {"VULKILL-APIT-02", "VULKILL-APIT-06", "VULKILL-APIT-09"})
 
         (self.project / "openapi.json").write_text(json.dumps(openapi_doc), encoding="utf-8")
         (self.project / "schema.graphql").write_text(gql_sdl, encoding="utf-8")

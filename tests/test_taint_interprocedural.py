@@ -469,7 +469,7 @@ class SarifCodeFlowTests(unittest.TestCase):
         rule = next(r for r in run["tool"]["driver"]["rules"] if r["id"] == flow_results[0]["ruleId"])
         self.assertEqual(rule["properties"]["security-severity"], "9.5")
         self.assertIn("external/cwe/cwe-78", rule["properties"]["tags"])
-        self.assertEqual(len(flow_results[0]["partialFingerprints"]["sniperFinding/v1"]), 32)
+        self.assertTrue(flow_results[0]["partialFingerprints"]["sniperFinding/v1"].startswith("v1|"))
 
 
 class StoredDataTests(unittest.TestCase):

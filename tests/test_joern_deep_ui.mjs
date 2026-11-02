@@ -20,13 +20,13 @@ function load(jobResult, extraIds = []) {
   const calls = [];
   const document = { readyState: 'complete', getElementById: id => ids[id] || null, createElement: () => new Node() };
   const window = {
-    SniperJobs: {
+    VulKillJobs: {
       run: async (route, payload) => { calls.push({ route, payload }); return jobResult; },
       stateLabel: s => s,
     },
   };
   vm.runInNewContext(source, { window, globalThis: window, document, String, Number, Object, Array, JSON, Promise, Error, setTimeout });
-  return { ids, calls, api: window.SniperJoernDeep };
+  return { ids, calls, api: window.VulKillJoernDeep };
 }
 
 test('onay ve yol olmadan iş başlatılmaz', async () => {
@@ -41,7 +41,7 @@ test('onay ve yol olmadan iş başlatılmaz', async () => {
 
 test('iş kuyruğundan sonuç tabloya textContent ile yazılır ve SARIF etkinleşir', async () => {
   const result = {
-    finding_count: 1, duration_seconds: 12.5, languages: { c: 3 }, engine: { version: '4.0.647' },
+    finding_count: 1, duration_seconds: 12.5, languages: { c: 3 }, engine: { version: '4.0.670' },
     findings: [{ severity: 'critical', title: '<b>Komut</b>', file: 'a.c', line: 9, evidence: 'Veri akışı' }],
     sarif: { version: '2.1.0' },
   };
@@ -69,7 +69,7 @@ test('başarısız iş hata olarak gösterilir', async () => {
 
 test('JS/TS-Python seçeneği ve süre bütçesi isteğe eklenir; kısmi sonuç uyarısı gösterilir', async () => {
   const result = {
-    finding_count: 2, duration_seconds: 300, languages: { python: 4 }, engine: { version: '4.0.647' }, partial: true,
+    finding_count: 2, duration_seconds: 300, languages: { python: 4 }, engine: { version: '4.0.670' }, partial: true,
     warnings: ['Süre bütçesi Python analizi sırasında bitti; bulunan akışlar gösteriliyor (kısmi sonuç).'],
     scripting_fast_engine: { available: true, matched: 1, confirmed_uncertain: 0, conflicting: 0, joern_only: 1 },
     findings: [

@@ -128,7 +128,7 @@ def analyze_token_sequence_entropy(
             reasons.append(f"yinelenen belirteç oranı yüksek (benzersizlik={unique_ratio:.2f})")
 
         findings.append({
-            "control_id": "SNIPER-SEQUENCER-WEAK-01",
+            "control_id": "VULKILL-SEQUENCER-WEAK-01",
             "cwe": "CWE-331",
             "reference": "CWE-331",
             "severity": "critical" if (seq_detected or effective_bits < 32.0) else "high",

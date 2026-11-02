@@ -20,7 +20,7 @@ def render_sarif(scan: dict) -> dict:
     for finding in findings:
         if not isinstance(finding, dict):
             continue
-        rule_id = f"SNIPER-{finding.get('id', 'finding')}"
+        rule_id = f"VULKILL-{finding.get('id', 'finding')}"
         rules.append({
             "id": rule_id,
             "shortDescription": {"text": str(finding.get("title", "VulKill bulgusu"))},
@@ -147,7 +147,7 @@ def render_engagement_sarif(engagement: dict) -> dict:
     seen_rules: set[str] = set()
     for finding in _combined_engagement_findings(engagement):
         finding_id = str(finding.get("id") or "finding")
-        rule_id = f"SNIPER-{finding.get('source', 'finding').upper()}-{finding_id}"
+        rule_id = f"VULKILL-{finding.get('source', 'finding').upper()}-{finding_id}"
         if rule_id not in seen_rules:
             rules.append({
                 "id": rule_id,
@@ -584,7 +584,7 @@ def render_ghsa_advisory_bundles(
             )
 
         digest = hashlib.sha256(f"{repository}:{group_key}".encode("utf-8")).hexdigest()[:8].upper()
-        advisory_id = f"SNIPER-GHSA-{digest}"
+        advisory_id = f"VULKILL-GHSA-{digest}"
 
         loc_bullets = "\n".join(
             f"- `{loc['file']}:{loc['line']}`" if loc["line"] else f"- `{loc['file'] or 'unknown'}`"

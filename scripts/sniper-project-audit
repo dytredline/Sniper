@@ -91,6 +91,7 @@ def add_agent_context(audit: dict) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
+        prog="vulkill-project-audit",
         description="Yerel bir projeyi VulKill 2.0 ile analiz eder ve doğrulanabilir JSON raporu yazdırır."
     )
     parser.add_argument("project_path", help="Analiz edilecek yerel proje klasörü")

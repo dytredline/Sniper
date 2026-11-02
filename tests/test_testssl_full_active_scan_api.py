@@ -25,25 +25,29 @@ class TestTestsslFullActiveScanApi(unittest.TestCase):
         os.environ["SNIPER_DATA_DIR"] = str(self.base / "data")
         os.environ["SNIPER_HOST"] = "127.0.0.1"
         self.calls = self.base / "calls.txt"
-        os.environ["TESTSSL_TEST_CALLS"] = str(self.calls)
+        self.exit_marker = self.base / "exit-code.txt"
+        os.environ["VULKILL_CANARY_SECRET"] = "must-not-cross"
         self.binary = self.base / "fake_testssl"
         self.binary.write_text("#!" + __import__("sys").executable + "\n" +
             "import json,os,sys\n"
             "from pathlib import Path\n"
+            f"calls=Path({str(self.calls)!r})\n"
+            f"exit_marker=Path({str(self.exit_marker)!r})\n"
+            "assert 'VULKILL_CANARY_SECRET' not in os.environ\n"
             "args=sys.argv[1:]\n"
             "assert args.count('--full')+args.count('--protocols')==1\n"
             "assert '--nodns' in args and args[args.index('--nodns')+1]=='none'\n"
             "assert '--phone-out' not in args\n"
             "assert args[-1].startswith('127.0.0.1:')\n"
-            "Path(os.environ['TESTSSL_TEST_CALLS']).open('a').write('full\\n' if '--full' in args else 'protocols\\n')\n"
+            "calls.open('a').write('full\\n' if '--full' in args else 'protocols\\n')\n"
             "report=[{'id':'1','ip':'127.0.0.1','port':'443','severity':'OK','finding':'TLSv1.3','cve':'','cwe':'','hint':''},"
             "{'id':'2','ip':'127.0.0.1','port':'443','severity':'HIGH','finding':'PRIVATE_CIPHER_MARKER','cve':'','cwe':'','hint':''}]\n"
             "Path(args[args.index('--jsonfile')+1]).write_text(json.dumps(report))\n"
-            "sys.exit(int(os.environ.get('TESTSSL_TEST_EXIT_CODE', '0')))\n")
-        self.binary.chmod(self.binary.stat().st_mode | stat.S_IXUSR)
+            "sys.exit(int(exit_marker.read_text()) if exit_marker.exists() else 0)\n")
+        self.binary.chmod(0o700)
         os.environ["SNIPER_TESTSSL_BINARY"] = str(self.binary)
         os.environ["SNIPER_TESTSSL_SHA256"] = hashlib.sha256(self.binary.read_bytes()).hexdigest()
-        self.http = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.http = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.http.daemon_threads = True
         self.thread = threading.Thread(target=self.http.serve_forever, daemon=True)
         self.thread.start()
@@ -85,7 +89,7 @@ class TestTestsslFullActiveScanApi(unittest.TestCase):
         self.assertNotIn("127.0.0.1", json.dumps(full))
 
     def test_nonzero_full_exit_with_valid_report_is_labeled_partial(self):
-        os.environ["TESTSSL_TEST_EXIT_CODE"] = "7"
+        self.exit_marker.write_text("7", encoding="ascii")
         payload = {"confirm_local": True, "target": "127.0.0.1:443"}
         status, full = self.post("/api/tool-runs/testssl-full", payload)
         self.assertEqual(status, 200)

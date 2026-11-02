@@ -39,7 +39,7 @@ class TruffleHogActiveScanApiTests(unittest.TestCase):
         # Setup server
         self.previous_store = server.STORE
         server.STORE = Store(self.base / "sniper.db")
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.httpd.daemon_threads = True
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()
@@ -66,8 +66,6 @@ class TruffleHogActiveScanApiTests(unittest.TestCase):
             os.environ["SNIPER_DATA_DIR"] = self.old_data_dir
         elif "SNIPER_DATA_DIR" in os.environ:
             del os.environ["SNIPER_DATA_DIR"]
-        if "_SNIPER_FAKE_EXITCODE" in os.environ:
-            del os.environ["_SNIPER_FAKE_EXITCODE"]
         self.temp_base.cleanup()
 
     def _write_fake_trufflehog_binary(self):
@@ -91,21 +89,14 @@ def main():
     if input_dir is None:
         sys.exit(1)
 
-    exitcode = 0
-    if "_SNIPER_FAKE_EXITCODE" in os.environ:
-        try:
-            exitcode = int(os.environ["_SNIPER_FAKE_EXITCODE"])
-        except ValueError:
-            exitcode = 0
-
     # Malformed mode: print invalid JSON and exit 0
-    if exitcode == 2:
+    if (input_dir / "malformed-marker").is_file():
         print("not valid jsonl")
         sys.stdout.flush()
         sys.exit(0)
 
     # Secret mode: emit one valid JSON record and exit 0
-    if exitcode == 0 and (input_dir / "secret-marker").is_file():
+    if (input_dir / "secret-marker").is_file():
         record = {
             "DetectorName": "Github",
             "Verified": False,
@@ -203,7 +194,8 @@ if __name__ == "__main__":
                 os.environ["SNIPER_TRUFFLEHOG_BINARY"] = old_bin
 
     def test_malformed_jsonl_returns_502(self):
-        os.environ["_SNIPER_FAKE_EXITCODE"] = "2"
+        malformed = self.project_dir / "malformed-marker"
+        malformed.write_text("fixture\n")
         try:
             status, body = self.request_json(
                 "/api/tool-runs/trufflehog-filesystem",
@@ -215,8 +207,7 @@ if __name__ == "__main__":
             self.assertEqual(status, 502)
             self.assertIn("TruffleHog çalıştırması başarısız oldu", body["error"])
         finally:
-            if "_SNIPER_FAKE_EXITCODE" in os.environ:
-                del os.environ["_SNIPER_FAKE_EXITCODE"]
+            malformed.unlink(missing_ok=True)
 
     def test_private_markers_not_leaked(self):
         status, body = self.request_json(

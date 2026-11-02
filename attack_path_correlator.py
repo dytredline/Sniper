@@ -616,7 +616,7 @@ _PIVOT_CWES = (
     "CWE-347",
     "CWE-295",
     "LLM01",
-    "SNIPER-AI-CHAIN-01",
+    "VULKILL-AI-CHAIN-01",
     "CWE-250",
     "CWE-532",
     "CWE-90",
@@ -652,7 +652,7 @@ _CRITICAL_3HOP_IMPACT_CWES = frozenset({
     "CWE-362",
     "CWE-59",
 })
-_CWE_EXTRACT_RE = re.compile(r"\b(CWE-\d+|LLM\d+|SNIPER-AI-CHAIN-\d+|GHSA-[A-Z0-9-]+|GO-\d{4}-\d+|CVE-\d{4}-\d+)\b", re.IGNORECASE)
+_CWE_EXTRACT_RE = re.compile(r"\b(CWE-\d+|LLM\d+|VULKILL-AI-CHAIN-\d+|GHSA-[A-Z0-9-]+|GO-\d{4}-\d+|CVE-\d{4}-\d+)\b", re.IGNORECASE)
 
 
 def _extract_hop_cwe(finding: dict[str, Any], default_cwe: str) -> str:
@@ -665,7 +665,7 @@ def _extract_hop_cwe(finding: dict[str, Any], default_cwe: str) -> str:
         matches = [m.upper() for m in _CWE_EXTRACT_RE.findall(raw)]
         if matches:
             for m in matches:
-                if m in ("LLM01", "SNIPER-AI-CHAIN-01"):
+                if m in ("LLM01", "VULKILL-AI-CHAIN-01"):
                     return m
             return matches[0]
     return default_cwe
@@ -692,8 +692,8 @@ def _classify_finding_stage(finding: dict[str, Any]) -> tuple[str, str] | None:
     low = blob.lower()
 
     # Check AI Indirect Prompt Injection / Pivot tokens before CWE-77 impact check
-    if "SNIPER-AI-CHAIN-01" in blob or "LLM01" in blob or "INDIRECT PROMPT" in blob or "DOLAYLI İSTEM" in blob or "DOLAYLI ISTEM" in blob:
-        cwe = "SNIPER-AI-CHAIN-01" if "SNIPER-AI-CHAIN-01" in blob else "LLM01"
+    if "VULKILL-AI-CHAIN-01" in blob or "LLM01" in blob or "INDIRECT PROMPT" in blob or "DOLAYLI İSTEM" in blob or "DOLAYLI ISTEM" in blob:
+        cwe = "VULKILL-AI-CHAIN-01" if "VULKILL-AI-CHAIN-01" in blob else "LLM01"
         return ("pivot", _extract_hop_cwe(finding, cwe))
 
     for cwe in _ENTRY_CWES:
@@ -877,7 +877,7 @@ def synthesize_multi_hop_exploit_chains(
         hop_count = len(hops)
         sig = "|".join(f"{h['stage']}:{h['cwe']}:{h['file']}:{h['line']}:{h['title']}" for h in hops)
         digest = hashlib.sha256(sig.encode("utf-8")).hexdigest()[:8]
-        chain_id = f"SNIPER-CHAIN-{digest}"
+        chain_id = f"VULKILL-CHAIN-{digest}"
         if chain_id in seen_chain_ids:
             return
         seen_chain_ids.add(chain_id)
@@ -1064,7 +1064,7 @@ def build_shared_state_attack_graph(
         hop_count = len(hops)
         sig = "|".join(f"{h['stage']}:{h['cwe']}:{h['file']}:{h['line']}:{h['title']}" for h in hops)
         digest = hashlib.sha256(sig.encode("utf-8")).hexdigest()[:8]
-        chain_id = f"SNIPER-STATE-CHAIN-{digest}"
+        chain_id = f"VULKILL-STATE-CHAIN-{digest}"
         if chain_id in seen_chain_ids:
             return
         seen_chain_ids.add(chain_id)
@@ -1235,7 +1235,7 @@ def partition_chains_by_branch_constraints(findings: list[dict[str, Any]]) -> di
             digest = hashlib.sha256(sig.encode("utf-8")).hexdigest()[:8]
             chains.append(
                 {
-                    "chain_id": f"SNIPER-BRANCH-CHAIN-{digest}",
+                    "chain_id": f"VULKILL-BRANCH-CHAIN-{digest}",
                     "branch_constraint": branch_key,
                     "client_model": branch_key,
                     "hop_count": len(hops),
@@ -1248,7 +1248,7 @@ def partition_chains_by_branch_constraints(findings: list[dict[str, Any]]) -> di
 
         partitions.append(
             {
-                "partition_id": f"SNIPER-PARTITION-{branch_key.upper()}-{idx}",
+                "partition_id": f"VULKILL-PARTITION-{branch_key.upper()}-{idx}",
                 "branch_constraint": branch_key,
                 "client_model": branch_key,
                 "finding_count": len(branch_findings),

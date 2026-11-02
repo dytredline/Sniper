@@ -31,7 +31,7 @@ class TestFaz1CoreEngines1To4(unittest.TestCase):
         red_res = audit_sibling_security_parity(red_files)
         self.assertEqual(red_res["format"], "sniper-sibling-security-parity/1")
         rule_ids = [f["rule_id"] for f in red_res["findings"]]
-        self.assertIn("SNIPER-PARITY-RAILS-01", rule_ids)
+        self.assertIn("VULKILL-PARITY-RAILS-01", rule_ids)
 
         green_files = {
             "app/controllers/oauth/authorizations_controller.rb": red_files[
@@ -64,7 +64,7 @@ class TestFaz1CoreEngines1To4(unittest.TestCase):
         )
         red_res = audit_sibling_security_parity(red_svc, filename="update_service.rb")
         rule_ids = [f["rule_id"] for f in red_res["findings"]]
-        self.assertIn("SNIPER-PARITY-SVC-02", rule_ids)
+        self.assertIn("VULKILL-PARITY-SVC-02", rule_ids)
         self.assertGreaterEqual(len(rule_ids), 2)
 
         green_svc = (
@@ -104,7 +104,7 @@ class TestFaz1CoreEngines1To4(unittest.TestCase):
         }
         red_res = audit_sibling_security_parity(red_converters)
         self.assertIn(
-            "SNIPER-PARITY-SINK-03",
+            "VULKILL-PARITY-SINK-03",
             [f["rule_id"] for f in red_res["findings"]],
         )
 
@@ -135,7 +135,7 @@ class TestFaz1CoreEngines1To4(unittest.TestCase):
         )
         red_res = audit_sibling_security_parity(red_fs, filename="BackupService.java")
         self.assertIn(
-            "SNIPER-PARITY-FS-04",
+            "VULKILL-PARITY-FS-04",
             [f["rule_id"] for f in red_res["findings"]],
         )
 
@@ -175,7 +175,7 @@ class TestFaz1CoreEngines1To4(unittest.TestCase):
         self.assertEqual(red_res["format"], "sniper-cross-language-bridge-audit/1")
         self.assertGreaterEqual(len(red_res["bridge_edges"]), 1)
         self.assertEqual(red_res["finding_count"], 1)
-        self.assertEqual(red_res["findings"][0]["rule_id"], "SNIPER-XLANG-BRIDGE-01")
+        self.assertEqual(red_res["findings"][0]["rule_id"], "VULKILL-XLANG-BRIDGE-01")
 
         green_repo = {
             "ee/lib/api/mcp/base.rb": red_repo["ee/lib/api/mcp/base.rb"],
@@ -207,9 +207,9 @@ class TestFaz1CoreEngines1To4(unittest.TestCase):
         )
         red_res = audit_http_redirect_and_tls_semantics(red_go, filename="client.go")
         rule_ids = {f["rule_id"] for f in red_res["findings"]}
-        self.assertIn("SNIPER-HTTP-WRAP-01", rule_ids)
-        self.assertIn("SNIPER-HTTP-REDIR-02", rule_ids)
-        self.assertIn("SNIPER-TLS-DEAD-03", rule_ids)
+        self.assertIn("VULKILL-HTTP-WRAP-01", rule_ids)
+        self.assertIn("VULKILL-HTTP-REDIR-02", rule_ids)
+        self.assertIn("VULKILL-TLS-DEAD-03", rule_ids)
 
         green_go = (
             "package client\n"
@@ -239,7 +239,7 @@ class TestFaz1CoreEngines1To4(unittest.TestCase):
             red_java, filename="FolderOutputSink.java"
         )
         self.assertEqual(red_res["finding_count"], 1)
-        self.assertEqual(red_res["findings"][0]["rule_id"], "SNIPER-FS-SYMLINK-01")
+        self.assertEqual(red_res["findings"][0]["rule_id"], "VULKILL-FS-SYMLINK-01")
 
         green_py = (
             "import zipfile, tarfile\n"

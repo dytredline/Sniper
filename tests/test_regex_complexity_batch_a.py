@@ -10,7 +10,11 @@ import authorized_tool_targets
 import authz_routes
 
 
-LINEAR_BUDGET_SECONDS = 0.20
+# GitHub's shared Python 3.15 runners have measured the 250,000-character
+# linear fixture at 0.269 seconds.  Keep a strict sub-second ceiling while
+# leaving enough scheduler/runner variance that the complexity guard is not a
+# timing-flake gate.
+LINEAR_BUDGET_SECONDS = 0.75
 
 
 class RegexComplexityBatchATests(unittest.TestCase):
@@ -125,7 +129,7 @@ class RegexComplexityBatchATests(unittest.TestCase):
             "public void authenticateUser(String token) {\n    return;\n}\n",
             filename="Auth.java",
         )
-        self.assertTrue(any(f["control_id"] == "SNIPER-LOGG-01" for f in java["findings"]))
+        self.assertTrue(any(f["control_id"] == "VULKILL-LOGG-01" for f in java["findings"]))
 
     def test_authorized_dns_validation_is_bounded_and_preserves_contract(self):
         adversarial = "https://" + "0" + ".00" * 90

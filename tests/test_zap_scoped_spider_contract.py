@@ -25,7 +25,7 @@ class SpiderContract(unittest.TestCase):
         self.window=(now-timedelta(minutes=5)).strftime('%Y-%m-%dT%H:%M:%SZ')+'/'+(now+timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%SZ')
         self.engagement=server.STORE.create_engagement(target_id=self.target['id'],name='Fixture root crawl',authorization_ref='LOCAL-FIXTURE-AUTH',scope_notes='Fixture root only',
             out_of_scope='["/admin"]',test_window=self.window,special_approvals={})
-        self.httpd=ThreadingHTTPServer(('127.0.0.1',0),server.SniperHandler)
+        self.httpd=ThreadingHTTPServer(('127.0.0.1',0),server.VulKillHandler)
         self.httpd.daemon_threads=True
         server.PORT=self.httpd.server_address[1]
         self.thread=threading.Thread(target=self.httpd.serve_forever,daemon=True);self.thread.start()

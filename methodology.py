@@ -237,7 +237,7 @@ def build_catalog() -> list[dict]:
         }[category]
         for index, (title, objective) in enumerate(tests, start=1):
             catalog.append({
-                "control_id": f"SNIPER-{prefix}-{index:02d}",
+                "control_id": f"VULKILL-{prefix}-{index:02d}",
                 "category": category,
                 "category_title": category_title,
                 "title": title,
@@ -247,19 +247,19 @@ def build_catalog() -> list[dict]:
             })
     catalog.extend([
         {
-            "control_id": "SNIPER-SAFE-AUTH-01", "category": "controlled",
+            "control_id": "VULKILL-SAFE-AUTH-01", "category": "controlled",
             "category_title": "Özel onaylı doğrulamalar", "title": "Kontrollü hesap kilitlenme doğrulaması",
             "objective": "Yalnızca sahibi tarafından sağlanan sentetik test hesabında, kurallarda belirtilen düşük deneme tavanıyla kilitlenme ve alarm davranışını manuel olarak doğrulayın; parola listesi kullanmayın.",
             "reference": "OWASP WSTG 4.4 · VulKill güvenli kanıt protokolü", "requires_approval": "controlled_lockout",
         },
         {
-            "control_id": "SNIPER-SAFE-CAP-01", "category": "controlled",
+            "control_id": "VULKILL-SAFE-CAP-01", "category": "controlled",
             "category_title": "Özel onaylı doğrulamalar", "title": "Staging kapasite testi gözlemi",
             "objective": "Yalnızca üretim dışı ve ayrılmış ortamda, sistem sahibi tarafından çalıştırılan kapasite testinin onay, gözlem, kesme eşiği ve iyileşme kanıtını kaydedin; VulKill trafik üretmez.",
             "reference": "VulKill güvenli kanıt protokolü", "requires_approval": "staging_capacity",
         },
         {
-            "control_id": "SNIPER-SAFE-DATA-01", "category": "controlled",
+            "control_id": "VULKILL-SAFE-DATA-01", "category": "controlled",
             "category_title": "Özel onaylı doğrulamalar", "title": "Maskeli veri sızıntısı kanıtı",
             "objective": "Erişim etkisini gerçek veriyi toplamadan; kayıt sayısı, içerik hash'i ve geri döndürülemez maskeli tek örnekle kanıtlayın. Ham veri VulKill'a kaydedilmemelidir.",
             "reference": "OWASP WSTG 4.5 · VulKill güvenli kanıt protokolü", "requires_approval": "redacted_data_proof",

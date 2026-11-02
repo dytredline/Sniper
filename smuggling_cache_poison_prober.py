@@ -37,7 +37,7 @@ def evaluate_smuggling_differential_probes(probes: list[dict[str, Any]]) -> dict
 
         if vulnerable:
             findings.append({
-                "control_id": "SNIPER-SMUGGLE-DESYNC-01",
+                "control_id": "VULKILL-SMUGGLE-DESYNC-01",
                 "cwe": "CWE-444",
                 "reference": "CWE-444",
                 "severity": "critical",
@@ -111,7 +111,7 @@ def run_loopback_cache_poisoning_probe(
     findings: list[dict[str, Any]] = []
     if poisoned:
         findings.append({
-            "control_id": "SNIPER-CACHE-POISON-01",
+            "control_id": "VULKILL-CACHE-POISON-01",
             "cwe": "CWE-444",
             "reference": "CWE-444",
             "severity": "high",

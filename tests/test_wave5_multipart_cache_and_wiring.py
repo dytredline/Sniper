@@ -37,7 +37,7 @@ def test_multipart_upload_unconditional_delete_red_vs_green() -> None:
     assert res_red["format"] == "sniper-multipart-and-cache-audit/1"
     assert res_red["finding_count"] == 1
     finding = res_red["findings"][0]
-    assert finding["control_id"] == "SNIPER-UPLOAD-DEL-01"
+    assert finding["control_id"] == "VULKILL-UPLOAD-DEL-01"
     assert finding["cwe"] == "CWE-22"
     assert finding["severity"] == "high"
     assert finding["category"] == "command_data"
@@ -85,7 +85,7 @@ def test_p2p_state_cache_poisoning_red_vs_green() -> None:
     )
     assert res_red["finding_count"] == 1
     finding = res_red["findings"][0]
-    assert finding["control_id"] == "SNIPER-P2P-CACHE-02"
+    assert finding["control_id"] == "VULKILL-P2P-CACHE-02"
     assert finding["cwe"] == "CWE-400"
     assert finding["severity"] == "high"
     assert finding["category"] == "dos"
@@ -143,7 +143,7 @@ def test_wave5_cli_reports_json_exporters() -> None:
     mpc_payload = json.loads(mpc_json)
     assert mpc_payload["format"] == "sniper-multipart-and-cache-audit/1"
     assert mpc_payload["finding_count"] == 1
-    assert mpc_payload["findings"][0]["control_id"] == "SNIPER-UPLOAD-DEL-01"
+    assert mpc_payload["findings"][0]["control_id"] == "VULKILL-UPLOAD-DEL-01"
 
 
 def test_project_analyzer_wave5_end_to_end_wiring() -> None:

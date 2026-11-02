@@ -612,7 +612,7 @@
             <label class="full">Denenecek örnek kod<textarea id="taint-rules-code" rows="6" spellcheck="false"></textarea></label>
             <label>Örnek dosya adı<input id="taint-rules-filename" type="text" placeholder="ornek.py"></label>
             <label class="checkbox-inline"><input id="taint-rules-confirm" type="checkbox"> Özel kuralı kaydetmeyi/silmeyi onaylıyorum</label>
-            <div class="button-row full"><button id="taint-rules-try" class="button secondary" type="button">Kuralı dene</button><button id="taint-rules-save" class="button primary" type="button">Kaydet</button><a class="button secondary" href="/api/taint-rules/opengrep" download="sniper-custom-opengrep.json">Opengrep kuralı olarak indir</a></div>
+            <div class="button-row full"><button id="taint-rules-try" class="button secondary" type="button">Kuralı dene</button><button id="taint-rules-save" class="button primary" type="button">Kaydet</button><a class="button secondary" href="/api/taint-rules/opengrep" download="vulkill-custom-opengrep.json">Opengrep kuralı olarak indir</a></div>
           </div>
           <p id="taint-rules-message" class="muted" aria-live="polite"></p>
           <div id="taint-rules-trial" class="autofix-result hidden" aria-live="polite"></div>
@@ -626,7 +626,7 @@
           <p id="jobs-panel-empty" class="muted">Henüz iş yok.</p>
         </section>
         <section class="panel hidden" id="joern-deep-panel" aria-labelledby="joern-deep-title"><div class="panel-head"><div><p class="eyebrow">DERİN ANALİZ</p><h2 id="joern-deep-title">Joern (C/C++, Java, Kotlin, PHP, Go, Ruby, C#)</h2></div></div>
-          <p class="muted">Dosyalar arası veri akışı analizi; sabitlenmiş Joern 4.0.647 + JDK 21, iş kuyruğunda, en çok 6 GB bellek ve 15 dakika. Kaynak satır içeriği saklanmaz.</p>
+          <p class="muted">Dosyalar arası veri akışı analizi; sabitlenmiş Joern 4.0.670 + Temurin JDK 25 LTS, iş kuyruğunda, en çok 6 GB bellek ve 15 dakika. Kaynak satır içeriği saklanmaz.</p>
           <form id="joern-deep-form" class="form-grid"><label class="full">Proje klasörü<input id="joern-deep-path" type="text"></label>
           <label class="checkbox-inline"><input id="joern-deep-scripting" type="checkbox"> JS/TS ve Python dahil (proje analizinin tamamlayıcısı; deneysel)</label>
           <label>Süre bütçesi (dakika)<input id="joern-deep-budget" type="number" min="1" max="60" step="1" placeholder="15"></label>

@@ -2,7 +2,7 @@
 // sürer (iş kimliği tarayıcıda saklanır, sayfa açılınca izlemeye devam edilir). Sonuç eşzamanlı API ile aynı
 // kayıtlı analiz nesnesidir. Ayrıca analiz ayrıntısına monorepo alt proje özetini ekler.
 // Yalnız DOM API ve textContent kullanılır.
-// Kullanım: await window.SniperProjectJobs.start(body, form) → kayıtlı analiz (id, project_name …)
+// Kullanım: await window.VulKillProjectJobs.start(body, form) → kayıtlı analiz (id, project_name …)
 (() => {
   const scope = typeof window !== "undefined" ? window : globalThis;
   const ROUTE = "/api/project-audits";
@@ -179,9 +179,9 @@
     remember(job.id);
     bindCancel(box, job.id);
     render(box, job);
-    scope.SniperJobsPanel?.refresh?.();
+    scope.VulKillJobsPanel?.refresh?.();
     const final = await poll(job.id, box);
-    scope.SniperJobsPanel?.refresh?.();
+    scope.VulKillJobsPanel?.refresh?.();
     if (final.state === "succeeded") box.classList.add("hidden");
     return outcome(final);
   }
@@ -289,5 +289,5 @@
     });
   }
 
-  scope.SniperProjectJobs = Object.freeze({ start, resume, poll, render, renderSubprojects, installDetailHook });
+  scope.VulKillProjectJobs = Object.freeze({ start, resume, poll, render, renderSubprojects, installDetailHook });
 })();

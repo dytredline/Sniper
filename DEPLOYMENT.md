@@ -11,10 +11,9 @@ database.
 | --- | --- |
 | Linux ARM64 | Supported and release-tested for the native source setup and seven locked optional engines |
 | Linux x86-64 | Locked artifacts are provided; GitHub CI validates the source/container path |
-| macOS native (Apple Silicon) | Supported and real-host verified for the native source setup (`--core-only`: `.venv`, built-in SAST/SCA/IaC analyzers, MCP, CLI, and loopback web interface); optional third-party Linux engine binaries run via the verified Docker Desktop profile below |
-| macOS Apple Silicon + Docker Desktop | Supported and real-host verified for the five-engine Linux container profile (`./scripts/deploy-community-tools --accept-third-party-licenses`) |
-| Windows core-only | Supported by the portable setup contract (`python3 scripts/setup-community --core-only`); this release does not claim a real Windows-host run |
-| WSL2 / Docker Desktop | Linux core and explicit seven-engine container profiles are provided and contract-tested; the five-engine macOS Docker path has separate real-host evidence |
+| Windows native | Not supported in v1; setup fails before creating an environment and directs users to WSL2 or Docker |
+| macOS native | Experimental core-only source setup with `--core-only`; no locked native engine artifacts and no real-host release evidence |
+| Docker Desktop / WSL2 | Linux core and explicit seven-engine container profiles are provided and contract-tested; real Windows/macOS host execution is not part of this release evidence |
 
 The default container runs the VulKill web application and does not bundle the seven separately licensed optional
 engines. The distinct `community-tools` build target installs exactly the seven Linux artifacts in
@@ -38,7 +37,7 @@ python3 -m venv .venv
 python3 -m pip install -r requirements-runtime.lock
 python3 .github/scripts/validate-community-release.py
 sha256sum --check COMMUNITY-SOURCE-MANIFEST.sha256
-python3 scripts/sniper-mcp --help
+python3 scripts/vulkill-mcp --help
 ```
 
 The plain validator is appropriate for a Git checkout, which also contains
@@ -83,7 +82,7 @@ artifact is requested. Start that image with the same explicit gate:
 
 ```bash
 SNIPER_ACCEPT_THIRD_PARTY_LICENSES=1 docker compose \
-  -f docker-compose.yml -f docker-compose.tools.yml up -d sniper
+  -f docker-compose.yml -f docker-compose.tools.yml up -d vulkill
 ```
 
 Both profiles retain the loopback-only `127.0.0.1:8787` host publication and the same named data volumes. Docker
@@ -93,56 +92,26 @@ Windows/macOS binaries.
 Docker Desktop on Windows (PowerShell), core profile:
 
 ```powershell
-docker compose up -d sniper
+docker compose up -d vulkill
 ```
 
 Docker Desktop on Windows (PowerShell), explicit seven-engine profile:
 
 ```powershell
 $env:SNIPER_ACCEPT_THIRD_PARTY_LICENSES = "1"
-docker compose -f docker-compose.yml -f docker-compose.tools.yml up -d sniper
+docker compose -f docker-compose.yml -f docker-compose.tools.yml up -d vulkill
 ```
 
 Docker Desktop on macOS or Docker from WSL2 uses the same Compose files from a POSIX shell:
 
 ```bash
-docker compose up -d sniper
+docker compose up -d vulkill
 SNIPER_ACCEPT_THIRD_PARTY_LICENSES=1 docker compose \
-  -f docker-compose.yml -f docker-compose.tools.yml up -d sniper
+  -f docker-compose.yml -f docker-compose.tools.yml up -d vulkill
 ```
 
 Review `COMMUNITY-TOOLS.lock.json` before setting the acknowledgement. The exact host run remains operator evidence;
 the release gate validates the plans, merged Compose model, architecture mapping, and fail-closed acknowledgement.
-
-### Verified macOS five-engine path
-
-On Apple Silicon with Docker Desktop running, use the checked-in helper from the repository root after reviewing the
-five separate open-source licenses in `COMMUNITY-TOOLS.lock.json`:
-
-```bash
-./scripts/deploy-community-tools --accept-third-party-licenses
-```
-
-This builds the digest-locked `community-tools` image, starts only VulKill on `127.0.0.1:8787`, and fails unless the
-Nuclei loopback, Trivy local secret, Gitleaks, TruffleHog filesystem, and Opengrep local-code profiles all pass their
-runtime prechecks. The helper creates a mode-`0600` `.env` with a random Grafana password only when that file is absent;
-it never replaces an existing `.env`. It does not start monitoring or run a scan. The five binaries do not supply
-Nuclei's separate broad template catalog, Trivy's offline vulnerability database, or the other prerequisite-dependent
-tools; those profiles continue to show unavailable until their own verified inputs exist.
-
-Docker Desktop can be denied macOS Documents/Downloads bind mounts even when the terminal can read those folders.
-Instead of broadening Docker's filesystem access, explicitly copy one chosen project into the persistent
-`sniper_projects` volume:
-
-```bash
-./scripts/import-community-project /absolute/path/to/project --name project-name
-```
-
-Then enter `/app/projects/project-name` in VulKill's local-project forms. The copy can include sensitive source files,
-so choose the directory deliberately. Import never changes the Mac original and refuses to overwrite an existing
-project name. The project copy persists across container restarts and `docker compose down`; include this volume in
-your data handling and backups. This is a source snapshot, not a live sync. Re-import under a new name after source
-changes, or use a Docker Desktop file-sharing bind mount only after explicitly granting that folder access.
 
 `scripts/deploy.sh` creates a mode-`0600` `.env` file with a random local
 Grafana password when one does not already exist. It does not print the

@@ -22,7 +22,7 @@ function load(handler) {
   const document = { readyState: 'complete', getElementById: id => ids[id] || null, createElement: tag => new Node(tag), addEventListener() {} };
   const window = { api: async (path, options = {}) => { calls.push({ path, options }); return handler(path, options); } };
   vm.runInNewContext(source, { window, globalThis: window, document, String, Object, Array, JSON, Promise, Error, encodeURIComponent });
-  return { ids, calls, api: window.SniperTaintRules };
+  return { ids, calls, api: window.VulKillTaintRules };
 }
 
 const listing = { available: true, activation: 'Kurallar derlendi', rules: [{ name: '<b>kural</b>', language: 'python', sink_kinds: ['sql'], counts: { sinks: 1 }, stored_at: '2026-10-19' }] };

@@ -10,7 +10,7 @@ import ast
 import hashlib
 import json
 import math
-import re
+import safe_regex as re
 from typing import Any
 
 
@@ -135,24 +135,14 @@ def _split_conjunctions(expr: str) -> list[str]:
                 buf = []
                 i += 2
                 continue
-            if ch.isspace():
-                token_start = i
-                while token_start < n and expr[token_start].isspace():
-                    token_start += 1
-                token_end = token_start + 3
-                if (
-                    expr[token_start:token_end] == "and"
-                    and token_end < n
-                    and expr[token_end].isspace()
-                ):
-                    while token_end < n and expr[token_end].isspace():
-                        token_end += 1
-                    piece = "".join(buf).strip()
-                    if piece:
-                        parts.append(piece)
-                    buf = []
-                    i = token_end
-                    continue
+            m_and = re.match(r"^\s+and\s+", expr[i:])
+            if m_and:
+                piece = "".join(buf).strip()
+                if piece:
+                    parts.append(piece)
+                buf = []
+                i += m_and.end()
+                continue
         buf.append(ch)
         i += 1
     tail = "".join(buf).strip()
@@ -176,17 +166,9 @@ def _extract_atomic_guards(guards: list[str] | str) -> list[str]:
         if not cleaned or cleaned.startswith(("#", "//", "/*")):
             continue
         # Strip inline comments outside quotes
-        statement_body: str | None = None
-        for keyword in ("if", "elif", "while", "assert", "guard"):
-            if cleaned.startswith(keyword):
-                boundary = len(keyword)
-                if boundary == len(cleaned) or not (
-                    cleaned[boundary] == "_" or cleaned[boundary].isalnum()
-                ):
-                    statement_body = cleaned[boundary:].strip()
-                    break
-        if statement_body is not None:
-            cleaned = statement_body
+        m_stmt = re.match(r"^(?:if|elif|while|assert|guard)\b\s*(.*)$", cleaned)
+        if m_stmt:
+            cleaned = m_stmt.group(1).strip()
             if cleaned.endswith(":"):
                 cleaned = cleaned[:-1].strip()
             if cleaned.endswith("{"):

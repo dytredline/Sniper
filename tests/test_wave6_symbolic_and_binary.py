@@ -156,23 +156,23 @@ class BinarySecurityHardeningAuditorTests(unittest.TestCase):
         self.assertEqual(report["finding_count"], 4)
 
         by_id = {f["id"]: f for f in report["findings"]}
-        self.assertIn("SNIPER-BIN-HARDEN-01", by_id)
-        self.assertIn("SNIPER-BIN-RPATH-02", by_id)
-        self.assertIn("SNIPER-BIN-UNSAFE-SYM-03", by_id)
-        self.assertIn("SNIPER-BIN-RODATA-SECRET-04", by_id)
+        self.assertIn("VULKILL-BIN-HARDEN-01", by_id)
+        self.assertIn("VULKILL-BIN-RPATH-02", by_id)
+        self.assertIn("VULKILL-BIN-UNSAFE-SYM-03", by_id)
+        self.assertIn("VULKILL-BIN-RODATA-SECRET-04", by_id)
 
-        self.assertEqual(by_id["SNIPER-BIN-HARDEN-01"]["cwe"], "CWE-693")
-        self.assertEqual(by_id["SNIPER-BIN-HARDEN-01"]["severity"], "medium")
+        self.assertEqual(by_id["VULKILL-BIN-HARDEN-01"]["cwe"], "CWE-693")
+        self.assertEqual(by_id["VULKILL-BIN-HARDEN-01"]["severity"], "medium")
 
-        self.assertEqual(by_id["SNIPER-BIN-RPATH-02"]["cwe"], "CWE-426")
-        self.assertEqual(by_id["SNIPER-BIN-RPATH-02"]["severity"], "high")
+        self.assertEqual(by_id["VULKILL-BIN-RPATH-02"]["cwe"], "CWE-426")
+        self.assertEqual(by_id["VULKILL-BIN-RPATH-02"]["severity"], "high")
 
-        self.assertEqual(by_id["SNIPER-BIN-UNSAFE-SYM-03"]["cwe"], "CWE-676")
-        self.assertEqual(by_id["SNIPER-BIN-UNSAFE-SYM-03"]["severity"], "high")
-        self.assertIn("strcpy", by_id["SNIPER-BIN-UNSAFE-SYM-03"]["unsafe_symbols"])
-        self.assertIn("gets", by_id["SNIPER-BIN-UNSAFE-SYM-03"]["unsafe_symbols"])
+        self.assertEqual(by_id["VULKILL-BIN-UNSAFE-SYM-03"]["cwe"], "CWE-676")
+        self.assertEqual(by_id["VULKILL-BIN-UNSAFE-SYM-03"]["severity"], "high")
+        self.assertIn("strcpy", by_id["VULKILL-BIN-UNSAFE-SYM-03"]["unsafe_symbols"])
+        self.assertIn("gets", by_id["VULKILL-BIN-UNSAFE-SYM-03"]["unsafe_symbols"])
 
-        secret_finding = by_id["SNIPER-BIN-RODATA-SECRET-04"]
+        secret_finding = by_id["VULKILL-BIN-RODATA-SECRET-04"]
         self.assertEqual(secret_finding["cwe"], "CWE-798")
         self.assertEqual(secret_finding["severity"], "critical")
         self.assertEqual(secret_finding["category"], "secrets")

@@ -18,7 +18,7 @@ from project_tree import ProjectTree, ProjectTreeError
 from tool_report_trivy import parse_trivy_native_json_summary
 
 
-EXPECTED_TRIVY_SHA256 = "869e310e208f0f2e3e90e4f842cc6adaa2b2c046fecbaade481e6b23fcc8f2a9"
+EXPECTED_TRIVY_SHA256 = "67ebe2978898505e4cf48ec0c3280907d933e206c290aeeef7a3be0f8d269d84"
 MAX_DOCKERFILE_BYTES = 1_000_000
 MAX_TERRAFORM_FILE_BYTES = 1_000_000
 MAX_REPORT_BYTES = 2_000_000

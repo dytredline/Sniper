@@ -278,7 +278,7 @@
     if (view === "notifications") { loadNotifications(); loadSettings(); }
   }
 
-  scope.SniperOps = { show, loadSchedules, loadNotifications, refreshBadge, renderSchedules, renderNotifications, settingsFromForm, fillSettings };
+  scope.VulKillOps = { show, loadSchedules, loadNotifications, refreshBadge, renderSchedules, renderNotifications, settingsFromForm, fillSettings };
   if (typeof document !== "undefined" && document.getElementById("ops-schedule-form")) {
     bind();
     refreshBadge();

@@ -53,9 +53,14 @@ PINS: dict[str, ToolPin] = {
         env_binary="SNIPER_SYFT_BINARY", env_sha256="SNIPER_SYFT_BINARY_SHA256",
         source_url="https://github.com/anchore/syft/releases/tag/v1.55.0",
         digests={"aarch64": {
-            "4f8068b25551a42991a292a42078519fdc739a97a6f6310e1dcf1367a258c1c2":
-                "resmi Linux arm64 sürüm ikilisi (v1.55.0 yayın checksum kaydıyla doğrulandı)",
+            "a25bda7a97403add93e9a384f70554b212a112e2e66c0989bbc4c35e8c8a319e":
+                "v1.55.0 etiketinden (commit f15c3343) Go 1.27.3 ve güvenlik modül "
+                "yükseltmeleriyle doğrulanmış yerel derleme; VERIFIED-TOOLCHAIN.lock.json",
         }},
+        revoked_digests=frozenset({
+            "4f8068b25551a42991a292a42078519fdc739a97a6f6310e1dcf1367a258c1c2",
+            "b37c723afc00a1336d3472d6b84de349f67b8ed12dec69e46dead808ef32aad6",
+        }),
         default_binary=Path.home() / ".local" / "state" / "sniper-tool-runtimes" / "syft-1.55.0" / "syft",
     ),
     "grype": ToolPin(
@@ -63,9 +68,14 @@ PINS: dict[str, ToolPin] = {
         env_binary="SNIPER_GRYPE_BINARY", env_sha256="SNIPER_GRYPE_BINARY_SHA256",
         source_url="https://github.com/anchore/grype/releases/tag/v0.121.0",
         digests={"aarch64": {
-            "e81fd2b6669c5a9ab7fee756e63e769cc40163310c11e546420b4d93e2118543":
-                "resmi Linux arm64 sürüm ikilisi (v0.121.0 yayın checksum kaydıyla doğrulandı)",
+            "c8dc5f64e3d2c163aa2f4103ee08292cd6addd84f6994dfcd4e5018c68483069":
+                "v0.121.0 etiketinden (commit afe27425) Go 1.27.3 ve güvenlik modül "
+                "yükseltmeleriyle doğrulanmış yerel derleme; VERIFIED-TOOLCHAIN.lock.json",
         }},
+        revoked_digests=frozenset({
+            "e81fd2b6669c5a9ab7fee756e63e769cc40163310c11e546420b4d93e2118543",
+            "3b6f67504e69e637535f8672b588917b1b4c16be6f9a4d20f3e2c89a4ef01859",
+        }),
         default_binary=Path.home() / ".local" / "state" / "sniper-tool-runtimes" / "grype-0.121.0" / "grype",
     ),
     "gitleaks": ToolPin(
@@ -73,43 +83,52 @@ PINS: dict[str, ToolPin] = {
         env_binary="SNIPER_GITLEAKS_BINARY", env_sha256="SNIPER_GITLEAKS_SHA256",
         source_url="https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1",
         digests={"aarch64": {
-            "00e91bbe655bd7c47753e8cfe61cb76ea1a5d7e7702fe161ee40102b46b3823b":
-                "resmi sürüm ikilisi (gitleaks_8.30.1_linux_arm64.tar.gz, checksums.txt "
-                "e4a487ee…b080 ile doğrulandı)",
-            "a56a110704baf742345d79eb56f8effde827c8499761f7cb2698412d100a01a9":
-                "v8.30.1 etiketinden (commit 83d9cd68) güncel Go stdlib ile yerel derleme; "
-                "BUILD-MANIFEST.json",
+            "d26b4da0d011da43fa7e22e309841faad203e0d9869a1127d3a65886a5072166":
+                "v8.30.1 etiketinden (commit 83d9cd68) Go 1.27.3 ve güvenlik modül "
+                "yükseltmeleriyle doğrulanmış yerel derleme; VERIFIED-TOOLCHAIN.lock.json",
         }},
+        revoked_digests=frozenset({
+            "00e91bbe655bd7c47753e8cfe61cb76ea1a5d7e7702fe161ee40102b46b3823b",
+            "c0c79301a5e3cd357ab568d2bb439d5215793208da6081bc366433ce16e3df24",
+            "a56a110704baf742345d79eb56f8effde827c8499761f7cb2698412d100a01a9",
+        }),
     ),
     "trufflehog": ToolPin(
-        tool="trufflehog", label="TruffleHog", version="3.99.0",
+        tool="trufflehog", label="TruffleHog", version="3.99.7",
         env_binary="SNIPER_TRUFFLEHOG_BINARY", env_sha256="SNIPER_TRUFFLEHOG_SHA256",
-        source_url="https://github.com/trufflesecurity/trufflehog/releases/tag/v3.99.0",
+        source_url="https://github.com/trufflesecurity/trufflehog/releases/tag/v3.99.7",
         digests={"aarch64": {
-            "6f6681885e3620ad0972eff26d8ce9b85d4392163597f33d5b7d05779128eb00":
-                "resmi sürüm ikilisi (trufflehog_3.99.0_linux_arm64.tar.gz, cosign imzalı "
-                "checksums ad6fb802…dfb7 ile doğrulandı)",
-            "4cdfed417cc07a7cd3b08036ce07c87f26e8db21b82b5c7b90005f06da380a93":
-                "resmi UPX paketli ikilinin (6f668188…eb00) upx 5.2.1 ile açılmış hali; "
-                "UNPACKED-RUNTIME-PROVENANCE.json",
+            "b00f2a9f2ff4263160289b144cde0d7a5d96568ea085e55b268d01e82a1dd6f5":
+                "v3.99.7 etiketinden (commit 31ce31ee) Go 1.27.3 ve güvenlik modül "
+                "yükseltmeleriyle doğrulanmış yerel derleme; VERIFIED-TOOLCHAIN.lock.json",
         }},
+        revoked_digests=frozenset({
+            "c51ee8bd6082eaccfd9cb5ff10d3fe1fc883332a0bb312868aeaff4d988c4493",
+            "2af93536892db19976b0e81a43a4b2b2a3330bbf115290501d80a4621b0d8cdc",
+            "6f6681885e3620ad0972eff26d8ce9b85d4392163597f33d5b7d05779128eb00",
+            "4cdfed417cc07a7cd3b08036ce07c87f26e8db21b82b5c7b90005f06da380a93",
+        }),
     ),
     "opengrep": ToolPin(
-        tool="opengrep", label="Opengrep", version="1.30.1",
+        tool="opengrep", label="Opengrep", version="1.33.1",
         env_binary="SNIPER_OPENGREP_BINARY", env_sha256="SNIPER_OPENGREP_SHA256",
-        source_url="https://github.com/opengrep/opengrep/releases/tag/v1.30.1",
+        source_url="https://github.com/opengrep/opengrep/releases/tag/v1.33.1",
         digests={
             "aarch64": {
-                "a730f6fdce1e978ea29e610a2e0503bfe1ec31fce08979a9a84e3699f03e16ee":
-                    "resmi sürüm varlığı opengrep_manylinux_aarch64 (GitHub varlık özeti ve "
-                    "cosign sertifika kimliği doğrulandı)",
+                "d1433f63a90b8bc0b6ad4b498a13b372b856ce9a754a43484ba4920fe2d76dcf":
+                    "resmi sürüm varlığı opengrep_manylinux_aarch64 (GitHub varlık özeti; "
+                    "yayıncı .sig/.cert yan dosyaları ayrıca yayımlandı)",
             },
             "x86_64": {
-                "d3195b9d8d5ae93179f6aa5f5daaba6a920a5a09d38c5d5ae5e60924050210c4":
+                "46e8133cc490f9f50518061590ce2f6be5a08afaeda034471c0ceda4b3899808":
                     "resmi sürüm varlığı opengrep_manylinux_x86 (GitHub varlık özeti)",
             },
         },
-        default_binary=SNIPER_TOOLS_DIR / "opengrep" / "1.30.1" / "opengrep",
+        default_binary=SNIPER_TOOLS_DIR / "opengrep" / "1.33.1" / "opengrep",
+        revoked_digests=frozenset({
+            "a730f6fdce1e978ea29e610a2e0503bfe1ec31fce08979a9a84e3699f03e16ee",
+            "d3195b9d8d5ae93179f6aa5f5daaba6a920a5a09d38c5d5ae5e60924050210c4",
+        }),
     ),
     # Semgrep bir Python paketi; tek bir ikiliyle sabitlenemez. Yalnız operatörün
     # SNIPER_SEMGREP_SHA256 ile açıkça sabitlediği giriş noktası kabul edilir.
@@ -120,25 +139,28 @@ PINS: dict[str, ToolPin] = {
     ),
     # Joern derin analiz modunun JDK'sı (Eclipse Temurin 25 LTS; scripts/install_joern.py ile kurulur).
     "joern-jdk": ToolPin(
-        tool="joern-jdk", label="Joern JDK (Temurin 25 LTS)", version="25.0.4.1+1",
+        tool="joern-jdk", label="Joern JDK (Temurin 25 LTS)", version="25.0.5+8",
         env_binary="SNIPER_JOERN_JDK_BINARY", env_sha256="SNIPER_JOERN_JDK_SHA256",
-        source_url="https://github.com/adoptium/temurin25-binaries/releases/tag/jdk-25.0.4%2B1",
+        source_url="https://github.com/adoptium/temurin25-binaries/releases/tag/jdk-25.0.5%2B8",
         digests={"aarch64": {
-            "e8201aed7118cbf3a77b9cb308a3cbe135fe97b055968b3b4797162fed1ca818":
-                "resmi Temurin arşivindeki bin/java (OpenJDK25U-jdk_aarch64_linux_hotspot_25.0.4.1_1.tar.gz, "
-                "Adoptium sürüm özetiyle doğrulanan arşiv SHA-256 69df11a0…ac52)",
+            "9773d145ea1adce8da70e0f9e87ecddad5446f7e5ac05b44a95cecf902b42cb9":
+                "resmi Temurin arşivindeki bin/java (OpenJDK25U-jdk_aarch64_linux_hotspot_25.0.5_8.tar.gz, "
+                "Adoptium sürüm özeti ve .sha256.txt ile doğrulanan arşiv SHA-256 bb5b2ded…1880)",
         }},
-        default_binary=SNIPER_TOOLS_DIR / "jdk" / "25.0.4.1+1" / "bin" / "java",
+        default_binary=SNIPER_TOOLS_DIR / "jdk" / "25.0.5+8" / "bin" / "java",
+        revoked_digests=frozenset({
+            "e8201aed7118cbf3a77b9cb308a3cbe135fe97b055968b3b4797162fed1ca818",
+        }),
         version_args=("-version",),
         version_pattern=(
-            r'\Aopenjdk version "(25)\.(0)\.(4)\.(1)" 2026-08-18 LTS\r?\n'
-            r'OpenJDK Runtime Environment Temurin-25\.0\.4\.1\+1 '
-            r'\(build 25\.0\.4\.1\+1-LTS\)\r?\n'
-            r'OpenJDK 64-Bit Server VM Temurin-25\.0\.4\.1\+1 '
-            r'\(build 25\.0\.4\.1\+1-LTS, mixed mode, sharing\)\s*\Z'
+            r'\Aopenjdk version "(25)\.(0)\.(5)" 2026-10-20 LTS\r?\n'
+            r'OpenJDK Runtime Environment Temurin-25\.0\.5\+8 '
+            r'\(build 25\.0\.5\+8-LTS\)\r?\n'
+            r'OpenJDK 64-Bit Server VM Temurin-25\.0\.5\+8 '
+            r'\(build 25\.0\.5\+8-LTS, mixed mode, sharing\)\s*\Z'
         ),
         supported_major=25,
-        minimum_version=(25, 0, 4, 1),
+        minimum_version=(25, 0, 5),
     ),
     # Yalıtılmış yerel yük testi (tool_sandbox.py): resmi k6 sürümü, bwrap içinde çalışır.
     "k6": ToolPin(
@@ -166,22 +188,23 @@ PINS: dict[str, ToolPin] = {
     ),
     # Yalıtılmış tarayıcı testleri (sandbox_browser_tests.py): Playwright sürücüsünü çalıştıran Node.
     "node": ToolPin(
-        tool="node", label="Node.js", version="22.23.4",
+        tool="node", label="Node.js LTS", version="26.13.0",
         env_binary="SNIPER_NODE_BINARY", env_sha256="SNIPER_NODE_SHA256",
-        source_url="https://nodejs.org/dist/v22.23.4/",
+        source_url="https://nodejs.org/dist/v26.13.0/",
         digests={"aarch64": {
-            "7e48183361053f039294fbbc3ba586722fe756bf296d6cb8195356d10819cd16":
-                "resmi node-v22.23.4-linux-arm64 arşivindeki bin/node (arşiv SHA-256 "
-                "6287aa46…f4b); dağıtım CHANGELOG.md kaydı 2026-10-21 güvenlik sürümünü listeler",
+            "66f4a883c880ef336276e7730c01cbae2b92fb8e6a51f7371f920599cac824b7":
+                "resmi node-v26.13.0-linux-arm64 arşivindeki bin/node (arşiv SHA-256 "
+                "406fe3fb…9a92; nodejs.org SHASUMS256.txt ile doğrulandı)",
         }},
-        default_binary=Path.home() / ".local" / "opt" / "node-v22.23.4-linux-arm64" / "bin" / "node",
+        default_binary=Path.home() / ".local" / "opt" / "node-v26.13.0-linux-arm64" / "bin" / "node",
         revoked_digests=frozenset({
             "1a638b0fe2b68da0489276aca95526c5122fc61ba54d6a2d0d00c1c92ab7b876",
+            "7e48183361053f039294fbbc3ba586722fe756bf296d6cb8195356d10819cd16",
         }),
         version_args=("--version",),
         version_pattern=r"(?m)^v(\d+)\.(\d+)\.(\d+)\s*$",
-        supported_major=22,
-        minimum_version=(22, 23, 4),
+        supported_major=26,
+        minimum_version=(26, 13, 0),
     ),
     # Root sahipli sabit Chromium (Playwright 1.56.1 browsers.json: chromium revision 1194, 141.0.7390.37).
     "chromium": ToolPin(

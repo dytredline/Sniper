@@ -31,9 +31,9 @@ class TestWave6PrDiffAndStatefulProtocol(unittest.TestCase):
         self.assertGreaterEqual(result["finding_count"], 1)
 
         rule_ids = [f["rule_id"] for f in result["findings"]]
-        self.assertIn("SNIPER-PR-GUARD-REMOVED-01", rule_ids)
+        self.assertIn("VULKILL-PR-GUARD-REMOVED-01", rule_ids)
         finding = next(
-            f for f in result["findings"] if f["rule_id"] == "SNIPER-PR-GUARD-REMOVED-01"
+            f for f in result["findings"] if f["rule_id"] == "VULKILL-PR-GUARD-REMOVED-01"
         )
         self.assertEqual(finding["cwe"], "CWE-862")
         self.assertEqual(finding["severity"], "critical")
@@ -54,10 +54,10 @@ class TestWave6PrDiffAndStatefulProtocol(unittest.TestCase):
         result = audit_git_diff_security_regressions(diff_text)
         self.assertEqual(result["merge_decision"], "BLOCK_MERGE")
         rule_ids = [f["rule_id"] for f in result["findings"]]
-        self.assertIn("SNIPER-PR-NEW-SINK-02", rule_ids)
+        self.assertIn("VULKILL-PR-NEW-SINK-02", rule_ids)
 
         finding = next(
-            f for f in result["findings"] if f["rule_id"] == "SNIPER-PR-NEW-SINK-02"
+            f for f in result["findings"] if f["rule_id"] == "VULKILL-PR-NEW-SINK-02"
         )
         self.assertEqual(finding["cwe"], "CWE-78")
         self.assertEqual(finding["severity"], "high")
@@ -96,12 +96,12 @@ class TestWave6PrDiffAndStatefulProtocol(unittest.TestCase):
         )
         self.assertEqual(result["merge_decision"], "BLOCK_MERGE")
         rule_ids = [f["rule_id"] for f in result["findings"]]
-        self.assertIn("SNIPER-PR-INCOMPLETE-SIBLING-03", rule_ids)
+        self.assertIn("VULKILL-PR-INCOMPLETE-SIBLING-03", rule_ids)
 
         sib_finding = next(
             f
             for f in result["findings"]
-            if f["rule_id"] == "SNIPER-PR-INCOMPLETE-SIBLING-03"
+            if f["rule_id"] == "VULKILL-PR-INCOMPLETE-SIBLING-03"
         )
         self.assertEqual(sib_finding["cwe"], "CWE-863")
         self.assertEqual(
@@ -156,8 +156,8 @@ ws.on("message", async (raw) => {
         self.assertIn("TRANSFER_FUNDS", result["unprotected_terminal_actions"])
 
         rule_ids = [f["rule_id"] for f in result["findings"]]
-        self.assertIn("SNIPER-STATE-SKIP-01", rule_ids)
-        self.assertIn("SNIPER-STATE-REPLAY-02", rule_ids)
+        self.assertIn("VULKILL-STATE-SKIP-01", rule_ids)
+        self.assertIn("VULKILL-STATE-REPLAY-02", rule_ids)
 
     def test_guarded_websocket_handler_has_zero_findings(self) -> None:
         guarded_ws_code = """

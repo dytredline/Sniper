@@ -6,7 +6,7 @@
   const fileInput = byId('nmap-xml-file');
   const error = byId('nmap-xml-preview-error');
   // Dil katmanı açıkken görünen metin çevrilmiş olabilir; karşılaştırma özgün (Türkçe) metinle yapılır.
-  const errorText = () => (typeof SniperI18n === 'object' && SniperI18n ? SniperI18n.source(error) : error.textContent);
+  const errorText = () => (typeof VulKillI18n === 'object' && VulKillI18n ? VulKillI18n.source(error) : error.textContent);
   const result = byId('nmap-xml-preview-result');
   const submit = byId('nmap-xml-preview-submit');
   const linkOptIn = byId('nmap-xml-link-opt-in');

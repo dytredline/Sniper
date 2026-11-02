@@ -21,8 +21,8 @@ class _CapturingStore:
 
 class CodeQLServerUiOpenAlertTests(unittest.TestCase):
     @staticmethod
-    def handler(path: str, *, command: str = "GET") -> server.SniperHandler:
-        handler = server.SniperHandler.__new__(server.SniperHandler)
+    def handler(path: str, *, command: str = "GET") -> server.VulKillHandler:
+        handler = server.VulKillHandler.__new__(server.VulKillHandler)
         handler.command = command
         handler.path = path
         handler.request_version = "HTTP/1.1"

@@ -1,6 +1,6 @@
 """Joern ön uçlarına verilmeden önce kaynak dosyalara uygulanan, anlamı koruyan ön işlemler.
 
-C#: csharpsrc2cpg (Joern 4.0.647) süslü parantezsiz denetim yapısı gövdelerini CPG'ye hiç koymuyor:
+C#: csharpsrc2cpg (Joern 4.0.670) süslü parantezsiz denetim yapısı gövdelerini CPG'ye hiç koymuyor:
 ``if (x) Sink(x);``, ``if (x == null) return;``, ``foreach (var v in xs) Sink(v);`` … gövdeler boş blok
 olarak görünür. Bu hem açık kaçırmaya (gövdedeki hedef yok) hem de yanlış alarma (``return``/``throw``
 korumaları görünmüyor) yol açar. ``brace_csharp_bodies`` bu gövdeleri ``{ … }`` ile sarar; yalnız aynı

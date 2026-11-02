@@ -365,8 +365,8 @@ class MatchingAndScanTests(unittest.TestCase):
         with self.assertRaisesRegex(cs.ContainerScanError, "SHA-256"):
             cs.load_index("Debian:12", root=self.osv)
 
-    def test_legacy_rpmdb_is_fail_closed_with_backend_evidence(self):
-        """Gerçek Berkeley DB girdisi paket envanteri başarılıymış gibi gösterilmemeli."""
+    def test_legacy_rpmdb_uses_real_runtime_or_fails_closed_with_backend_evidence(self):
+        """Berkeley DB girdisi yalnız gerçek runtime açabiliyorsa desteklenmiş sayılmalı."""
         root = self.base / "rhel-legacy"
         (root / "etc").mkdir(parents=True)
         (root / "etc/os-release").write_bytes(b'ID="rhel"\nVERSION_ID="9.4"\n')
@@ -391,16 +391,28 @@ class MatchingAndScanTests(unittest.TestCase):
 
         result = cs.scan_image(str(root), osv_root=osv, allowed_roots=(self.base,))
 
-        self.assertEqual(next(c for c in result["checks"] if c["id"] == "os_packages")["status"], "na")
-        self.assertEqual(result["container"]["package_inventory"], {
-            "status": "unsupported",
-            "package_type": "rpm",
-            "covered_files": [],
-            "unsupported_files": [{"path": "var/lib/rpm/Packages", "backend": "berkeleydb"}],
-            "reason": "legacy_rpmdb_unsupported",
-        })
-        self.assertTrue(any("BerkeleyDB" in warning and "var/lib/rpm/Packages" in warning
-                            for warning in result["warnings"]))
+        inventory = result["container"]["package_inventory"]
+        check = next(c for c in result["checks"] if c["id"] == "os_packages")
+        if inventory["status"] == "available":
+            self.assertEqual(check["status"], "pass")
+            self.assertEqual(inventory, {
+                "status": "available",
+                "package_type": "rpm",
+                "covered_files": ["var/lib/rpm/Packages"],
+                "unsupported_files": [],
+                "reason": None,
+            })
+        else:
+            self.assertEqual(check["status"], "na")
+            self.assertEqual(inventory, {
+                "status": "unsupported",
+                "package_type": "rpm",
+                "covered_files": [],
+                "unsupported_files": [{"path": "var/lib/rpm/Packages", "backend": "berkeleydb"}],
+                "reason": "legacy_rpmdb_unsupported",
+            })
+            self.assertTrue(any("BerkeleyDB" in warning and "var/lib/rpm/Packages" in warning
+                                for warning in result["warnings"]))
 
     def test_unknown_legacy_rpmdb_is_not_mislabeled_or_passed(self):
         root = self.base / "rhel-unknown"
@@ -506,7 +518,7 @@ class ApiTests(unittest.TestCase):
                        mock.patch.object(project_analyzer, "_allowed_roots", return_value=(base,))]
             for patch in patches:
                 patch.start()
-            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
             threading.Thread(target=httpd.serve_forever, daemon=True).start()
             url = f"http://127.0.0.1:{httpd.server_address[1]}"
 

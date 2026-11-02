@@ -33,7 +33,7 @@ class LabPublicContractRuntime(unittest.TestCase):
         self.db = Store(Path(self.workspace.name) / 'lab.sqlite')
         self.store_patch = patch.object(server, 'STORE', self.db)
         self.store_patch.start()
-        self.http = ThreadingHTTPServer(('127.0.0.1', 0), server.SniperHandler)
+        self.http = ThreadingHTTPServer(('127.0.0.1', 0), server.VulKillHandler)
         self.thread = threading.Thread(target=self.http.serve_forever, daemon=True)
         self.thread.start()
         self.base_url = f'http://127.0.0.1:{self.http.server_port}'

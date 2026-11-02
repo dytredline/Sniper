@@ -91,7 +91,7 @@ def audit_dns_and_email_security(
                 f"hostname={norm_host} · spf=(yok)",
                 "Yetkili posta sunucularını belirten ve -all veya ~all ile biten bir SPF TXT kaydı yayımlayın.",
                 "RFC 7208",
-                "SNIPER-INFR-07",
+                "VULKILL-INFR-07",
             )
         )
     else:
@@ -107,7 +107,7 @@ def audit_dns_and_email_security(
                         spf[:240],
                         "+all ifadesini kaldırın ve yalnızca yetkili göndericileri tanımlayarak kaydı -all veya ~all ile sonlandırın.",
                         "RFC 7208",
-                        "SNIPER-INFR-07",
+                        "VULKILL-INFR-07",
                     )
                 )
             elif "?all" in tokens:
@@ -120,7 +120,7 @@ def audit_dns_and_email_security(
                         spf[:240],
                         "SPF politikasını geçiş sürecinde ~all (softfail), tam doğrulamada -all (fail) olarak sıkılaştırın.",
                         "RFC 7208",
-                        "SNIPER-INFR-07",
+                        "VULKILL-INFR-07",
                     )
                 )
 
@@ -135,7 +135,7 @@ def audit_dns_and_email_security(
                 f"hostname={norm_host} · dmarc=(yok)",
                 "_dmarc alt alan adında p=quarantine veya p=reject politikası içeren bir DMARC kaydı yayımlayın.",
                 "RFC 7489",
-                "SNIPER-INFR-07",
+                "VULKILL-INFR-07",
             )
         )
     else:
@@ -150,7 +150,7 @@ def audit_dns_and_email_security(
                         dmarc[:240],
                         "Raporları doğruladıktan sonra DMARC politikasını p=quarantine veya p=reject seviyesine yükseltin.",
                         "RFC 7489",
-                        "SNIPER-INFR-07",
+                        "VULKILL-INFR-07",
                     )
                 )
 
@@ -164,7 +164,7 @@ def audit_dns_and_email_security(
                 f"hostname={norm_host} · caa=(yok)",
                 "Yalnızca kullandığınız sertifika otoritelerine izin veren DNS CAA (issue / issuewild) kayıtları ekleyin.",
                 "RFC 8659",
-                "SNIPER-INFR-08",
+                "VULKILL-INFR-08",
             )
         )
 
@@ -182,7 +182,7 @@ def audit_dns_and_email_security(
                 f"{norm_host} -> {cname_clean}",
                 "Kullanılmayan CNAME DNS kayıtlarını derhal silin veya hedef bulut kaynağının sahipliğini doğrulayın.",
                 "OWASP WSTG-CONF-10",
-                "SNIPER-INFR-02",
+                "VULKILL-INFR-02",
             )
         )
 
@@ -198,10 +198,10 @@ def audit_dns_and_email_security(
         "finding_groups": summarize_finding_groups(findings),
         "findings": cap_findings(findings, INLINE_FINDING_LIMIT)[0],
         "controls_evaluated": [
-            "SNIPER-INFR-01",
-            "SNIPER-INFR-02",
-            "SNIPER-INFR-07",
-            "SNIPER-INFR-08",
+            "VULKILL-INFR-01",
+            "VULKILL-INFR-02",
+            "VULKILL-INFR-07",
+            "VULKILL-INFR-08",
         ],
     }
 
@@ -247,7 +247,7 @@ def audit_discovery_and_identity_endpoints(
                     ", ".join(exposed_paths[:8]),
                     "Hassas dizinleri robots.txt ile gizlemeye çalışmak yerine kimlik doğrulama ve ağ erişim kontrolleriyle koruyun.",
                     "OWASP WSTG-INFO-03",
-                    "SNIPER-INFO-03",
+                    "VULKILL-INFO-03",
                 )
             )
 
@@ -267,7 +267,7 @@ def audit_discovery_and_identity_endpoints(
                     ", ".join(insecure_endpoints[:5]),
                     "Tüm OpenID Connect ve OAuth 2.0 uç noktalarını yalnızca HTTPS üzerinden sunun.",
                     "OpenID Connect Core 1.0",
-                    "SNIPER-AUTH-11",
+                    "VULKILL-AUTH-11",
                 )
             )
 
@@ -286,7 +286,7 @@ def audit_discovery_and_identity_endpoints(
                     "response_types_supported: " + ", ".join(implicit_types[:6]),
                     "Implicit akışını kapatın ve Authorization Code + PKCE (S256) akışını zorunlu kılın.",
                     "OAuth 2.0 Security Best Current Practice",
-                    "SNIPER-AUTH-11",
+                    "VULKILL-AUTH-11",
                 )
             )
 
@@ -301,7 +301,7 @@ def audit_discovery_and_identity_endpoints(
                     f"code_challenge_methods_supported: {', '.join(pkce_methods) if pkce_methods else '(yok)'}",
                     "Yetkilendirme kodu攔 (interception) saldırılarını önlemek için PKCE S256 desteğini zorunlu kılın.",
                     "RFC 7636",
-                    "SNIPER-AUTH-11",
+                    "VULKILL-AUTH-11",
                 )
             )
 
@@ -316,7 +316,7 @@ def audit_discovery_and_identity_endpoints(
                     "id_token_signing_alg_values_supported içinde 'none' mevcut",
                     "'none' algoritmasını derhal kaldırın ve yalnızca RS256/ES256 gibi güçlü asimetrik imzaları kabul edin.",
                     "OpenID Connect Core 1.0",
-                    "SNIPER-AUTH-11",
+                    "VULKILL-AUTH-11",
                 )
             )
 
@@ -336,7 +336,7 @@ def audit_discovery_and_identity_endpoints(
                     "token_endpoint_auth_methods_supported: " + ", ".join(weak_token_auth),
                     "Gizli istemciler için private_key_jwt veya tls_client_auth (en azından client_secret_basic/post + PKCE) zorunlu kılın; client_secret_get yöntemini kapatın.",
                     "OAuth 2.0 Security Best Current Practice",
-                    "SNIPER-AUTH-11",
+                    "VULKILL-AUTH-11",
                 )
             )
 
@@ -359,7 +359,7 @@ def audit_discovery_and_identity_endpoints(
                     f"Sızan JWK alanları: {', '.join(sorted(leaked_fields))} · değerler kaydedilmedi",
                     "İlgili anahtarları derhal iptal edip döndürün (rotate) ve JWKS çıktısından özel anahtar alanlarını temizleyin.",
                     "RFC 7517",
-                    "SNIPER-CRYP-06",
+                    "VULKILL-CRYP-06",
                 )
             )
 
@@ -376,7 +376,7 @@ def audit_discovery_and_identity_endpoints(
                     "GraphQL yanıtında __schema nesnesi döndürüldü",
                     "Üretim ortamında kimliği doğrulanmamış istemciler için GraphQL introspection özelliğini kapatın.",
                     "OWASP API8:2023",
-                    "SNIPER-APIT-06",
+                    "VULKILL-APIT-06",
                 )
             )
 
@@ -394,7 +394,7 @@ def audit_discovery_and_identity_endpoints(
                     f"Access-Control-Allow-Origin={acao}, Access-Control-Allow-Credentials={acac}",
                     "Kimlik bilgili CORS yanıtlarında yalnızca açıkça beyaz listeye alınmış tam HTTPS kökenlerine izin verin; 'null' ve '*' kökenlerini reddedin.",
                     "CWE-942",
-                    "SNIPER-CONF-07",
+                    "VULKILL-CONF-07",
                 )
             )
         missing_isolation = [
@@ -416,7 +416,7 @@ def audit_discovery_and_identity_endpoints(
                     "Eksik başlıklar: " + ", ".join(missing_isolation),
                     "Uygulama uyumluluğuna göre Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy ve Cross-Origin-Resource-Policy başlıklarını tanımlayın.",
                     "OWASP Secure Headers Project",
-                    "SNIPER-CONF-07",
+                    "VULKILL-CONF-07",
                 )
             )
 
@@ -432,10 +432,10 @@ def audit_discovery_and_identity_endpoints(
         "finding_groups": summarize_finding_groups(findings),
         "findings": cap_findings(findings, INLINE_FINDING_LIMIT)[0],
         "controls_evaluated": [
-            "SNIPER-INFO-03",
-            "SNIPER-AUTH-11",
-            "SNIPER-CRYP-06",
-            "SNIPER-APIT-06",
-            "SNIPER-CONF-07",
+            "VULKILL-INFO-03",
+            "VULKILL-AUTH-11",
+            "VULKILL-CRYP-06",
+            "VULKILL-APIT-06",
+            "VULKILL-CONF-07",
         ],
     }

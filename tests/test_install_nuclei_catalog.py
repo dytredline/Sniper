@@ -14,13 +14,13 @@ from scripts.install_nuclei_catalog import CatalogInstallError, install_catalog
 
 def _archive(path: Path, *, duplicate_id: bool = False, symlink: bool = False) -> str:
     files = {
-        "nuclei-templates-10.5.0/http/cves/demo.yaml": b"id: demo-template\ninfo:\n  name: Demo\n",
-        "nuclei-templates-10.5.0/http/misc/second.yml": (
+        "nuclei-templates-10.5.1/http/cves/demo.yaml": b"id: demo-template\ninfo:\n  name: Demo\n",
+        "nuclei-templates-10.5.1/http/misc/second.yml": (
             b"id: demo-template\ninfo:\n  name: Duplicate\n" if duplicate_id
             else b"id: second-template\ninfo:\n  name: Second\n"
         ),
-        "nuclei-templates-10.5.0/http/technologies/wappalyzer-mapping.yml": b"demo: [header]\n",
-        "nuclei-templates-10.5.0/README.md": b"ignored\n",
+        "nuclei-templates-10.5.1/http/technologies/wappalyzer-mapping.yml": b"demo: [header]\n",
+        "nuclei-templates-10.5.1/README.md": b"ignored\n",
     }
     with tarfile.open(path, "w:gz") as bundle:
         for name, raw in files.items():
@@ -29,7 +29,7 @@ def _archive(path: Path, *, duplicate_id: bool = False, symlink: bool = False) -
             info.size = len(raw)
             bundle.addfile(info, io.BytesIO(raw))
         if symlink:
-            info = tarfile.TarInfo("nuclei-templates-10.5.0/http/misc/escape.yaml")
+            info = tarfile.TarInfo("nuclei-templates-10.5.1/http/misc/escape.yaml")
             info.type = tarfile.SYMTYPE
             info.linkname = "/etc/passwd"
             bundle.addfile(info)
@@ -44,12 +44,12 @@ def test_official_archive_builds_deterministic_read_only_http_catalog(tmp_path: 
 
     root = tmp_path / "catalog"
     pin = root / "SNIPER-HTTP-CATALOG-PIN-v2.json"
-    index = root / "SNIPER-HTTP-ID-INDEX.json"
+    index = root / "VULKILL-HTTP-ID-INDEX.json"
     pin_doc = json.loads(pin.read_text(encoding="utf-8"))
     index_doc = json.loads(index.read_text(encoding="utf-8"))
     assert result == {
         "format": "sniper-nuclei-http-catalog-install-v1",
-        "version": "v10.5.0",
+        "version": "v10.5.1",
         "template_count": 2,
         "archive_sha256": digest,
         "pin_sha256": hashlib.sha256(pin.read_bytes()).hexdigest(),

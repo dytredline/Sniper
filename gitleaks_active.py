@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from process_group_runner import run_in_process_group
+from tool_child_env import isolated_tool_environment
 from tool_pins import open_pinned
 from verified_exec import VerificationError
 from project_analyzer import validate_project_path, ProjectRejected
@@ -179,10 +180,7 @@ def run_local_gitleaks(project_path: str) -> dict[str, Any]:
             if ignore_file is not None:
                 cmd.extend(["--gitleaks-ignore-path", str(ignore_file)])
 
-            env = os.environ.copy()
-            # Clear Gitleaks config env vars
-            env.pop("GITLEAKS_CONFIG", None)
-            env.pop("GITLEAKS_CONFIG_TOML", None)
+            env = isolated_tool_environment(home=snapshot_root, tmpdir=snapshot_root)
 
             # Run bounded runner
             try:

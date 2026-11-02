@@ -15,6 +15,8 @@ from pathlib import Path
 from typing import Any
 
 from tool_report_testssl import MAX_RECORDS, parse_testssl_json_summary
+from tool_child_env import isolated_tool_environment
+from verified_exec import VerifiedExecutable, VerificationError, open_verified_executable
 
 
 _AUTHORIZED_PROFILES = frozenset({"protocols", "full"})
@@ -102,28 +104,32 @@ def resolve_authorized_testssl_ip(host: str, port: int) -> str:
     return addresses[sorted(addresses)[0]]
 
 
-def _trusted_testssl_binary() -> Path:
+def _trusted_testssl_binary() -> VerifiedExecutable:
     binary = os.environ.get("SNIPER_TESTSSL_BINARY")
     if not binary:
         raise RuntimeError("testssl ikilisi yapılandırılmamış.")
     binary_path = Path(binary)
     if not binary_path.is_absolute():
         raise RuntimeError("testssl ikili yolu mutlak olmalı.")
-    resolved_binary = binary_path.resolve()
+    try:
+        resolved_binary = binary_path.resolve(strict=True)
+    except OSError as exc:
+        raise RuntimeError("testssl ikilisi normal bir dosya olmalı.") from exc
     if not resolved_binary.is_relative_to(Path.home().resolve()):
         raise RuntimeError("testssl ikilisi $HOME altında çözümlenmeli.")
-    if binary_path.is_symlink() or not binary_path.is_file():
-        raise RuntimeError("testssl ikilisi normal bir dosya olmalı.")
-    if not os.access(binary_path, os.X_OK):
-        raise RuntimeError("testssl ikilisi çalıştırılabilir olmalı.")
     expected_sha256 = os.environ.get("SNIPER_TESTSSL_SHA256")
     if expected_sha256 is None:
         raise RuntimeError("testssl ikilisi SHA256 değeri yapılandırılmamış.")
     if len(expected_sha256) != 64 or not all(char in "0123456789abcdef" for char in expected_sha256):
         raise RuntimeError("testssl ikilisi SHA256 değeri 64 karakterlik küçük harfli onaltılık olmalı.")
-    if hashlib.sha256(binary_path.read_bytes()).hexdigest() != expected_sha256:
-        raise RuntimeError("testssl ikilisi hash değeri uyuşmuyor.")
-    return binary_path
+    try:
+        return open_verified_executable(
+            binary_path,
+            {expected_sha256: "yetkili testssl profilinin sabit SHA-256 değeri"},
+            label="testssl",
+        )
+    except VerificationError as exc:
+        raise RuntimeError(str(exc)) from exc
 
 
 def run_testssl_authorized(target: str, *, profile: str) -> dict[str, Any]:
@@ -151,11 +157,12 @@ def run_testssl_authorized(target: str, *, profile: str) -> dict[str, Any]:
         except (OSError, RuntimeError) as exc:
             raise RuntimeError("Başka bir testssl taraması sürüyor.") from exc
 
-        binary_path = _trusted_testssl_binary()
-        with tempfile.TemporaryDirectory(prefix="sniper_testssl_authorized_") as tmpdir:
+        with _trusted_testssl_binary() as binary, tempfile.TemporaryDirectory(
+            prefix="sniper_testssl_authorized_"
+        ) as tmpdir:
             report_path = Path(tmpdir) / "report.json"
             command = [
-                str(binary_path),
+                binary.argv0,
                 "--quiet",
                 "--color", "0",
                 "--warnings", "batch",
@@ -171,23 +178,23 @@ def run_testssl_authorized(target: str, *, profile: str) -> dict[str, Any]:
                 "--jsonfile", str(report_path),
                 canonical_target,
             ])
-            execution_env = os.environ.copy()
             # testssl.sh reads these switches from the environment before parsing
-            # arguments. Force network side channels off even if the parent service
-            # inherited permissive operator shell settings.
-            execution_env["PHONE_OUT"] = "false"
-            execution_env["DNS_VIA_PROXY"] = "false"
+            # arguments. The remaining service environment is deliberately absent.
+            execution_env = isolated_tool_environment(
+                home=tmpdir,
+                tmpdir=tmpdir,
+                overrides={"PHONE_OUT": "false", "DNS_VIA_PROXY": "false"},
+            )
             started = time.monotonic()
             process = None
             try:
-                process = subprocess.Popen(
-                    command,
+                process = subprocess.Popen(command, **binary.popen_kwargs(
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     stdin=subprocess.DEVNULL,
                     start_new_session=True,
                     env=execution_env,
-                )
+                ))
                 try:
                     exit_code = process.wait(timeout=180 if full else 45)
                 except subprocess.TimeoutExpired:

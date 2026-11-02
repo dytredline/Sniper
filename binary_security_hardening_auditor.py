@@ -8,7 +8,7 @@ library imports, and hardcoded plaintext secrets in .rodata / .data sections.
 from __future__ import annotations
 
 import hashlib
-import re
+import safe_regex as re
 from typing import Any
 
 
@@ -45,9 +45,9 @@ _RELRO_DISABLE_RE = re.compile(
 )
 
 _RPATH_DIRECTIVE_RE = re.compile(
-    r"(?:Library\s++r(?:un)?path:\s*+\[([^\]]++)\]|"
-    r"\((?:RPATH|RUNPATH)\)\s++[^\n\r\x00\[]*+\[([^\]]++)\]|"
-    r"\b(?:DT_)?(?:RPATH|RUNPATH)\s*+(?:=|:|\s++)\s*+\[?([^\s\]\x00\"']++))",
+    r"(?:Library\s+r(?:un)?path:\s*\[([^\]]+)\]|"
+    r"\((?:RPATH|RUNPATH)\)\s+[^\n\r\x00\[]*?\[([^\]]+)\]|"
+    r"\b(?:DT_)?(?:RPATH|RUNPATH)\s*(?:=|:|\s+)\s*\[?([^\s\]\x00\"']+))",
     re.IGNORECASE,
 )
 _AT_RPATH_RE = re.compile(r"(@(?:rpath|loader_path|executable_path)/[^\s\x00\"':]+)")
@@ -207,7 +207,7 @@ def audit_binary_security_hardening(
 
     findings: list[dict[str, Any]] = []
 
-    # 1. SNIPER-BIN-HARDEN-01: Missing memory protection flags
+    # 1. VULKILL-BIN-HARDEN-01: Missing memory protection flags
     if detected_format in ("ELF", "PE", "Mach-O"):
         missing_flags: list[str] = []
         if not has_canary:
@@ -220,9 +220,9 @@ def audit_binary_security_hardening(
         if missing_flags:
             findings.append(
                 {
-                    "id": "SNIPER-BIN-HARDEN-01",
-                    "rule_id": "SNIPER-BIN-HARDEN-01",
-                    "control_id": "SNIPER-BIN-HARDEN-01",
+                    "id": "VULKILL-BIN-HARDEN-01",
+                    "rule_id": "VULKILL-BIN-HARDEN-01",
+                    "control_id": "VULKILL-BIN-HARDEN-01",
                     "cwe": "CWE-693",
                     "severity": "medium",
                     "category": "binary_security",
@@ -234,14 +234,14 @@ def audit_binary_security_hardening(
                 }
             )
 
-    # 2. SNIPER-BIN-RPATH-02: Unsafe DT_RPATH / DT_RUNPATH
+    # 2. VULKILL-BIN-RPATH-02: Unsafe DT_RPATH / DT_RUNPATH
     rpath_values, unsafe_rpath_reasons = _analyze_rpaths(printable_strings, raw_text)
     if unsafe_rpath_reasons:
         findings.append(
             {
-                "id": "SNIPER-BIN-RPATH-02",
-                "rule_id": "SNIPER-BIN-RPATH-02",
-                "control_id": "SNIPER-BIN-RPATH-02",
+                "id": "VULKILL-BIN-RPATH-02",
+                "rule_id": "VULKILL-BIN-RPATH-02",
+                "control_id": "VULKILL-BIN-RPATH-02",
                 "cwe": "CWE-426",
                 "severity": "high",
                 "category": "binary_security",
@@ -254,7 +254,7 @@ def audit_binary_security_hardening(
             }
         )
 
-    # 3. SNIPER-BIN-UNSAFE-SYM-03: Dangerous unbounded C library imports
+    # 3. VULKILL-BIN-UNSAFE-SYM-03: Dangerous unbounded C library imports
     detected_unsafe_syms: list[str] = []
     for s in printable_strings:
         for m in _UNSAFE_SYM_TOKEN_RE.finditer(s):
@@ -265,9 +265,9 @@ def audit_binary_security_hardening(
     if detected_unsafe_syms:
         findings.append(
             {
-                "id": "SNIPER-BIN-UNSAFE-SYM-03",
-                "rule_id": "SNIPER-BIN-UNSAFE-SYM-03",
-                "control_id": "SNIPER-BIN-UNSAFE-SYM-03",
+                "id": "VULKILL-BIN-UNSAFE-SYM-03",
+                "rule_id": "VULKILL-BIN-UNSAFE-SYM-03",
+                "control_id": "VULKILL-BIN-UNSAFE-SYM-03",
                 "cwe": "CWE-676",
                 "severity": "high",
                 "category": "binary_security",
@@ -279,7 +279,7 @@ def audit_binary_security_hardening(
             }
         )
 
-    # 4. SNIPER-BIN-RODATA-SECRET-04: Embedded secrets in .rodata / .data
+    # 4. VULKILL-BIN-RODATA-SECRET-04: Embedded secrets in .rodata / .data
     redacted_secrets: list[str] = []
     secret_kinds: list[str] = []
     for s in printable_strings:
@@ -294,9 +294,9 @@ def audit_binary_security_hardening(
     if redacted_secrets:
         findings.append(
             {
-                "id": "SNIPER-BIN-RODATA-SECRET-04",
-                "rule_id": "SNIPER-BIN-RODATA-SECRET-04",
-                "control_id": "SNIPER-BIN-RODATA-SECRET-04",
+                "id": "VULKILL-BIN-RODATA-SECRET-04",
+                "rule_id": "VULKILL-BIN-RODATA-SECRET-04",
+                "control_id": "VULKILL-BIN-RODATA-SECRET-04",
                 "cwe": "CWE-798",
                 "severity": "critical",
                 "category": "secrets",

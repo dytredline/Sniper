@@ -1,18 +1,18 @@
 """Faz 1.3 — HTTP Yönlendirme, Güvenli Sarmalayıcı ve TLS Semantik Denetleyicisi.
 
 Üç temel semantik güvenlik zafiyetini tespit eder:
-- SNIPER-HTTP-WRAP-01: Güvenli HTTP sarmalayıcısı (Gitlab::HTTP / WithSSRFFilter)
+- VULKILL-HTTP-WRAP-01: Güvenli HTTP sarmalayıcısı (Gitlab::HTTP / WithSSRFFilter)
   yerine ham HTTP istemcisi (OAuth2::Client.new, Faraday.new, Net::HTTP.start,
   http.DefaultTransport.Clone) kullanımı.
-- SNIPER-HTTP-REDIR-02: HTTP yönlendirmesinde (302/307/308) çapraz köken
+- VULKILL-HTTP-REDIR-02: HTTP yönlendirmesinde (302/307/308) çapraz köken
   Authorization başlığı veya OAuth/Faraday :follow_redirects sızıntısı.
-- SNIPER-TLS-DEAD-03: TLS yapılandırmasında RootCAs / x509.UnknownAuthorityError
+- VULKILL-TLS-DEAD-03: TLS yapılandırmasında RootCAs / x509.UnknownAuthorityError
   ile InsecureSkipVerify: true çelişkisi (ölü sertifika doğrulaması).
 """
 
 from __future__ import annotations
 
-import re
+import safe_regex as re
 from typing import Any
 
 FORMAT_VERSION = "sniper-http-tls-semantics-audit/1"
@@ -24,11 +24,10 @@ _SAFE_WRAPPER_GUARD_RE = re.compile(
     r"(WithSSRFFilter|ssrf_filter|SafeDialContext|Gitlab::HTTP\.perform_request|Gitlab::HTTP\.get|Gitlab::HTTP\.post|Gitlab::HTTP_V2|UrlBlocker\.validate!)"
 )
 
-_GO_ROUNDTRIP_RE = re.compile(
-    r"func\s*+\([^)]*+\)\s*+RoundTrip\s*+\([^)]*+\)[^{]*+\{",
+_GO_ROUNDTRIP_AUTH_RE = re.compile(
+    r"func\s*\([^)]*\)\s*RoundTrip\s*\([^)]*\)[^{]*\{[\s\S]*?Header\.(?:Set|Add)\(\s*[\"']Authorization[\"']",
     re.MULTILINE,
 )
-_GO_AUTH_HEADER_RE = re.compile(r"Header\.(?:Set|Add)\(\s*+[\"']Authorization[\"']")
 _ORIGIN_CHECK_RE = re.compile(
     r"(CheckRedirect|sameOrigin|sameHost|req\.URL\.Host\s*!=|initialHost|expectedHost|Header\.Del\(\s*[\"']Authorization[\"'])"
 )
@@ -86,13 +85,13 @@ def audit_http_redirect_and_tls_semantics(
         or "WithSSRFFilter" in content
     )
 
-    # (a) SNIPER-HTTP-WRAP-01
+    # (a) VULKILL-HTTP-WRAP-01
     if has_safe_wrapper_ref and not _SAFE_WRAPPER_GUARD_RE.search(content):
         for m in _RAW_HTTP_CLIENT_RE.finditer(content):
             line_no = _line_number(content, m.start())
             findings.append(
                 {
-                    "rule_id": "SNIPER-HTTP-WRAP-01",
+                    "rule_id": "VULKILL-HTTP-WRAP-01",
                     "cwe": "CWE-918",
                     "reference": "CWE-918",
                     "severity": "high",
@@ -113,18 +112,13 @@ def audit_http_redirect_and_tls_semantics(
                 }
             )
 
-    # (b) SNIPER-HTTP-REDIR-02
-    rt_match = None
-    for roundtrip in _GO_ROUNDTRIP_RE.finditer(content):
-        method_window = content[roundtrip.end():roundtrip.end() + 100_000]
-        if _GO_AUTH_HEADER_RE.search(method_window):
-            rt_match = roundtrip
-            break
+    # (b) VULKILL-HTTP-REDIR-02
+    rt_match = _GO_ROUNDTRIP_AUTH_RE.search(content)
     if rt_match and not _ORIGIN_CHECK_RE.search(content):
         line_no = _line_number(content, rt_match.start())
         findings.append(
             {
-                "rule_id": "SNIPER-HTTP-REDIR-02",
+                "rule_id": "VULKILL-HTTP-REDIR-02",
                 "cwe": "CWE-522",
                 "reference": "CWE-522",
                 "severity": "high",
@@ -150,7 +144,7 @@ def audit_http_redirect_and_tls_semantics(
             line_no = _line_number(content, redir_match.start())
             findings.append(
                 {
-                    "rule_id": "SNIPER-HTTP-REDIR-02",
+                    "rule_id": "VULKILL-HTTP-REDIR-02",
                     "cwe": "CWE-522",
                     "reference": "CWE-522",
                     "severity": "high",
@@ -170,14 +164,14 @@ def audit_http_redirect_and_tls_semantics(
                 }
             )
 
-    # (c) SNIPER-TLS-DEAD-03
+    # (c) VULKILL-TLS-DEAD-03
     insecure_match = _INSECURE_TLS_RE.search(content)
     dead_ca_match = _DEAD_CA_LOGIC_RE.search(content)
     if insecure_match and dead_ca_match:
         line_no = _line_number(content, insecure_match.start())
         findings.append(
             {
-                "rule_id": "SNIPER-TLS-DEAD-03",
+                "rule_id": "VULKILL-TLS-DEAD-03",
                 "cwe": "CWE-295",
                 "reference": "CWE-295",
                 "severity": "high",
@@ -198,7 +192,7 @@ def audit_http_redirect_and_tls_semantics(
             }
         )
 
-    # (d) SNIPER-HTTP-DNSREBIND-04
+    # (d) VULKILL-HTTP-DNSREBIND-04
     dns_precheck_match = _DNS_PRECHECK_RE.search(content)
     if dns_precheck_match:
         fetch_after_match = _FETCH_CALL_RE.search(content, dns_precheck_match.end())
@@ -206,7 +200,7 @@ def audit_http_redirect_and_tls_semantics(
             line_no = _line_number(content, fetch_after_match.start())
             findings.append(
                 {
-                    "rule_id": "SNIPER-HTTP-DNSREBIND-04",
+                    "rule_id": "VULKILL-HTTP-DNSREBIND-04",
                     "cwe": "CWE-367",
                     "reference": "CWE-367",
                     "severity": "high",
@@ -228,14 +222,14 @@ def audit_http_redirect_and_tls_semantics(
                 }
             )
 
-    # (e) SNIPER-HTTP-REFETCH-05
+    # (e) VULKILL-HTTP-REFETCH-05
     session_ep_match = _AUTH_SESSION_ENDPOINT_RE.search(content)
     unsafe_resolve_match = _UNSAFE_RESOLVE_CLIENT_RE.search(content)
     if session_ep_match and unsafe_resolve_match and not _REFETCH_SAFE_GUARD_RE.search(content):
         line_no = _line_number(content, unsafe_resolve_match.start())
         findings.append(
             {
-                "rule_id": "SNIPER-HTTP-REFETCH-05",
+                "rule_id": "VULKILL-HTTP-REFETCH-05",
                 "cwe": "CWE-367",
                 "reference": "CWE-367",
                 "severity": "high",

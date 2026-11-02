@@ -11,24 +11,19 @@ from unittest import mock
 
 import asan_project_proof
 import server
+import tool_sandbox
 from storage import Store
 
 
 class AsanProjectProofTests(unittest.TestCase):
     def setUp(self) -> None:
-        if shutil.which("gcc") is None or shutil.which("bwrap") is None:
-            self.skipTest("gcc veya bwrap yok")
-        probe = subprocess.run(
-            ["bwrap", "--unshare-all", "--ro-bind", "/", "/", "/bin/true"],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        )
-        if probe.returncode != 0:
-            self.skipTest("bwrap userns bu çekirdekte kısıtlı")
+        if shutil.which("gcc") is None:
+            self.skipTest("gcc yok")
         try:
-            with asan_project_proof.tool_sandbox.open_bwrap():
+            with tool_sandbox.open_bwrap():
                 pass
-        except asan_project_proof.tool_sandbox.SandboxUnavailable:
-            self.skipTest("sabitlenmiş bwrap ikilisi yapılandırılmamış")
+        except tool_sandbox.SandboxUnavailable:
+            self.skipTest("doğrulanmış bwrap yok")
         self.temp = tempfile.TemporaryDirectory(dir=Path.home())
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name) / "project"
@@ -229,7 +224,7 @@ int main(void) { int *p = malloc(sizeof(int)); if (!p) return 2; *p = 7; free(p)
 
 class AsanProjectProofApiTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.client = server.SniperHandler.__new__(server.SniperHandler)
+        self.client = server.VulKillHandler.__new__(server.VulKillHandler)
         self.responses: list[tuple[int, dict]] = []
         self.client._json = lambda body, status=200, **_kw: self.responses.append((int(status), body))
         self.client._error = lambda status, message: self.responses.append((int(status), {"error": message}))

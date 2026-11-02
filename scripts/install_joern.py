@@ -10,7 +10,7 @@ Doğrulama: JDK arşivi Adoptium API'sinin yayımladığı SHA-256 ile, Joern zi
 varlık özeti (SHA-256) ve resmî ``.sha512`` dosyasıyla karşılaştırılır. Açma sırasında
 yol aşımı, mutlak yol ve kurulum dışını gösteren bağlar reddedilir; kurulumdan sonra
 tüm dosyalar salt okunur yapılır ve Joern için dosya başına SHA-256 içeren
-``SNIPER-INSTALL-MANIFEST.json`` üretilir. Çıktıdaki ``java_sha256`` ve ``manifest_sha256``
+``VULKILL-INSTALL-MANIFEST.json`` üretilir. Çıktıdaki ``java_sha256`` ve ``manifest_sha256``
 değerleri ``tool_pins.PINS["joern-jdk"]`` ve ``joern_active.JOERN_MANIFEST_SHA256`` içine
 sabitlenir (veya ``SNIPER_JOERN_JDK_SHA256`` / ``SNIPER_JOERN_MANIFEST_SHA256``).
 
@@ -39,16 +39,16 @@ sys.path.insert(0, str(APP_ROOT))
 from joern_active import JOERN_VERSION, MANIFEST_NAME  # noqa: E402
 from tool_pins import SNIPER_TOOLS_DIR  # noqa: E402
 
-JDK_VERSION = "25.0.4.1+1"
+JDK_VERSION = "25.0.5+8"
 # Adoptium Temurin 25 sürüm varlığının yayımlanan SHA-256 değeri.
 JDK_ARCHIVES = {
-    "aarch64": ("OpenJDK25U-jdk_aarch64_linux_hotspot_25.0.4.1_1.tar.gz",
-                "69df11a02cfa3ef7d7ca645e03edce6778ec090e100f6ae2b42097865730ac52"),
+    "aarch64": ("OpenJDK25U-jdk_aarch64_linux_hotspot_25.0.5_8.tar.gz",
+                "bb5b2ded252f21c6090cf780b0a408ad0d83bbb557e702955643557f13231880"),
 }
-# GitHub sürüm varlık özeti (api.github.com/repos/joernio/joern/releases, v4.0.647).
+# GitHub sürüm varlık özeti (api.github.com/repos/joernio/joern/releases, v4.0.670).
 JOERN_ARCHIVES = {
     "aarch64": ("joern-cli-linux-arm64.zip",
-                "1ac7d162d87cab4cdc2cf24d139fa95006d87d22df6b4b28c750cbb227861cab"),
+                "06ba92d0d5861b11f716c8ca86b149a295631968d5c92128046ef02e36a0b821"),
 }
 MAX_MEMBERS = 50_000
 MAX_EXTRACTED_BYTES = 6_000_000_000

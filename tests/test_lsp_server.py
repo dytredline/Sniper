@@ -85,10 +85,10 @@ class ServerHarness(unittest.TestCase):
         self.cache_dir = base / "cache"
         (self.root / "app.py").write_text(SQL_VULN, encoding="utf-8")
 
-    def run_session(self, messages: list[dict], **kwargs) -> tuple[list[dict], lsp_server.SniperLanguageServer]:
+    def run_session(self, messages: list[dict], **kwargs) -> tuple[list[dict], lsp_server.VulKillLanguageServer]:
         data = b"".join(frame(m) for m in messages)
         out = io.BytesIO()
-        server = lsp_server.SniperLanguageServer(
+        server = lsp_server.VulKillLanguageServer(
             io.BytesIO(data), out, data_dir=self.data_dir, cache_dir=self.cache_dir,
             allowed_roots=(self.root.parent,), synchronous=kwargs.pop("synchronous", True), **kwargs)
         server.serve()
@@ -118,7 +118,7 @@ class SessionTests(ServerHarness):
     def test_initialize_capabilities_and_lifecycle(self):
         out, server = self.run_session([self.init()] + self.end())
         init = next(m for m in out if m.get("id") == 1)["result"]
-        self.assertEqual(init["serverInfo"]["name"], "sniper-lsp")
+        self.assertEqual(init["serverInfo"]["name"], "vulkill-lsp")
         self.assertEqual(init["capabilities"]["textDocumentSync"]["change"], 1)
         self.assertIn("quickfix", init["capabilities"]["codeActionProvider"]["codeActionKinds"])
         self.assertEqual(next(m for m in out if m.get("id") == 99)["result"], None)
@@ -274,7 +274,7 @@ class LimitsTests(ServerHarness):
         data = b"".join(frame(m) for m in [self.init(), self.open_msg("app.py"), save, save])
         reader = io.BytesIO(data)
         out = io.BytesIO()
-        server = lsp_server.SniperLanguageServer(reader, out, data_dir=self.data_dir, cache_dir=self.cache_dir,
+        server = lsp_server.VulKillLanguageServer(reader, out, data_dir=self.data_dir, cache_dir=self.cache_dir,
                                                  allowed_roots=(self.root.parent,))
         server._thread = None
         import threading
@@ -295,13 +295,13 @@ class LimitsTests(ServerHarness):
 
 
 class StdioEndToEndTests(unittest.TestCase):
-    """Gerçek süreç: scripts/sniper-lsp stdio üzerinden (proje kullanıcı dizini altında olmalı)."""
+    """Gerçek süreç: scripts/vulkill-lsp stdio üzerinden (proje kullanıcı dizini altında olmalı)."""
 
     def test_real_process_session(self):
         base = Path.home() / ".cache"
         if not os.access(base, os.W_OK):
             self.skipTest("kullanıcı önbellek dizini yazılamıyor")
-        with tempfile.TemporaryDirectory(dir=base, prefix="sniper-lsp-test-") as tmp:
+        with tempfile.TemporaryDirectory(dir=base, prefix="vulkill-lsp-test-") as tmp:
             root = Path(tmp) / "proj"
             root.mkdir()
             (root / "app.py").write_text(SQL_VULN, encoding="utf-8")
@@ -314,7 +314,7 @@ class StdioEndToEndTests(unittest.TestCase):
                 {"jsonrpc": "2.0", "method": "textDocument/didOpen",
                  "params": {"textDocument": {"uri": uri, "languageId": "python", "version": 1, "text": SQL_VULN}}},
             ]
-            proc = subprocess.Popen([sys.executable, str(APP_DIR / "scripts" / "sniper-lsp"), "--data-dir", str(data_dir),
+            proc = subprocess.Popen([sys.executable, str(APP_DIR / "scripts" / "vulkill-lsp"), "--data-dir", str(data_dir),
                                      "--cache-dir", str(Path(tmp) / "cache")],
                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
             try:

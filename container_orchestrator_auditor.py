@@ -2,15 +2,15 @@
 
 Python, TypeScript/JS, Go, Rust ve Shell kaynak kodlarında dinamik olarak oluşturulan
 `docker run` / `podman run` komutlarındaki iki yüksek etkili izolasyon zafiyetini tespit eder:
-- SNIPER-ORCH-PORT-01: Programatik konteyner/VM başlatıcısında (docker run) 0.0.0.0 arayüzüne
+- VULKILL-ORCH-PORT-01: Programatik konteyner/VM başlatıcısında (docker run) 0.0.0.0 arayüzüne
   açık veya loopback (127.0.0.1) kısıtı olmayan hassas port bağlaması (CWE-668).
-- SNIPER-ORCH-MOUNT-02: Programatik konteyner/VM başlatıcısında konak kurulum/betik/paylaşım
+- VULKILL-ORCH-MOUNT-02: Programatik konteyner/VM başlatıcısında konak kurulum/betik/paylaşım
   dizininin salt-okunur (:ro) olmadan yazılabilir (:rw) bağlanması (CWE-732).
 """
 
 from __future__ import annotations
 
-import re
+import safe_regex as re
 from typing import Any
 
 FORMAT_VERSION = "sniper-container-orchestrator-audit/1"
@@ -32,29 +32,30 @@ _ORCHESTRATOR_CONTEXT_RE = re.compile(
 )
 
 _PUBLISH_FLAG_RE = re.compile(
-    r"(?:^|[\s'\"`,(\[=])(?:-p|--publish)(?:\s*+=\s*+|\s++|\s*+,\s*+\n?\s*+(?:[frFR]{1,2})?['\"`])"
-    r"(?P<spec>(?:[A-Za-z0-9_.*$-]++|\$\{[^}\n]++\}|\{[^}\n]++\}|\[::1\])"
-    r"(?::(?:[A-Za-z0-9_.*$-]++|\$\{[^}\n]++\}|\{[^}\n]++\}))++(?:/(?:tcp|udp))?)"
+    r"(?:^|[\s'\"`,(\[=])(?:-p|--publish)(?:\s*=\s*|\s+|\s*,\s*\n?\s*(?:[frFR]{1,2})?['\"`])"
+    r"(?P<spec>(?:[A-Za-z0-9_.*$-]+|\$\{[^}\n]+\}|\{[^}\n]+\}|\[::1\])"
+    r"(?::(?:[A-Za-z0-9_.*$-]+|\$\{[^}\n]+\}|\{[^}\n]+\}))+(?:/(?:tcp|udp))?)"
 )
 
 _SENSITIVE_PORT_SPEC_RE = re.compile(
     r"(?<![A-Za-z0-9_.:/\-}$])"
-    r"(?P<spec>(?:[A-Za-z0-9_.*$-]++|\$\{[^}\n]++\}|\{[^}\n]++\}|\[::1\])"
-    r"(?::(?:[A-Za-z0-9_.*$-]++|\$\{[^}\n]++\}|\{[^}\n]++\})){1,4}(?:/(?:tcp|udp))?)"
+    r"(?P<spec>(?:[A-Za-z0-9_.*$-]+|\$\{[^}\n]+\}|\{[^}\n]+\}|\[::1\])"
+    r"(?::(?:[A-Za-z0-9_.*$-]+|\$\{[^}\n]+\}|\{[^}\n]+\}))*:"
+    r"(?:8006|3389|5900|5901|10000|2375|9222)(?:/(?:tcp|udp))?)"
     r"(?![A-Za-z0-9_.:])"
 )
 
 _VOLUME_FLAG_RE = re.compile(
-    r"(?:^|[\s'\"`,(\[=])(?:-v|--volume)(?:\s*+=\s*+|\s++|\s*+,\s*+\n?\s*+(?:[frFR]{1,2})?['\"`])"
-    r"(?P<mount>(?:[A-Za-z0-9_./~*$-]++|\$\{[^}\n]++\}|\{[^}\n]++\})"
-    r":/(?:[A-Za-z0-9_./$-]++|\$\{[^}\n]++\}|\{[^}\n]++\})(?::[A-Za-z0-9_,]++)?)"
+    r"(?:^|[\s'\"`,(\[=])(?:-v|--volume)(?:\s*=\s*|\s+|\s*,\s*\n?\s*(?:[frFR]{1,2})?['\"`])"
+    r"(?P<mount>(?:[A-Za-z0-9_./~*$-]+|\$\{[^}\n]+\}|\{[^}\n]+\})"
+    r":/(?:[A-Za-z0-9_./$-]+|\$\{[^}\n]+\}|\{[^}\n]+\})(?::[A-Za-z0-9_,]+)?)"
 )
 
 _SHARED_MOUNT_SPEC_RE = re.compile(
     r"(?<![A-Za-z0-9_.:/\-}$])"
-    r"(?P<mount>(?:[A-Za-z0-9_./~*$-]++|\$\{[^}\n]++\}|\{[^}\n]++\})"
-    r":/(?:shared|scripts|setup|install|oem|bootstrap|init|provision)(?:/[A-Za-z0-9_./$-]*+)?"
-    r"(?::[A-Za-z0-9_,]++)?)"
+    r"(?P<mount>(?:[A-Za-z0-9_./~*$-]+|\$\{[^}\n]+\}|\{[^}\n]+\})"
+    r":/(?:shared|scripts|setup|install|oem|bootstrap|init|provision)(?:/[A-Za-z0-9_./$-]*)?"
+    r"(?::[A-Za-z0-9_,]+)?)"
     r"(?![A-Za-z0-9_.:/])"
 )
 
@@ -112,7 +113,7 @@ def audit_programmatic_container_orchestration(
             "findings": findings,
         }
 
-    # (a) SNIPER-ORCH-PORT-01
+    # (a) VULKILL-ORCH-PORT-01
     port_candidates: list[tuple[int, str]] = []
     for m in _PUBLISH_FLAG_RE.finditer(content):
         port_candidates.append((m.start("spec"), m.group("spec")))
@@ -157,8 +158,8 @@ def audit_programmatic_container_orchestration(
         )
         findings.append(
             {
-                "control_id": "SNIPER-ORCH-PORT-01",
-                "rule_id": "SNIPER-ORCH-PORT-01",
+                "control_id": "VULKILL-ORCH-PORT-01",
+                "rule_id": "VULKILL-ORCH-PORT-01",
                 "cwe": "CWE-668",
                 "reference": "CWE-668",
                 "severity": "high",
@@ -178,7 +179,7 @@ def audit_programmatic_container_orchestration(
             }
         )
 
-    # (b) SNIPER-ORCH-MOUNT-02
+    # (b) VULKILL-ORCH-MOUNT-02
     mount_candidates: list[tuple[int, int, str]] = []
     for m in _VOLUME_FLAG_RE.finditer(content):
         mount_candidates.append((m.start("mount"), m.end("mount"), m.group("mount")))
@@ -221,8 +222,8 @@ def audit_programmatic_container_orchestration(
         )
         findings.append(
             {
-                "control_id": "SNIPER-ORCH-MOUNT-02",
-                "rule_id": "SNIPER-ORCH-MOUNT-02",
+                "control_id": "VULKILL-ORCH-MOUNT-02",
+                "rule_id": "VULKILL-ORCH-MOUNT-02",
                 "cwe": "CWE-732",
                 "reference": "CWE-732",
                 "severity": "high",

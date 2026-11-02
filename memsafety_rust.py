@@ -22,7 +22,7 @@ birleşir).
 from __future__ import annotations
 
 from dataclasses import dataclass
-import re
+import safe_regex as re
 from typing import Any
 
 import memsafety_c
@@ -32,58 +32,7 @@ from taint_native_core import match_close, split_args
 SUFFIXES = frozenset({".rs"})
 MAX_FILE_BYTES = 2_000_000
 _FN_RE_EXTERN = re.compile(r"extern\s+\"C\"\s+fn")
-
-
-def _strip_rust_comments(text: str) -> str:
-    """Remove Rust comments in linear time while preserving source offsets."""
-    out = list(text)
-    index = 0
-    state = "code"
-    block_depth = 0
-    escaped = False
-    while index < len(text):
-        char = text[index]
-        following = text[index + 1] if index + 1 < len(text) else ""
-        if state == "code":
-            if char == '"':
-                state, escaped = "string", False
-            elif char == "'":
-                state, escaped = "char", False
-            elif char == "/" and following == "/":
-                out[index] = out[index + 1] = " "
-                state = "line_comment"
-                index += 1
-            elif char == "/" and following == "*":
-                out[index] = out[index + 1] = " "
-                state, block_depth = "block_comment", 1
-                index += 1
-        elif state in {"string", "char"}:
-            if escaped:
-                escaped = False
-            elif char == "\\":
-                escaped = True
-            elif (state == "string" and char == '"') or (state == "char" and char == "'"):
-                state = "code"
-        elif state == "line_comment":
-            if char == "\n":
-                state = "code"
-            else:
-                out[index] = " "
-        else:
-            if char == "/" and following == "*":
-                out[index] = out[index + 1] = " "
-                block_depth += 1
-                index += 1
-            elif char == "*" and following == "/":
-                out[index] = out[index + 1] = " "
-                block_depth -= 1
-                index += 1
-                if block_depth == 0:
-                    state = "code"
-            elif char != "\n":
-                out[index] = " "
-        index += 1
-    return "".join(out)
+_COMMENT_RE = re.compile(r"//[^\n]*|/\*[\s\S]*?\*/")
 
 
 @dataclass
@@ -357,12 +306,12 @@ def analyze_text(text: str, path: str = "") -> list[RustMemFinding]:
         body = (fn[0], fn[1]) if fn else (0, n)
         fn_start_line = toks[fn[2]].line if fn else 1
         fn_back = (
-            _strip_rust_comments("\n".join(lines[max(0, fn_start_line - 1):max(0, t.line - 1)]))
+            _COMMENT_RE.sub("", "\n".join(lines[max(0, fn_start_line - 1):max(0, t.line - 1)]))
             + "\n"
             + _text(toks, body[0], i)
         )
         back = (
-            _strip_rust_comments("\n".join(lines[max(fn_start_line - 1 if fn else 0, t.line - 8):max(0, t.line - 1)]))
+            _COMMENT_RE.sub("", "\n".join(lines[max(fn_start_line - 1 if fn else 0, t.line - 8):max(0, t.line - 1)]))
             + "\n"
             + _text(toks, max(body[0], i - 40), i)
         )
@@ -494,8 +443,8 @@ def analyze_text(text: str, path: str = "") -> list[RustMemFinding]:
 analyze_rust = analyze_text
 
 _RUST_AUDIT_FN_RE = re.compile(
-    r"\b(?:pub(?:\s*+\([^)]*+\))?\s++)?(?:async\s++)?(?:unsafe\s++)?(?:extern\s++\"[^\"]*+\"\s++)?"
-    r"fn\s++(?P<name>[A-Za-z_]\w*)\s*+(?:<[^>]*+>)?\s*+\((?P<params>[^)]*+)\)(?P<ret>[^{;]*+)\{",
+    r"\b(?:pub(?:\s*\([^)]*\))?\s+)?(?:async\s+)?(?:unsafe\s+)?(?:extern\s+\"[^\"]*\"\s+)?"
+    r"fn\s+(?P<name>[A-Za-z_]\w*)\s*(?:<[^>]*>)?\s*\((?P<params>[^)]*)\)(?P<ret>[^{;]*)\{",
     re.DOTALL,
 )
 _RUST_PARSER_FN_NAME_RE = re.compile(
@@ -531,10 +480,10 @@ def audit_rust_binary_parser_and_stride_hazards(
     filename: str = "lib.rs",
 ) -> dict[str, Any]:
     """Wave-5 Rust ikili ayrıştırıcı (Panic-DoS) ve çok boyutlu çerçeve/düzlem stride (CWE-190) denetçisi:
-    - SNIPER-RUST-STRIDE-01 (CWE-190): `copy_nonoverlapping` / `from_raw_parts` ile çerçeve/düzlem (BGRA/NV12)
+    - VULKILL-RUST-STRIDE-01 (CWE-190): `copy_nonoverlapping` / `from_raw_parts` ile çerçeve/düzlem (BGRA/NV12)
       kopyalamasında `checked_mul`/`checked_add`, `stride < row_bytes` veya ikincil düzlem (`uv.len()`)
       doğrulamasının eksikliği.
-    - SNIPER-RUST-PANIC-02 (CWE-248): Ağ/akış ikili ayrıştırıcısında (`parse_*`, `from_bytes`, `deserialize`,
+    - VULKILL-RUST-PANIC-02 (CWE-248): Ağ/akış ikili ayrıştırıcısında (`parse_*`, `from_bytes`, `deserialize`,
       `decode`, `read_*`) sınır denetimsiz dilimleme (`&data[offset..offset + len]`) veya `.unwrap()`/`.expect()`
       ile uzaktan tetiklenebilir Panic-DoS.
     """
@@ -546,12 +495,12 @@ def audit_rust_binary_parser_and_stride_hazards(
             "findings": [],
         }
 
-    cleaned = _strip_rust_comments(text)
+    cleaned = _COMMENT_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
     findings: list[dict[str, Any]] = []
     seen: set[tuple[str, int]] = set()
 
     for fn_name, params, body, brace_open in _iter_rust_functions(cleaned):
-        # 1. SNIPER-RUST-STRIDE-01
+        # 1. VULKILL-RUST-STRIDE-01
         m_copy = re.search(r"\b(?:copy_nonoverlapping|from_raw_parts(?:_mut)?)\s*\(", body)
         has_stride_context = bool(
             re.search(r"\b(?:[a-z_]*stride|row_bytes|pitch|Nv12)\b", params + " " + body)
@@ -597,13 +546,13 @@ def audit_rust_binary_parser_and_stride_hazards(
                 if not has_plane_len_guard:
                     missing_parts.append("düzlem tampon uzunluğu (.len()) doğrulaması")
                 sink_line = cleaned.count("\n", 0, brace_open + m_copy.start()) + 1
-                key = ("SNIPER-RUST-STRIDE-01", sink_line)
+                key = ("VULKILL-RUST-STRIDE-01", sink_line)
                 if key not in seen:
                     seen.add(key)
                     findings.append(
                         {
-                            "rule_id": "SNIPER-RUST-STRIDE-01",
-                            "id": "SNIPER-RUST-STRIDE-01",
+                            "rule_id": "VULKILL-RUST-STRIDE-01",
+                            "id": "VULKILL-RUST-STRIDE-01",
                             "kind": "rust_stride_plane_overflow",
                             "cwe": "CWE-190",
                             "severity": "high",
@@ -614,13 +563,13 @@ def audit_rust_binary_parser_and_stride_hazards(
                             "sink_line": sink_line,
                             "filename": filename,
                             "evidence": (
-                                f"SNIPER-RUST-STRIDE-01: `{fn_name}` içinde `copy_nonoverlapping`/`from_raw_parts` "
+                                f"VULKILL-RUST-STRIDE-01: `{fn_name}` içinde `copy_nonoverlapping`/`from_raw_parts` "
                                 f"öncesinde {', '.join(missing_parts)} eksik (CWE-190)"
                             ),
                         }
                     )
 
-        # 2. SNIPER-RUST-PANIC-02
+        # 2. VULKILL-RUST-PANIC-02
         is_parser_fn = bool(
             _RUST_PARSER_FN_NAME_RE.search(fn_name)
             and re.search(r"&\s*(?:mut\s+)?\[\s*u8\s*\]|\bCursor\b|\bBytes\b|\bVec\s*<\s*u8\s*>", params)
@@ -629,11 +578,9 @@ def audit_rust_binary_parser_and_stride_hazards(
             panic_sink_pos: int | None = None
             panic_reason = ""
 
-            for m_slice in re.finditer(r"\b(?P<svar>[A-Za-z_]\w*)\s*+\[\s*+(?P<rng>[^\]]*+)\]", body):
+            for m_slice in re.finditer(r"\b(?P<svar>[A-Za-z_]\w*)\s*\[\s*(?P<rng>[^\]]*\.\.[^\]]*)\]", body):
                 svar = m_slice.group("svar")
                 rng = m_slice.group("rng").strip()
-                if ".." not in rng:
-                    continue
                 pre_slice = body[: m_slice.start()]
                 svar_esc = re.escape(svar)
                 has_var_in_rng = bool(re.search(r"[A-Za-z_]\w*", rng))
@@ -685,13 +632,13 @@ def audit_rust_binary_parser_and_stride_hazards(
 
             if panic_sink_pos is not None:
                 sink_line = cleaned.count("\n", 0, brace_open + panic_sink_pos) + 1
-                key = ("SNIPER-RUST-PANIC-02", sink_line)
+                key = ("VULKILL-RUST-PANIC-02", sink_line)
                 if key not in seen:
                     seen.add(key)
                     findings.append(
                         {
-                            "rule_id": "SNIPER-RUST-PANIC-02",
-                            "id": "SNIPER-RUST-PANIC-02",
+                            "rule_id": "VULKILL-RUST-PANIC-02",
+                            "id": "VULKILL-RUST-PANIC-02",
                             "kind": "rust_parser_panic_dos",
                             "cwe": "CWE-248",
                             "severity": "high",
@@ -702,7 +649,7 @@ def audit_rust_binary_parser_and_stride_hazards(
                             "sink_line": sink_line,
                             "filename": filename,
                             "evidence": (
-                                f"SNIPER-RUST-PANIC-02: `{fn_name}` ayrıştırıcısında {panic_reason}; "
+                                f"VULKILL-RUST-PANIC-02: `{fn_name}` ayrıştırıcısında {panic_reason}; "
                                 f"bozuk/kısa paketle uzaktan Panic-DoS tetiklenebilir (CWE-248)"
                             ),
                         }

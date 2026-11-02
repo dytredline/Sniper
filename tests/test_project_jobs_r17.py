@@ -379,7 +379,7 @@ class ProjectJobHttpTests(unittest.TestCase):
         server.LIMITER = server.RateLimiter()
         server.JOBS = JobQueue(workers=1, on_finish=server._job_finished)
         server.SCHEDULER = None
-        self.httpd = server.SniperHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = server.VulKillHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.port = self.httpd.server_address[1]
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
 

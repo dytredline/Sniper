@@ -14,8 +14,11 @@
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import posixpath
+from pathlib import PurePosixPath
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -29,6 +32,10 @@ MAX_MODULE_DEPTH = 4
 MAX_INSTANCES = 400  # çok sayıda modül çağrısında üst sınır (süre bütçesi)
 MAX_MODULE_OUTPUT_INSTANCES = 64  # count/for_each çıktı şeklini bellek ve değerlendirme açısından sınırlar
 _META_ARGS = {"source", "version", "count", "for_each", "providers", "depends_on"}
+MIRROR_FORMAT = "sniper-terraform-module-mirror/1"
+MIRROR_MANIFEST_PATH = ".sniper/terraform-module-mirror.json"
+_SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
+_EXACT_VERSION_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._/+\-]{0,127}\Z")
 
 
 def _automatic_tfvars(name: str) -> bool:
@@ -67,11 +74,12 @@ def _dirname(rel: str) -> str:
 class TerraformProject:
     """``files``: proje köküne göreli yol → metin (yalnız .tf ve otomatik tfvars biçimleri)."""
 
-    def __init__(self, files: dict[str, str]):
+    def __init__(self, files: dict[str, str], mirror_manifest: dict[str, Any] | None = None):
         self.modules: dict[str, _Module] = {}
         self.tfvars_files: dict[str, str] = {}
         self.failed: set[str] = set()
         self.limitations: set[str] = set()
+        self.remote_modules: dict[tuple[str, str], str] = {}
         for rel, text in files.items():
             if _automatic_tfvars(posixpath.basename(rel)):
                 self.tfvars_files[rel] = text
@@ -101,6 +109,7 @@ class TerraformProject:
                         for name, attr in block.attrs.items():
                             module.locals_raw[name] = attr.value
             module.facts = iac_engine.module_facts(module.roots.values())
+        self._configure_module_mirror(files, mirror_manifest)
         # Kök modül değerleri: aynı dizindeki HCL/JSON otomatik tfvars dosyaları. Terraform önce sabit adlı
         # HCL, sonra JSON dosyasını; ardından iki auto uzantısını ortak dosya adı sırasıyla yükler.
         # Çağıranın sözlük ekleme sırası veya os.walk sırası değerlendirme sonucunu değiştirmemeli.
@@ -135,6 +144,53 @@ class TerraformProject:
                 if not iac_hcl.is_unknown(attr.value):
                     module.tfvars[key] = attr.value
 
+    @staticmethod
+    def _mirror_tree_sha256(files: dict[str, str], prefix: str) -> str:
+        rows = [
+            [path[len(prefix) + 1:], hashlib.sha256(text.encode("utf-8")).hexdigest()]
+            for path, text in sorted(files.items())
+            if path.startswith(prefix + "/")
+        ]
+        return hashlib.sha256(
+            json.dumps(rows, ensure_ascii=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+
+    def _configure_module_mirror(self, files: dict[str, str], manifest: dict[str, Any] | None) -> None:
+        """Trust only exact-version remote modules from a pinned, in-repository offline mirror."""
+        if manifest is None:
+            return
+        if not isinstance(manifest, dict) or manifest.get("format") != MIRROR_FORMAT \
+                or not isinstance(manifest.get("modules"), list):
+            self.limitations.add("remote-module-mirror-invalid")
+            return
+        for raw in manifest["modules"]:
+            if not isinstance(raw, dict):
+                self.limitations.add("remote-module-mirror-invalid")
+                continue
+            source = raw.get("source")
+            version = raw.get("version")
+            raw_path = raw.get("path")
+            expected = str(raw.get("tree_sha256") or "").casefold()
+            if not isinstance(source, str) or not source or source.startswith(("./", "../")) \
+                    or not isinstance(version, str) or not _EXACT_VERSION_RE.fullmatch(version) \
+                    or not isinstance(raw_path, str):
+                self.limitations.add("remote-module-mirror-invalid")
+                continue
+            normalized = raw_path.replace("\\", "/")
+            pure = PurePosixPath(normalized)
+            if pure.is_absolute() or any(part in {"", ".", "..", ".git"} for part in pure.parts) \
+                    or normalized not in self.modules or not _SHA256_RE.fullmatch(expected):
+                self.limitations.add("remote-module-mirror-invalid")
+                continue
+            if self._mirror_tree_sha256(files, normalized) != expected:
+                self.limitations.add("remote-module-mirror-digest")
+                continue
+            key = (source, version)
+            if key in self.remote_modules:
+                self.limitations.add("remote-module-mirror-invalid")
+                continue
+            self.remote_modules[key] = normalized
+
     # -- bağlam ----------------------------------------------------------------------------------------
     def _ctx(self, module: _Module, inputs: dict[str, Any] | None = None) -> iac_tf_eval.Ctx:
         variables: dict[str, Any] = {}
@@ -159,6 +215,26 @@ class TerraformProject:
             return None  # proje kökü dışına çıkılmaz
         target = "" if target == "." else target
         return target if target in self.modules else None
+
+    def _module_source(self, caller_dir: str, block: Block) -> str | None:
+        local = self._local_source(caller_dir, block)
+        if local is not None:
+            return local
+        source = block.attrs.get("source")
+        if source is None or not isinstance(source.value, str):
+            return None
+        raw_source = source.value.strip()
+        if raw_source.startswith(("./", "../")):
+            return None
+        version_attr = block.attrs.get("version")
+        version = version_attr.value.strip() if version_attr is not None and isinstance(version_attr.value, str) else ""
+        if not _EXACT_VERSION_RE.fullmatch(version):
+            self.limitations.add("remote-module-unverified")
+            return None
+        target = self.remote_modules.get((raw_source, version))
+        if target is None:
+            self.limitations.add("remote-module-unverified")
+        return target
 
     # -- analiz -----------------------------------------------------------------------------------------
     def analyze(self) -> iac_engine.ProjectResults:
@@ -191,7 +267,7 @@ class TerraformProject:
                 for root in module.roots.values():
                     for raw in root.blocks:
                         if raw.type == "module" and raw.labels and not iac_engine._disabled(raw):
-                            target = self._local_source(module.dir, raw)
+                            target = self._module_source(module.dir, raw)
                             if target is not None and target not in stack:
                                 self.limitations.add("module-depth")
                                 return local_calls
@@ -322,7 +398,7 @@ class TerraformProject:
                 # Bir local ilk erişimde bilinmeyen modül çıktısıyla önbelleğe alınmış olabilir.
                 ctx._locals.clear()
                 resolved_call = iac_tf_eval.resolve_block(raw, ctx)
-                target = self._local_source(module.dir, resolved_call)
+                target = self._module_source(module.dir, resolved_call)
                 if target is not None and target not in stack:
                     if output_instances[0] >= MAX_INSTANCES:
                         self.limitations.add("module-instances")
@@ -360,7 +436,7 @@ class TerraformProject:
                 resolved_roots[rel] = resolved
                 for block in resolved.blocks:
                     if block.type == "module" and block.labels:
-                        target = self._local_source(module.dir, block)
+                        target = self._module_source(module.dir, block)
                         # Bütçe/döngü nedeniyle hazırlanamayan yerel çağrı bilinmeyen kalır ve izlenmez.
             # Yerel modül çağrısındaki girdiler (ör. storage_encrypted = false) çağrı satırında da denetlenir: değeri
             # veren satır orasıdır; modülün kaynağı ayrıca örnek bağlamında denetlenir.
@@ -390,9 +466,9 @@ class TerraformProject:
         return merged
 
 
-def analyze_files(files: dict[str, str]) -> iac_engine.ProjectResults:
+def analyze_files(files: dict[str, str], *, mirror_manifest: dict[str, Any] | None = None) -> iac_engine.ProjectResults:
     """Kolaylık: Terraform dosyalarını proje bağlamında analiz et."""
-    return TerraformProject(files).analyze()
+    return TerraformProject(files, mirror_manifest=mirror_manifest).analyze()
 
 
 MAX_TF_FILES = 3000
@@ -410,12 +486,23 @@ def scan_tree(root, skip_dirs, *, project_tree: ProjectTree | None = None) -> ia
     total = 0
     candidates = 0
     limitations: set[str] = set()
+    mirror_manifest: dict[str, Any] | None = None
     tree = project_tree.duplicate() if project_tree is not None else ProjectTree(root)
     try:
         with tree:
             ignored = set(skip_dirs) | {".terraform"}
             for observed in tree.iter_files(skip_dirs=ignored, reject_unsafe=False):
                 name = observed.name
+                if observed.path.as_posix() == MIRROR_MANIFEST_PATH:
+                    try:
+                        raw_manifest = tree.read_bytes(observed, MAX_TF_FILE_BYTES, allow_empty=False)
+                        parsed_manifest = json.loads(raw_manifest.decode("utf-8", errors="strict"))
+                        mirror_manifest = parsed_manifest if isinstance(parsed_manifest, dict) else None
+                        if mirror_manifest is None:
+                            limitations.add("remote-module-mirror-invalid")
+                    except (ProjectTreeError, UnicodeDecodeError, ValueError, RecursionError):
+                        limitations.add("remote-module-mirror-invalid")
+                    continue
                 # Terraform yalnız sabit adlı ve *.auto adlı HCL/JSON tfvars dosyalarını otomatik yükler.
                 # Aynı dosya/bayt bütçesini tüketmeleri, çok sayıda tfvars ile sınırın aşılmasını engeller.
                 automatic_tfvars = _automatic_tfvars(name)
@@ -446,5 +533,5 @@ def scan_tree(root, skip_dirs, *, project_tree: ProjectTree | None = None) -> ia
                 files[observed.path.as_posix()] = text
     except ProjectTreeError:
         limitations.add("file-read")
-    result = TerraformProject(files).analyze()
+    result = TerraformProject(files, mirror_manifest=mirror_manifest).analyze()
     return result.mark_incomplete(*sorted(limitations)) if limitations else result
