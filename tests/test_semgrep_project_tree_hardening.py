@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -31,8 +32,7 @@ class SemgrepProjectTreeHardeningTests(unittest.TestCase):
         self.rules = self.root / "rules.yaml"
         self.rules.write_text(SAFE_RULES, encoding="utf-8")
         self.binary = self.root / "fake-semgrep"
-        self.binary.write_text(
-            """#!/usr/bin/env python3
+        fixture = """#!__PYTHON__
 import json
 import os
 import sys
@@ -47,10 +47,12 @@ trace = {
     'source': candidate.read_text(encoding='utf-8') if candidate.is_file() else '<missing>',
     'rules': config.read_text(encoding='utf-8'),
 }
-Path(os.environ['SNIPER_TEST_TRACE']).write_text(json.dumps(trace), encoding='utf-8')
+Path(__TRACE__).write_text(json.dumps(trace), encoding='utf-8')
 report = {'results': [], 'errors': [], 'paths': {'scanned': [] if trace['source'] == '<missing>' else ['main.py']}}
 Path(sys.argv[sys.argv.index('--output') + 1]).write_text(json.dumps(report), encoding='utf-8')
-""",
+"""
+        self.binary.write_text(
+            fixture.replace("__PYTHON__", sys.executable).replace("__TRACE__", repr(str(self.trace))),
             encoding="utf-8",
         )
         self.binary.chmod(0o755)
@@ -63,7 +65,6 @@ Path(sys.argv[sys.argv.index('--output') + 1]).write_text(json.dumps(report), en
             "SNIPER_DATA_DIR": str(self.data),
             "SNIPER_SEMGREP_BINARY": str(self.binary),
             "SNIPER_SEMGREP_RULES": str(self.rules),
-            "SNIPER_TEST_TRACE": str(self.trace),
             **pin_env("semgrep", self.binary),
         }
         with mock.patch.dict(os.environ, env, clear=False):

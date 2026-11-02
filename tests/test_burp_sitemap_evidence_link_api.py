@@ -30,7 +30,7 @@ class BurpSitemapEvidenceLinkApiTests(unittest.TestCase):
         self.previous_store = server.STORE
         self.store = Store(Path(self.temporary.name) / "sniper.db")
         server.STORE = self.store
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.httpd.daemon_threads = True
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()

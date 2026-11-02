@@ -298,7 +298,7 @@ class EvalApiTests(unittest.TestCase):
             em.write_history(record, history)
             previous = server.STORE
             server.STORE = Store(Path(tmp) / "data" / "sniper.db")
-            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
             threading.Thread(target=httpd.serve_forever, daemon=True).start()
             try:
                 with mock.patch.dict(os.environ, {"SNIPER_EVAL_HISTORY_DIR": str(history)}):

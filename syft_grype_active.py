@@ -16,7 +16,6 @@ from typing import Any
 
 from process_group_runner import run_in_process_group
 from project_analyzer import ProjectRejected, validate_project_path
-from project_tree import ProjectTree, ProjectTreeError
 
 
 class SyftGrypeUnavailable(RuntimeError):
@@ -33,8 +32,8 @@ class SyftGrypeExecutionError(RuntimeError):
 
 SYFT_VERSION = "1.55.0"
 GRYPE_VERSION = "0.121.0"
-SYFT_SHA256 = "4f8068b25551a42991a292a42078519fdc739a97a6f6310e1dcf1367a258c1c2"
-GRYPE_SHA256 = "e81fd2b6669c5a9ab7fee756e63e769cc40163310c11e546420b4d93e2118543"
+SYFT_SHA256 = "a25bda7a97403add93e9a384f70554b212a112e2e66c0989bbc4c35e8c8a319e"
+GRYPE_SHA256 = "c8dc5f64e3d2c163aa2f4103ee08292cd6addd84f6994dfcd4e5018c68483069"
 GRYPE_DB_SHA256 = "bd2a260cf746a39229f01a3eb0da8453ba0ef5e51e88a1abe735c6e257774494"
 _RUNTIME_ROOT = Path.home() / ".local" / "state" / "sniper-tool-runtimes"
 _DEFAULT_SYFT = _RUNTIME_ROOT / f"syft-{SYFT_VERSION}" / "syft"
@@ -168,35 +167,60 @@ def _is_manifest(relative: Path) -> bool:
 def _snapshot_manifests(source: Path, destination: Path) -> tuple[int, int]:
     files = 0
     total = 0
-    try:
-        with ProjectTree(source) as tree:
-            for observed in tree.iter_files(
-                skip_dirs=_EXCLUDED_DIRECTORIES,
-                max_entries=100_000,
-                max_depth=40,
-                reject_unsafe=False,
-            ):
-                relative = Path(observed.path.as_posix())
-                if not _is_manifest(relative):
-                    continue
-                if not 0 <= observed.size <= _MAX_FILE_BYTES:
-                    raise ProjectRejected("Bağımlılık manifesti boyut sınırını aşıyor.")
-                files += 1
-                total += observed.size
-                if files > _MAX_FILES or total > _MAX_TOTAL_BYTES:
-                    raise ProjectRejected("Bağımlılık manifesti kapsamı güvenli sınırı aşıyor.")
-                data = tree.read_bytes(observed, _MAX_FILE_BYTES, allow_empty=True)
-                output = destination / relative
-                output.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
-                descriptor = os.open(
-                    output,
-                    os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
-                    0o600,
-                )
-                with os.fdopen(descriptor, "wb") as stream:
-                    stream.write(data)
-    except ProjectTreeError as exc:
-        raise ProjectRejected("Proje dosyaları güvenli biçimde okunamadı.") from exc
+
+    def walk(directory: Path, relative_dir: Path, depth: int) -> None:
+        nonlocal files, total
+        if depth > 40:
+            raise ProjectRejected("Proje dizin derinliği güvenli sınırı aşıyor.")
+        try:
+            with os.scandir(directory) as scanner:
+                entries = sorted(scanner, key=lambda entry: entry.name)
+        except OSError as exc:
+            raise ProjectRejected("Proje dosyaları güvenli biçimde okunamadı.") from exc
+        for entry in entries:
+            try:
+                info = entry.stat(follow_symlinks=False)
+            except OSError as exc:
+                raise ProjectRejected("Proje dosyaları güvenli biçimde okunamadı.") from exc
+            if stat.S_ISLNK(info.st_mode):
+                continue
+            relative = relative_dir / entry.name
+            if stat.S_ISDIR(info.st_mode):
+                if entry.name.casefold() not in _EXCLUDED_DIRECTORIES:
+                    walk(Path(entry.path), relative, depth + 1)
+                continue
+            if not stat.S_ISREG(info.st_mode) or not _is_manifest(relative):
+                continue
+            if not 0 <= info.st_size <= _MAX_FILE_BYTES:
+                raise ProjectRejected("Bağımlılık manifesti boyut sınırını aşıyor.")
+            files += 1
+            total += info.st_size
+            if files > _MAX_FILES or total > _MAX_TOTAL_BYTES:
+                raise ProjectRejected("Bağımlılık manifesti kapsamı güvenli sınırı aşıyor.")
+            try:
+                fd = os.open(entry.path, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_CLOEXEC", 0))
+                try:
+                    current = os.fstat(fd)
+                    if (not stat.S_ISREG(current.st_mode) or current.st_dev != info.st_dev
+                            or current.st_ino != info.st_ino or current.st_size != info.st_size):
+                        raise OSError("changed input")
+                    with os.fdopen(fd, "rb") as stream:
+                        fd = -1
+                        data = stream.read(_MAX_FILE_BYTES + 1)
+                finally:
+                    if fd >= 0:
+                        os.close(fd)
+                if len(data) != info.st_size:
+                    raise OSError("partial input")
+            except OSError as exc:
+                raise ProjectRejected("Proje dosyaları güvenli biçimde okunamadı.") from exc
+            output = destination / relative
+            output.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+            descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            with os.fdopen(descriptor, "wb") as stream:
+                stream.write(data)
+
+    walk(source, Path(), 0)
     return files, total
 
 

@@ -52,6 +52,8 @@ from safe_file_read import read_bytes_bounded
 
 
 MAX_STATIC_FILE_BYTES = 8 * 1024 * 1024
+MAX_REQUEST_PATH_BYTES = 4096
+MAX_REQUEST_PATH_COMPONENT_BYTES = 255
 import notifications
 import ops_files
 import license_compliance
@@ -570,8 +572,24 @@ class RateLimiter:
 LIMITER = RateLimiter()
 
 
+def _request_path_within_limits(path: str) -> bool:
+    """Reject paths that cannot be represented safely by common local filesystems."""
+    try:
+        if len(os.fsencode(path)) > MAX_REQUEST_PATH_BYTES:
+            return False
+        return all(
+            len(os.fsencode(component)) <= MAX_REQUEST_PATH_COMPONENT_BYTES
+            for component in path.split("/")
+            if component
+        )
+    except (TypeError, UnicodeEncodeError):
+        return False
+
+
 def _is_static_asset_path(path: str) -> bool:
     """Arayüz varlıkları: /static/ altındaki dosyalar (.. içermeyen), ana sayfa, giriş sayfası ve favicon."""
+    if not _request_path_within_limits(path):
+        return False
     if path in ("/", "/index.html", "/login.html", "/favicon.ico"):
         return True
     if ".." in path or "//" in path:
@@ -991,7 +1009,7 @@ def _run_post_capture(server, client_address, header_items: list[tuple[str, str]
             headers[key] = value
     headers["Content-Type"] = "application/json"
     headers["Content-Length"] = str(len(body))
-    handler = SniperHandler.__new__(SniperHandler)
+    handler = VulKillHandler.__new__(VulKillHandler)
     handler.server = server
     handler.client_address = client_address
     handler.command = "POST"
@@ -1246,7 +1264,7 @@ def _allowed_host_names() -> frozenset[str]:
     return _LOOPBACK_HOST_NAMES | frozenset(extra)
 
 
-class SniperHTTPServer(ThreadingHTTPServer):
+class VulKillHTTPServer(ThreadingHTTPServer):
     """Eşzamanlı bağlantı sayısı sınırlı HTTP sunucusu (yavaş istemci / slowloris koruması)."""
 
     daemon_threads = True
@@ -1272,8 +1290,8 @@ class SniperHTTPServer(ThreadingHTTPServer):
             self._connection_slots.release()
 
 
-class SniperHandler(BaseHTTPRequestHandler):
-    server_version = "SniperLocal"
+class VulKillHandler(BaseHTTPRequestHandler):
+    server_version = "VulKillLocal"
     sys_version = ""
     # İstek satırı/başlık/gövde okumasında asılı kalan bağlantılar bu süre sonunda kapanır.
     timeout = 30
@@ -1485,7 +1503,7 @@ class SniperHandler(BaseHTTPRequestHandler):
             if not audit or audit.get("audit_kind") != "container":
                 return self._error(HTTPStatus.NOT_FOUND, "Konteyner taraması bulunamadı.")
             name = re.sub(r"[^A-Za-z0-9._-]+", "-", str(audit.get("project_name") or "imaj"))[:80]
-            return self._sbom_download(container_scan.cyclonedx_sbom(audit), parse_qs(parsed.query), f"sniper-{name}",
+            return self._sbom_download(container_scan.cyclonedx_sbom(audit), parse_qs(parsed.query), f"vulkill-{name}",
                                        str(audit.get("created_at") or ""), audit_id)
         if path.startswith("/api/dependency-security/sbom-scans/") and path.endswith("/vex"):
             # 20. tur: dış SBOM taramasından VEX (OpenVEX / CycloneDX VEX); ağ yok
@@ -1499,7 +1517,7 @@ class SniperHandler(BaseHTTPRequestHandler):
                 return self._error(HTTPStatus.BAD_REQUEST, "format openvex ya da cyclonedx olmalı.")
             result = sbom_scan.vex_for_audit(audit, fmt)
             name = re.sub(r"[^A-Za-z0-9._-]+", "-", str(audit.get("project_name") or "sbom"))[:80]
-            return self._json(result["document"], disposition=f'attachment; filename="sniper-{name}-{fmt}-vex.json"')
+            return self._json(result["document"], disposition=f'attachment; filename="vulkill-{name}-{fmt}-vex.json"')
         if path == "/api/dependency-security/vex-decisions":
             return self._dependency_vex_decisions_get(parse_qs(parsed.query))
         if path == "/api/dependency-security/offline-db":
@@ -1510,7 +1528,7 @@ class SniperHandler(BaseHTTPRequestHandler):
                                "configured": osv_db_refresh.configured_ecosystems()})
         if path in {"/api/dependency-security", "/api/dependency-security/report.json"}:
             complete_export = path.endswith("report.json")
-            disposition = 'attachment; filename="sniper-dependency-security.json"' if complete_export else None
+            disposition = 'attachment; filename="vulkill-dependency-security.json"' if complete_export else None
             params = parse_qs(parsed.query, keep_blank_values=True)
             try:
                 if any(len(params.get(key, [])) > 1 for key in ("limit", "offset", "query", "source", "severity", "status")):
@@ -1712,7 +1730,7 @@ class SniperHandler(BaseHTTPRequestHandler):
                         payload = SCAN_DIFF.compare_scans(scan_id_1, scan_id_2, include_details=include_details)
                         disposition = None
                         if report_requested:
-                            disposition = f'attachment; filename="sniper-diff-{scan_id_1}-{scan_id_2}.json"'
+                            disposition = f'attachment; filename="vulkill-diff-{scan_id_1}-{scan_id_2}.json"'
                         return self._json(payload, disposition=disposition)
 
                     severity_filter = query.get("severity", [None])[0]
@@ -1802,7 +1820,7 @@ class SniperHandler(BaseHTTPRequestHandler):
             if len(parts) == 3:
                 return self._json(scan)
             if len(parts) == 4 and parts[3] == "report.json":
-                return self._json(scan, disposition=f'attachment; filename="sniper-{scan["id"]}.json"')
+                return self._json(scan, disposition=f'attachment; filename="vulkill-{scan["id"]}.json"')
             if len(parts) == 4 and parts[3] == "report.html":
                 return self._html_report(scan, download=download_requested)
             if len(parts) == 4 and parts[3] == "report.sarif":
@@ -1864,7 +1882,7 @@ class SniperHandler(BaseHTTPRequestHandler):
             if len(parts) == 3:
                 return self._json(engagement)
             if len(parts) == 4 and parts[3] == "report.json":
-                return self._json(engagement, disposition=f'attachment; filename="sniper-{engagement["id"]}.json"')
+                return self._json(engagement, disposition=f'attachment; filename="vulkill-{engagement["id"]}.json"')
             if len(parts) == 4 and parts[3] == "report.html":
                 return self._engagement_html_report(engagement, download=download_requested)
             if len(parts) == 4 and parts[3] == "report.csv":
@@ -1914,7 +1932,7 @@ class SniperHandler(BaseHTTPRequestHandler):
                 self.send_response(HTTPStatus.OK)
                 self.send_header("Content-Type", "text/x-diff; charset=utf-8")
                 self.send_header("Content-Length", str(len(body)))
-                self.send_header("Content-Disposition", f'attachment; filename="sniper-fix-{audit["id"]}-{int(parts[4])}.patch"')
+                self.send_header("Content-Disposition", f'attachment; filename="vulkill-fix-{audit["id"]}-{int(parts[4])}.patch"')
                 self.send_header("Cache-Control", "no-store")
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.end_headers()
@@ -1925,7 +1943,7 @@ class SniperHandler(BaseHTTPRequestHandler):
                 from project_audit_diff import render_project_audit_sarif
                 return self._json(
                     render_project_audit_sarif(audit),
-                    disposition=f'attachment; filename="sniper-project-{audit["id"]}.sarif"',
+                    disposition=f'attachment; filename="vulkill-project-{audit["id"]}.sarif"',
                 )
             if len(parts) == 4 and parts[3] == "executive-summary":
                 from project_executive_summary import build_project_executive_summary
@@ -1950,7 +1968,7 @@ class SniperHandler(BaseHTTPRequestHandler):
                         render_project_audit_html(audit, render_section_html(executive), dependency_rows, ai_rows), self)
                 kind = "executive" if parts[3] == "executive-summary.html" else "project"
                 if self._wants_pdf():
-                    return self._pdf_report(document, f"sniper-{kind}-{audit['id']}.html")
+                    return self._pdf_report(document, f"vulkill-{kind}-{audit['id']}.html")
                 if self._report_format != "html":
                     return self._error(HTTPStatus.BAD_REQUEST, "Geçersiz rapor biçimi (html ya da pdf).")
                 body = document.encode("utf-8")
@@ -1958,7 +1976,7 @@ class SniperHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "text/html; charset=utf-8")
                 self.send_header("Content-Length", str(len(body)))
                 if download_requested:
-                    self.send_header("Content-Disposition", f'attachment; filename="sniper-{kind}-{audit["id"]}.html"')
+                    self.send_header("Content-Disposition", f'attachment; filename="vulkill-{kind}-{audit["id"]}.html"')
                 # Önceden var olmayan _security_headers() çağrılıyordu (rota 500/bağlantı kopması veriyordu).
                 self.send_header("Cache-Control", "no-store")
                 self.send_header("X-Content-Type-Options", "nosniff")
@@ -2001,7 +2019,7 @@ class SniperHandler(BaseHTTPRequestHandler):
                 return self._json(build_enterprise_enriched_sarif(audit))
             if len(parts) == 4 and parts[3] == "threat-model-mermaid":
                 import threat_model
-                return self._json(threat_model.synthesize_executable_threat_model(audit.get("findings") or [], project_name=str(audit.get("project_name") or "sniper-project")))
+                return self._json(threat_model.synthesize_executable_threat_model(audit.get("findings") or [], project_name=str(audit.get("project_name") or "vulkill-project")))
             if len(parts) == 4 and parts[3] == "ssvc-decisions":
                 import cvss_ssvc_prioritizer
                 return self._json(cvss_ssvc_prioritizer.evaluate_cisa_ssvc_decisions(audit.get("findings") or []))
@@ -2016,10 +2034,10 @@ class SniperHandler(BaseHTTPRequestHandler):
                 return self._json(executive_pentest_report.build_ciso_board_briefing(audit))
             if len(parts) == 4 and parts[3] == "unified-aibom":
                 import sbom_formats
-                return self._json(sbom_formats.build_unified_aibom_sbom(audit, project_name=str(audit.get("project_name") or "sniper-project")))
+                return self._json(sbom_formats.build_unified_aibom_sbom(audit, project_name=str(audit.get("project_name") or "vulkill-project")))
             if len(parts) == 4 and parts[3] == "runtime-profiles":
                 import host_cis_hardening_auditor
-                return self._json(host_cis_hardening_auditor.synthesize_least_privilege_runtime_profiles(audit, service_name=str(audit.get("project_name") or "sniper-app")))
+                return self._json(host_cis_hardening_auditor.synthesize_least_privilege_runtime_profiles(audit, service_name=str(audit.get("project_name") or "vulkill-app")))
             if len(parts) == 4 and parts[3] == "ci-gate-decision":
                 import ci_gate
                 return self._json(ci_gate.evaluate_enterprise_v2_ci_gate(audit))
@@ -2111,7 +2129,7 @@ class SniperHandler(BaseHTTPRequestHandler):
                 return self._error(HTTPStatus.NOT_FOUND, "SBOM kaydı bulunamadı.")
             # 20. tur: ?format=cyclonedx (varsayılan) | spdx (SPDX 2.3 JSON); zaman damgası kayıt anından eklenir
             # (kayıtlı belge deterministik kalır, aynı içerik yeniden kaydedilmez).
-            return self._sbom_download(sbom["document"], parse_qs(parsed.query), f"sniper-{sbom['id']}",
+            return self._sbom_download(sbom["document"], parse_qs(parsed.query), f"vulkill-{sbom['id']}",
                                        str(sbom.get("created_at") or ""), sbom["id"])
 
         if path == "/api" or path.startswith("/api/"):
@@ -6153,7 +6171,7 @@ class SniperHandler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Content-Disposition", f'attachment; filename="sniper-bulgular-{fmt}-{stamp}.{extension}"')
+        self.send_header("Content-Disposition", f'attachment; filename="vulkill-bulgular-{fmt}-{stamp}.{extension}"')
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
@@ -6934,7 +6952,7 @@ class SniperHandler(BaseHTTPRequestHandler):
                 if payload.get("download") is True:
                     suffix = "openvex.json" if fmt == "openvex" else "cdx-vex.json"
                     safe = re.sub(r"[^A-Za-z0-9._-]+", "-", result["project_name"])[:60] or "proje"
-                    return self._json(result["document"], disposition=f'attachment; filename="sniper-{safe}-{suffix}"')
+                    return self._json(result["document"], disposition=f'attachment; filename="vulkill-{safe}-{suffix}"')
                 return self._json(result)
             if path == "/api/dependency-security/vex-import":
                 if payload.get("confirm") is not True:
@@ -6968,7 +6986,11 @@ class SniperHandler(BaseHTTPRequestHandler):
     def _rate_limit(self) -> bool:
         if getattr(self, "_bootstrap_capture", False):
             return True  # /api/bootstrap tek istek olarak sayıldı
-        if self.command in ("GET", "HEAD") and _is_static_asset_path(urlsplit(self.path).path):
+        path = urlsplit(self.path).path
+        if not _request_path_within_limits(path):
+            self._error(HTTPStatus.REQUEST_URI_TOO_LONG, "İstek yolu çok uzun.")
+            return False
+        if self.command in ("GET", "HEAD") and _is_static_asset_path(path):
             return True  # salt okunur, önbelleğe alınabilir arayüz dosyaları hız sınırına sayılmaz
         client = self.client_address[0] if self.client_address else "local"
         if LIMITER.allow(client):
@@ -7223,7 +7245,7 @@ class SniperHandler(BaseHTTPRequestHandler):
 
     def _html_report(self, scan: dict, *, download: bool = False) -> None:
         if self._wants_pdf():
-            return self._pdf_report(_localized_report(render_report(scan), self), f"sniper-{scan['id']}.html")
+            return self._pdf_report(_localized_report(render_report(scan), self), f"vulkill-{scan['id']}.html")
         if getattr(self, "_report_format", "html") != "html":
             return self._error(HTTPStatus.BAD_REQUEST, "Geçersiz rapor biçimi (html ya da pdf).")
         body = _localized_report(render_report(scan), self).encode("utf-8")
@@ -7231,7 +7253,7 @@ class SniperHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         disposition = "attachment" if download else "inline"
-        self.send_header("Content-Disposition", f'{disposition}; filename="sniper-{scan["id"]}.html"')
+        self.send_header("Content-Disposition", f'{disposition}; filename="vulkill-{scan["id"]}.html"')
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Security-Policy", ui_assets.report_csp(body.decode("utf-8")))
@@ -7245,7 +7267,7 @@ class SniperHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         disposition = "attachment" if download else "inline"
-        self.send_header("Content-Disposition", f'{disposition}; filename="sniper-diff-{scan_1["id"]}-{scan_2["id"]}.html"')
+        self.send_header("Content-Disposition", f'{disposition}; filename="vulkill-diff-{scan_1["id"]}-{scan_2["id"]}.html"')
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Security-Policy", ui_assets.report_csp(body.decode("utf-8")))
@@ -7259,7 +7281,7 @@ class SniperHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         disposition = "attachment" if download else "inline"
-        self.send_header("Content-Disposition", f'{disposition}; filename="sniper-{engagement["id"]}.html"')
+        self.send_header("Content-Disposition", f'{disposition}; filename="vulkill-{engagement["id"]}.html"')
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Security-Policy", ui_assets.report_csp(body.decode("utf-8")))
@@ -7272,7 +7294,7 @@ class SniperHandler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/csv; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Content-Disposition", f'attachment; filename="sniper-diff-{scan_id_1}-{scan_id_2}.csv"')
+        self.send_header("Content-Disposition", f'attachment; filename="vulkill-diff-{scan_id_1}-{scan_id_2}.csv"')
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
@@ -7284,7 +7306,7 @@ class SniperHandler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/csv; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Content-Disposition", f'attachment; filename="sniper-{engagement["id"]}.csv"')
+        self.send_header("Content-Disposition", f'attachment; filename="vulkill-{engagement["id"]}.csv"')
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
@@ -7296,7 +7318,7 @@ class SniperHandler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "application/sarif+json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Content-Disposition", f'attachment; filename="sniper-{engagement["id"]}.sarif"')
+        self.send_header("Content-Disposition", f'attachment; filename="vulkill-{engagement["id"]}.sarif"')
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
@@ -7309,7 +7331,7 @@ class SniperHandler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "application/sarif+json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Content-Disposition", f'attachment; filename="sniper-{scan["id"]}.sarif"')
+        self.send_header("Content-Disposition", f'attachment; filename="vulkill-{scan["id"]}.sarif"')
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
@@ -7413,7 +7435,7 @@ def main() -> None:
     if os.getenv("SNIPER_ENABLE_PLUGINS") == "1":
         PLUGIN_MANAGER.enabled = True
     PLUGIN_MANAGER.reload()
-    server = SniperHTTPServer((HOST, PORT), SniperHandler)
+    server = VulKillHTTPServer((HOST, PORT), VulKillHandler)
     print(f"VulKill hazır: http://{HOST}:{PORT}", flush=True)
     # Başarılı HTTP bind sonrası, durdurulan taramaları işle (rerun yapma)
     import datetime

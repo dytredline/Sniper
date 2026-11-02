@@ -44,7 +44,7 @@ def test_official_archive_builds_deterministic_read_only_http_catalog(tmp_path: 
 
     root = tmp_path / "catalog"
     pin = root / "SNIPER-HTTP-CATALOG-PIN-v2.json"
-    index = root / "SNIPER-HTTP-ID-INDEX.json"
+    index = root / "VULKILL-HTTP-ID-INDEX.json"
     pin_doc = json.loads(pin.read_text(encoding="utf-8"))
     index_doc = json.loads(index.read_text(encoding="utf-8"))
     assert result == {

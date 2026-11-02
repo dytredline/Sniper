@@ -20,14 +20,14 @@ function load(jobs, cancelCalls) {
   const document = { readyState: 'complete', visibilityState: 'visible', getElementById: id => ids[id] || null, createElement: tag => new Node(tag) };
   const window = {
     setInterval: () => 1, clearInterval() {},
-    SniperJobs: {
+    VulKillJobs: {
       list: async () => jobs,
       cancel: async id => { cancelCalls.push(id); return { id, state: 'running', cancel_requested: true }; },
       stateLabel: s => ({ running: 'Çalışıyor', succeeded: 'Tamamlandı', queued: 'Kuyrukta' })[s] || 'Bilinmiyor',
     },
   };
   vm.runInNewContext(source, { window, globalThis: window, document, String, Boolean, Promise });
-  return { ids, panel: window.SniperJobsPanel };
+  return { ids, panel: window.VulKillJobsPanel };
 }
 
 test('index.html iş kuyruğu ve panel betiklerini app.js öncesi/sonrası yükler', () => {

@@ -140,7 +140,7 @@ def build_ghsa_and_hackerone_submission_payloads(
 
     valid_findings = [f for f in (findings or []) if isinstance(f, dict)]
     all_ids = [
-        str(f.get("id") or f.get("finding_id") or f"SNIPER-FINDING-{idx}")
+        str(f.get("id") or f.get("finding_id") or f"VULKILL-FINDING-{idx}")
         for idx, f in enumerate(valid_findings, start=1)
     ]
 
@@ -366,7 +366,7 @@ def _redact_secrets_with_sha256(text: str) -> str:
 def synthesize_standalone_reproducer_script(finding: dict[str, Any]) -> dict[str, Any]:
     """Bulgu için RED (yamasız exit != 0) ve GREEN (yamalı exit == 0) durumlarını doğrulayan, otomatik token maskelemeli bağımsız reproduce.sh betiği üretir."""
     safe_finding = finding if isinstance(finding, dict) else {}
-    f_id = str(safe_finding.get("id") or safe_finding.get("finding_id") or "SNIPER-FINDING-1").strip()
+    f_id = str(safe_finding.get("id") or safe_finding.get("finding_id") or "VULKILL-FINDING-1").strip()
     lang = _detect_reproducer_language(safe_finding)
     cwe = str(safe_finding.get("cwe") or "CWE-200").strip().upper()
     target_file = str(safe_finding.get("file") or "app/target").strip()

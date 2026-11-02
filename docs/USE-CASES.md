@@ -147,10 +147,10 @@ install exactly seven pinned third-party engines:
 | Optional engine | Community role | Readiness boundary |
 | --- | --- | --- |
 | Nuclei 3.11.1 | Checked-in pinned loopback-template support and authorized HTTP profiles | Broad authorized HTTP work requires a separately pinned template catalog. |
-| Trivy 0.75.0 | Configuration-oriented profiles, with additional dependency/container vulnerability profiles when their data is ready | Vulnerability profiles require a separately pinned offline database. |
+| Trivy 0.76.1 | Configuration-oriented profiles, with additional dependency/container vulnerability profiles when their data is ready | Vulnerability profiles require a separately pinned offline database. |
 | Gitleaks 8.30.1 | Local secret-scanning profiles | The binary, hash, input scope, and license must pass readiness checks. |
-| TruffleHog 3.99.0 | Local secret-scanning profiles | The binary, hash, input scope, and license must pass readiness checks. |
-| Opengrep 1.30.1 | Local source-pattern and taint-rule execution | The pinned binary and selected rules must pass readiness checks. |
+| TruffleHog 3.99.7 | Local secret-scanning profiles | The binary, hash, input scope, and license must pass readiness checks. |
+| Opengrep 1.33.1 | Local source-pattern and taint-rule execution | The pinned binary and selected rules must pass readiness checks. |
 | Syft 1.55.0 | Manifest-only local SBOM production | The pinned binary and explicitly approved local project must pass readiness checks. |
 | Grype 0.121.0 | Offline matching of the Syft SBOM against vulnerability data | The pinned binary and exact separately pinned offline database must pass readiness checks. |
 

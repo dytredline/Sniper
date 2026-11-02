@@ -125,7 +125,7 @@ class RegexComplexityBatchATests(unittest.TestCase):
             "public void authenticateUser(String token) {\n    return;\n}\n",
             filename="Auth.java",
         )
-        self.assertTrue(any(f["control_id"] == "SNIPER-LOGG-01" for f in java["findings"]))
+        self.assertTrue(any(f["control_id"] == "VULKILL-LOGG-01" for f in java["findings"]))
 
     def test_authorized_dns_validation_is_bounded_and_preserves_contract(self):
         adversarial = "https://" + "0" + ".00" * 90

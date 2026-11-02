@@ -19,11 +19,11 @@ SOURCE_ROOT = Path(os.environ.get("SNIPER_TASK50_SOURCE_ROOT", Path(__file__).re
 
 def _source_handler():
     tree = ast.parse((SOURCE_ROOT / "server.py").read_text())
-    handler = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == "SniperHandler")
+    handler = next(node for node in tree.body if isinstance(node, ast.ClassDef) and node.name == "VulKillHandler")
     required = {"do_POST", "_dispatch_post", "_read_json", "_json", "_error"}
     methods = [node for node in handler.body if isinstance(node, ast.FunctionDef) and node.name in required]
     if {node.name for node in methods} != required:
-        raise AssertionError("Expected complete SniperHandler JSON POST path")
+        raise AssertionError("Expected complete VulKillHandler JSON POST path")
     handler.bases = []
     handler.keywords = []
     handler.decorator_list = []
@@ -42,7 +42,7 @@ def _source_handler():
     }
     module = ast.fix_missing_locations(ast.Module(body=[handler], type_ignores=[]))
     exec(compile(module, str(SOURCE_ROOT / "server.py"), "exec"), namespace)
-    return namespace["SniperHandler"], namespace
+    return namespace["VulKillHandler"], namespace
 
 
 def _target_pattern():

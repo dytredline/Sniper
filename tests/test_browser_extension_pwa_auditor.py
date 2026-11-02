@@ -76,15 +76,15 @@ class ExtensionManifestTests(unittest.TestCase):
         self.assertEqual(report["host_permissions"], ["<all_urls>"])
         self.assertEqual(report["risk_permissions"], ["cookies", "debugger", "webRequestBlocking"])
         pairs = _pairs(report)
-        self.assertIn(("SNIPER-EXT-05", "medium", "CWE-1104"), pairs)
-        self.assertIn(("SNIPER-EXT-01", "high", "CWE-250"), pairs)
-        self.assertIn(("SNIPER-EXT-02", "high", "CWE-95"), pairs)
-        self.assertIn(("SNIPER-EXT-02", "high", "CWE-829"), pairs)
-        self.assertIn(("SNIPER-EXT-03", "high", "CWE-346"), pairs)
-        self.assertIn(("SNIPER-EXT-04", "medium", "CWE-200"), pairs)
-        self.assertIn(("SNIPER-EXT-05", "low", "CWE-400"), pairs)
-        self.assertIn(("SNIPER-EXT-05", "high", "CWE-494"), pairs)
-        cookie_findings = [f for f in report["findings"] if "cookies" in str(f) and f["control_id"] == "SNIPER-EXT-01"]
+        self.assertIn(("VULKILL-EXT-05", "medium", "CWE-1104"), pairs)
+        self.assertIn(("VULKILL-EXT-01", "high", "CWE-250"), pairs)
+        self.assertIn(("VULKILL-EXT-02", "high", "CWE-95"), pairs)
+        self.assertIn(("VULKILL-EXT-02", "high", "CWE-829"), pairs)
+        self.assertIn(("VULKILL-EXT-03", "high", "CWE-346"), pairs)
+        self.assertIn(("VULKILL-EXT-04", "medium", "CWE-200"), pairs)
+        self.assertIn(("VULKILL-EXT-05", "low", "CWE-400"), pairs)
+        self.assertIn(("VULKILL-EXT-05", "high", "CWE-494"), pairs)
+        cookie_findings = [f for f in report["findings"] if "cookies" in str(f) and f["control_id"] == "VULKILL-EXT-01"]
         self.assertTrue(cookie_findings)
         self.assertTrue(all(f["severity"] == "high" for f in cookie_findings))
         for finding in report["findings"]:
@@ -102,7 +102,7 @@ class ExtensionManifestTests(unittest.TestCase):
         report = audit_extension_manifest_inline(manifest)
         self.assertEqual(report["finding_count"], 1)
         self.assertEqual(report["findings"][0]["severity"], "medium")
-        self.assertEqual(report["findings"][0]["control_id"], "SNIPER-EXT-01")
+        self.assertEqual(report["findings"][0]["control_id"], "VULKILL-EXT-01")
 
     def test_safe_mv3_manifest_is_clean(self):
         report = audit_extension_manifest_inline(SAFE_MV3_MANIFEST)
@@ -124,9 +124,9 @@ class ExtensionManifestTests(unittest.TestCase):
         )
         report = audit_extension_manifest_inline(manifest)
         pairs = _pairs(report)
-        self.assertIn(("SNIPER-EXT-01", "high", "CWE-250"), pairs)
-        self.assertIn(("SNIPER-EXT-01", "low", "CWE-1021"), pairs)
-        self.assertIn(("SNIPER-EXT-04", "medium", "CWE-200"), pairs)
+        self.assertIn(("VULKILL-EXT-01", "high", "CWE-250"), pairs)
+        self.assertIn(("VULKILL-EXT-01", "low", "CWE-1021"), pairs)
+        self.assertIn(("VULKILL-EXT-04", "medium", "CWE-200"), pairs)
 
     def test_invalid_manifest_json_raises_value_error(self):
         with self.assertRaises(ValueError):
@@ -153,7 +153,7 @@ class ExtensionScriptTests(unittest.TestCase):
         )
         report = audit_extension_script_inline(source)
         self.assertEqual(report["format"], "sniper-browser-extension-script-audit-v1")
-        self.assertIn(("SNIPER-EXT-03", "high", "CWE-346"), _pairs(report))
+        self.assertIn(("VULKILL-EXT-03", "high", "CWE-346"), _pairs(report))
 
     def test_external_listener_with_sender_check_is_clean(self):
         source = (
@@ -176,7 +176,7 @@ class ExtensionScriptTests(unittest.TestCase):
             "});\n"
         )
         report = audit_extension_script_inline(source, filename="content.js")
-        self.assertIn(("SNIPER-EXT-03", "medium", "CWE-345"), _pairs(report))
+        self.assertIn(("VULKILL-EXT-03", "medium", "CWE-345"), _pairs(report))
 
     def test_eval_innerhtml_and_sync_token_storage(self):
         source = (
@@ -188,14 +188,14 @@ class ExtensionScriptTests(unittest.TestCase):
         )
         report = audit_extension_script_inline(source)
         pairs = _pairs(report)
-        self.assertIn(("SNIPER-EXT-02", "high", "CWE-95"), pairs)
-        self.assertIn(("SNIPER-EXT-02", "medium", "CWE-79"), pairs)
-        self.assertIn(("SNIPER-EXT-06", "medium", "CWE-312"), pairs)
+        self.assertIn(("VULKILL-EXT-02", "high", "CWE-95"), pairs)
+        self.assertIn(("VULKILL-EXT-02", "medium", "CWE-79"), pairs)
+        self.assertIn(("VULKILL-EXT-06", "medium", "CWE-312"), pairs)
 
     def test_tabs_execute_script_with_code_is_medium(self):
         source = "chrome.tabs.executeScript(tabId, { code: 'document.title = ' + JSON.stringify(t) });\n"
         report = audit_extension_script_inline(source)
-        self.assertIn(("SNIPER-EXT-02", "medium", "CWE-94"), _pairs(report))
+        self.assertIn(("VULKILL-EXT-02", "medium", "CWE-94"), _pairs(report))
 
 
 class ServiceWorkerTests(unittest.TestCase):
@@ -206,7 +206,7 @@ class ServiceWorkerTests(unittest.TestCase):
         )
         report = audit_service_worker_inline(source)
         self.assertEqual(report["format"], "sniper-pwa-service-worker-audit-v1")
-        hits = [f for f in report["findings"] if f["control_id"] == "SNIPER-PWA-01"]
+        hits = [f for f in report["findings"] if f["control_id"] == "VULKILL-PWA-01"]
         self.assertEqual({f["line"] for f in hits}, {1, 2})
         self.assertTrue(all(f["severity"] == "high" and f["cwe"] == "CWE-829" for f in hits))
 
@@ -220,7 +220,7 @@ class ServiceWorkerTests(unittest.TestCase):
             "});\n"
         )
         report = audit_service_worker_inline(source)
-        self.assertIn(("SNIPER-PWA-02", "high", "CWE-524"), _pairs(report))
+        self.assertIn(("VULKILL-PWA-02", "high", "CWE-524"), _pairs(report))
 
     def test_workbox_cache_first_api_route_is_high(self):
         source = (
@@ -230,7 +230,7 @@ class ServiceWorkerTests(unittest.TestCase):
             ");\n"
         )
         report = audit_service_worker_inline(source)
-        self.assertIn(("SNIPER-PWA-02", "high", "CWE-524"), _pairs(report))
+        self.assertIn(("VULKILL-PWA-02", "high", "CWE-524"), _pairs(report))
 
     def test_caching_authorized_request_is_high(self):
         source = (
@@ -244,7 +244,7 @@ class ServiceWorkerTests(unittest.TestCase):
             "});\n"
         )
         report = audit_service_worker_inline(source)
-        hits = [f for f in report["findings"] if f["control_id"] == "SNIPER-PWA-02"]
+        hits = [f for f in report["findings"] if f["control_id"] == "VULKILL-PWA-02"]
         self.assertEqual(len(hits), 1)
         self.assertEqual(hits[0]["severity"], "high")
         self.assertEqual(hits[0]["line"], 4)
@@ -261,7 +261,7 @@ class ServiceWorkerTests(unittest.TestCase):
             "});\n"
         )
         report = audit_service_worker_inline(source)
-        self.assertIn(("SNIPER-PWA-02", "medium", "CWE-524"), _pairs(report))
+        self.assertIn(("VULKILL-PWA-02", "medium", "CWE-524"), _pairs(report))
 
     def test_clean_static_service_worker_has_no_findings(self):
         report = audit_service_worker_inline(CLEAN_SERVICE_WORKER)

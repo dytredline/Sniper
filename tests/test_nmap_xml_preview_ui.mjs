@@ -126,7 +126,7 @@ test('explicitly links a parsed aggregate to an authorized manual control', asyn
       id: 'eng_one', name: 'Authorized', status: 'active', authorization_ref: 'AUTH-1',
       special_approvals: { redacted_data_proof: true },
     }] },
-    '/api/engagements/eng_one': { tests: [{ control_id: 'SNIPER-INF-01', title: 'Inventory' }] },
+    '/api/engagements/eng_one': { tests: [{ control_id: 'VULKILL-INF-01', title: 'Inventory' }] },
   });
   await h.click('open');
   h.node('nmap-xml-link-opt-in').checked = true;
@@ -134,13 +134,13 @@ test('explicitly links a parsed aggregate to an authorized manual control', asyn
   assert.equal(h.node('nmap-xml-link-engagement').children[1].value, 'eng_one');
   h.node('nmap-xml-link-engagement').value = 'eng_one';
   await h.node('nmap-xml-link-engagement').handlers.get('change')();
-  h.node('nmap-xml-link-control').value = 'SNIPER-INF-01';
+  h.node('nmap-xml-link-control').value = 'VULKILL-INF-01';
   h.node('nmap-xml-paste').value = sample;
   await h.submit();
   const post = h.requests.at(-1);
   assert.equal(post.url, '/api/engagements/eng_one/tool-evidence/nmap');
   assert.deepEqual(JSON.parse(post.options.body), {
-    control_id: 'SNIPER-INF-01', report: sample, confirm_link: true,
+    control_id: 'VULKILL-INF-01', report: sample, confirm_link: true,
   });
   assert.equal(h.node('nmap-xml-open-port-count').textContent, '1');
   assert.equal(h.node('nmap-xml-link-result').classList.contains('hidden'), false);
@@ -229,14 +229,14 @@ test('linked evidence: delayed first file must not create a second distinct repo
       id: 'eng_one', name: 'Authorized', status: 'active', authorization_ref: 'AUTH-1',
       special_approvals: { redacted_data_proof: true },
     }] },
-    '/api/engagements/eng_one': { tests: [{ control_id: 'SNIPER-INF-01', title: 'Inventory' }] },
+    '/api/engagements/eng_one': { tests: [{ control_id: 'VULKILL-INF-01', title: 'Inventory' }] },
   });
   await h.click('open');
   h.node('nmap-xml-link-opt-in').checked = true;
   await h.node('nmap-xml-link-opt-in').handlers.get('change')();
   h.node('nmap-xml-link-engagement').value = 'eng_one';
   await h.node('nmap-xml-link-engagement').handlers.get('change')();
-  h.node('nmap-xml-link-control').value = 'SNIPER-INF-01';
+  h.node('nmap-xml-link-control').value = 'VULKILL-INF-01';
   const read = deferred();
   h.node('nmap-xml-file').files = [{ size: Buffer.byteLength(sample), text: () => read.promise }];
   const pending = h.submit();
@@ -248,7 +248,7 @@ test('linked evidence: delayed first file must not create a second distinct repo
   const linkPosts = h.requests.filter(r => r.url === '/api/engagements/eng_one/tool-evidence/nmap');
   assert.equal(linkPosts.length, 1);
   assert.deepEqual(JSON.parse(linkPosts[0].options.body), {
-    control_id: 'SNIPER-INF-01', report: replacement, confirm_link: true,
+    control_id: 'VULKILL-INF-01', report: replacement, confirm_link: true,
   });
 });
 
@@ -265,7 +265,7 @@ test('opt-in ON -> OFF -> ON delayed engagement GET does not append stale option
       return d.promise;
     },
     '/api/engagements/current-engagement': {
-      tests: [{ control_id: 'SNIPER-INF-01', title: 'Inventory' }],
+      tests: [{ control_id: 'VULKILL-INF-01', title: 'Inventory' }],
     },
   });
   await h.click('open');
@@ -304,7 +304,7 @@ test('opt-in ON -> OFF -> ON delayed engagement GET does not append stale option
 
   h.node('nmap-xml-link-engagement').value = 'current-engagement';
   await h.node('nmap-xml-link-engagement').handlers.get('change')();
-  h.node('nmap-xml-link-control').value = 'SNIPER-INF-01';
+  h.node('nmap-xml-link-control').value = 'VULKILL-INF-01';
 
   // Stale ON #1 resolves after latest ON #2
   pendingGets[1].resolve({ ok: true, json: async () => ({ engagements: [makeEngagement('older-engagement')] }) });
@@ -312,7 +312,7 @@ test('opt-in ON -> OFF -> ON delayed engagement GET does not append stale option
 
   assert.deepEqual(h.node('nmap-xml-link-engagement').children.map(c => c.value), ['', 'current-engagement']);
   assert.equal(h.node('nmap-xml-link-engagement').value, 'current-engagement');
-  assert.equal(h.node('nmap-xml-link-control').value, 'SNIPER-INF-01');
+  assert.equal(h.node('nmap-xml-link-control').value, 'VULKILL-INF-01');
   assert.equal(optIn.checked, true);
   assert.equal(h.node('nmap-xml-preview-error').classList.contains('hidden'), true);
   assert.equal(h.requests.filter(r => r.options?.method === 'POST').length, postsBeforeToggle);

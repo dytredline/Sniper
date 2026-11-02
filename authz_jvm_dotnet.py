@@ -63,29 +63,24 @@ def _join_path(prefix: str, suffix: str) -> str:
 def _annotations(block: str, *, square: bool = False) -> list[tuple[str, str]]:
     if square:
         pattern = re.compile(
-            r"^[ \t]*+\[[ \t]*+(?P<name>[A-Za-z_]\w*)"
-            r"(?P<args>[ \t]*+\((?:[^)\"'\n]++|\"(?:[^\"\\]++|\\.)*+\"|'(?:[^'\\]++|\\.)*+')*+\))?[ \t]*+\][ \t]*+$",
+            r"^\s*\[\s*(?P<name>[A-Za-z_]\w*)"
+            r"(?P<args>\s*\((?:[^\]\"\n]|\"(?:[^\"\\]|\\.)*\")*\))?\s*\]\s*$",
             re.MULTILINE,
         )
     else:
-        pattern = re.compile(
-            r"^[ \t]*+@(?P<name>[A-Za-z_]\w*)"
-            r"(?P<args>[ \t]*+\((?:[^)\"'\n]++|\"(?:[^\"\\]++|\\.)*+\"|'(?:[^'\\]++|\\.)*+')*+\))?"
-            r"[ \t]*+$",
-            re.MULTILINE,
-        )
+        pattern = re.compile(r"^\s*@(?P<name>[A-Za-z_]\w*)(?P<args>\s*\([^\n]*\))?\s*$", re.MULTILINE)
     return [(match.group("name"), match.group("args") or "") for match in pattern.finditer(block)]
 
 
 def _literal_arg(args: str, *, allow_empty: bool = True) -> str | None:
     if not args.strip():
         return "" if allow_empty else None
-    values = re.findall(r'"((?:[^"\\]++|\\.)*+)"', args)
+    values = re.findall(r'"((?:[^"\\]|\\.)*)"', args)
     if len(values) != 1:
         return None
     # A single literal is accepted only when every non-literal token is an ordinary
     # named-argument wrapper.  Concatenation/interpolation is deliberately rejected.
-    scrubbed = re.sub(r'"(?:[^"\\]++|\\.)*+"', '""', args)
+    scrubbed = re.sub(r'"(?:[^"\\]|\\.)*"', '""', args)
     if "+" in scrubbed or "$" in scrubbed or re.search(r"\b[A-Za-z_]\w*\s*\(", scrubbed):
         return None
     return values[0].replace(r'\"', '"').replace(r"\\", "\\")
@@ -191,13 +186,13 @@ def _lookup(body: str, ids: set[str], *, subject_re: re.Pattern[str], base_line:
 
 def spring_routes(relpath: str, text: str) -> list[dict[str, Any]]:
     routes: list[dict[str, Any]] = []
-    class_re = re.compile(r"\bclass\s++(?P<name>[A-Za-z_]\w*+)[^\{;]*+\{", re.MULTILINE)
+    class_re = re.compile(r"\bclass\s+(?P<name>[A-Za-z_]\w*)[^\{;]*\{", re.MULTILINE)
     method_re = re.compile(
-        r"(?P<attrs>(?:^[ \t]*+@[A-Za-z_]\w*(?:\((?:[^)\"'\n]++|\"(?:[^\"\\]++|\\.)*+\"|'(?:[^'\\]++|\\.)*+')*+\))?[ \t]*+\n)++)"
-        r"[ \t]*+(?:(?:public|protected|private|static|final|synchronized|abstract)\s++)*+"
-        r"[A-Za-z_$][\w.$<>, ?\[\]]{0,512}?[ \t]++(?P<name>[A-Za-z_]\w*)\s*+\("
-        r"(?P<params>(?:[^()]++|\([^()]*+\))*+)\)"
-        r"(?:\s++throws\s++[^\{]++)?\s*+\{",
+        r"(?P<attrs>(?:^[ \t]*@[A-Za-z_]\w*(?:\([^\n]*\))?[ \t]*\n)+)"
+        r"[ \t]*(?:(?:public|protected|private|static|final|synchronized|abstract)\s+)*"
+        r"[A-Za-z_$][\w.$<>, ?\[\]]*\s+(?P<name>[A-Za-z_]\w*)\s*\("
+        r"(?P<params>(?:[^()]+|\([^()]*\))*)\)"
+        r"(?:\s+throws\s+[^\{]+)?\s*\{",
         re.MULTILINE,
     )
     for class_match in class_re.finditer(text):
@@ -267,12 +262,12 @@ def _controller_token(path: str, class_name: str) -> str:
 
 def aspnet_routes(relpath: str, text: str) -> list[dict[str, Any]]:
     routes: list[dict[str, Any]] = []
-    class_re = re.compile(r"\bclass\s++(?P<name>[A-Za-z_]\w*+)[^\{;]*+\{", re.MULTILINE)
+    class_re = re.compile(r"\bclass\s+(?P<name>[A-Za-z_]\w*)[^\{;]*\{", re.MULTILINE)
     method_re = re.compile(
-        r"(?P<attrs>(?:^[ \t]*+\[(?:[^\]\"\n]++|\"(?:[^\"\\]++|\\.)*+\")++\][ \t]*+\n)++)"
-        r"[ \t]*+(?:(?:public|protected|private|internal|static|sealed|virtual|override|async)\s++)*+"
-        r"[A-Za-z_$][\w.$<>, ?\[\]]{0,512}?[ \t]++(?P<name>[A-Za-z_]\w*)\s*+\("
-        r"(?P<params>(?:[^()]++|\([^()]*+\))*+)\)\s*+\{",
+        r"(?P<attrs>(?:^[ \t]*\[(?:[^\]\"\n]|\"(?:[^\"\\]|\\.)*\")+\][ \t]*\n)+)"
+        r"[ \t]*(?:(?:public|protected|private|internal|static|sealed|virtual|override|async)\s+)*"
+        r"[A-Za-z_$][\w.$<>, ?\[\]]*\s+(?P<name>[A-Za-z_]\w*)\s*\("
+        r"(?P<params>(?:[^()]+|\([^()]*\))*)\)\s*\{",
         re.MULTILINE,
     )
     for class_match in class_re.finditer(text):
@@ -333,15 +328,15 @@ def aspnet_routes(relpath: str, text: str) -> list[dict[str, Any]]:
 
 def _aspnet_minimal_routes(relpath: str, text: str) -> list[dict[str, Any]]:
     routes: list[dict[str, Any]] = []
-    start_re = re.compile(r"\b[A-Za-z_]\w*\.Map(Get|Post|Put|Patch|Delete)\s*+\(\s*+\"((?:[^\"\\]++|\\.)*+)\"\s*+,")
+    start_re = re.compile(r"\b[A-Za-z_]\w*\.Map(Get|Post|Put|Patch|Delete)\s*\(\s*\"([^\"\\]*(?:\\.[^\"\\]*)*)\"\s*,")
     for match in start_re.finditer(text):
         opening = text.find("(", match.start())
         close = _match_pair(text, opening, "(", ")")
         if close is None:
             continue
         tail = text[close + 1:close + 256]
-        require = re.match(r"\s*+\.\s*+RequireAuthorization\s*+\([^)]*+\)", tail)
-        anonymous = re.match(r"\s*+\.\s*+AllowAnonymous\s*+\(\s*+\)", tail)
+        require = re.match(r"\s*\.\s*RequireAuthorization\s*\([^)]*\)", tail)
+        anonymous = re.match(r"\s*\.\s*AllowAnonymous\s*\(\s*\)", tail)
         path = match.group(2).replace(r'\"', '"').replace(r"\\", "\\")
         body = text[match.end():close]
         ids = set(_PATH_ID_RE.findall(path))
@@ -361,7 +356,7 @@ def _aspnet_minimal_routes(relpath: str, text: str) -> list[dict[str, Any]]:
 
 
 DI_AUTHZ_FORMAT = "sniper-di-authz-resolution/1"
-DI_IDOR_CONTROL_ID = "SNIPER-AUTHZ-DI-IDOR-01"
+DI_IDOR_CONTROL_ID = "VULKILL-AUTHZ-DI-IDOR-01"
 
 _DI_INTERFACE_DEF_RE = re.compile(r"\binterface\s+(?P<iface>[A-Za-z_]\w*)\b")
 _DI_CLASS_HEADER_RE = re.compile(

@@ -44,7 +44,11 @@ def _pytest_python() -> str | None:
             continue
         seen.add(candidate)
         probe = subprocess.run(
-            [candidate, "-c", "import pytest, cryptography, packaging, yaml"],
+            # Some integration contracts intentionally start an isolated
+            # interpreter.  Probe with the same isolation so an ambient
+            # PYTHONPATH/user-site cannot make an incomplete test venv look
+            # runtime-complete and then fail only inside the real child.
+            [candidate, "-I", "-c", "import pytest, cryptography, packaging, yaml"],
             capture_output=True,
         )
         if probe.returncode == 0:
@@ -91,9 +95,12 @@ def main(argv: list[str] | None = None) -> int:
 
     # Denetim anahtarı/çapaları kullanıcının ~/.config/sniper dizinine değil geçici dizine yazılsın.
     integrity_tmp = tempfile.TemporaryDirectory(prefix="sniper-test-integrity-")
+    data_tmp = tempfile.TemporaryDirectory(prefix="sniper-test-data-")
     os.chmod(integrity_tmp.name, 0o700)
+    os.chmod(data_tmp.name, 0o700)
     os.environ.setdefault("SNIPER_AUDIT_KEY_FILE", str(Path(integrity_tmp.name) / "audit.key"))
     os.environ.setdefault("SNIPER_AUDIT_ANCHOR_DIR", str(Path(integrity_tmp.name) / "audit-anchors"))
+    os.environ.setdefault("SNIPER_DATA_DIR", data_tmp.name)
 
     modules = sorted(path for path in TESTS.glob("test_*.py"))
     pytest_modules = [path for path in modules if _is_pytest_module(path)]

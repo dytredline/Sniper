@@ -1,14 +1,14 @@
 """Wave 6 — Gerçek Zamanlı Git Diff / Pull Request Güvenlik Botu (PR Security Regression & Sibling Parity Bot).
 
 Birleşik Git yamalarını (`unified_diff`) satır ve hunk düzeyinde ayrıştırarak:
-1. `SNIPER-PR-GUARD-REMOVED-01` (CWE-862, critical): PR yamasında güvenlik muhafızı
+1. `VULKILL-PR-GUARD-REMOVED-01` (CWE-862, critical): PR yamasında güvenlik muhafızı
    (`@PreAuthorize`, `WithSSRFFilter`, `before_action`, `Ability.allowed?`, `NOFOLLOW_LINKS`,
    `verify_signature`, `ENABLE ROW LEVEL SECURITY` vb.) kaldırılması veya `verify=False` /
    `skip_before_action` / `InsecureSkipVerify: true` eklenmesi.
-2. `SNIPER-PR-NEW-SINK-02` (CWE-78, high): PR yamasında sanitizasyon olmadan tehlikeli
+2. `VULKILL-PR-NEW-SINK-02` (CWE-78, high): PR yamasında sanitizasyon olmadan tehlikeli
    yürütme/sorgu noktası (`shell=True`, `os.system(`, `eval(`, `exec(`, `innerHTML =`,
    `dangerouslySetInnerHTML`, `pickle.loads(`, `yaml.load(`, raw SQL f-string) eklenmesi.
-3. `SNIPER-PR-INCOMPLETE-SIBLING-03` (CWE-863, high): PR bir dosyada güvenlik yaması
+3. `VULKILL-PR-INCOMPLETE-SIBLING-03` (CWE-863, high): PR bir dosyada güvenlik yaması
    uygularken `sibling_files` içindeki kardeş dosyada aynı zafiyetin açık bırakılması.
 
 Ayrıca GitHub / GitLab PR incelemelerine doğrudan gönderilebilecek satır içi
@@ -307,20 +307,20 @@ def audit_git_diff_security_regressions(
         for hunk in file_entry["hunks"]:
             hunk_added_text = "\n".join(text for _ln, text in hunk["added_lines"])
 
-            # 1a) SNIPER-PR-GUARD-REMOVED-01: Güvenlik muhafızının kaldırılması (- satırı)
+            # 1a) VULKILL-PR-GUARD-REMOVED-01: Güvenlik muhafızının kaldırılması (- satırı)
             for _old_ln, anchor_new_ln, rem_text in hunk["removed_lines"]:
                 for guard_name, guard_re in _SECURITY_GUARD_SPECS:
                     if guard_re.search(rem_text) and not guard_re.search(all_added_text_in_file):
                         stripped_rem = rem_text.strip()
                         suggestion_line = rem_text
                         comment_body = (
-                            f"**[SNIPER-PR-GUARD-REMOVED-01]** `{guard_name}` güvenlik muhafızı bu PR ile kaldırılmış. "
+                            f"**[VULKILL-PR-GUARD-REMOVED-01]** `{guard_name}` güvenlik muhafızı bu PR ile kaldırılmış. "
                             "Yetkilendirme/SSRF/imza doğrulama gerilemesini önlemek için muhafızı koruyun:\n"
                             f"```suggestion\n{suggestion_line}\n```"
                         )
                         findings.append(
                             {
-                                "rule_id": "SNIPER-PR-GUARD-REMOVED-01",
+                                "rule_id": "VULKILL-PR-GUARD-REMOVED-01",
                                 "cwe": "CWE-862",
                                 "reference": "CWE-862",
                                 "severity": "critical",
@@ -346,24 +346,24 @@ def audit_git_diff_security_regressions(
                                 "path": file_path,
                                 "line": anchor_new_ln,
                                 "severity": "critical",
-                                "rule_id": "SNIPER-PR-GUARD-REMOVED-01",
+                                "rule_id": "VULKILL-PR-GUARD-REMOVED-01",
                                 "body": comment_body,
                             }
                         )
                         break
 
-            # 1b) SNIPER-PR-GUARD-REMOVED-01: Güvenlik muhafızını devre dışı bırakan ekleme (+ satırı)
+            # 1b) VULKILL-PR-GUARD-REMOVED-01: Güvenlik muhafızını devre dışı bırakan ekleme (+ satırı)
             for add_ln, add_text in hunk["added_lines"]:
                 for bypass_name, bypass_re, replacement_token in _ADDED_BYPASS_SPECS:
                     if bypass_re.search(add_text):
                         fixed_line = bypass_re.sub(replacement_token, add_text)
                         comment_body = (
-                            f"**[SNIPER-PR-GUARD-REMOVED-01]** `{bypass_name}` ile güvenlik doğrulaması devre dışı bırakılıyor:\n"
+                            f"**[VULKILL-PR-GUARD-REMOVED-01]** `{bypass_name}` ile güvenlik doğrulaması devre dışı bırakılıyor:\n"
                             f"```suggestion\n{fixed_line}\n```"
                         )
                         findings.append(
                             {
-                                "rule_id": "SNIPER-PR-GUARD-REMOVED-01",
+                                "rule_id": "VULKILL-PR-GUARD-REMOVED-01",
                                 "cwe": "CWE-862",
                                 "reference": "CWE-862",
                                 "severity": "critical",
@@ -388,13 +388,13 @@ def audit_git_diff_security_regressions(
                                 "path": file_path,
                                 "line": add_ln,
                                 "severity": "critical",
-                                "rule_id": "SNIPER-PR-GUARD-REMOVED-01",
+                                "rule_id": "VULKILL-PR-GUARD-REMOVED-01",
                                 "body": comment_body,
                             }
                         )
                         break
 
-            # 2) SNIPER-PR-NEW-SINK-02: Korumasız tehlikeli yürütme/sorgu noktası (Sink) eklenmesi
+            # 2) VULKILL-PR-NEW-SINK-02: Korumasız tehlikeli yürütme/sorgu noktası (Sink) eklenmesi
             for add_ln, add_text in hunk["added_lines"]:
                 for sink_name, sink_re in _DANGEROUS_SINK_SPECS:
                     if sink_re.search(add_text):
@@ -403,13 +403,13 @@ def audit_git_diff_security_regressions(
                             continue
                         suggested_fix = _build_sink_suggestion(add_text, sink_name)
                         comment_body = (
-                            f"**[SNIPER-PR-NEW-SINK-02]** Korumasız tehlikeli yürütme/sorgu noktası (`{sink_name}`) tespit edildi. "
+                            f"**[VULKILL-PR-NEW-SINK-02]** Korumasız tehlikeli yürütme/sorgu noktası (`{sink_name}`) tespit edildi. "
                             "Komut/kod enjeksiyonunu önlemek için güvenli alternatif kullanın:\n"
                             f"```suggestion\n{suggested_fix}\n```"
                         )
                         findings.append(
                             {
-                                "rule_id": "SNIPER-PR-NEW-SINK-02",
+                                "rule_id": "VULKILL-PR-NEW-SINK-02",
                                 "cwe": "CWE-78",
                                 "reference": "CWE-78",
                                 "severity": "high",
@@ -435,13 +435,13 @@ def audit_git_diff_security_regressions(
                                 "path": file_path,
                                 "line": add_ln,
                                 "severity": "high",
-                                "rule_id": "SNIPER-PR-NEW-SINK-02",
+                                "rule_id": "VULKILL-PR-NEW-SINK-02",
                                 "body": comment_body,
                             }
                         )
                         break
 
-        # 3) SNIPER-PR-INCOMPLETE-SIBLING-03: Eksik Kardeş Dosya Yaması
+        # 3) VULKILL-PR-INCOMPLETE-SIBLING-03: Eksik Kardeş Dosya Yaması
         if sibling_map and all_added_text_in_file:
             first_added_ln = (
                 file_entry["hunks"][0]["added_lines"][0][0]
@@ -483,13 +483,13 @@ def audit_git_diff_security_regressions(
                         else sib_path
                     )
                     comment_body = (
-                        f"**[SNIPER-PR-INCOMPLETE-SIBLING-03]** `{file_path}` dosyasına `{guard_label}` güvenlik yaması "
+                        f"**[VULKILL-PR-INCOMPLETE-SIBLING-03]** `{file_path}` dosyasına `{guard_label}` güvenlik yaması "
                         f"uygulanırken kardeş `{sib_path}` dosyasında aynı zafiyet yamalanmadan bırakılmış:\n"
                         f"```suggestion\n// TODO: Apply {guard_label} parity fix to {sib_path} (line {sib_line})\n```"
                     )
                     findings.append(
                         {
-                            "rule_id": "SNIPER-PR-INCOMPLETE-SIBLING-03",
+                            "rule_id": "VULKILL-PR-INCOMPLETE-SIBLING-03",
                             "cwe": "CWE-863",
                             "reference": "CWE-863",
                             "severity": "high",
@@ -518,7 +518,7 @@ def audit_git_diff_security_regressions(
                             "path": file_path,
                             "line": first_added_ln,
                             "severity": "high",
-                            "rule_id": "SNIPER-PR-INCOMPLETE-SIBLING-03",
+                            "rule_id": "VULKILL-PR-INCOMPLETE-SIBLING-03",
                             "sibling_path": sib_path,
                             "sibling_line": sib_line,
                             "body": comment_body,

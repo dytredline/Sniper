@@ -231,9 +231,9 @@ def _wrap_readiness_db_check(orig_fn):
 
 def _ensure_server_five_profile_routes() -> None:
     server_mod = sys.modules.get("server")
-    if server_mod is None or not hasattr(server_mod, "SniperHandler"):
+    if server_mod is None or not hasattr(server_mod, "VulKillHandler"):
         return
-    handler_cls = server_mod.SniperHandler
+    handler_cls = server_mod.VulKillHandler
     orig_do_post = getattr(handler_cls, "do_POST", None)
     if orig_do_post is None or getattr(orig_do_post, "_trivy_five_profile_wrapped", False):
         return

@@ -1,0 +1,155 @@
+{
+  "schema": "vulkill-verified-toolchain-v1",
+  "generated_at": "2026-11-02T00:00:00Z",
+  "platform": "linux-aarch64",
+  "go": {
+    "version": "1.27.3",
+    "url": "https://go.dev/dl/go1.27.3.linux-arm64.tar.gz",
+    "archive_sha256": "a06e99309dbcbdca1a8ccd2282c3ee146e55930886e26b4f1193269587165f49",
+    "verification": "go.dev official release JSON digest"
+  },
+  "module_provenance": "Go module zip and go.mod hashes verified through go.sum and the Go checksum database",
+  "security_modules": {
+    "github.com/go-jose/go-jose/v4": "v4.1.6",
+    "golang.org/x/crypto": "v0.58.0",
+    "golang.org/x/net": "v0.62.0",
+    "golang.org/x/sync": "v0.24.0",
+    "golang.org/x/sys": "v0.49.0",
+    "golang.org/x/text": "v0.43.0",
+    "google.golang.org/grpc": "v1.83.2"
+  },
+  "tools": {
+    "trivy": {
+      "version": "0.76.1-vulkill.1",
+      "kind": "verified_source_rebuild",
+      "source_url": "https://github.com/aquasecurity/trivy.git",
+      "source_commit": "e713f67f7d54decdcd9b3132c9751833dcced698",
+      "go_mod_sha256": "d7d58ec4a311e1ad04655937daa0b51096bb6b75398dd90aebc31b3d4f70b453",
+      "go_sum_sha256": "93dff548ffc922464785c813e6056380a52ca3fcb8a744a201749255b9fdab3b",
+      "binary_sha256": "67ebe2978898505e4cf48ec0c3280907d933e206c290aeeef7a3be0f8d269d84",
+      "go_version": "go1.27.3",
+      "upstream_release": {
+        "url": "https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_Linux-ARM64.tar.gz",
+        "archive_sha256": "e174dff2a6dba5e3ae41f8d0537a6324405bd08132497340304c6b20e0f16a1f"
+      },
+      "test": "CGO_ENABLED=0 go test -run '^$' ./..."
+    },
+    "trufflehog": {
+      "version": "3.99.7-vulkill.1",
+      "kind": "verified_source_rebuild",
+      "source_url": "https://github.com/trufflesecurity/trufflehog.git",
+      "source_commit": "31ce31ee1abbcc7dc8eee5764c17121c3044c8b2",
+      "go_mod_sha256": "f010f685ecc70c2a077751ae6608965e016ec477a59ffa61004d8aaabd728d60",
+      "go_sum_sha256": "742e94bd896d7d36b3423608e9943d544883cbc51197f0c15a9c4b7025b8bbb1",
+      "binary_sha256": "b00f2a9f2ff4263160289b144cde0d7a5d96568ea085e55b268d01e82a1dd6f5",
+      "go_version": "go1.27.3",
+      "upstream_release": {
+        "url": "https://github.com/trufflesecurity/trufflehog/releases/download/v3.99.7/trufflehog_3.99.7_linux_arm64.tar.gz",
+        "archive_sha256": "3060f7c9f18c70afdc432984cacabdd1e9103729b5d5fee7fb6755a90d1c59d4",
+        "verification": "official checksums.txt and checksum signature/certificate"
+      },
+      "test": "CGO_ENABLED=0 go test -run '^$' ./..."
+    },
+    "gitleaks": {
+      "version": "8.30.1-vulkill.2",
+      "kind": "verified_source_rebuild",
+      "source_url": "https://github.com/gitleaks/gitleaks.git",
+      "source_commit": "83d9cd684c87d95d656c1458ef04895a7f1cbd8e",
+      "go_mod_sha256": "1a39d1a34bc441b40547e516126c51dc17525c1721bc9eb3953b10826cd226cb",
+      "go_sum_sha256": "7467184b14a181ac637fc6cb833590e4f37a97a6a782e74e9411312b9882e6d1",
+      "binary_sha256": "d26b4da0d011da43fa7e22e309841faad203e0d9869a1127d3a65886a5072166",
+      "go_version": "go1.27.3",
+      "test": "go test ./..."
+    },
+    "nuclei": {
+      "version": "3.11.1-vulkill.3",
+      "kind": "verified_source_rebuild",
+      "source_url": "https://github.com/projectdiscovery/nuclei.git",
+      "source_commit": "a8c88feb4a1c8e961b7902534ce3af97e9d524a4",
+      "go_mod_sha256": "bf6bf47fd9ca1446d6407d6ee667b4c3e787ff471d00851887d73c509548741e",
+      "go_sum_sha256": "49cef422dcb70e9e38686060544897d2c45d569a750420be9e49c224c015e648",
+      "binary_sha256": "06382e2a3e9a849380be98773c9dcdb05772c44185e9e60548a9f002184ef6c1",
+      "go_version": "go1.27.3",
+      "additional_modules": {
+        "github.com/bytedance/sonic": "v1.15.5",
+        "github.com/getkin/kin-openapi": "v0.149.0",
+        "github.com/go-git/go-git/v5": "v5.19.2",
+        "google.golang.org/grpc": "v1.83.2"
+      },
+      "test": "CGO_ENABLED=1 go test -run '^$' ./...; production binary CGO_ENABLED=0"
+    },
+    "syft": {
+      "version": "1.55.0-vulkill.2",
+      "kind": "verified_source_rebuild",
+      "source_url": "https://github.com/anchore/syft.git",
+      "source_commit": "f15c3343e29dfb20cf6d82c820e7090b49808c96",
+      "go_mod_sha256": "b0f6e276ba0c85de61332c1d8d2384aef2879c390a1be816b64792851bfc1300",
+      "go_sum_sha256": "3dc985cd05291926269242f0b888ac051e7b3c3fde34ee9cce536128918335de",
+      "binary_sha256": "a25bda7a97403add93e9a384f70554b212a112e2e66c0989bbc4c35e8c8a319e",
+      "go_version": "go1.27.3",
+      "test": "CGO_ENABLED=0 go test -run '^$' ./..."
+    },
+    "grype": {
+      "version": "0.121.0-vulkill.2",
+      "kind": "verified_source_rebuild",
+      "source_url": "https://github.com/anchore/grype.git",
+      "source_commit": "afe2742527d98d822da06c9f32eed86fe3d193e0",
+      "go_mod_sha256": "9e83f224948f049e303395f37ddae89911781f7d99c1888fca7d2b5fe27a5d98",
+      "go_sum_sha256": "fc34a3b995dc3772f5343fcc1ae416cf1b7a78a92823dbe650a187192786b0ab",
+      "binary_sha256": "c8dc5f64e3d2c163aa2f4103ee08292cd6addd84f6994dfcd4e5018c68483069",
+      "go_version": "go1.27.3",
+      "test": "CGO_ENABLED=0 go test -run '^$' ./..."
+    }
+  },
+  "sca_audit": {
+    "scanner": "grype 0.121.0-vulkill.2",
+    "database_schema": "v6.1.10",
+    "database_built": "2026-10-29T06:23:34Z",
+    "claims_reachability": false,
+    "fixed_advisories_remaining": 0,
+    "residual_advisories": [
+      {
+        "id": "GO-2026-5932",
+        "packages": ["golang.org/x/crypto@v0.58.0"],
+        "tools": ["gitleaks", "grype", "nuclei", "syft", "trivy", "trufflehog"],
+        "fix_state": "no_fix_in_database_snapshot"
+      },
+      {
+        "id": "GO-2026-4887",
+        "packages": ["github.com/docker/docker@v28.5.2+incompatible"],
+        "tools": ["grype", "trufflehog"],
+        "fix_state": "no_fix_in_database_snapshot"
+      },
+      {
+        "id": "GHSA-pxq6-2prw-chj9",
+        "packages": ["github.com/docker/docker@v28.5.2+incompatible"],
+        "tools": ["grype", "trufflehog"],
+        "fix_state": "no_fix_in_database_snapshot"
+      },
+      {
+        "id": "GHSA-x86f-5xw2-fm2r",
+        "packages": ["github.com/docker/docker@v28.5.2+incompatible"],
+        "tools": ["grype", "trufflehog"],
+        "fix_state": "no_fix_in_database_snapshot"
+      },
+      {
+        "id": "GHSA-rg2x-37c3-w2rh",
+        "packages": ["github.com/docker/docker@v28.5.2+incompatible"],
+        "tools": ["grype", "trufflehog"],
+        "fix_state": "no_fix_in_database_snapshot"
+      },
+      {
+        "id": "GHSA-vp62-88p7-qqf5",
+        "packages": ["github.com/docker/docker@v28.5.2+incompatible"],
+        "tools": ["grype", "trufflehog"],
+        "fix_state": "no_fix_in_database_snapshot"
+      },
+      {
+        "id": "GHSA-685w-q87j-wqw3",
+        "packages": ["github.com/docker/distribution@v2.8.3+incompatible"],
+        "tools": ["trufflehog"],
+        "fix_state": "no_fix_in_database_snapshot"
+      }
+    ]
+  }
+}

@@ -129,14 +129,14 @@ test('findings are rendered as text cells only and engine is shown', async () =>
   const f = fixture({ dom: true });
   f.setResponse({ ok: true, json: async () => ({
     ...summary(),
-    engine: { tool: 'opengrep', version: '1.30.1' },
+    engine: { tool: 'opengrep', version: '1.33.1' },
     findings: [
       { rule_id: 'sniper.py.sql-injection', severity: 'ERROR', cwe: 'CWE-89: SQL Injection', path: 'src/app.py', line: 9, message: '<img src=x onerror=alert(1)>' },
       { rule_id: 'sniper.js.weak-hash', severity: 'WARNING', cwe: null, path: 'a.js', line: 'x', message: 'm' },
     ],
   }) });
   await f.init(); await f.open(); await f.input('/home/community-user/project'); await f.consent(); await f.submit();
-  assert.equal(f.node('semgrep-local-engine').textContent, 'opengrep 1.30.1');
+  assert.equal(f.node('semgrep-local-engine').textContent, 'opengrep 1.33.1');
   const rows = f.node('semgrep-local-findings').children;
   assert.equal(rows.length, 2);
   assert.deepEqual(rows[0].children.map(c => c.textContent),

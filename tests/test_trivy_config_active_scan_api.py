@@ -45,7 +45,7 @@ class TrivyDockerfileConfigApiTests(unittest.TestCase):
         self.old_store, self.old_limiter = server.STORE, server.LIMITER
         server.STORE = Store(self.base / "sniper.db")
         server.LIMITER = server.RateLimiter()
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.httpd.daemon_threads = True
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()

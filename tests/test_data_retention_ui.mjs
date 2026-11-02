@@ -84,7 +84,7 @@ test('politika formu okunur ve yürütme önizlenen plan_id ile onaylı gönderi
   const post = calls.find((c) => c.path === '/api/system/retention/run');
   assert.deepEqual(post.body, { confirm: true, plan_id: 'abc' });
   const form = { elements: { enabled: { checked: true }, 'backups.keep_last': { value: '5' }, 'temp.enabled': { checked: false } } };
-  const read = window.SniperDataRetention.readPolicy(form);
+  const read = window.VulKillDataRetention.readPolicy(form);
   assert.equal(read.enabled, true);
   assert.equal(read.backups.keep_last, 5);
   assert.equal(read.temp.enabled, false);

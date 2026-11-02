@@ -22,27 +22,27 @@ passed.
 
 ## Reproducible validation snapshot
 
-Snapshot date: **2026-10-29**. Scope: the Community v1.1.0 release and its assembled public source
+Snapshot date: **2026-10-29**. Scope: the Community v1.0.0 publication candidate and its assembled public source
 tree.
 
 | Gate | Observed result |
 | --- | --- |
 | Community metadata/release-surface validation | PASS — 43 required release files checked |
 | Assembled source validation | PASS — deterministic source builder completed; assembled tree passed the release-tree scan |
-| Python unittest launcher | 3,079 tests, 0 failures, 0 errors |
-| Python pytest modules | 337 passed |
-| JavaScript/Node tests | 517 passed, 0 failed |
+| Python unittest launcher | 3,044 tests, 0 failures, 0 errors |
+| Python pytest modules | 313 passed |
+| JavaScript/Node tests | 513 passed, 0 failed |
 | CJK real-browser layout | PASS — Turkish, English, Japanese, Simplified Chinese, and Korean at desktop and mobile viewports (10/10) |
-| Platform setup policy | PASS — Linux full/core paths, real-host macOS Apple Silicon core-only, portable Windows core-only contract, and fail-closed unknown-native routes covered |
-| Optional-tools container profile | PASS — exact seven-tool target, explicit license gate, Linux architecture selection, loopback port, and three volumes contract-tested; the five-engine macOS Docker path has real-host evidence |
+| Platform setup policy | PASS — Linux full/core paths, experimental macOS core-only path, and fail-closed Windows/unknown-native routes covered by runtime tests |
+| Optional-tools container profile | PASS — exact seven-tool target, explicit license gate, Linux architecture selection, loopback port, and three volumes contract-tested; optional image download/build not performed locally |
 | Publication secret-name boundary | PASS — deployment `.env`, field-key records, key files, and image archives are excluded before read and rejected by release-tree validation |
 | Locked tool installer smoke | PASS — seven Linux ARM64 lock entries and their fail-closed installer contracts validated; pinned Syft and Grype runtimes were installed and reverified locally |
 | One-command offline setup smoke | PASS — parseable JSON result, seven provenance-bound tools, and both real help entrypoints |
 | Synthetic runtime proofs | PASS — Schemathesis completed a one-operation loopback OpenAPI check; Syft/Grype completed an offline local-fixture run against the pinned Grype database; no external target was scanned |
 | Changed-file Python compilation and JavaScript syntax | PASS |
 | Docker Compose configuration | PASS locally for default and explicit tools override; missing license acknowledgement rejected |
-| Community container image build | PASS — the final assembled source replaced `/app` in the already verified locked R66 runtime without network access; the isolated image reached `healthy` and `/api/health` returned `status: ok` |
-| CodeQL languages | PASS on the published main baseline — Actions, JavaScript/TypeScript, and Python jobs passed; the v1.1.0 release pull request must pass fresh CI and CodeQL checks before tagging |
+| Community container image build | PASS — PR #7 built the current `community-core` image and its isolated container reached healthy state |
+| CodeQL languages | PASS — PR #7 Actions, JavaScript/TypeScript, and Python jobs passed; branch and PR refs reported 0 open alerts |
 
 Public workflow history is available in [Community CI](https://github.com/dytredline/VulKill/actions/workflows/ci.yml)
 and the [CodeQL runs](https://github.com/dytredline/VulKill/actions?query=workflow%3ACodeQL+branch%3Amain).
@@ -63,44 +63,11 @@ positive static-analysis fixtures and five were bounded loopback or temporary-pr
 closed as **used in tests** with their test boundary recorded. Thirty-nine were closed as false positives only after
 the relevant allowlist, containment, no-follow, XML-entity, header, redirect, and redaction controls passed focused
 runtime checks. The remaining four caused code changes: one real SBOM saved-path identity race was fixed in the
-product, and three unnecessary test-harness patterns were replaced with safer equivalents. Release policy requires
-the current release pull request and its merged main commit to pass fresh CI and CodeQL checks before a tag is created.
+product, and three unnecessary test-harness patterns were replaced with safer equivalents. The candidate still
+requires a post-merge main CI and CodeQL run before a release tag is created; PR #7 passed the fresh pre-merge gates.
 
 These numbers describe this exact snapshot. Future commits can legitimately change test totals, and optional-engine
 availability varies by host.
-
-## macOS native & Docker Desktop verification — 2026-10-24
-
-Both the **native macOS source setup (`--core-only`)** and the **five-engine Docker Desktop profile** were executed
-and verified on a real Apple Silicon Mac:
-
-1. **Native macOS source setup (`python3 scripts/setup-community --core-only`):**
-   - Created a native macOS `.venv` (CPython 3.12), installed `requirements-runtime.lock` (`pip check` clean), and
-     verified the `scripts/sniper-mcp --help`, `scripts/sniper-project-audit --help`, and `cli_reports.py --help`
-     entrypoints natively on macOS.
-   - Initialized an isolated local SQLite data directory on macOS, started the loopback web interface, and executed a
-     real local project audit (`audit_id: prj_162d09c47587`, `baseline_id: prj_497a1c478d97`) against a local Python
-     smoke project, confirming end-to-end native macOS detection (`[critical] Verified data flow: request input reaches SQL
-     query (SQL injection)` at `app.py:4`) and notification persistence.
-
-2. **macOS Apple Silicon + Docker Desktop five-engine profile (`./scripts/deploy-community-tools --accept-third-party-licenses`):**
-   - The five-engine Community image was built on the same Apple Silicon Mac with Docker Desktop after explicit
-     acceptance of the engines' separate open-source licenses. VulKill started on loopback and reported healthy. Runtime
-     prechecks passed for the pinned Nuclei loopback, Trivy local-secret, Gitleaks, TruffleHog filesystem, and Opengrep
-     local-code profiles. The web dashboard and tool matrix opened in a browser on the same Mac.
-   - A synthetic test project was copied from a macOS Documents checkout into the persistent Docker project volume and
-     remained accessible after the service was recreated. Local API smoke checks completed for all five engines.
-     Opengrep reported the two deliberately planted SQL-injection fixture findings; the other profiles completed against
-     their bounded local fixtures or loopback target. A real Nuclei binary regression test exercised positive and
-     negative loopback header cases. No external website was scanned.
-
-The full source test runner executed in a Linux test container on that Mac: **2,826 unittest tests passed with zero
-failures/errors; 203 pytest tests passed, one skipped; 432 Node tests passed**. Both the native macOS `--core-only`
-source route and the Docker-backed five-engine route are verified and supported on macOS; this result does not claim
-that every one of the 161 methodology controls is automated. See also
-[docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md](docs/VULKILL-SCANNED-REPOSITORIES-AND-ADVISORIES.en.md) and
-[docs/advisories/README.md](docs/advisories/README.md) for the complete macOS verification summary, the 8 scanned
-open-source repositories audit report, and the 11 verified vulnerabilities discovered by VulKill.
 
 ## Run the same public checks
 

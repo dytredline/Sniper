@@ -104,7 +104,7 @@ def audit_auth_artifact(
                     f"alg={alg!r}, signature_present={bool(signature)}",
                     "alg: none kabulünü kapatın ve RS256/ES256/EdDSA gibi güçlü imza algoritmalarını zorunlu kılın.",
                     "CWE-347",
-                    "SNIPER-CRYP-06",
+                    "VULKILL-CRYP-06",
                 )
             )
 
@@ -118,7 +118,7 @@ def audit_auth_artifact(
                     f"headers={[k for k in ('jku', 'x5u', 'jwk') if k in header]}",
                     "Doğrulama anahtarlarını yalnızca sunucu tarafındaki sabit güvenilir JWKS kaynağından seçin; gömülü jwk/jku başlıklarına güvenmeyin.",
                     "CWE-918",
-                    "SNIPER-CRYP-06",
+                    "VULKILL-CRYP-06",
                 )
             )
 
@@ -133,7 +133,7 @@ def audit_auth_artifact(
                     "kid alanında tehlikeli karakter dizisi bulundu",
                     "kid değerini yalnızca sabit alfanümerik anahtar tanımlayıcı allowlist'i ile eşleştirin.",
                     "CWE-22",
-                    "SNIPER-INPV-05",
+                    "VULKILL-INPV-05",
                 )
             )
 
@@ -147,7 +147,7 @@ def audit_auth_artifact(
                     f"crit={header.get('crit')!r}",
                     "Tanınmayan 'crit' başlık uzantılarını derhal reddedin ve standart başlık adlarının crit içinde kullanımına izin vermeyin.",
                     "CWE-347",
-                    "SNIPER-CRYP-06",
+                    "VULKILL-CRYP-06",
                 )
             )
 
@@ -163,7 +163,7 @@ def audit_auth_artifact(
                     f"alg={alg!r}, iss_present={bool(payload.get('iss'))}, aud_present={bool(payload.get('aud'))}",
                     "Asimetrik imzaları (RS256/ES256/EdDSA) tercih edin ve her JWT doğrulamasında beklenen iss ile aud değerlerini zorunlu kılın.",
                     "CWE-287",
-                    "SNIPER-AUTH-11",
+                    "VULKILL-AUTH-11",
                 )
             )
 
@@ -181,7 +181,7 @@ def audit_auth_artifact(
                     f"exp_present={isinstance(exp, (int, float))}",
                     "Erişim belirteçlerinde (access token) kısa süreli exp (ör. 5–15 dakika) zorunlu kılın.",
                     "CWE-613",
-                    "SNIPER-SESS-03",
+                    "VULKILL-SESS-03",
                 )
             )
 
@@ -199,7 +199,7 @@ def audit_auth_artifact(
                     f"sensitive_claims={exposed_keys}",
                     "JWT yükünde hassas veri taşımayın; gizlilik gerekiyorsa JWE (şifrelenmiş JWT) veya sunucu tarafı oturum kullanın.",
                     "CWE-312",
-                    "SNIPER-DATA-09",
+                    "VULKILL-DATA-09",
                 )
             )
 
@@ -244,7 +244,7 @@ def audit_auth_artifact(
                     f"response_type={' '.join(response_types)}",
                     "Authorization Code Flow + PKCE (response_type=code ve code_challenge_method=S256) kullanın.",
                     "CWE-522",
-                    "SNIPER-AUTH-11",
+                    "VULKILL-AUTH-11",
                 )
             )
 
@@ -259,7 +259,7 @@ def audit_auth_artifact(
                     "state parametresi eksik",
                     "Her yetkilendirme isteğinde kriptografik rastgele state/nonce değeri üretin ve geri dönüşte doğrulayın.",
                     "CWE-352",
-                    "SNIPER-AUTH-11",
+                    "VULKILL-AUTH-11",
                 )
             )
 
@@ -275,7 +275,7 @@ def audit_auth_artifact(
                     f"code_challenge_present={bool(challenge_vals)}, method={method_vals or ['missing']}",
                     "Tüm istemcilerde PKCE (code_challenge ve code_challenge_method=S256) zorunlu kılın.",
                     "CWE-345",
-                    "SNIPER-AUTH-11",
+                    "VULKILL-AUTH-11",
                 )
             )
 
@@ -294,7 +294,7 @@ def audit_auth_artifact(
                         f"redirect_uri={uri}",
                         "redirect_uri için yalnızca tam eşleşen HTTPS adreslerine izin verin; joker karakter kullanmayın.",
                         "CWE-601",
-                        "SNIPER-AUTH-11",
+                        "VULKILL-AUTH-11",
                     )
                 )
                 break
@@ -317,7 +317,7 @@ def audit_auth_artifact(
                     "<!DOCTYPE / <!ENTITY bildirimi mevcut",
                     "SAML XML ayrıştırıcısında DTD ve dış varlık işlemeyi tamamen yasaklayın.",
                     "CWE-611",
-                    "SNIPER-INPV-06",
+                    "VULKILL-INPV-06",
                 )
             )
 
@@ -332,7 +332,7 @@ def audit_auth_artifact(
                     "Signature elemanı görülmedi",
                     "Hem SAML Response hem de Assertion üzerinde XML-DSig imza doğrulamasını zorunlu kılın.",
                     "CWE-347",
-                    "SNIPER-AUTH-11",
+                    "VULKILL-AUTH-11",
                 )
             )
 
@@ -346,7 +346,7 @@ def audit_auth_artifact(
                     "rsa-sha1 / xmldsig#sha1 referansı bulundu",
                     "SAML imza ve özet algoritmalarında SHA-256 (rsa-sha256 / xmlenc#sha256) zorunlu kılın.",
                     "CWE-327",
-                    "SNIPER-CRYP-03",
+                    "VULKILL-CRYP-03",
                 )
             )
 
@@ -362,7 +362,7 @@ def audit_auth_artifact(
                     f"AudienceRestriction={has_audience}, Recipient={has_recipient}",
                     "SAML Assertion doğrulamasında AudienceRestriction, Recipient ve NotOnOrAfter zaman pencerelerini zorunlu olarak kontrol edin.",
                     "CWE-287",
-                    "SNIPER-AUTH-11",
+                    "VULKILL-AUTH-11",
                 )
             )
 
@@ -380,7 +380,7 @@ def audit_auth_artifact(
                     f"assertion_count={assertion_count}, object_wrapped_assertion={has_object_wrapped_assertion}",
                     "SAML yanıtlarında tek Assertion zorunluluğu uygulayın, XSD şema doğrulaması yapın ve yalnızca XML-DSig Reference URI ile doğrudan imzalanmış düğümü işleyin.",
                     "CWE-347",
-                    "SNIPER-AUTH-11",
+                    "VULKILL-AUTH-11",
                 )
             )
 
@@ -404,13 +404,13 @@ def audit_auth_artifact(
         "findings": cap_findings(findings, INLINE_FINDING_LIMIT)[0],
         "parsed_metadata": parsed_metadata,
         "controls_evaluated": [
-            "SNIPER-AUTH-11",
-            "SNIPER-CRYP-03",
-            "SNIPER-CRYP-06",
-            "SNIPER-DATA-09",
-            "SNIPER-INPV-05",
-            "SNIPER-INPV-06",
-            "SNIPER-SESS-03",
+            "VULKILL-AUTH-11",
+            "VULKILL-CRYP-03",
+            "VULKILL-CRYP-06",
+            "VULKILL-DATA-09",
+            "VULKILL-INPV-05",
+            "VULKILL-INPV-06",
+            "VULKILL-SESS-03",
         ],
     }
 
@@ -458,9 +458,9 @@ def audit_fido2_saml_oidc_code(
         if not has_origin or not has_rp_id or uv_disabled:
             line_no = raw_content.count("\n", 0, match.start()) + 1
             findings.append({
-                "id": "SNIPER-AUTH-FIDO-01",
-                "rule_id": "SNIPER-AUTH-FIDO-01",
-                "control_id": "SNIPER-AUTH-FIDO-01",
+                "id": "VULKILL-AUTH-FIDO-01",
+                "rule_id": "VULKILL-AUTH-FIDO-01",
+                "control_id": "VULKILL-AUTH-FIDO-01",
                 "severity": "critical",
                 "cwe": "CWE-287",
                 "reference": "CWE-287",
@@ -485,9 +485,9 @@ def audit_fido2_saml_oidc_code(
         if uv_match:
             line_no = raw_content.count("\n", 0, uv_match.start()) + 1
             findings.append({
-                "id": "SNIPER-AUTH-FIDO-01",
-                "rule_id": "SNIPER-AUTH-FIDO-01",
-                "control_id": "SNIPER-AUTH-FIDO-01",
+                "id": "VULKILL-AUTH-FIDO-01",
+                "rule_id": "VULKILL-AUTH-FIDO-01",
+                "control_id": "VULKILL-AUTH-FIDO-01",
                 "severity": "critical",
                 "cwe": "CWE-287",
                 "reference": "CWE-287",
@@ -510,9 +510,9 @@ def audit_fido2_saml_oidc_code(
     if saml_match:
         line_no = raw_content.count("\n", 0, saml_match.start()) + 1
         findings.append({
-            "id": "SNIPER-AUTH-SAML-02",
-            "rule_id": "SNIPER-AUTH-SAML-02",
-            "control_id": "SNIPER-AUTH-SAML-02",
+            "id": "VULKILL-AUTH-SAML-02",
+            "rule_id": "VULKILL-AUTH-SAML-02",
+            "control_id": "VULKILL-AUTH-SAML-02",
             "severity": "critical",
             "cwe": "CWE-347",
             "reference": "CWE-347",
@@ -535,9 +535,9 @@ def audit_fido2_saml_oidc_code(
     if oidc_match:
         line_no = raw_content.count("\n", 0, oidc_match.start()) + 1
         findings.append({
-            "id": "SNIPER-AUTH-OIDC-03",
-            "rule_id": "SNIPER-AUTH-OIDC-03",
-            "control_id": "SNIPER-AUTH-OIDC-03",
+            "id": "VULKILL-AUTH-OIDC-03",
+            "rule_id": "VULKILL-AUTH-OIDC-03",
+            "control_id": "VULKILL-AUTH-OIDC-03",
             "severity": "high",
             "cwe": "CWE-294",
             "reference": "CWE-294",
@@ -564,8 +564,8 @@ def audit_fido2_saml_oidc_code(
 
 
 _OIDC_CONDITIONAL_CRED_RE = re.compile(
-    r"if\s{0,32}\(\s{0,32}hasCredentials\b[^)]{0,512}\)\s{0,32}\{?[^{}]{0,1024}\b(?:authenticateClient|verifyRevocationClient)\b"
-    r"|\bhasCredentials\s{0,32}(?:&&|\?)[^;\n]{0,1024}\b(?:authenticateClient|verifyRevocationClient)\b",
+    r"if\s*\(\s*hasCredentials\b[^)]*\)\s*\{?[^{}]*\b(?:authenticateClient|verifyRevocationClient)\b"
+    r"|\bhasCredentials\s*(?:&&|\?)[^;\n]*\b(?:authenticateClient|verifyRevocationClient)\b",
     re.DOTALL,
 )
 _OIDC_OPTIONAL_CLIENT_ID_BIND_RE = re.compile(
@@ -585,17 +585,17 @@ _OIDC_AUTH_CLIENT_RE = re.compile(
 )
 _OAUTH_RESET_SESSION_RE = re.compile(r"\bresetSession\s*\(\s*\)")
 _OAUTH_STATE_GUARD_RE = re.compile(
-    r"(?:queryParameters\s*+\[\s*+['\"]state['\"]\s*+\]|\bstate\b)[^\n;{}]{0,1024}(?:!=|!==|==|===)\s*+[A-Za-z0-9_.\"'\[\]()]++|"
-    r"guard\s++[^\n]{0,1024}\bstate\b"
+    r"(?:queryParameters\s*\[\s*['\"]state['\"]\s*\]|\bstate\b)[^\n;{}]*(?:!=|!==|==|===)\s*[A-Za-z0-9_.\"'\[\]()]+|"
+    r"guard\s+[^\n]*\bstate\b"
 )
 _OAUTH_MOBILE_TOKEN_CB_RE = re.compile(
     r"\bAuthorizationResponse\.Type\.TOKEN\b|\bswapCodeForToken\s*\("
 )
 _OAUTH_MOBILE_STATE_COMPARE_RE = re.compile(
-    r"(?:getState\s*+\(\s*+\)|\.state\b)[^\n;]{0,1024}(?:\.equals\s*+\(|!=|!==|==|===)[^\n;]{0,1024}"
+    r"(?:getState\s*\(\s*\)|\.state\b)[^\n;]*(?:\.equals\s*\(|!=|!==|==|===)[^\n;]*"
     r"(?:expectedState|request\.getState|storedState|pendingState|mState|csrfState|sessionState)"
-    r"|(?:expectedState|request\.getState\s*+\(\s*+\)|storedState|pendingState|mState|csrfState|sessionState)[^\n;]{0,1024}"
-    r"(?:\.equals\s*+\(|!=|!==|==|===)[^\n;]{0,1024}(?:getState\s*+\(\s*+\)|\.state\b)"
+    r"|(?:expectedState|request\.getState\s*\(\s*\)|storedState|pendingState|mState|csrfState|sessionState)[^\n;]*"
+    r"(?:\.equals\s*\(|!=|!==|==|===)[^\n;]*(?:getState\s*\(\s*\)|\.state\b)"
 )
 _PKCE_MATH_RANDOM_RE = re.compile(r"\bMath\.random\s*\(\s*\)")
 
@@ -649,9 +649,9 @@ def audit_oauth_oidc_state_machine_and_mobile_callbacks(
         evidence = dcr_match.group(0).strip().splitlines()[0].strip()
         findings.append(
             {
-                "id": "SNIPER-OIDC-DCR-04",
-                "rule_id": "SNIPER-OIDC-DCR-04",
-                "control_id": "SNIPER-OIDC-DCR-04",
+                "id": "VULKILL-OIDC-DCR-04",
+                "rule_id": "VULKILL-OIDC-DCR-04",
+                "control_id": "VULKILL-OIDC-DCR-04",
                 "severity": "high",
                 "cwe": "CWE-287",
                 "reference": "CWE-287",
@@ -701,9 +701,9 @@ def audit_oauth_oidc_state_machine_and_mobile_callbacks(
         evidence = state_match.group(0).strip()
         findings.append(
             {
-                "id": "SNIPER-OAUTH-STATE-05",
-                "rule_id": "SNIPER-OAUTH-STATE-05",
-                "control_id": "SNIPER-OAUTH-STATE-05",
+                "id": "VULKILL-OAUTH-STATE-05",
+                "rule_id": "VULKILL-OAUTH-STATE-05",
+                "control_id": "VULKILL-OAUTH-STATE-05",
                 "severity": "high",
                 "cwe": "CWE-352",
                 "reference": "CWE-352",

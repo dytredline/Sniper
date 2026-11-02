@@ -18,7 +18,7 @@ def _repo(tmp_path: Path, *, windows: bool, installer: bool = False) -> tuple[Pa
         path = scripts / "install-community-tools"
         path.write_text("#!/usr/bin/env python3\n", encoding="utf-8")
         path.chmod(0o755)
-    for name in ("sniper-mcp", "sniper-project-audit"):
+    for name in ("vulkill-mcp", "vulkill-project-audit"):
         # Core-only Windows must not depend on a POSIX executable bit; Python opens these files.
         (scripts / name).write_text("#!/usr/bin/env python3\n", encoding="utf-8")
     environment = root / ".venv"
@@ -44,24 +44,19 @@ def _probe(command: list[str], environment: Path) -> subprocess.CompletedProcess
     )
 
 
-def test_core_only_windows_keeps_scripts_python_without_posix_exec_bit(
+def test_core_only_windows_fails_closed_before_any_command(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    root, environment, python = _repo(tmp_path, windows=True)
+    root, environment, _python = _repo(tmp_path, windows=True)
     monkeypatch.setattr(setup, "_platform_system", lambda: "Windows")
+    monkeypatch.setattr(
+        setup.subprocess,
+        "run",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("command started")),
+    )
 
-    def run(command, **_kwargs):
-        if [str(item) for item in command][1:3] == ["-I", "-c"]:
-            return _probe(command, environment)
-        return subprocess.CompletedProcess(command, 0)
-
-    monkeypatch.setattr(setup.subprocess, "run", run)
-    result = setup.setup_community(root, venv_dir=environment, core_only=True)
-
-    assert result["tools_profile"] == "core"
-    assert result["support_level"] == "supported"
-    assert result["platform_tested"] is False
-    assert setup._trusted_venv_python(environment) == python
+    with pytest.raises(setup.SetupError, match="Native Windows.*WSL2 or Docker"):
+        setup.setup_community(root, venv_dir=environment, core_only=True)
 
 
 def test_full_profile_windows_fails_with_actionable_route_before_any_command(
@@ -75,7 +70,7 @@ def test_full_profile_windows_fails_with_actionable_route_before_any_command(
         lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("command started")),
     )
 
-    with pytest.raises(setup.SetupError, match="requires Linux.*--core-only.*WSL2/Docker"):
+    with pytest.raises(setup.SetupError, match="Native Windows.*WSL2 or Docker"):
         setup.setup_community(
             root,
             venv_dir=environment,
@@ -113,8 +108,8 @@ def test_core_only_darwin_keeps_standard_bin_python(
     result = setup.setup_community(root, venv_dir=environment, core_only=True)
 
     assert result["tools_profile"] == "core"
-    assert result["support_level"] == "supported"
-    assert result["platform_tested"] is True
+    assert result["support_level"] == "experimental"
+    assert result["platform_tested"] is False
     assert setup._trusted_venv_python(environment) == python
 
 
@@ -138,7 +133,7 @@ def test_default_linux_profile_still_invokes_locked_tool_installer(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     root, environment, python = _repo(tmp_path, windows=False, installer=True)
-    for name in ("sniper-mcp", "sniper-project-audit"):
+    for name in ("vulkill-mcp", "vulkill-project-audit"):
         (root / "scripts" / name).chmod(0o755)
     monkeypatch.setattr(setup, "_platform_system", lambda: "Linux")
     calls: list[list[str]] = []
@@ -189,7 +184,7 @@ def test_core_only_real_venv_smoke_uses_no_tool_or_network(tmp_path: Path) -> No
     scripts.mkdir(parents=True)
     (root / setup.RUNTIME_LOCK).write_text("# empty offline smoke lock\n", encoding="utf-8")
     entrypoint = "import argparse; argparse.ArgumentParser().parse_args()\n"
-    for name in ("sniper-mcp", "sniper-project-audit"):
+    for name in ("vulkill-mcp", "vulkill-project-audit"):
         (scripts / name).write_text(entrypoint, encoding="utf-8")
 
     result = setup.setup_community(root, core_only=True)

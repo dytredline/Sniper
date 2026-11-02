@@ -63,7 +63,7 @@ _SAFE_COLUMN_SUFFIXES = (
 _TENANT_COLUMNS = ("tenant_id", "organization_id", "owner_id", "workspace_id", "org_id")
 _TENANT_NULLABLE_COLUMNS = ("tenant_id", "organization_id", "owner_id", "user_id", "workspace_id", "org_id")
 
-# 1. SNIPER-MIG-RLS-01 kalıpları
+# 1. VULKILL-MIG-RLS-01 kalıpları
 _DISABLE_RLS_RE = re.compile(
     r"\bALTER\s+TABLE\b[^;]*?\bDISABLE\s+ROW\s+LEVEL\s+SECURITY\b",
     re.IGNORECASE | re.DOTALL,
@@ -81,7 +81,7 @@ _SQL_CREATE_TABLE_RE = re.compile(
     re.IGNORECASE | re.DOTALL,
 )
 
-# 2. SNIPER-MIG-TENANT-DROP-02 kalıpları
+# 2. VULKILL-MIG-TENANT-DROP-02 kalıpları
 _SQL_DROP_TENANT_COL_RE = re.compile(
     r"\bDROP\s+COLUMN\s+(?:IF\s+EXISTS\s+)?[\"`']?(tenant_id|organization_id|owner_id|workspace_id|org_id)\b",
     re.IGNORECASE,
@@ -111,7 +111,7 @@ _RAILS_CHANGE_NULL_RE = re.compile(
     re.IGNORECASE,
 )
 
-# 3. SNIPER-MIG-CLEARTEXT-03 kalıpları
+# 3. VULKILL-MIG-CLEARTEXT-03 kalıpları
 _SQL_ADD_COLUMN_RE = re.compile(
     r"\bADD\s+(?:COLUMN\s+)?(?:IF\s+NOT\s+EXISTS\s+)?[\"`']?([A-Za-z_][A-Za-z0-9_]*)[\"`']?\s+"
     r"(?:VARCHAR|TEXT|CHAR|CHARACTER|STRING|BYTEA|JSONB?)",
@@ -153,46 +153,14 @@ def _is_cleartext_secret_column(col_name: str) -> bool:
 
 
 def _strip_sql_comments(text: str) -> str:
-    # Satır ve sütun konumlarını koruyan doğrusal yorum ayrıştırıcısı.
-    out = list(text)
-    index = 0
-    state = "code"
-    escaped = False
-    while index < len(text):
-        char = text[index]
-        following = text[index + 1] if index + 1 < len(text) else ""
-        if state == "code":
-            if char in {"'", '"', "`"}:
-                state, escaped = char, False
-            elif char == "-" and following == "-":
-                out[index] = out[index + 1] = " "
-                state = "line"
-                index += 1
-            elif char == "/" and following == "*":
-                out[index] = out[index + 1] = " "
-                state = "block"
-                index += 1
-        elif state in {"'", '"', "`"}:
-            if escaped:
-                escaped = False
-            elif char == "\\":
-                escaped = True
-            elif char == state:
-                state = "code"
-        elif state == "line":
-            if char == "\n":
-                state = "code"
-            else:
-                out[index] = " "
-        else:
-            if char == "*" and following == "/":
-                out[index] = out[index + 1] = " "
-                state = "code"
-                index += 1
-            elif char != "\n":
-                out[index] = " "
-        index += 1
-    return "".join(out)
+    # Satır numaralarını korumak için yorum karakterlerini boşlukla değiştirir
+    without_line_comments = re.sub(r"--[^\n]*", lambda m: " " * len(m.group(0)), text)
+    return re.sub(
+        r"/\*.*?\*/",
+        lambda m: "".join("\n" if ch == "\n" else " " for ch in m.group(0)),
+        without_line_comments,
+        flags=re.DOTALL,
+    )
 
 
 def _build_finding(
@@ -270,7 +238,7 @@ def audit_database_schema_migrations(
         )
 
     # -------------------------------------------------------------------------
-    # Kural 1: SNIPER-MIG-RLS-01 (DISABLE ROW LEVEL SECURITY / USING (true) / eksik RLS)
+    # Kural 1: VULKILL-MIG-RLS-01 (DISABLE ROW LEVEL SECURITY / USING (true) / eksik RLS)
     # -------------------------------------------------------------------------
     rls_flagged_in_file = False
 
@@ -339,7 +307,7 @@ def audit_database_schema_migrations(
             )
 
     # -------------------------------------------------------------------------
-    # Kural 2: SNIPER-MIG-TENANT-DROP-02 (Kiracı sütunu veya NOT NULL kaldırma)
+    # Kural 2: VULKILL-MIG-TENANT-DROP-02 (Kiracı sütunu veya NOT NULL kaldırma)
     # -------------------------------------------------------------------------
     tenant_drop_patterns: tuple[tuple[re.Pattern[str], str], ...] = (
         (_SQL_DROP_TENANT_COL_RE, "sql_drop_col"),
@@ -368,7 +336,7 @@ def audit_database_schema_migrations(
             )
 
     # -------------------------------------------------------------------------
-    # Kural 3: SNIPER-MIG-CLEARTEXT-03 (Düz metin parola / API anahtarı sütunu)
+    # Kural 3: VULKILL-MIG-CLEARTEXT-03 (Düz metin parola / API anahtarı sütunu)
     # -------------------------------------------------------------------------
     recorded_secret_cols: set[tuple[int, str]] = set()
 

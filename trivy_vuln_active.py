@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from project_analyzer import validate_project_path, ProjectRejected
+from tool_child_env import isolated_tool_environment
 from project_tree import ProjectTree, ProjectTreeError
 from trivy_config_active import _open_trusted_binary
 
@@ -195,10 +196,10 @@ def run_local_trivy_vulnerability(project_path: str) -> dict[str, Any]:
                 str(input_dir),
             ]
 
-            env = os.environ.copy()
-            # Force private cache and HOME inside scratch
-            env["HOME"] = str(snapshot_root)
-            env["XDG_CACHE_HOME"] = str(snapshot_root / "cache")
+            env = isolated_tool_environment(
+                home=snapshot_root, tmpdir=snapshot_root,
+                overrides={"XDG_CACHE_HOME": snapshot_root / "cache"},
+            )
 
             # Run bounded runner
             try:

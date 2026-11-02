@@ -40,7 +40,7 @@ def build_plan() -> dict[str, object]:
         "compose_files": list(COMPOSE_FILES),
         "service": "sniper",
         "build_target": "community-tools",
-        "image": "sniper-community-tools:local",
+        "image": "vulkill-community-tools:local",
         "platform_source": "linux-container-runtime",
         "tools": list(tools),
         "tool_count": len(tools),

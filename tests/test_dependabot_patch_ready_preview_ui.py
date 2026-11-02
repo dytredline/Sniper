@@ -9,7 +9,7 @@ from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 import server
-from server import SniperHandler
+from server import VulKillHandler
 from storage import Store
 from tool_report_dependabot import parse_dependabot_alerts_summary
 
@@ -389,7 +389,7 @@ class DependabotPatchReadyPreviewUiTests(unittest.TestCase):
         self.previous_store = server.STORE
         server.STORE = Store(self.db_path)
 
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), VulKillHandler)
         self.port = self.httpd.server_address[1]
         self.base_url = f"http://127.0.0.1:{self.port}"
         self.server_thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)

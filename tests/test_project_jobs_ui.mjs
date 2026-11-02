@@ -100,7 +100,7 @@ test('analiz iş kuyruğunda başlar, ilerleme çubuğu ve dosya sayısı textCo
       return { status: 200, body: job };
     },
   });
-  const promise = env.window.SniperProjectJobs.start({ project_path: '/p/shop' }, env.form);
+  const promise = env.window.VulKillProjectJobs.start({ project_path: '/p/shop' }, env.form);
   const box = env.document.getElementById('project-job-status');
   assert.ok(box, 'durum kutusu formun yanına eklenir');
   assert.equal(env.page.children[1], box);
@@ -116,7 +116,7 @@ test('analiz iş kuyruğunda başlar, ilerleme çubuğu ve dosya sayısı textCo
 
 test('ara durum: aşama etiketi, dosya sayısı, yüzde ve iptal düğmesi', () => {
   const env = setup({ responses: () => ({ status: 200, body: {} }) });
-  const pj = env.window.SniperProjectJobs;
+  const pj = env.window.VulKillProjectJobs;
   const box = env.document.createElement('div');
   box.append(Object.assign(env.document.createElement('progress'), { className: 'project-job-bar' }));
   for (const cls of ['project-job-name', 'project-job-stage', 'project-job-count', 'project-job-percent']) {
@@ -145,7 +145,7 @@ test('iptal edilen iş hata olarak döner; iptal isteği POST ile gider', async 
         : { id: 'job_000000000000000000000002', state: 'cancelled', error: 'İş kullanıcı isteğiyle iptal edildi.' } };
     },
   });
-  const promise = env.window.SniperProjectJobs.start({ project_path: '/p' }, env.form);
+  const promise = env.window.VulKillProjectJobs.start({ project_path: '/p' }, env.form);
   await new Promise((resolve) => setTimeout(resolve, 0));
   const box = env.document.getElementById('project-job-status');
   await box.querySelector('.project-job-cancel').onclick();
@@ -161,14 +161,14 @@ test('sayfa yeniden açılınca süren analiz izlenir, bitince ayrıntı açıl�
   });
   env.window.loadAll = async () => opened.push('loadAll');
   env.window.openProjectAudit = async (id) => opened.push(id);
-  const audit = await env.window.SniperProjectJobs.resume();
+  const audit = await env.window.VulKillProjectJobs.resume();
   assert.equal(audit.id, 'prj_9');
   assert.deepEqual(opened, ['loadAll', 'prj_9']);
   assert.deepEqual(env.toasts, [['eski analizi tamamlandı.', 'success']]);
   assert.equal(env.storage.has('sniper.projectJob'), false);
   // başka rotaya ait ya da biçimi bozuk kimlik izlenmez
   const other = setup({ stored: 'bad id', responses: () => ({ status: 200, body: {} }) });
-  assert.equal(await other.window.SniperProjectJobs.resume(), null);
+  assert.equal(await other.window.VulKillProjectJobs.resume(), null);
   assert.equal(other.calls.length, 0);
 });
 
@@ -176,8 +176,8 @@ test('alt proje özeti lisans kancasına zincirlenir; adlar metin olarak kalır'
   const env = setup({ responses: () => ({ status: 200, body: {} }) });
   const calls = [];
   env.window.renderLicenseSummary = (audit) => calls.push(audit.id);
-  env.window.SniperProjectJobs.installDetailHook();
-  env.window.SniperProjectJobs.installDetailHook();  // iki kez kurulsa da tek zincir
+  env.window.VulKillProjectJobs.installDetailHook();
+  env.window.VulKillProjectJobs.installDetailHook();  // iki kez kurulsa da tek zincir
   const detail = env.document.createElement('section');
   const audit = { id: 'prj_1', subprojects: { count: 1, declared: true, subprojects: [
     { path: 'packages/<img src=x>', kind: 'npm', file_count: 3, languages: { JavaScript: 3 }, finding_counts: { high: 1 }, dependencies: { component_count: 2, by_ecosystem: { npm: 2 } } },

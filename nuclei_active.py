@@ -18,7 +18,7 @@ from tool_report_nuclei import MAX_FINDINGS, parse_nuclei_jsonl_summary
 
 
 TEMPLATE = Path(__file__).resolve().parent / "templates/nuclei/local-powered-by.yaml"
-TEMPLATE_SHA256 = "a7c444042e0322e314ceb900d0a5cfae6f72bc6c40e80f7626a36ecdf0d466e0"
+TEMPLATE_SHA256 = "0372f10ac60efdd4f365841431bcf1e8d4e9b4f36d32d1a68496699c7e601178"
 TARGET_PATTERN = re.compile(r"127\.0\.0\.1:([1-9][0-9]{0,4})\Z")
 MAX_REPORT_BYTES = 1_000_000
 
@@ -141,12 +141,6 @@ def run_nuclei_loopback(target: str) -> dict:
         try:
             with tempfile.TemporaryDirectory(prefix="sniper_nuclei_") as temp:
                 report = Path(temp) / "report.jsonl"
-                # Nuclei filters -t inputs by filename extension.  A bare
-                # /proc/self/fd/<n> is therefore ignored even though its
-                # contents are valid YAML.  Keep the verified descriptor as
-                # the source, but give the child a private .yaml pathname.
-                template_link = Path(temp) / "local-powered-by.yaml"
-                template_link.symlink_to(f"/proc/self/fd/{template_fd}")
                 environment = {
                     "HOME": temp,
                     "TMPDIR": temp,
@@ -157,7 +151,7 @@ def run_nuclei_loopback(target: str) -> dict:
                 }
                 command = [
                     f"/proc/self/fd/{binary_fd}", "-u", loopback_url,
-                    "-t", str(template_link),
+                    "-t", f"/proc/self/fd/{template_fd}",
                     "-jsonl", "-silent", "-nc", "-or", "-ot", "-duc", "-ni", "-dr",
                     "-no-stdin", "-pt", "http", "-c", "1", "-rl", "1", "-timeout", "2",
                     "-retries", "0",

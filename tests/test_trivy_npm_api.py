@@ -47,7 +47,7 @@ pathlib.Path(args[args.index('--output')+1]).write_text(json.dumps(report))
         os.environ.update({"SNIPER_TRIVY_BINARY":str(self.fake), "SNIPER_TRIVY_BINARY_SHA256":hashlib.sha256(self.fake.read_bytes()).hexdigest(), "SNIPER_DATA_DIR":str(self.base), "SNIPER_TRIVY_VULN_CACHE_DIR":str(self.cache), "SNIPER_TRIVY_VULN_DB_SHA256":hashlib.sha256(b"pinned test db").hexdigest()})
         self.previous_store = server.STORE
         server.STORE = Store(self.base / "sniper.db")
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()
         self.url = f"http://127.0.0.1:{self.httpd.server_address[1]}"

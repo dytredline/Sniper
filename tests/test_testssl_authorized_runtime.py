@@ -21,14 +21,14 @@ class TestsslAuthorizedRuntimeTests(unittest.TestCase):
         self.base = Path(self.temp.name)
         self.previous_env = os.environ.copy()
         os.environ["SNIPER_DATA_DIR"] = str(self.base / "data")
-        os.environ["TESTSSL_CAPTURE"] = str(self.base / "arguments.json")
+        capture = self.base / "arguments.json"
         self.binary = self.base / "testssl-fixture"
         self.binary.write_text(
             "#!" + __import__("sys").executable + "\n"
             "import json,os,sys\n"
             "from pathlib import Path\n"
             "args=sys.argv[1:]\n"
-            "Path(os.environ['TESTSSL_CAPTURE']).write_text(json.dumps(args))\n"
+            f"Path({str(capture)!r}).write_text(json.dumps(args))\n"
             "assert args.count('--protocols') == 1\n"
             "assert args[args.index('--nodns')+1] == 'none'\n"
             "assert args[args.index('--ip')+1] == '127.0.0.1'\n"
@@ -40,7 +40,7 @@ class TestsslAuthorizedRuntimeTests(unittest.TestCase):
             "'finding':'PRIVATE_RUNTIME_MARKER','cve':'','cwe':'','hint':''}]\n"
             "Path(args[args.index('--jsonfile')+1]).write_text(json.dumps(report))\n"
         )
-        self.binary.chmod(self.binary.stat().st_mode | stat.S_IXUSR)
+        self.binary.chmod(0o700)
         os.environ["SNIPER_TESTSSL_BINARY"] = str(self.binary)
         os.environ["SNIPER_TESTSSL_SHA256"] = hashlib.sha256(self.binary.read_bytes()).hexdigest()
         os.environ["PHONE_OUT"] = "true"

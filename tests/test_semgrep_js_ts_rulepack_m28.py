@@ -116,7 +116,8 @@ class SemgrepJsTsRulepackM28Tests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmpdir = tempfile.TemporaryDirectory(dir=Path.home(), prefix="sniper_m28_semgrep_")
         self.base = Path(self._tmpdir.name).resolve()
-        self.rulepack_path = Path(__file__).parent / "fixtures" / "trusted-multilang-rules.yaml"
+        self.rulepack_path = self.base / "trusted-multilang-rules.yaml"
+        self.rulepack_path.write_text(TRUSTED_MULTILANG_RULEPACK_YAML, encoding="utf-8")
 
     def tearDown(self) -> None:
         self._tmpdir.cleanup()

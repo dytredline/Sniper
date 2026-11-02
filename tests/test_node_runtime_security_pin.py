@@ -17,24 +17,27 @@ from verified_exec import VerificationError
 
 NODE_22_23_2_SHA256 = "1a638b0fe2b68da0489276aca95526c5122fc61ba54d6a2d0d00c1c92ab7b876"
 NODE_22_23_4_SHA256 = "7e48183361053f039294fbbc3ba586722fe756bf296d6cb8195356d10819cd16"
+NODE_26_13_0_SHA256 = "66f4a883c880ef336276e7730c01cbae2b92fb8e6a51f7371f920599cac824b7"
 NODE_22_23_2 = Path.home() / ".local" / "opt" / "node-v22.23.2-linux-arm64" / "bin" / "node"
 NODE_22_23_4 = Path.home() / ".local" / "opt" / "node-v22.23.4-linux-arm64" / "bin" / "node"
+NODE_26_13_0 = Path(__file__).resolve().parents[2] / "runtimes" / "node-v26.13.0-linux-arm64" / "bin" / "node"
 
 
 class NodeRuntimeSecurityPinTests(unittest.TestCase):
     def test_security_release_is_builtin_and_exact_previous_product_binary_is_revoked(self):
         pin = tool_pins.PINS["node"]
-        self.assertEqual(pin.version, "22.23.4")
-        self.assertEqual(pin.source_url, "https://nodejs.org/dist/v22.23.4/")
-        self.assertEqual(pin.default_binary, NODE_22_23_4)
-        self.assertIn(NODE_22_23_4_SHA256, pin.digests["aarch64"])
+        self.assertEqual(pin.version, "26.13.0")
+        self.assertEqual(pin.source_url, "https://nodejs.org/dist/v26.13.0/")
+        self.assertEqual(pin.default_binary, Path.home() / ".local" / "opt" / "node-v26.13.0-linux-arm64" / "bin" / "node")
+        self.assertIn(NODE_26_13_0_SHA256, pin.digests["aarch64"])
         self.assertIn(NODE_22_23_2_SHA256, pin.revoked_digests)
+        self.assertIn(NODE_22_23_4_SHA256, pin.revoked_digests)
 
         # Ürünün önceki 22.23.2 dağıtımından kaydettiği bu tam ikili özeti ortam sabitlemesiyle geri alınamaz.
         with mock.patch.dict(os.environ, {"SNIPER_NODE_SHA256": NODE_22_23_2_SHA256}), \
                 mock.patch.object(tool_pins, "machine", return_value="aarch64"):
             accepted = tool_pins.accepted_digests("node")
-        self.assertIn(NODE_22_23_4_SHA256, accepted)
+        self.assertIn(NODE_26_13_0_SHA256, accepted)
         self.assertNotIn(NODE_22_23_2_SHA256, accepted)
 
     def test_x86_without_a_verified_builtin_digest_stays_unpinned(self):
@@ -43,17 +46,17 @@ class NodeRuntimeSecurityPinTests(unittest.TestCase):
             accepted = tool_pins.accepted_digests("node")
         self.assertEqual(accepted, {})
 
-    @unittest.skipUnless(NODE_22_23_2.is_file() and NODE_22_23_4.is_file(), "yerel Node geçiş ikilileri yok")
+    @unittest.skipUnless(NODE_22_23_4.is_file() and NODE_26_13_0.is_file(), "yerel Node geçiş ikilileri yok")
     def test_real_old_binary_is_revoked_and_verified_new_binary_runs(self):
-        env = {"SNIPER_NODE_BINARY": "", "SNIPER_NODE_SHA256": NODE_22_23_2_SHA256}
+        env = {"SNIPER_NODE_BINARY": "", "SNIPER_NODE_SHA256": NODE_22_23_4_SHA256}
         with mock.patch.dict(os.environ, env), mock.patch.object(tool_pins, "machine", return_value="aarch64"):
-            current = tool_pins.pin_status("node", str(NODE_22_23_4))
-            previous = tool_pins.pin_status("node", str(NODE_22_23_2))
+            current = tool_pins.pin_status("node", str(NODE_26_13_0))
+            previous = tool_pins.pin_status("node", str(NODE_22_23_4))
             self.assertEqual((current["state"], current["reason_code"]), ("pinned", "digest_matches_pin"))
             self.assertEqual((previous["state"], previous["reason_code"]), ("mismatch", "binary_digest_revoked"))
             with self.assertRaisesRegex(VerificationError, "uyuşmuyor"):
-                tool_pins.open_pinned("node", str(NODE_22_23_2))
-            with tool_pins.open_pinned("node", str(NODE_22_23_4)) as runtime:
+                tool_pins.open_pinned("node", str(NODE_22_23_4))
+            with tool_pins.open_pinned("node", str(NODE_26_13_0)) as runtime:
                 result = subprocess.run(
                     [runtime.argv0, "--version"],
                     check=True,
@@ -63,17 +66,17 @@ class NodeRuntimeSecurityPinTests(unittest.TestCase):
                     timeout=10,
                     **runtime.popen_kwargs(env={"PATH": "/usr/bin:/bin"}),
                 )
-        self.assertEqual(result.stdout.strip(), "v22.23.4")
+        self.assertEqual(result.stdout.strip(), "v26.13.0")
 
-    @unittest.skipUnless(NODE_22_23_2.is_file() and NODE_22_23_4.is_file(), "yerel Node geçiş ikilileri yok")
+    @unittest.skipUnless(NODE_22_23_4.is_file() and NODE_26_13_0.is_file(), "yerel Node geçiş ikilileri yok")
     def test_autodiscovery_skips_revoked_dropin_candidate(self):
         selected, digest = tool_runtime_autodiscover._first_valid_unrevoked_executable(
-            [NODE_22_23_2, NODE_22_23_4], tool_pins.PINS["node"].revoked_digests
+            [NODE_22_23_4, NODE_26_13_0], tool_pins.PINS["node"].revoked_digests
         )
-        self.assertEqual(selected, NODE_22_23_4)
-        self.assertEqual(digest, NODE_22_23_4_SHA256)
+        self.assertEqual(selected, NODE_26_13_0)
+        self.assertEqual(digest, NODE_26_13_0_SHA256)
 
-    def test_operator_pinned_alternate_build_still_obeys_22_security_floor_and_major(self):
+    def test_operator_pinned_alternate_build_still_obeys_26_security_floor_and_major(self):
         with tempfile.TemporaryDirectory(dir=Path.home()) as temp:
             binary = Path(temp) / "node"
 
@@ -82,7 +85,7 @@ class NodeRuntimeSecurityPinTests(unittest.TestCase):
                 binary.chmod(0o700)
                 return hashlib.sha256(binary.read_bytes()).hexdigest()
 
-            for version in ("22.23.2", "24.22.1"):
+            for version in ("22.23.4", "24.22.1", "26.12.1"):
                 with self.subTest(version=version):
                     digest = write_version(version)
                     with mock.patch.dict(os.environ, {"SNIPER_NODE_SHA256": digest}):
@@ -90,7 +93,7 @@ class NodeRuntimeSecurityPinTests(unittest.TestCase):
                             tool_pins.open_pinned("node", str(binary))
                     self.assertEqual(raised.exception.reason, "binary_version_unsupported")
 
-            digest = write_version("22.23.4")
+            digest = write_version("26.13.0")
             with mock.patch.dict(os.environ, {"SNIPER_NODE_SHA256": digest}):
                 with tool_pins.open_pinned("node", str(binary)) as verified:
                     self.assertEqual(verified.sha256, digest)

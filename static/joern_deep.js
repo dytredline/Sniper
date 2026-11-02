@@ -56,7 +56,7 @@
     const blob = new Blob([JSON.stringify(lastSarif, null, 2)], { type: "application/sarif+json" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = "sniper-joern.sarif";
+    link.download = "vulkill-joern.sarif";
     link.click();
     setTimeout(() => URL.revokeObjectURL(link.href), 1000);
     return true;
@@ -72,7 +72,7 @@
     try {
       if (!projectPath) throw new Error("Proje klasörü yolu girin.");
       if (!confirm?.checked) throw new Error("Yerel analiz onayını işaretleyin.");
-      if (!scope.SniperJobs) throw new Error("İş kuyruğu istemcisi yüklenmedi.");
+      if (!scope.VulKillJobs) throw new Error("İş kuyruğu istemcisi yüklenmedi.");
       const payload = { confirm_local: true, project_path: projectPath };
       if (byId("joern-deep-scripting")?.checked) payload.include_scripting = true;
       const budgetText = String(byId("joern-deep-budget")?.value ?? "").trim();
@@ -81,9 +81,9 @@
         if (!Number.isInteger(minutes) || minutes < 1 || minutes > 60) throw new Error("Süre bütçesi 1–60 dakika arasında bir tam sayı olmalı.");
         payload.time_budget_seconds = minutes * 60;
       }
-      const job = await scope.SniperJobs.run(ROUTE, payload, status);
-      scope.SniperJobsPanel?.refresh?.();
-      if (job.state !== "succeeded") throw new Error(job.error || scope.SniperJobs.stateLabel(job.state));
+      const job = await scope.VulKillJobs.run(ROUTE, payload, status);
+      scope.VulKillJobsPanel?.refresh?.();
+      if (job.state !== "succeeded") throw new Error(job.error || scope.VulKillJobs.stateLabel(job.state));
       renderResult(job.result || {});
       return job.result;
     } catch (failure) {
@@ -100,7 +100,7 @@
     byId("joern-deep-sarif")?.addEventListener("click", downloadSarif);
   }
 
-  scope.SniperJoernDeep = Object.freeze({ ROUTE, submit, renderResult, downloadSarif, init });
+  scope.VulKillJoernDeep = Object.freeze({ ROUTE, submit, renderResult, downloadSarif, init });
   if (typeof document !== "undefined" && document.readyState !== "loading") init();
   else if (typeof document !== "undefined") document.addEventListener("DOMContentLoaded", init);
 })();

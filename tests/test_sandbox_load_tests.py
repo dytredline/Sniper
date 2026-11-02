@@ -248,7 +248,7 @@ class SandboxApiTests(_DataDir):
         self.server = server
         self.previous_store = server.STORE
         server.STORE = Store(self.data / "sniper.db")
-        self.http = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.http = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.http.daemon_threads = True
         self.thread = threading.Thread(target=self.http.serve_forever, daemon=True)
         self.thread.start()

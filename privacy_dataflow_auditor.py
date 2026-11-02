@@ -17,12 +17,12 @@ MAX_FINDINGS_PER_FILE = 300
 MAX_LINE_CHARS = 4_000
 
 PRIVACY_CONTROLS_EVALUATED: list[str] = [
-    "SNIPER-LOGG-02",
-    "SNIPER-DATA-02",
-    "SNIPER-DATA-05",
-    "SNIPER-DATA-07",
-    "SNIPER-DATA-08",
-    "SNIPER-AI-06",
+    "VULKILL-LOGG-02",
+    "VULKILL-DATA-02",
+    "VULKILL-DATA-05",
+    "VULKILL-DATA-07",
+    "VULKILL-DATA-08",
+    "VULKILL-AI-06",
 ]
 
 PRIVACY_EXTENSIONS: set[str] = {
@@ -393,7 +393,7 @@ def _analyze_privacy(
         if hits:
             _inventory_add(inventory, hits, filename)
 
-    # 1. Loglara PII yazımı (SNIPER-LOGG-02, CWE-532)
+    # 1. Loglara PII yazımı (VULKILL-LOGG-02, CWE-532)
     for index, line in enumerate(lines):
         hits = line_hits[index]
         if not hits or not _LOG_SINK_RE.search(line):
@@ -419,7 +419,7 @@ def _analyze_privacy(
             ),
             reference="KVKK m.4/m.12 · GDPR Art.5(1)(c)/32 · OWASP Logging Cheat Sheet",
             cwe="CWE-532",
-            control_id="SNIPER-LOGG-02",
+            control_id="VULKILL-LOGG-02",
             filename=filename,
             line=index + 1,
             categories=categories,
@@ -458,7 +458,7 @@ def _analyze_privacy(
                 ),
                 reference="KVKK m.4/m.12 · GDPR Art.5(1)(c)/32 · OWASP Logging Cheat Sheet",
                 cwe="CWE-532",
-                control_id="SNIPER-LOGG-02",
+                control_id="VULKILL-LOGG-02",
                 filename=filename,
                 line=flow.line,
                 categories=categories,
@@ -466,7 +466,7 @@ def _analyze_privacy(
             finding["taint_flow"] = flow.as_dict()
             _add(finding)
 
-    # 2. Üçüncü taraf analitik/telemetriye PII (SNIPER-DATA-05, CWE-359)
+    # 2. Üçüncü taraf analitik/telemetriye PII (VULKILL-DATA-05, CWE-359)
     for index, line in enumerate(lines):
         if comment_flags[index] or not _ANALYTICS_SINK_RE.search(line):
             continue
@@ -494,13 +494,13 @@ def _analyze_privacy(
             ),
             reference="KVKK m.5/m.9 · GDPR Art.5/25/44",
             cwe="CWE-359",
-            control_id="SNIPER-DATA-05",
+            control_id="VULKILL-DATA-05",
             filename=filename,
             line=index + 1,
             categories=categories,
         ))
 
-    # 3. Harici LLM API'sine PII (SNIPER-AI-06, CWE-359)
+    # 3. Harici LLM API'sine PII (VULKILL-AI-06, CWE-359)
     anthropic_context = bool(_ANTHROPIC_CONTEXT_RE.search(content))
     for index, line in enumerate(lines):
         if comment_flags[index]:
@@ -534,13 +534,13 @@ def _analyze_privacy(
             ),
             reference="KVKK m.4/m.9 · GDPR Art.5/25/28/44 · OWASP LLM Top 10 LLM02",
             cwe="CWE-359",
-            control_id="SNIPER-AI-06",
+            control_id="VULKILL-AI-06",
             filename=filename,
             line=index + 1,
             categories=categories,
         ))
 
-    # 4. Rıza alınmadan izleme betiği (SNIPER-DATA-07, CWE-359)
+    # 4. Rıza alınmadan izleme betiği (VULKILL-DATA-07, CWE-359)
     if ext in TRACKING_EXTENSIONS and not _CONSENT_RE.search(content):
         for index, line in enumerate(lines):
             if len(line) > MAX_LINE_CHARS * 4:
@@ -564,13 +564,13 @@ def _analyze_privacy(
                 ),
                 reference="KVKK m.5 · ePrivacy Art.5(3) · GDPR Art.6/7",
                 cwe="CWE-359",
-                control_id="SNIPER-DATA-07",
+                control_id="VULKILL-DATA-07",
                 filename=filename,
                 line=index + 1,
                 categories={CAT_ONLINE},
             ))
 
-    # 6. Şifrelenmemiş özel nitelikli veri saklama (SNIPER-DATA-02, CWE-311)
+    # 6. Şifrelenmemiş özel nitelikli veri saklama (VULKILL-DATA-02, CWE-311)
     if ext in STORAGE_EXTENSIONS or _MODEL_MARKER_RE.search(content):
         for index, line in enumerate(lines):
             hits = line_hits[index]
@@ -598,7 +598,7 @@ def _analyze_privacy(
                 ),
                 reference="KVKK m.6/m.12 · Kurul Kararı 2018/10 · GDPR Art.9/32",
                 cwe="CWE-311",
-                control_id="SNIPER-DATA-02",
+                control_id="VULKILL-DATA-02",
                 filename=filename,
                 line=index + 1,
                 categories=special_categories,
@@ -632,7 +632,7 @@ def _analyze_privacy(
                 ),
                 reference="KVKK m.12 · GDPR Art.32 · OWASP HTML5 Security Cheat Sheet",
                 cwe="CWE-312",
-                control_id="SNIPER-DATA-02",
+                control_id="VULKILL-DATA-02",
                 filename=filename,
                 line=index + 1,
                 categories=high_risk_cats,
@@ -654,7 +654,7 @@ def _analyze_privacy(
                 ),
                 reference="KVKK m.12 · GDPR Art.32 · OWASP REST Security Cheat Sheet",
                 cwe="CWE-598",
-                control_id="SNIPER-DATA-05",
+                control_id="VULKILL-DATA-05",
                 filename=filename,
                 line=index + 1,
                 categories=high_risk_cats,
@@ -741,7 +741,7 @@ def audit_privacy_project(
             if not erasure_flow_detected and _ERASURE_RE.search(content):
                 erasure_flow_detected = True
 
-    # 5. Unutulma hakkı (silme/anonimleştirme) akışı eksikliği (SNIPER-DATA-08)
+    # 5. Unutulma hakkı (silme/anonimleştirme) akışı eksikliği (VULKILL-DATA-08)
     if pii_model_files and not erasure_flow_detected:
         model_categories = {
             category
@@ -765,7 +765,7 @@ def audit_privacy_project(
             ),
             reference="KVKK m.7/m.11 · Silme, Yok Etme veya Anonim Hale Getirme Yönetmeliği · GDPR Art.17",
             cwe="CWE-359",
-            control_id="SNIPER-DATA-08",
+            control_id="VULKILL-DATA-08",
             filename="(proje geneli)",
             line=0,
             categories=model_categories,
@@ -862,13 +862,13 @@ def audit_ai_rag_pii_leakage(
             ),
             reference="CWE-359",
             cwe="CWE-359",
-            control_id="SNIPER-PRIV-LLM-01",
+            control_id="VULKILL-PRIV-LLM-01",
             filename=clean_filename,
             line=line_no,
             categories=categories,
         )
-        finding["rule_id"] = "SNIPER-PRIV-LLM-01"
-        finding["control_id"] = "SNIPER-PRIV-LLM-01"
+        finding["rule_id"] = "VULKILL-PRIV-LLM-01"
+        finding["control_id"] = "VULKILL-PRIV-LLM-01"
         finding["cwe"] = "CWE-359"
         finding["reference"] = "CWE-359"
         finding["category"] = "privacy"
@@ -910,7 +910,7 @@ def generate_automated_ropa_dpia_report(
         ai_pii_findings = [
             f
             for f in all_findings
-            if isinstance(f, dict) and f.get("control_id") in {"SNIPER-PRIV-LLM-01", "SNIPER-AI-06"}
+            if isinstance(f, dict) and f.get("control_id") in {"VULKILL-PRIV-LLM-01", "VULKILL-AI-06"}
         ]
 
     any_critical_or_high_or_ai_pii = bool(ai_pii_findings) or any(

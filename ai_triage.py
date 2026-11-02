@@ -1756,14 +1756,14 @@ def auto_verify_findings_deterministically(
             verdict = "false_positive_pattern"
             confidence = 0.99
             rationale = "Mesaj dinleyicisi izole Worker/MessagePort üzerinde tanımlı veya DNS rebinding Origin/Host beyaz liste doğrulama yardımcısıdır."
-        elif ("CWE-798" in cwe or "SNIPER-CRYP-04" in cwe or "hardcoded-secret" in cwe or source_engine == "secret_intel") and (
+        elif ("CWE-798" in cwe or "VULKILL-CRYP-04" in cwe or "hardcoded-secret" in cwe or source_engine == "secret_intel") and (
             rel_file.endswith(("ServerCertificateService.java", "UserLicenseSettingsService.java"))
         ):
             verdict = "needs_contextual_review"
             contextual_subverdict = "verified_defense_in_depth_hardening"
             confidence = 0.95
             rationale = "Kaynak kodda doğrulanan varsayılan yerel PKCS#12 anahtar deposu parolası veya boş-anahtar HMAC yedek sabiti (savunma-derinliği / hardening bulgusu; üretim ortamında harici sır yönetimi önerilir)."
-        elif ("CWE-798" in cwe or "SNIPER-CRYP-04" in cwe or "hardcoded-secret" in cwe or source_engine == "secret_intel") and (
+        elif ("CWE-798" in cwe or "VULKILL-CRYP-04" in cwe or "hardcoded-secret" in cwe or source_engine == "secret_intel") and (
             is_locale_file
             or _BENIGN_SECRET_ASSIGN_RE.search(f"{line_text}\n{evidence}")
             or re.search(r"\b(?:strpos|stripos|str_starts_with|str_contains|preg_match|startsWith|includes)\s*\(", line_text)
@@ -1801,7 +1801,7 @@ def auto_verify_findings_deterministically(
             contextual_subverdict = "verified_defense_in_depth_hardening"
             confidence = 0.96
             rationale = "FormatMessageW sonrası Vec::set_len eksikliği (win_impl.rs:108-120; aktif çağrıcılar: satır 191, 293, 316) bellek güvenliği/kalite kusuru olup, yalnızca SendInput hata yolunda tetiklenen yerel savunma-derinliği (hardening) bulgusudur; tek başına uzaktan CVE adayı değildir."
-        elif "SNIPER-LIC-01" in cwe or "copyleft" in title.lower():
+        elif "VULKILL-LIC-01" in cwe or "copyleft" in title.lower():
             verdict = "needs_contextual_review"
             contextual_subverdict = "verified_defense_in_depth_hardening"
             confidence = 0.95
@@ -2215,7 +2215,7 @@ def classify_finding_evidence_tier(finding: dict[str, Any]) -> dict[str, Any]:
         max_conf = 0.95
     elif (
         bool(finding.get("sibling_parity_verified"))
-        or str(finding.get("control_id") or "").startswith("SNIPER-PARITY-")
+        or str(finding.get("control_id") or "").startswith(("SNIPER-PARITY-", "VULKILL-PARITY-"))
         or corroborating_count > 1
     ):
         tier = "VERIFIED_SOURCE_PARITY"

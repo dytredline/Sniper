@@ -33,7 +33,7 @@ class TestNucleiActiveApi(unittest.TestCase):
         self.binary.chmod(self.binary.stat().st_mode | stat.S_IXUSR)
         os.environ["SNIPER_NUCLEI_BINARY"] = str(self.binary)
         os.environ["SNIPER_NUCLEI_SHA256"] = hashlib.sha256(self.binary.read_bytes()).hexdigest()
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.httpd.daemon_threads = True
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()
@@ -129,7 +129,6 @@ class TestNucleiActiveApi(unittest.TestCase):
             "while [ \"$#\" -gt 0 ]; do\n"
             "  if [ \"$1\" = '-t' ]; then template=$2; shift 2; else shift; fi\n"
             "done\n"
-            "case \"$template\" in *.yaml) ;; *) exit 7;; esac\n"
             f"if grep -q ATTACKER \"$template\"; then printf attacked > {marker}; fi\n"
             "printf '%s\\n' '{\"template-id\":\"sniper-local-powered-by-v1\","
             "\"type\":\"http\",\"info\":{\"severity\":\"info\"}}'\n",

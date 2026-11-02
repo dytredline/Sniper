@@ -20,7 +20,7 @@ function load() {
   const document = { createElement: (tag) => node(tag) };  // readyState yok → otomatik bağlama atlanır
   const window = {};
   vm.runInNewContext(source, { window, globalThis: window, document, String, Number, Array, JSON, Error, Promise });
-  return window.SniperSbomTools;
+  return window.VulKillSbomTools;
 }
 
 function texts(root) {

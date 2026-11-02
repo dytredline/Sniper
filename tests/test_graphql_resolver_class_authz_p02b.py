@@ -35,7 +35,7 @@ def _audit(query_type: str, resolvers: dict[str, str]) -> dict:
 
 
 def _resolver_findings(report: dict) -> list[dict]:
-    return [finding for finding in report["findings"] if finding["rule_id"] == "SNIPER-APIT-10"]
+    return [finding for finding in report["findings"] if finding["rule_id"] == "VULKILL-APIT-10"]
 
 
 def test_unscoped_separate_resolver_class_is_linked_to_schema_field() -> None:

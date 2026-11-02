@@ -68,7 +68,7 @@ def run_barrier_synchronized_race_probe(
     findings: list[dict[str, Any]] = []
     if race_reproduced:
         findings.append({
-            "control_id": "SNIPER-RACE-TOCTOU-01",
+            "control_id": "VULKILL-RACE-TOCTOU-01",
             "cwe": "CWE-362",
             "reference": "CWE-362",
             "severity": "critical",

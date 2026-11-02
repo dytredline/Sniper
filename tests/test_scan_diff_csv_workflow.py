@@ -208,7 +208,7 @@ class ScanDiffCsvWorkflowTests(unittest.TestCase):
         self.prev_scan_diff = server.SCAN_DIFF
         server.STORE = self.store
         server.SCAN_DIFF = server.ScanDiff(self.store)
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.port = self.httpd.server_address[1]
         self.server_thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.server_thread.start()
@@ -290,9 +290,9 @@ class ScanDiffCsvWorkflowTests(unittest.TestCase):
         self.assertTrue(ui["htmlHasScanDiffDownloadJson"])
         self.assertTrue(ui["htmlHasScanDiffDownloadHtml"])
         self.assertEqual(ui["jsonHref"], f"{base_path}/report.json?download=1")
-        self.assertEqual(ui["jsonDownload"], f"sniper-diff-{scan1['id']}-{scan2['id']}.json")
+        self.assertEqual(ui["jsonDownload"], f"vulkill-diff-{scan1['id']}-{scan2['id']}.json")
         self.assertEqual(ui["htmlHref"], f"{base_path}/report.html?download=1")
-        self.assertEqual(ui["htmlDownload"], f"sniper-diff-{scan1['id']}-{scan2['id']}.html")
+        self.assertEqual(ui["htmlDownload"], f"vulkill-diff-{scan1['id']}-{scan2['id']}.html")
         self.assertIn(f'href="{base_path}/report.html"', ui["drawerHtml"])
 
     def test_TargetTrendAndScanDiffUi_expose_csv_download_and_serve_formula_neutral_csv(self):
@@ -331,7 +331,7 @@ class ScanDiffCsvWorkflowTests(unittest.TestCase):
             self.assertEqual(resp.status, 200)
             self.assertIn("text/csv", resp.headers.get("Content-Type", ""))
             self.assertIn(
-                f'filename="sniper-diff-{scan1["id"]}-{scan2["id"]}.csv"',
+                f'filename="vulkill-diff-{scan1["id"]}-{scan2["id"]}.csv"',
                 resp.headers.get("Content-Disposition", ""),
             )
             body = resp.read().decode("utf-8")
@@ -365,7 +365,7 @@ class ScanDiffCsvWorkflowTests(unittest.TestCase):
         self.assertTrue(ui["htmlHasScanDiffDownloadCsv"], "static/index.html must include #scan-diff-download-csv")
         self.assertTrue(ui["csvTouchedByRender"], "renderScanDiffResult must wire #scan-diff-download-csv")
         self.assertEqual(ui["csvHref"], f"{expected_base}/report.csv?download=1")
-        self.assertEqual(ui["csvDownload"], f"sniper-diff-{scan1['id']}-{scan2['id']}.csv")
+        self.assertEqual(ui["csvDownload"], f"vulkill-diff-{scan1['id']}-{scan2['id']}.csv")
         self.assertIn(f'href="{expected_base}/report.csv"', ui["drawerHtml"])
         self.assertIn("trend-diff-csv-link", ui["drawerHtml"])
 

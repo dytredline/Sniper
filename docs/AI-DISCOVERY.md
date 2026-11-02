@@ -122,10 +122,10 @@ The rootless `local` profile contains exactly these separately installed tools:
 | Engine | Locked version | Defensive role and boundary |
 | --- | --- | --- |
 | Nuclei | 3.11.1 | Template-based checks. The checked-in template is loopback-only; broad authorized HTTP assessment needs a separately pinned catalog. |
-| Trivy | 0.75.0 | Supported configuration profiles. Vulnerability profiles additionally need a separately pinned offline database. |
+| Trivy | 0.76.1 | Supported configuration profiles. Vulnerability profiles additionally need a separately pinned offline database. |
 | Gitleaks | 8.30.1 | Optional secret-detection execution against authorized local inputs. |
-| TruffleHog | 3.99.0 | Optional filesystem and Git-history secret review against authorized local inputs. |
-| Opengrep | 1.30.1 | Optional local source-rule execution with the supported pinned rule assets. |
+| TruffleHog | 3.99.7 | Optional filesystem and Git-history secret review against authorized local inputs. |
+| Opengrep | 1.33.1 | Optional local source-rule execution with the supported pinned rule assets. |
 | Syft | 1.55.0 | Optional manifest-only local SBOM generation. |
 | Grype | 0.121.0 | Optional offline SBOM vulnerability matching; requires the exact separately pinned database. |
 
@@ -134,14 +134,11 @@ architectures, installation destinations, and upstream licenses. The source arch
 The installer verifies complete artifacts before extraction and does not execute a scanner during installation. See
 [COMMUNITY-TOOLS.md](COMMUNITY-TOOLS.md) for the rootless and prepared-offline procedures.
 
-The full native five-engine setup is Linux-only. On macOS (Apple Silicon), both the native `--core-only` source setup
-(`python3 scripts/setup-community --core-only`) and the license-gated five-engine Docker Desktop profile
-(`./scripts/deploy-community-tools --accept-third-party-licenses`) are supported and verified on real macOS hardware.
-Windows core-only is supported by the portable setup contract, while WSL2 and Docker Desktop provide the Linux
-container paths without a real Windows-host claim. The default container is core-only;
-`scripts/build-community-tools-image --accept-third-party-licenses` selects the separate, license-gated
-seven-engine Linux target. Exact commands and evidence boundaries are in [DEPLOYMENT.md](../DEPLOYMENT.md) and
-[VALIDATION.md](../VALIDATION.md).
+The full native seven-engine setup is Linux-only. Native Windows is rejected and should use WSL2 or Docker Desktop's
+Linux containers. macOS has an experimental `--core-only` source path without the seven engines. The default container
+is also core-only; `scripts/build-community-tools-image --accept-third-party-licenses` selects the separate,
+license-gated seven-engine Linux target. These profiles are contract-tested, but this release does not claim a real
+Windows/macOS host execution. Exact commands and limitations are in [DEPLOYMENT.md](../DEPLOYMENT.md).
 
 ## Using VulKill with an AI client
 

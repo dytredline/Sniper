@@ -39,7 +39,7 @@ def _trust_findings(report: dict) -> list[dict]:
     return [
         finding
         for finding in report["findings"]
-        if finding.get("control_id") == "SNIPER-SLSA-WORKFLOW-CALL-04"
+        if finding.get("control_id") == "VULKILL-SLSA-WORKFLOW-CALL-04"
     ]
 
 

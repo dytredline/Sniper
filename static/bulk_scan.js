@@ -266,7 +266,7 @@
     anchor.after(buildPanel());
   }
 
-  scope.SniperBulkScan = { buildPanel, mount, renderPreview, renderRun, selectedPaths, collectOptions, candidateDetails, formatSize, state };
+  scope.VulKillBulkScan = { buildPanel, mount, renderPreview, renderRun, selectedPaths, collectOptions, candidateDetails, formatSize, state };
   if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
     // konteyner paneli (container_scan.js) önce bağlansın diye yükleme sonrası
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(mount, 0));

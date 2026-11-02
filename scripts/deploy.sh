@@ -29,5 +29,5 @@ for _ in $(seq 1 30); do
 done
 
 echo "VulKill health check did not become ready." >&2
-docker compose --profile monitoring logs --tail=80 sniper >&2
+docker compose --profile monitoring logs --tail=80 vulkill >&2
 exit 1

@@ -61,15 +61,15 @@ from joern_source_prep import prepare_source
 from tool_pins import PINS, SNIPER_TOOLS_DIR, open_pinned, pin_status
 from verified_exec import VerificationError
 
-JOERN_VERSION = "4.0.647"
-JOERN_SOURCE_URL = "https://github.com/joernio/joern/releases/tag/v4.0.647"
+JOERN_VERSION = "4.0.670"
+JOERN_SOURCE_URL = "https://github.com/joernio/joern/releases/tag/v4.0.670"
 JOERN_HOME_DEFAULT = SNIPER_TOOLS_DIR / "joern" / JOERN_VERSION / "joern-cli"
-MANIFEST_NAME = "SNIPER-INSTALL-MANIFEST.json"
+MANIFEST_NAME = "VULKILL-INSTALL-MANIFEST.json"
 # Kurulum manifestinin sabit SHA-256 değerleri (scripts/install_joern.py çıktısı; resmî
 # zip'in GitHub varlık özeti ve .sha512 dosyasıyla doğrulandıktan sonra üretildi).
 JOERN_MANIFEST_SHA256: dict[str, str] = {
-    "233d1a8dc83d18bfc6deb19bb28a26df442e4b7f7e34b169dacecd7ba9d4ae77":
-        "joern-cli-linux-arm64.zip v4.0.647 (GitHub varlık özeti 1ac7d162…1cab ve resmî .sha512 ile doğrulandı); "
+    "d3b549ae82368ff0ea6d9a620a8c578783cb90e697f0a91c8101ea366397da58":
+        "joern-cli-linux-arm64.zip v4.0.670 (GitHub varlık özeti 06ba92d0…b821 ve resmî .sha512 ile doğrulandı); "
         "scripts/install_joern.py çıktısı",
 }
 QUERY_SCRIPT = Path(__file__).resolve().parent / "rules" / "joern" / "sniper-dataflow.sc"
@@ -465,7 +465,7 @@ def _parse_steps(raw: Any, workspace: Path | None, language: str) -> list[dict[s
         file = _relative_file(step[0], workspace)
         line = _line(step[1])
         if line is not None and language == "csharp":
-            line += 1   # csharpsrc2cpg (4.0.647) satırları 0 tabanlı verir
+            line += 1   # csharpsrc2cpg (4.0.670) satırları 0 tabanlı verir
         if file is None or line is None:
             continue
         entry = {"file": file, "line": line}
@@ -599,7 +599,7 @@ def flows_to_findings(flows: list[dict[str, Any]], limit: int = MAX_FINDINGS,
             ),
             "recommendation": recommendation,
             "reference": cwe,
-            "control_id": f"SNIPER-JOERN-{flow['kind'].upper()}",
+            "control_id": f"VULKILL-JOERN-{flow['kind'].upper()}",
             "taint_flow": {
                 "sink_kind": flow["kind"],
                 "sink": flow["sink"],
@@ -861,7 +861,7 @@ def _pattern_finding(flow: dict[str, Any], properties: dict[str, str]) -> dict[s
         "evidence": evidence,
         "recommendation": recommendation,
         "reference": cwe,
-        "control_id": f"SNIPER-JOERN-{flow['kind'].upper()}",
+        "control_id": f"VULKILL-JOERN-{flow['kind'].upper()}",
         "steps": flow["steps"],
     }
 

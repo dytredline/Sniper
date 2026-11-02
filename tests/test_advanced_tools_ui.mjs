@@ -57,7 +57,7 @@ async function loadAdvanced(apiImpl) {
   context.globalThis = context;
   vm.runInContext(advanced, context);
   await new Promise(resolve => setImmediate(resolve)); // init'in liste yüklemesi bitsin
-  return { context, document, calls, tools: context.SniperAdvancedTools };
+  return { context, document, calls, tools: context.VulKillAdvancedTools };
 }
 
 const field = (dom, name) => {
@@ -236,7 +236,7 @@ test("boundary renderers are published under a namespace and do not clobber app.
   const before = globalThis.requestDependencyRemediationPlan;
   await import("../static/tool_boundary_summaries.js");
   assert.equal(globalThis.requestDependencyRemediationPlan, before);
-  assert.equal(typeof globalThis.SniperToolBoundary.renderBurpHandoffManifestHtml, "function");
+  assert.equal(typeof globalThis.VulKillToolBoundary.renderBurpHandoffManifestHtml, "function");
 });
 
 test("no static script references an element id missing from index.html", () => {

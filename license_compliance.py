@@ -1203,9 +1203,9 @@ def audit_enterprise_ip_and_ai_licenses(
         line_no = text.count("\n", 0, match.start()) + 1
         detected.append(
             {
-                "id": "SNIPER-LIC-COPYLEFT-01",
-                "rule_id": "SNIPER-LIC-COPYLEFT-01",
-                "control_id": "SNIPER-LIC-COPYLEFT-01",
+                "id": "VULKILL-LIC-COPYLEFT-01",
+                "rule_id": "VULKILL-LIC-COPYLEFT-01",
+                "control_id": "VULKILL-LIC-COPYLEFT-01",
                 "severity": "high",
                 "cwe": "CWE-1104",
                 "reference": "CWE-1104",
@@ -1223,9 +1223,9 @@ def audit_enterprise_ip_and_ai_licenses(
         line_no = text.count("\n", 0, match.start()) + 1
         detected.append(
             {
-                "id": "SNIPER-LIC-AIMODEL-02",
-                "rule_id": "SNIPER-LIC-AIMODEL-02",
-                "control_id": "SNIPER-LIC-AIMODEL-02",
+                "id": "VULKILL-LIC-AIMODEL-02",
+                "rule_id": "VULKILL-LIC-AIMODEL-02",
+                "control_id": "VULKILL-LIC-AIMODEL-02",
                 "severity": "high",
                 "cwe": "CWE-1104",
                 "reference": "CWE-1104",

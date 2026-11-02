@@ -25,7 +25,7 @@ class ZapAuthorizedApiTests(unittest.TestCase):
         self.env.start()
         self.addCleanup(self.env.stop)
 
-        self.handler = server.SniperHandler.__new__(server.SniperHandler)
+        self.handler = server.VulKillHandler.__new__(server.VulKillHandler)
         self.handler.path = "/api/tool-runs/zap-authorized"
         self.responses: list[tuple[int, dict]] = []
         self.handler._json = lambda body, status=200, **_kw: self.responses.append((int(status), body))

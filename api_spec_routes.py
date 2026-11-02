@@ -549,13 +549,13 @@ def audit_graphql_grpc_security(raw_content: str, *, filename: str = "schema.py"
     findings: list[dict[str, Any]] = []
     lines = raw_content.splitlines()
 
-    # (a) SNIPER-API-GQL-01: GraphQL Query Depth Limit eksikliği
+    # (a) VULKILL-API-GQL-01: GraphQL Query Depth Limit eksikliği
     server_match = _GQL_SERVER_SETUP_RE.search(raw_content)
     if server_match is not None and _GQL_DEPTH_LIMIT_RE.search(raw_content) is None:
         line_no = raw_content.count("\n", 0, server_match.start()) + 1
         evidence = lines[line_no - 1].strip() if 1 <= line_no <= len(lines) else server_match.group(0)
         findings.append({
-            "rule_id": "SNIPER-API-GQL-01",
+            "rule_id": "VULKILL-API-GQL-01",
             "severity": "high",
             "cwe": "CWE-400",
             "category": "dos",
@@ -576,7 +576,7 @@ def audit_graphql_grpc_security(raw_content: str, *, filename: str = "schema.py"
             "reference": "CWE-400",
         })
 
-    # (b) SNIPER-API-GQL-02: Üretim ortamında açık Introspection / GraphiQL / Playground arayüzü
+    # (b) VULKILL-API-GQL-02: Üretim ortamında açık Introspection / GraphiQL / Playground arayüzü
     for intro_match in _GQL_INTROSPECTION_RE.finditer(raw_content):
         line_no = raw_content.count("\n", 0, intro_match.start()) + 1
         win_start = max(0, line_no - 3)
@@ -585,7 +585,7 @@ def audit_graphql_grpc_security(raw_content: str, *, filename: str = "schema.py"
         if _GQL_ENV_GUARD_RE.search(context_window) is None:
             evidence = lines[line_no - 1].strip() if 1 <= line_no <= len(lines) else intro_match.group(0)
             findings.append({
-                "rule_id": "SNIPER-API-GQL-02",
+                "rule_id": "VULKILL-API-GQL-02",
                 "severity": "medium",
                 "cwe": "CWE-200",
                 "category": "web_hardening",
@@ -609,7 +609,7 @@ def audit_graphql_grpc_security(raw_content: str, *, filename: str = "schema.py"
             })
             break
 
-    # (c) SNIPER-API-GRPC-03: gRPC kanalında şifresiz (insecure) bağlantı kullanımı
+    # (c) VULKILL-API-GRPC-03: gRPC kanalında şifresiz (insecure) bağlantı kullanımı
     for grpc_match in _GRPC_INSECURE_RE.finditer(raw_content):
         line_no = raw_content.count("\n", 0, grpc_match.start()) + 1
         win_start = max(0, line_no - 2)
@@ -618,7 +618,7 @@ def audit_graphql_grpc_security(raw_content: str, *, filename: str = "schema.py"
         if _LOOPBACK_TARGET_RE.search(call_window) is None:
             evidence = lines[line_no - 1].strip() if 1 <= line_no <= len(lines) else grpc_match.group(0)
             findings.append({
-                "rule_id": "SNIPER-API-GRPC-03",
+                "rule_id": "VULKILL-API-GRPC-03",
                 "severity": "high",
                 "cwe": "CWE-319",
                 "category": "crypto",

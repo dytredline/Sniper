@@ -539,13 +539,19 @@ print(json.dumps({"analyzed": analysis is not None, "flows": flows}, ensure_asci
 
 def _run_trial(code: str, filename: str, model_paths: list[str]) -> dict[str, Any]:
     from process_group_runner import run_in_process_group
+    from tool_child_env import isolated_tool_environment
 
     # SNIPER_DATA_DIR verilmez: kayıtlı özel kurallar (ve taint önbelleği) denemeye karışmaz;
     # karşılaştırma yalnız "aday kuralla / kuralsız" farkını gösterir.
-    env = {key: value for key, value in os.environ.items() if key not in {"SNIPER_TAINT_MODELS", "PYTHONPATH", "SNIPER_DATA_DIR"}}
-    env["SNIPER_TAINT_MODELS"] = os.pathsep.join(model_paths)
-    env["PYTHONDONTWRITEBYTECODE"] = "1"
     with tempfile.TemporaryDirectory(prefix="sniper-kural-dene-") as tmp:
+        trial_overrides = {"PYTHONDONTWRITEBYTECODE": "1"}
+        if model_paths:
+            trial_overrides["SNIPER_TAINT_MODELS"] = os.pathsep.join(model_paths)
+        env = isolated_tool_environment(
+            home=tmp,
+            tmpdir=tmp,
+            overrides=trial_overrides,
+        )
         request = Path(tmp) / "istek.json"
         request.write_text(json.dumps({"app": str(APP_DIR), "code": code, "filename": filename}), encoding="utf-8")
         with request.open("rb") as stdin:

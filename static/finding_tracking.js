@@ -155,7 +155,7 @@
       row.insertAdjacentHTML("afterend", `<tr class="track-detail-row" data-track-detail-row="${esc(id)}"><td colspan="5"></td></tr>`);
       const detailRow = row.nextElementSibling;
       const cell = detailRow.querySelector("td");
-      cell.innerHTML = detailHtml(item, view.ctx); // sniper-reviewed: html-safe (detailHtml tüm alanları esc ile; yorumlar ayrıca textContent)
+      cell.innerHTML = detailHtml(item, view.ctx); // vulkill-reviewed: html-safe (detailHtml tüm alanları esc ile; yorumlar ayrıca textContent)
       renderComments(cell.querySelector("[data-track-comments]"), item.comments || [], view.ctx, item.id);
     } catch (error) {
       notify(error.message, "error");
@@ -398,7 +398,7 @@
   async function loadAssigned(root) {
     const data = await request(assignedQuery(view.assigned, view.ctx));
     const items = data.findings || [];
-    root.innerHTML = /* sniper-reviewed: html-safe (alt parçalar esc ile; sayılar Number) */ `${modesHtml()}<div class="project-audit-summary track-summary">
+    root.innerHTML = /* vulkill-reviewed: html-safe (alt parçalar esc ile; sayılar Number) */ `${modesHtml()}<div class="project-audit-summary track-summary">
         <div><b>${items.length}</b><span>atanmış bulgu</span></div>
         <div><b>${Number(data.overdue || 0)}</b><span>gecikmiş</span></div></div>
       ${assignedFiltersHtml()}${tableHtml(items, true)}`;
@@ -408,7 +408,7 @@
     const data = await request(unifiedQuery(view.unified));
     const counts = data.counts || {};
     const bySource = counts.by_source || {};
-    root.innerHTML = /* sniper-reviewed: html-safe (dinamik metinler unifiedTableHtml içinde esc ile) */ `${modesHtml()}` +
+    root.innerHTML = /* vulkill-reviewed: html-safe (dinamik metinler unifiedTableHtml içinde esc ile) */ `${modesHtml()}` +
       `<div class="project-audit-summary track-summary"><div><b>${Number(data.total || 0)}</b><span>eşleşen bulgu</span></div>` +
       `<div><b>${Number(bySource.project || 0)} / ${Number(bySource.manual || 0)} / ${Number(bySource.network || 0)} / ${Number(bySource.dependency || 0)}</b><span>proje / elle / ağ / bağımlılık</span></div>` +
       `<div><b>${Number(data.returned || 0)}</b><span>gösterilen${data.truncated ? " · sınırlandı" : ""}</span></div></div>` +

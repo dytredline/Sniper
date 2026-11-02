@@ -450,7 +450,7 @@ Ayrıntı: [LSP.md](LSP.md). VS Code ve Neovim örnekleri orada.
 - **Çalıştırma:** `scripts/vulkill-lsp` (stdio). Dosya açıldığında ya da kaydedildiğinde aynı motorla analiz edilir.
 - **Tanılama:** CWE ya da IaC kimliği ve bulgu takibi parmak izi içerir.
 - **Hızlı düzeltme:** `taint_autofix` dönüşümü önerilir; düzenlemeyi editör uygular.
-- **Ağ ve dosya:** Ağ yok. Önbellek dışında hiçbir şey yazılmaz (`~/.cache/sniper-lsp`).
+- **Ağ ve dosya:** Ağ yok. Önbellek dışında hiçbir şey yazılmaz (`~/.cache/vulkill-lsp`).
 
 ---
 
@@ -576,6 +576,29 @@ kazanç yeni yeteneklerden geldi: çok ekosistemli çevrimdışı SCA, IaC motor
 **Ürün içi ölçüm hattı:** `scripts/eval_pipeline.py`, sonuç geçmişini ve gerileme çıkış kodunu üretir. Arayüzde
 doğruluk panosu: `/api/eval/latest`.
 
+Özel sürümün kanıt makbuzu/iddia tavanı, imzalı kapsam defteri, artifact bağlama, semantik zincir, durable queue,
+kurumsal kimlik ve legal-hold sözleşmeleri için bkz.
+[Özel sürüm: kanıt, kapsam ve dayanıklılık](OZEL-SURUM-KANIT-VE-DAYANIKLILIK.md).
+
+**Özel sürüm PostgreSQL iş kuyruğu:** `SNIPER_JOB_BACKEND=postgresql` seçilir ve bağlantı URI'si doğrudan çevre
+değişkenine değil, mutlak yoldaki mevcut kullanıcıya ait `0600` dosyaya yazılarak
+`SNIPER_JOB_POSTGRES_DSN_FILE` ile gösterilir. Remote bağlantı `sslmode=verify-full` ve `sslrootcert` gerektirir;
+libpq çalışma zamanı zorunludur. Açıkça seçilen loopback geliştirme testi dışında TLS kapatılamaz.
+
+**Özel sürüm kurumsal giriş:** `SNIPER_OIDC_CONFIG_FILE`, mevcut kullanıcıya ait `0600` JSON dosyasını gösterir.
+Dosya issuer/audience, HTTPS authorization ve token endpoint'leri, client id/redirect URI, SHA-256 ile sabitlenmiş
+mutlak JWKS yolu ve grup→rol eşlemesini taşır. `/api/auth/oidc/start` tek kullanımlık state/nonce/PKCE akışını
+başlatır; callback doğrulandıktan sonra issuer+subject bağıyla yerel oturum üretir. Client secret ve uzaktan JWKS
+indirme kullanılmaz.
+
+**Harici KMS/HSM imza köprüsü:** `SNIPER_COVERAGE_KMS_CONFIG_FILE`, mevcut kullanıcıya ait `0600` JSON
+dosyasını gösterir. `format=sniper-external-kms-signer/1` belgesi mutlak broker yolu, broker SHA-256 özeti,
+`HMAC-SHA256` algoritması, KMS key id ve 0,1–15 saniye timeout taşır. Broker VulKill dışında AWS KMS, Vault
+Transit veya PKCS#11/HSM kimlik bilgilerini yönetir; VulKill yalnız kanonik mesaj SHA-256'sını sabit JSON protokolüyle
+gönderir. Broker düzenli, root/mevcut kullanıcı sahipli, çalıştırılabilir, grup/dünya yazılamaz ve exact SHA ile
+eşleşir. Shell kullanılmaz; stderr, provider ayrıntısı ve anahtar malzemesi rapora alınmaz. Yerel anahtar ile KMS
+config aynı anda seçilirse imza politikası fail-closed olur.
+
 **Kör ground-truth kapısı:** `scripts/prepare_ground_truth.py prepare`, analiz motorunu çalıştırmadan seçilen dil
 profillerindeki kaynak yolları, satır sayıları ve SHA-256 değerlerinden bir inceleme manifesti ve boş etiket şablonu
 üretir. `--source-profile` birden çok kez verilebilir; C/C++, Python, JavaScript/TypeScript, JVM, .NET, Go, Ruby,
@@ -635,7 +658,9 @@ geniş bağımsız korpusun yerini almaz.
     Kaynak SHA'ları sabit `engine-quality-reference-r58` sentetik kapısı C++ `std::function`, Kotlin sabit
     `val ad = ::yöntem` ve Ruby sabit dize/sembol yansımalı çağrılarında 3/3 pozitif etiketi ile ayrıca tehlikeli
     adayı olmayan bir C++ negatif projeyi denetler; insan-kör bağımsız ölçüm iddiası taşımaz.
-    Geniş, görülmemiş C/C++ setinde recall ve precision henüz ölçülmemiştir.
+    MSQuic, chiapos ve chiavdf üzerindeki 850 bağımsız C/C++ dosyasının tamamında runtime/atlama kapsamı ayrıca
+    makbuzlanmıştır. Bu koşu çalışma ve kapsam kanıtıdır; precision/recall iddiası için bağımsız insan etiketli
+    ground truth yine gerekir.
   - Ruby'de kayıtlı veri modeli dar.
 - **İşlev düzeyi erişilebilirlik:** JavaScript, Python, Java, .NET, Go ve Rust için statik çağrı kanıtı üretilir;
   Kotlin'de değiştirilemez niteliksiz callable reference ve Ruby'de sabit dize/sembol `send`/`__send__` ile
@@ -653,10 +678,14 @@ geniş bağımsız korpusun yerini almaz.
   Yinelenen map anahtarında son değer geçerlidir; skaler üst düzey kayıt, eksik ayıraç, bozuk/dengesiz belge ve
   kayıt bütçesi aşımı kapalı başarısız olur.
   Git ve path bağımlılıkları paket sürümü sayılmaz.
-- **Konteyner:** Eski BerkeleyDB/NDB rpm veritabanı paketleri henüz ayrıştırılmaz. Algılanan eski RPM
-  veritabanı veya eksik paket envanteri `os_packages: na` ve yapılandırılmış
-  `container.package_inventory` nedeni döndürür; OSV arşivi var diye yanlışlıkla `pass` verilmez. Zstd için
-  güvenilir `/usr/bin/zstd` gerekir.
-- **IaC:** Uzak modüllerin içi yalnız bilinen terraform-aws-modules girdileriyle değerlendirilir. Helm bilinmeyen
+- **Konteyner:** Eski RPM BerkeleyDB `Packages` hash veritabanı, sistemde güvenilir Perl `DB_File`/Berkeley DB 5
+  runtime'ı varsa sınırlı ayrı işlemde ayrıştırılır. Runtime eksikliği/çökmesi, bozuk kayıt veya NDB girdisi
+  `os_packages: na` ve yapılandırılmış `container.package_inventory` nedeni döndürür; OSV arşivi var diye
+  yanlışlıkla `pass` verilmez. Zstd için güvenilir `/usr/bin/zstd` gerekir.
+- **IaC:** Uzak modül içeriği ağdan alınmaz. Yalnız exact kaynak+sürümü, proje içi güvenli ayna dizinini ve o
+  dizinin kanonik ağaç SHA-256 değerini bağlayan `.sniper/terraform-module-mirror.json` girdileri çözülür;
+  eksik, kayan, yinelenen, proje dışına çıkan veya özeti uyuşmayan ayna analizi açıkça kısmi bırakır. Bilinen
+  `terraform-aws-modules` çağrı kuralları ayna yokken çağrı girdilerini denetleyebilir ancak modül içeriği
+  incelenmiş sayılmaz. Helm bilinmeyen
   koşulları en çok altı kontrol noktasında ayrı varyantlara açar; daha büyük şablonlarda kalan noktalar
   bilinmeyen kalır. Kubernetes proje ilişkileri dinamik/Helm şablonlarında kesin bağ iddiasında bulunmaz.

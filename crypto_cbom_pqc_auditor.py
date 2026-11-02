@@ -315,7 +315,7 @@ def _scan_text_for_crypto(
                         f"{asset_name} kullanımı ({match.group(0).strip()[:64]})",
                         rec,
                         "CWE-327",
-                        "SNIPER-CRYP-03",
+                        "VULKILL-CRYP-03",
                         file=rel_file,
                         line=line_no,
                     )
@@ -349,7 +349,7 @@ def _scan_text_for_crypto(
                         f"{asset_name} kullanımı ({match.group(0).strip()[:64]})",
                         rec,
                         "CWE-327",
-                        "SNIPER-CRYP-03",
+                        "VULKILL-CRYP-03",
                         file=rel_file,
                         line=line_no,
                     )
@@ -405,7 +405,7 @@ def _scan_text_for_crypto(
                             "RootCAs + InsecureSkipVerify: true (VerifyPeerCertificate olmadan)",
                             "InsecureSkipVerify: false yapın veya özel doğrulama gerekiyorsa VerifyConnection / VerifyPeerCertificate içinde x509.Certificate.Verify(x509.VerifyOptions{Roots: rootCAs}) çağırın.",
                             "CWE-295",
-                            "SNIPER-CRYP-05",
+                            "VULKILL-CRYP-05",
                             file=rel_file,
                             line=line_no,
                         )
@@ -458,7 +458,7 @@ def audit_crypto_pqc_inline(
         "cbom_assets": cbom_assets[:MAX_CBOM_ASSET_ROWS],
         "cbom_assets_truncated": len(cbom_assets) > MAX_CBOM_ASSET_ROWS,
         "cyclonedx_cbom": cyclonedx_cbom,
-        "controls_evaluated": ["SNIPER-CRYP-01", "SNIPER-CRYP-03", "SNIPER-CRYP-05"],
+        "controls_evaluated": ["VULKILL-CRYP-01", "VULKILL-CRYP-03", "VULKILL-CRYP-05"],
     }
 
 
@@ -533,7 +533,7 @@ def audit_crypto_pqc_project(
         "cbom_assets": cbom_assets[:MAX_CBOM_ASSET_ROWS],
         "cbom_assets_truncated": len(cbom_assets) > MAX_CBOM_ASSET_ROWS,
         "cyclonedx_cbom": cyclonedx_cbom,
-        "controls_evaluated": ["SNIPER-CRYP-01", "SNIPER-CRYP-03", "SNIPER-CRYP-05"],
+        "controls_evaluated": ["VULKILL-CRYP-01", "VULKILL-CRYP-03", "VULKILL-CRYP-05"],
     }
 
 

@@ -38,7 +38,7 @@ router.post('/v1/token', async (req, res) => {
         route_findings = [
             f
             for f in result["findings"]
-            if f["rule_id"] == "SNIPER-PARITY-ROUTE-05"
+            if f["rule_id"] == "VULKILL-PARITY-ROUTE-05"
         ]
         self.assertEqual(len(route_findings), 1)
         finding = route_findings[0]
@@ -71,7 +71,7 @@ router.post('/v1/token', async (req, res) => {
         route_findings = [
             f
             for f in result["findings"]
-            if f["rule_id"] == "SNIPER-PARITY-ROUTE-05"
+            if f["rule_id"] == "VULKILL-PARITY-ROUTE-05"
         ]
         self.assertEqual(len(route_findings), 0)
 
@@ -102,7 +102,7 @@ export class EmbeddedSdkBridge {
         bridge_findings = [
             f
             for f in result["findings"]
-            if f["rule_id"] == "SNIPER-PARITY-BRIDGE-06"
+            if f["rule_id"] == "VULKILL-PARITY-BRIDGE-06"
         ]
         self.assertEqual(len(bridge_findings), 1)
         finding = bridge_findings[0]
@@ -135,7 +135,7 @@ export class EmbeddedSdkBridge {
         bridge_findings = [
             f
             for f in result["findings"]
-            if f["rule_id"] == "SNIPER-PARITY-BRIDGE-06"
+            if f["rule_id"] == "VULKILL-PARITY-BRIDGE-06"
         ]
         self.assertEqual(len(bridge_findings), 0)
 
@@ -178,7 +178,7 @@ export class OidcService {
         dcr_findings = [
             f
             for f in result["findings"]
-            if f["rule_id"] == "SNIPER-OIDC-DCR-04"
+            if f["rule_id"] == "VULKILL-OIDC-DCR-04"
         ]
         self.assertEqual(len(dcr_findings), 1)
         finding = dcr_findings[0]
@@ -232,7 +232,7 @@ func handleRedirectURL(_ url: URL) -> Bool {
         state_findings = [
             f
             for f in result["findings"]
-            if f["rule_id"] == "SNIPER-OAUTH-STATE-05"
+            if f["rule_id"] == "VULKILL-OAUTH-STATE-05"
         ]
         self.assertEqual(len(state_findings), 1)
         finding = state_findings[0]
@@ -252,7 +252,7 @@ const verifier = Array.from({ length: 43 }, () => Math.floor(Math.random() * 36)
         )
         self.assertEqual(result2["finding_count"], 1)
         self.assertEqual(
-            result2["findings"][0]["rule_id"], "SNIPER-OAUTH-STATE-05"
+            result2["findings"][0]["rule_id"], "VULKILL-OAUTH-STATE-05"
         )
 
     def test_oauth_state_safe_when_state_verified_first_and_csprng_used(self) -> None:

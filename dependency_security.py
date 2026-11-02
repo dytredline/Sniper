@@ -19,6 +19,7 @@ from typing import Any, Iterator
 
 from project_analyzer import ProjectRejected, validate_project_path
 from project_tree import ProjectFile, ProjectTree, ProjectTreeError
+from tool_child_env import isolated_tool_environment
 
 MAX_REPORT_BYTES = 8_000_000
 MAX_COMPONENTS = 20_000
@@ -2988,6 +2989,7 @@ def query_osv_batch_via_tor(components: list[dict[str, str]], *, proxy: str = "s
              "--proxy", proxy, "--header", "Content-Type: application/json", "--data-binary", "@-",
              "https://api.osv.dev/v1/querybatch"],
             input=payload, capture_output=True, text=True, timeout=timeout + 5, check=False,
+            env=isolated_tool_environment(home="/tmp", tmpdir="/tmp"),
         )
     except subprocess.TimeoutExpired:
         raise DependencySecurityError("Tor üzerinden OSV isteği zaman aşımına uğradı ve doğrudan yedekleme gerçekleşmedi.") from None

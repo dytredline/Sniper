@@ -17,7 +17,7 @@ function load(responses) {
     },
   };
   vm.runInNewContext(source, { window, globalThis: window, encodeURIComponent, JSON, Promise, Math, Error, Object, Set, Array, String });
-  return { jobs: window.SniperJobs, calls, delays };
+  return { jobs: window.VulKillJobs, calls, delays };
 }
 
 function element() {

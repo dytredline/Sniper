@@ -4,7 +4,7 @@ Backend dilleri (.rb, .py, .java, .ts, .js) tarafından üretilen iç vekil baş
 (ör. X-Gitlab-Mcp-Server-*, X-Accel-Redirect, X-Sendfile, WorkhorseRewriter veya
 kullanıcı/DB kaynaklı X-* başlıkları) ve bunları tüketen Go/Rust/C++ sidecar/proxy
 bileşenlerini (.go, .rs, .cc, .cpp) eşleştirerek uçtan uca veri akışı kurar.
-- SNIPER-XLANG-BRIDGE-01: Diller arası iç başlık köprüsünde SSRF filtresi eksikliği
+- VULKILL-XLANG-BRIDGE-01: Diller arası iç başlık köprüsünde SSRF filtresi eksikliği
   veya redirect üzerinde Bearer token sızıntısı.
 """
 
@@ -160,7 +160,7 @@ def audit_cross_language_monorepo_bridges(files_map: dict[str, str]) -> dict[str
 
                 findings.append(
                     {
-                        "rule_id": "SNIPER-XLANG-BRIDGE-01",
+                        "rule_id": "VULKILL-XLANG-BRIDGE-01",
                         "cwe": "CWE-918",
                         "reference": "CWE-918",
                         "severity": "critical",

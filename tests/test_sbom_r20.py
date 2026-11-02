@@ -395,7 +395,7 @@ class ApiTests(unittest.TestCase):
         _write(self.project / "requirements.txt", "flask==2.0.0\n")
         self.previous_store = server.STORE
         server.STORE = Store(self.base / "data" / "sniper.db")
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.httpd.daemon_threads = True
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
         self.base_url = f"http://127.0.0.1:{self.httpd.server_address[1]}"

@@ -102,7 +102,7 @@ def audit_silent_security_patches_and_blame(
     *,
     file_blame_map: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, Any]:
-    """Git commit geçmişinde güvenlik bülteni/CVE referansı olmadan sessizce eklenen güvenlik yamalarını (SNIPER-SILENT-PATCH-01) ve kaynak commit eşleşmesini tespit eder."""
+    """Git commit geçmişinde güvenlik bülteni/CVE referansı olmadan sessizce eklenen güvenlik yamalarını (VULKILL-SILENT-PATCH-01) ve kaynak commit eşleşmesini tespit eder."""
     valid_commits = [c for c in (commits or []) if isinstance(c, dict)]
     findings: list[dict[str, Any]] = []
 
@@ -142,7 +142,7 @@ def audit_silent_security_patches_and_blame(
         introduced_sha = _resolve_introduced_commit(file_path, diff_text, commit_item, file_blame_map)
 
         finding: dict[str, Any] = {
-            "rule_id": "SNIPER-SILENT-PATCH-01",
+            "rule_id": "VULKILL-SILENT-PATCH-01",
             "commit": commit_sha,
             "fixed_in_commit": commit_sha,
             "introduced_in_commit": introduced_sha,

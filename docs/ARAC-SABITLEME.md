@@ -21,13 +21,19 @@ bu yüzden araç dizinleri `0700`, ikililer `0500/0700` tutulmalıdır.
 ## Gömülü sabitlemeler (aarch64)
 | Araç | Sürüm | Kabul edilen ikili | Köken |
 |---|---|---|---|
-| Gitleaks | 8.30.1 | `00e91bbe…823b` | Resmi arşiv, `checksums.txt` ile doğrulandı |
-| Gitleaks | 8.30.1-stdlib | `a56a1107…01a9` | v8.30.1 etiketinden yerel derleme (`BUILD-MANIFEST.json`) |
-| TruffleHog | 3.99.0 | `6f668188…eb00` | Resmi arşiv, cosign imzalı checksums ile doğrulandı |
-| TruffleHog | 3.99.0 (açılmış) | `4cdfed41…0a93` | Resmi UPX paketinin `upx -d` ile açılmış hali |
-| Opengrep | 1.30.1 | `a730f6fd…16ee` | GitHub varlık özeti + cosign imzası (sertifika kimliği: opengrep/opengrep `rolling-release.yml`) |
+| Gitleaks | 8.30.1-vulkill.2 | `d26b4da0…2166` | v8.30.1 etiketinden Go 1.27.3 ve güncel güvenlik modülleriyle doğrulanmış yerel derleme (`VERIFIED-TOOLCHAIN.lock.json`) |
+| TruffleHog | 3.99.7-vulkill.1 | `b00f2a9f…d6f5` | v3.99.7 etiketinden Go 1.27.3 ve güncel güvenlik modülleriyle doğrulanmış yerel derleme |
+| Syft | 1.55.0-vulkill.2 | `a25bda7a…319e` | v1.55.0 etiketinden doğrulanmış kaynak derlemesi |
+| Grype | 0.121.0-vulkill.2 | `c8dc5f64…3069` | v0.121.0 etiketinden doğrulanmış kaynak derlemesi |
+| Opengrep | 1.33.1 | `d1433f63…76dcf` | GitHub API varlık özeti; yayıncının `.sig`/`.cert` yan dosyaları da sürüm varlıklarında bulunur |
 
-Opengrep `~/.local/share/sniper/tools/opengrep/1.30.1/opengrep` yoluna kurulur
+Önceki resmî ve ara derleme özetleri, SCA'da düzeltilebilir bağımlılık kayıtları
+taşıdıkları için `revoked_digests` listesine alınmıştır. Nihai SBOM/SCA doğrulaması,
+2026-10-29 tarihli çevrimdışı Grype veritabanıyla yapılmıştır. Veritabanında düzeltmesi
+bulunmayan kayıtlar `VERIFIED-TOOLCHAIN.lock.json` içinde açıkça listelenir; bu liste
+tek başına kod yolunun erişilebilir veya sömürülebilir olduğunu iddia etmez.
+
+Opengrep `~/.local/share/sniper/tools/opengrep/1.33.1/opengrep` yoluna kurulur
 (`PROVENANCE.json`, `.sig`, `.cert` yanında). `SNIPER_OPENGREP_BINARY` ile başka bir
 yol verilebilir; içerik yine sabitlemeye uymalıdır.
 

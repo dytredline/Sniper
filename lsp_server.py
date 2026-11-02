@@ -8,7 +8,7 @@ mevcut ``taint_autofix`` dönüşümlerini hızlı düzeltme olarak önerir (dü
 Güvenlik ve sınırlar:
 
 * Ağ yok. Sunucu hiçbir proje dosyasına yazmaz; yalnız kendi önbellek dizinine (0700) taint önbelleği
-  yazılır (``$XDG_CACHE_HOME/sniper-lsp`` ya da ``~/.cache/sniper-lsp``).
+  yazılır (``$XDG_CACHE_HOME/vulkill-lsp`` ya da ``~/.cache/vulkill-lsp``).
 * Her analiz ayrı bir alt süreçte (kendi süreç grubunda) dosya başına süre sınırıyla çalışır; süre
   aşılırsa grup sonlandırılır, sunucu yanıt vermeye devam eder.
 * Kalıcı tarama kapsamı (``$SNIPER_DATA_DIR/scan-scope.json``) yalnız okunur: atlanan dizinler
@@ -40,7 +40,9 @@ APP_DIR = Path(__file__).resolve().parent
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-SERVER_NAME = "sniper-lsp"
+from tool_child_env import isolated_tool_environment
+
+SERVER_NAME = "vulkill-lsp"
 SERVER_VERSION = "1"
 MAX_HEADER_BYTES = 8_192
 MAX_MESSAGE_BYTES = 64 * 1024 * 1024
@@ -49,6 +51,15 @@ MIN_TIMEOUT_SECONDS = 2.0
 MAX_TIMEOUT_SECONDS = 300.0
 MAX_CACHE_ENTRIES = 64
 MAX_MESSAGE_CHARS = 1_500
+
+_LSP_ANALYSIS_ENV_KEYS = (
+    "SNIPER_PROJECT_MAX_FILES", "SNIPER_PROJECT_MAX_FILE_BYTES", "SNIPER_PROJECT_MAX_BYTES",
+    "SNIPER_HARD_MAX_FILES", "SNIPER_HARD_MAX_FILE_BYTES", "SNIPER_HARD_MAX_TOTAL_BYTES",
+    "SNIPER_MEMSAFETY_BUDGET", "SNIPER_TAINT_PROJECT_SECONDS", "SNIPER_TAINT_MAX_ROUNDS",
+    "SNIPER_TAINT_MAX_CANDIDATES", "SNIPER_TAINT_MAX_SLOT_FUNCS", "SNIPER_TAINT_MAX_SLOT_CALLEES",
+    "SNIPER_TAINT_MAX_GO_DEPTH", "SNIPER_TAINT_MAX_GO_RECEIVERS", "SNIPER_TAINT_JS_ENGINE",
+    "SNIPER_TAINT_ANALYSIS", "SNIPER_TAINT_MODELS", "SNIPER_NODE_BINARY", "SNIPER_NODE_SHA256",
+)
 
 # LSP DiagnosticSeverity: 1 hata, 2 uyarı, 3 bilgi, 4 ipucu
 SEVERITY_TO_LSP = {"critical": 1, "high": 1, "medium": 2, "low": 3, "info": 4}
@@ -158,7 +169,7 @@ def text_edit_for(old: str, new: str) -> dict[str, Any] | None:
 
 def default_cache_dir() -> Path:
     base = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
-    return Path(base) / "sniper-lsp"
+    return Path(base) / "vulkill-lsp"
 
 
 def prepare_cache_dir(path: Path | None) -> Path | None:
@@ -364,7 +375,7 @@ class Document:
     version: int | None = None
 
 
-class SniperLanguageServer:
+class VulKillLanguageServer:
     """Tek istemcili LSP sunucusu. ``synchronous=True`` (testler) analizi istek iş parçacığında yapar."""
 
     def __init__(self, reader: BinaryIO, writer: BinaryIO, *, data_dir: Path | None = None,
@@ -419,7 +430,7 @@ class SniperLanguageServer:
     # -- döngü -----------------------------------------------------------
     def serve(self) -> int:
         if not self.synchronous:
-            self._thread = threading.Thread(target=self._worker_loop, name="sniper-lsp-analysis", daemon=True)
+            self._thread = threading.Thread(target=self._worker_loop, name="vulkill-lsp-analysis", daemon=True)
             self._thread.start()
         try:
             while self.exit_code is None:
@@ -670,7 +681,11 @@ class SniperLanguageServer:
     def _run_worker(self, doc: Document, scope_public: dict[str, Any]) -> list[dict[str, Any]] | None:
         job = {"root": str(doc.root), "rel": doc.rel, "scope": scope_public,
                "allowed_roots": [str(p) for p in self.allowed_roots] if self.allowed_roots else None}
-        env = dict(os.environ)
+        preserved = {key: os.environ[key] for key in _LSP_ANALYSIS_ENV_KEYS if os.environ.get(key)}
+        # HOME proje-kökü güvenlik sınırı ve yerel, pinli çalışma zamanlarının
+        # keşfi için gerçek kullanıcı kökü olarak kalır; ortamın geri kalanı
+        # yine sıfırdan kurulur ve geçici yazımlar özel LSP önbelleğine gider.
+        env = isolated_tool_environment(home=Path.home(), tmpdir=self.cache_dir, overrides=preserved)
         # Taint önbelleği yalnız sunucunun kendi önbellek dizinine yazılır (canlı veri dizinine asla).
         if self.cache_dir is not None:
             env["SNIPER_DATA_DIR"] = str(self.cache_dir)
@@ -1040,16 +1055,16 @@ def build_verified_quickfix_actions(
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="sniper-lsp", description="VulKill editör tanılama sunucusu (LSP, stdio).")
+    parser = argparse.ArgumentParser(prog="vulkill-lsp", description="VulKill editör tanılama sunucusu (LSP, stdio).")
     parser.add_argument("--worker", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--stdio", action="store_true", help="stdio üzerinden konuş (varsayılan; istemci uyumu için)")
     parser.add_argument("--data-dir", help="VulKill veri dizini (yalnız kalıcı tarama kapsamı okunur)")
-    parser.add_argument("--cache-dir", help="Önbellek dizini (varsayılan ~/.cache/sniper-lsp)")
+    parser.add_argument("--cache-dir", help="Önbellek dizini (varsayılan ~/.cache/vulkill-lsp)")
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT_SECONDS, help="Dosya başına süre sınırı (sn)")
     args = parser.parse_args(argv)
     if args.worker:
         return worker_main()
-    server = SniperLanguageServer(
+    server = VulKillLanguageServer(
         sys.stdin.buffer, sys.stdout.buffer,
         data_dir=Path(os.path.expanduser(args.data_dir)) if args.data_dir else None,
         cache_dir=Path(os.path.expanduser(args.cache_dir)) if args.cache_dir else None,

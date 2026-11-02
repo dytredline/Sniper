@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import fcntl
-import hashlib
 import json
 import os
 import stat
@@ -12,6 +11,37 @@ from pathlib import Path
 from typing import Any
 
 from tool_report_testssl import parse_testssl_json_summary, MAX_RECORDS, SEVERITY_KEYS
+from tool_child_env import isolated_tool_environment
+from verified_exec import VerifiedExecutable, VerificationError, open_verified_executable
+
+
+def _trusted_testssl_binary() -> VerifiedExecutable:
+    binary = os.environ.get("SNIPER_TESTSSL_BINARY")
+    if not binary:
+        raise RuntimeError("testssl ikilisi yapılandırılmamış.")
+    binary_path = Path(binary)
+    if not binary_path.is_absolute():
+        raise RuntimeError("testssl ikili yolu mutlak olmalı.")
+    try:
+        resolved = binary_path.resolve(strict=True)
+    except OSError as exc:
+        raise RuntimeError("testssl ikilisi normal bir dosya olmalı.") from exc
+    home = Path.home().resolve()
+    if home not in (resolved, *resolved.parents):
+        raise RuntimeError("testssl ikilisi $HOME altında çözümlenmeli.")
+    expected_sha256 = os.environ.get("SNIPER_TESTSSL_SHA256")
+    if expected_sha256 is None:
+        raise RuntimeError("testssl ikilisi SHA256 değeri yapılandırılmamış.")
+    if len(expected_sha256) != 64 or not all(c in "0123456789abcdef" for c in expected_sha256):
+        raise RuntimeError("testssl ikilisi SHA256 değeri 64 karakterlik küçük harfli onaltılık olmalı.")
+    try:
+        return open_verified_executable(
+            binary_path,
+            {expected_sha256: "configured-testssl-sha256"},
+            label="testssl",
+        )
+    except VerificationError as exc:
+        raise RuntimeError(str(exc)) from exc
 
 
 def run_testssl_loopback(target_ip: str, target_port: int, *, full: bool = False) -> dict[str, Any]:
@@ -64,40 +94,15 @@ def run_testssl_loopback(target_ip: str, target_port: int, *, full: bool = False
         raise RuntimeError("Başka bir testssl taraması sürüyor.")
 
     try:
-        # Validate binary
-        binary = os.environ.get("SNIPER_TESTSSL_BINARY")
-        if not binary:
-            raise RuntimeError("testssl ikilisi yapılandırılmamış.")
-        binary_path = Path(binary)
-        if not binary_path.is_absolute():
-            raise RuntimeError("testssl ikili yolu mutlak olmalı.")
-        resolved = binary_path.resolve()
-        home = Path.home().resolve()
-        if not str(resolved).startswith(str(home) + os.sep) and resolved != home:
-            raise RuntimeError("testssl ikilisi $HOME altında çözümlenmeli.")
-        if binary_path.is_symlink() or not binary_path.is_file():
-            raise RuntimeError("testssl ikilisi normal bir dosya olmalı.")
-        if not os.access(binary_path, os.X_OK):
-            raise RuntimeError("testssl ikilisi çalıştırılabilir olmalı.")
-
-        # Validate hash — mandatory per contract
-        expected_sha256 = os.environ.get("SNIPER_TESTSSL_SHA256")
-        if expected_sha256 is None:
-            raise RuntimeError("testssl ikilisi SHA256 değeri yapılandırılmamış.")
-        if len(expected_sha256) != 64 or not all(c in "0123456789abcdef" for c in expected_sha256):
-            raise RuntimeError("testssl ikilisi SHA256 değeri 64 karakterlik küçük harfli onaltılık olmalı.")
-        actual = hashlib.sha256(binary_path.read_bytes()).hexdigest()
-        if actual != expected_sha256:
-            raise RuntimeError("testssl ikilisi hash değeri uyuşmuyor.")
-
-        # Create private temporary directory
-        with tempfile.TemporaryDirectory(prefix="sniper_testssl_") as tmpdir:
+        # Hashlenen inode'u rapor tamamlanana kadar açık tut; yol sonradan
+        # değiştirilse bile yalnız doğrulanan dosya çalıştırılır.
+        with _trusted_testssl_binary() as binary, tempfile.TemporaryDirectory(prefix="sniper_testssl_") as tmpdir:
             tmpdir_path = Path(tmpdir)
             json_path = tmpdir_path / "report.json"
 
             # Build command — ensure --jsonfile comes BEFORE target
             cmd = [
-                str(binary_path),
+                binary.argv0,
                 "--quiet",
                 "--color", "0",
                 "--warnings", "batch",
@@ -119,6 +124,8 @@ def run_testssl_loopback(target_ip: str, target_port: int, *, full: bool = False
                     stderr=subprocess.DEVNULL,
                     stdin=subprocess.DEVNULL,
                     start_new_session=True,
+                    env=isolated_tool_environment(home=tmpdir_path, tmpdir=tmpdir_path),
+                    **binary.popen_kwargs(),
                 )
                 try:
                     exit_code = proc.wait(timeout=180 if full else 45)

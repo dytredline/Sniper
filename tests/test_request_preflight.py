@@ -17,7 +17,7 @@ class RequestPreflightTests(unittest.TestCase):
         self.old_store, self.old_limiter = server.STORE, server.LIMITER
         server.STORE = Store(Path(self.temp.name) / "fixture.db")
         server.LIMITER = server.RateLimiter()
-        self.httpd = server.SniperHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = server.VulKillHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.port = self.httpd.server_address[1]
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()

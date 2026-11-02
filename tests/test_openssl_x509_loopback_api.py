@@ -77,7 +77,7 @@ class OpenSSLX509LoopbackAPITests(unittest.TestCase):
         os.environ['SNIPER_OPENSSL_CA_SHA256'] = hashlib.sha256(self.trust.read_bytes()).hexdigest()
         os.environ['SNIPER_OPENSSL_BINARY_SHA256'] = hashlib.sha256(Path('/usr/bin/openssl').read_bytes()).hexdigest()
         server.STORE = Store(self.data / 'sniper.db')
-        self.http = ThreadingHTTPServer(('127.0.0.1', 0), server.SniperHandler)
+        self.http = ThreadingHTTPServer(('127.0.0.1', 0), server.VulKillHandler)
         self.http.daemon_threads = True
         self.thread = threading.Thread(target=self.http.serve_forever, daemon=True)
         self.thread.start()

@@ -55,14 +55,14 @@ if [ -z "$json_file" ]; then
   exit 1
 fi
 """)
-        self.testssl_bin.chmod(self.testssl_bin.stat().st_mode | stat.S_IXUSR)
+        self.testssl_bin.chmod(0o700)
 
         # Compute real hash for hash check
         self.testssl_hash = hashlib.sha256(self.testssl_bin.read_bytes()).hexdigest()
         os.environ["SNIPER_TESTSSL_BINARY"] = str(self.testssl_bin)
         os.environ["SNIPER_TESTSSL_SHA256"] = self.testssl_hash
 
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         self.httpd.daemon_threads = True
         self.thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.thread.start()
@@ -184,7 +184,7 @@ for arg in "$@"; do
   fi
 done
 """)
-        self.testssl_bin.chmod(self.testssl_bin.stat().st_mode | stat.S_IXUSR)
+        self.testssl_bin.chmod(0o700)
         self.testssl_hash = hashlib.sha256(self.testssl_bin.read_bytes()).hexdigest()
         os.environ["SNIPER_TESTSSL_SHA256"] = self.testssl_hash
 

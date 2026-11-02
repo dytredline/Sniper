@@ -36,7 +36,7 @@ def _make_test_catalog(tmp_path: pathlib.Path, real_file_id: str, real_file_cont
     index_sha = hashlib.sha256(index_bytes).hexdigest()
     
     # Write index
-    index_path = tmp_path / "SNIPER-HTTP-ID-INDEX.json"
+    index_path = tmp_path / "VULKILL-HTTP-ID-INDEX.json"
     index_path.write_bytes(index_bytes)
     
     # Create real file
@@ -67,7 +67,7 @@ def test_resolve_http_template_paths_accepts_pinned_yml_file(tmp_path: pathlib.P
         "ids_paths_hashes": [["alternate", relative, digest]],
     }
     index_bytes = json.dumps(index_data, separators=(",", ":")).encode("utf-8")
-    (tmp_path / "SNIPER-HTTP-ID-INDEX.json").write_bytes(index_bytes)
+    (tmp_path / "VULKILL-HTTP-ID-INDEX.json").write_bytes(index_bytes)
     target = tmp_path / relative
     target.parent.mkdir(parents=True)
     target.write_bytes(content)

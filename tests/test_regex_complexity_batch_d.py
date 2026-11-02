@@ -23,13 +23,13 @@ def test_mobile_manifest_attribute_semantics() -> None:
       <data android:host="example.test" android:scheme="myapp" />
       <data android:scheme="https" />
     </manifest>'''
-    assert "SNIPER-MOB-MAN-07" in _mobile_rules(manifest, "AndroidManifest.xml")
+    assert "VULKILL-MOB-MAN-07" in _mobile_rules(manifest, "AndroidManifest.xml")
 
     network = '<network-security-config><certificates src="user" /></network-security-config>'
-    assert "SNIPER-MOB-NSC-02" in _mobile_rules(network, "network_security_config.xml")
+    assert "VULKILL-MOB-NSC-02" in _mobile_rules(network, "network_security_config.xml")
 
     gradle = "release { minifyEnabled = false }"
-    assert "SNIPER-MOB-GRD-01" in _mobile_rules(gradle, "build.gradle")
+    assert "VULKILL-MOB-GRD-01" in _mobile_rules(gradle, "build.gradle")
 
 
 def test_mobile_unterminated_deep_links_are_bounded() -> None:
@@ -48,7 +48,7 @@ def test_mobile_unterminated_certificates_are_bounded() -> None:
         payload, filename="network_security_config.xml"
     )
     elapsed = time.perf_counter() - started
-    assert not any(finding["control_id"] == "SNIPER-MOB-NSC-02" for finding in report["findings"])
+    assert not any(finding["control_id"] == "VULKILL-MOB-NSC-02" for finding in report["findings"])
     assert elapsed < 0.3, f"Android certificates parsing took {elapsed:.3f}s"
 
 
@@ -57,7 +57,7 @@ def test_mobile_minify_spacing_is_bounded() -> None:
     started = time.perf_counter()
     report = mobile_security_auditor.audit_mobile_manifest_inline(payload, filename="build.gradle")
     elapsed = time.perf_counter() - started
-    assert not any(finding["control_id"] == "SNIPER-MOB-GRD-01" for finding in report["findings"])
+    assert not any(finding["control_id"] == "VULKILL-MOB-GRD-01" for finding in report["findings"])
     assert elapsed < 0.2, f"Gradle minify setting parsing took {elapsed:.3f}s"
 
 

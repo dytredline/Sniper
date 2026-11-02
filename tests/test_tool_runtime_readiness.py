@@ -197,7 +197,7 @@ class RuntimeReadinessTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=Path.home()) as temp:
             previous_store = server.STORE
             server.STORE = Store(Path(temp) / "sniper.db")
-            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+            httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
             httpd.daemon_threads = True
             thread = threading.Thread(target=httpd.serve_forever, daemon=True)
             thread.start()

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from process_group_runner import run_in_process_group
+from tool_child_env import isolated_tool_environment
 from project_tree import ProjectTree, ProjectTreeError
 from safe_file_read import read_bytes_bounded
 from tool_pins import PINS, configured_binary, open_pinned
@@ -891,13 +892,17 @@ def run_local_semgrep(project_path: str) -> dict[str, Any]:
                     cmd.extend(["--max-target-bytes", os.environ["SNIPER_SEMGREP_MAX_TARGET_BYTES"]])
                 run_cwd = None
 
-            env = os.environ.copy()
-            env["SEMGREP_SEND_METRICS"] = "off"
-            # Set Semgrep HOME and XDG_CACHE_HOME inside scratch to avoid home writes
-            env["HOME"] = str(snapshot_root / ".semgrep_home")
-            env["XDG_CACHE_HOME"] = str(snapshot_root / ".semgrep_cache")
+            # Set Semgrep HOME and XDG_CACHE_HOME inside scratch to avoid home writes.
             (snapshot_root / ".semgrep_home").mkdir(exist_ok=True)
             (snapshot_root / ".semgrep_cache").mkdir(exist_ok=True)
+            env = isolated_tool_environment(
+                home=snapshot_root / ".semgrep_home",
+                tmpdir=snapshot_root,
+                overrides={
+                    "XDG_CACHE_HOME": snapshot_root / ".semgrep_cache",
+                    "SEMGREP_SEND_METRICS": "off",
+                },
+            )
             if engine == "opengrep":
                 # Kural paketi UTF-8 (Türkçe iletiler); Opengrep yapılandırmayı yerel
                 # ayarın kodlamasıyla okur, servis ortamında LANG olmayabilir.

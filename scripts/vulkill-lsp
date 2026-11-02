@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""VulKill LSP entrypoint; keeps the original script as a compatibility alias."""
+"""VulKill LSP entrypoint; the legacy command remains as a compatibility alias."""
 
 from pathlib import Path
 import runpy

@@ -10,8 +10,8 @@ import server
 
 class ResponseHeaderSafetyTests(unittest.TestCase):
     @staticmethod
-    def handler() -> server.SniperHandler:
-        handler = server.SniperHandler.__new__(server.SniperHandler)
+    def handler() -> server.VulKillHandler:
+        handler = server.VulKillHandler.__new__(server.VulKillHandler)
         handler.command = "GET"
         handler.request_version = "HTTP/1.1"
         handler.requestline = "GET /response-header-proof HTTP/1.1"

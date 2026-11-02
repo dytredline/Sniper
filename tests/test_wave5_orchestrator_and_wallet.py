@@ -31,10 +31,10 @@ def start_winarena_container(args, setup_path: str) -> None:
     assert res["finding_count"] >= 2
 
     by_id = {f["control_id"]: f for f in res["findings"]}
-    assert "SNIPER-ORCH-PORT-01" in by_id
-    assert "SNIPER-ORCH-MOUNT-02" in by_id
+    assert "VULKILL-ORCH-PORT-01" in by_id
+    assert "VULKILL-ORCH-MOUNT-02" in by_id
 
-    port_f = by_id["SNIPER-ORCH-PORT-01"]
+    port_f = by_id["VULKILL-ORCH-PORT-01"]
     assert port_f["cwe"] == "CWE-668"
     assert port_f["reference"] == "CWE-668"
     assert port_f["severity"] == "high"
@@ -44,7 +44,7 @@ def start_winarena_container(args, setup_path: str) -> None:
         == "Programatik konteyner/VM başlatıcısında (docker run) 0.0.0.0 arayüzüne açık hassas port bağlaması"
     )
 
-    mount_f = by_id["SNIPER-ORCH-MOUNT-02"]
+    mount_f = by_id["VULKILL-ORCH-MOUNT-02"]
     assert mount_f["cwe"] == "CWE-732"
     assert mount_f["reference"] == "CWE-732"
     assert mount_f["severity"] == "high"
@@ -79,8 +79,8 @@ export function launchSandboxContainer(port: number, browser_port: number, setup
     )
     assert res["finding_count"] >= 2
     control_ids = {f["control_id"] for f in res["findings"]}
-    assert "SNIPER-ORCH-PORT-01" in control_ids
-    assert "SNIPER-ORCH-MOUNT-02" in control_ids
+    assert "VULKILL-ORCH-PORT-01" in control_ids
+    assert "VULKILL-ORCH-MOUNT-02" in control_ids
 
 
 def test_orch_port_01_and_mount_02_green_patched_loopback_and_readonly() -> None:
@@ -156,7 +156,7 @@ class WalletRpcApi:
     assert res["finding_count"] == 1
 
     f = res["findings"][0]
-    assert f["control_id"] == "SNIPER-WALLET-SPEND-01"
+    assert f["control_id"] == "VULKILL-WALLET-SPEND-01"
     assert f["cwe"] == "CWE-863"
     assert f["reference"] == "CWE-863"
     assert f["severity"] == "high"
@@ -205,7 +205,7 @@ def sign_governance_payload(sk, payload_hash: bytes):
     )
     assert res["finding_count"] == 1
     f = res["findings"][0]
-    assert f["control_id"] == "SNIPER-CRYPTO-DOMAIN-02"
+    assert f["control_id"] == "VULKILL-CRYPTO-DOMAIN-02"
     assert f["cwe"] == "CWE-347"
     assert f["reference"] == "CWE-347"
     assert f["severity"] == "high"

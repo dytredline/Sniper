@@ -35,7 +35,7 @@ class PlaywrightAuthorizedAPITests(unittest.TestCase):
         self.env = mock.patch.dict(os.environ, {"SNIPER_DATA_DIR": str(self.data), "SNIPER_QUIET": "1"})
         self.env.start()
         self.addCleanup(self.env.stop)
-        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.SniperHandler)
+        self.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.VulKillHandler)
         threading.Thread(target=self.httpd.serve_forever, daemon=True).start()
         self.addCleanup(self.httpd.server_close)
         self.addCleanup(self.httpd.shutdown)

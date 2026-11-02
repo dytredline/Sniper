@@ -64,14 +64,14 @@ test('audit page contains the human authorization checkbox control', () => {
 
 test('tool-specific consent text discloses Qualys transfer and schema mutations', () => {
   const f = fixture();
-  const text = f.window.SniperMCPScanApproval.consentText;
+  const text = f.window.VulKillMCPScanApproval.consentText;
   assert.match(text({ parameters: { tool_id: 'ssllabs' } }), /Qualys SSL Labs/);
   assert.match(text({ parameters: { tool_id: 'schemathesis' } }), /POST\/DELETE/);
 });
 
 test('approval plan text shows bounded effective profile and scope without HTML rendering', () => {
   const f = fixture();
-  const text = f.window.SniperMCPScanApproval.planText;
+  const text = f.window.VulKillMCPScanApproval.planText;
   assert.match(text({ parameters: { tool_id: 'nmap' }, effective_profile: 'service-light',
     scope_summary: ['Tek host/IP için sabit port seti (service-light)'] }), /service-light/);
   assert.match(text({ parameters: { tool_id: 'testssl' }, effective_profile: 'full',

@@ -30,7 +30,7 @@ function load(response) {
     },
   };
   vm.runInNewContext(source, { window, globalThis: window, document, fetch: window.fetch, Intl, Date, Number, Math, String, Error });
-  return { ids, calls, api: window.SniperSystemVersion };
+  return { ids, calls, api: window.VulKillSystemVersion };
 }
 
 const PAYLOAD = {

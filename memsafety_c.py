@@ -4674,7 +4674,7 @@ def _run_guarded(fm: FileModel, f: Any, sink: Sink) -> None:
     """Fonksiyon çözümlemesi; beklenmeyen bir ayrıştırma durumu yalnız o fonksiyonu atlatır (dosya analizi sürer)."""
     try:
         FuncAnalyzer(fm, f, sink).run()
-    except (TypeError, KeyError, AttributeError, ValueError, IndexError, ZeroDivisionError):
+    except (_ParseError, TypeError, KeyError, AttributeError, ValueError, IndexError, ZeroDivisionError):
         return
 
 
@@ -5213,7 +5213,7 @@ def detect_extended_c_memory_hazards(text: str, path: str = "buffer.c", *, filen
                         )
                     )
 
-    # (d) SNIPER-MEM-TRUNC-01: 64-bit to 32-bit Integer Truncation before Allocation / Copy (CWE-190)
+    # (d) VULKILL-MEM-TRUNC-01: 64-bit to 32-bit Integer Truncation before Allocation / Copy (CWE-190)
     scopes: list[tuple[str, int, int]] = []
     if func_ranges:
         for lo_line, _hi_line, cand_name, _start_off, end_off in func_ranges:
@@ -5304,7 +5304,7 @@ def detect_extended_c_memory_hazards(text: str, path: str = "buffer.c", *, filen
                         severity="critical",
                         title="64-bit uzunluk değerinin 32-bit tamsayıya daraltılması (Integer Truncation) sonrası yığın taşması",
                         evidence=(
-                            f"SNIPER-MEM-TRUNC-01: 64-bit `{matched_var64}` ({type64}) üst sınır denetimi "
+                            f"VULKILL-MEM-TRUNC-01: 64-bit `{matched_var64}` ({type64}) üst sınır denetimi "
                             f"(`UINT32_MAX` / `0xffffffff`) yapılmadan 32-bit `{var32}` ({type32}) değişkenine "
                             f"daraltılarak ayırma/kopyalama boyutunda kullanılıyor (CWE-190)"
                         ),

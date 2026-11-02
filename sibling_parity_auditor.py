@@ -3,10 +3,10 @@
 Aynı ad alanı (namespace), taban sınıf (base class) veya servis ailesi içindeki
 kardeş uç noktalar, servis dalları, dönüştürücüler ve dosya sistemi işleyicileri
 arasındaki asimetrik güvenlik kontrollerini tespit eder:
-- SNIPER-PARITY-RAILS-01: Kardeş Rails Controller sınıfları arasında eksik before_action güvenlik paritesi.
-- SNIPER-PARITY-SVC-02: Servis içinde asimetrik Ability.allowed? veya rezerve anahtar (.except) parite eksikliği.
-- SNIPER-PARITY-SINK-03: Kardeş dönüştürücü/렌더러 sınıfları arasında eksik HTML sanitizasyonu veya --allowed-protocols kısıtı.
-- SNIPER-PARITY-FS-04: Kardeş dosya sistemi dallarında asimetrik isSymbolicLink / validateBackupFile kontrolü.
+- VULKILL-PARITY-RAILS-01: Kardeş Rails Controller sınıfları arasında eksik before_action güvenlik paritesi.
+- VULKILL-PARITY-SVC-02: Servis içinde asimetrik Ability.allowed? veya rezerve anahtar (.except) parite eksikliği.
+- VULKILL-PARITY-SINK-03: Kardeş dönüştürücü/렌더러 sınıfları arasında eksik HTML sanitizasyonu veya --allowed-protocols kısıtı.
+- VULKILL-PARITY-FS-04: Kardeş dosya sistemi dallarında asimetrik isSymbolicLink / validateBackupFile kontrolü.
 """
 
 from __future__ import annotations
@@ -144,7 +144,7 @@ def _audit_rails_controllers(files_map: dict[str, str]) -> list[dict[str, Any]]:
             )
             findings.append(
                 {
-                    "rule_id": "SNIPER-PARITY-RAILS-01",
+                    "rule_id": "VULKILL-PARITY-RAILS-01",
                     "cwe": "CWE-863",
                     "reference": "CWE-863",
                     "severity": "high",
@@ -187,7 +187,7 @@ def _audit_service_authz_and_except_parity(
                 line_no = _line_number(content, em.start())
                 findings.append(
                     {
-                        "rule_id": "SNIPER-PARITY-SVC-02",
+                        "rule_id": "VULKILL-PARITY-SVC-02",
                         "cwe": "CWE-862",
                         "reference": "CWE-862",
                         "severity": "high",
@@ -242,7 +242,7 @@ def _audit_service_authz_and_except_parity(
                 for m_name, line_no, snippet in unguarded_methods:
                     findings.append(
                         {
-                            "rule_id": "SNIPER-PARITY-SVC-02",
+                            "rule_id": "VULKILL-PARITY-SVC-02",
                             "cwe": "CWE-862",
                             "reference": "CWE-862",
                             "severity": "high",
@@ -275,7 +275,7 @@ def _audit_service_authz_and_except_parity(
                 line_no = _line_number(content, m.start()) if m else 1
                 findings.append(
                     {
-                        "rule_id": "SNIPER-PARITY-SVC-02",
+                        "rule_id": "VULKILL-PARITY-SVC-02",
                         "cwe": "CWE-862",
                         "reference": "CWE-862",
                         "severity": "high",
@@ -352,7 +352,7 @@ def _audit_converter_sink_parity(files_map: dict[str, str]) -> list[dict[str, An
         for ug in unguarded:
             findings.append(
                 {
-                    "rule_id": "SNIPER-PARITY-SINK-03",
+                    "rule_id": "VULKILL-PARITY-SINK-03",
                     "cwe": "CWE-918",
                     "reference": "CWE-918",
                     "severity": "high",
@@ -437,7 +437,7 @@ def _audit_filesystem_branch_parity(files_map: dict[str, str]) -> list[dict[str,
                     emitted_in_file = True
                     findings.append(
                         {
-                            "rule_id": "SNIPER-PARITY-FS-04",
+                            "rule_id": "VULKILL-PARITY-FS-04",
                             "cwe": "CWE-59",
                             "reference": "CWE-59",
                             "severity": "high",
@@ -464,7 +464,7 @@ def _audit_filesystem_branch_parity(files_map: dict[str, str]) -> list[dict[str,
                 line_no = _line_number(content, um.start())
                 findings.append(
                     {
-                        "rule_id": "SNIPER-PARITY-FS-04",
+                        "rule_id": "VULKILL-PARITY-FS-04",
                         "cwe": "CWE-59",
                         "reference": "CWE-59",
                         "severity": "high",
@@ -546,7 +546,7 @@ def _audit_express_router_client_auth_parity(
             evidence = cond_match.group(0).strip().splitlines()[0].strip()
             findings.append(
                 {
-                    "rule_id": "SNIPER-PARITY-ROUTE-05",
+                    "rule_id": "VULKILL-PARITY-ROUTE-05",
                     "cwe": "CWE-306",
                     "reference": "CWE-306",
                     "severity": "high",
@@ -592,7 +592,7 @@ def _audit_express_router_client_auth_parity(
                 evidence = auth_code_match.group(0).strip()
                 findings.append(
                     {
-                        "rule_id": "SNIPER-PARITY-ROUTE-05",
+                        "rule_id": "VULKILL-PARITY-ROUTE-05",
                         "cwe": "CWE-306",
                         "reference": "CWE-306",
                         "severity": "high",
@@ -643,7 +643,7 @@ def _audit_sdk_postmessage_bridge_parity(
         evidence = wm.group(0).strip()
         findings.append(
             {
-                "rule_id": "SNIPER-PARITY-BRIDGE-06",
+                "rule_id": "VULKILL-PARITY-BRIDGE-06",
                 "cwe": "CWE-346",
                 "reference": "CWE-346",
                 "severity": "high",

@@ -145,7 +145,7 @@
     load();
   }
 
-  scope.SniperMCPScanApproval = { render, load, targetText, consentText, planText };
+  scope.VulKillMCPScanApproval = { render, load, targetText, consentText, planText };
   if (typeof document !== "undefined") {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
     else start();

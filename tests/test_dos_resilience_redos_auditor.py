@@ -41,9 +41,9 @@ class DosResilienceInlineTests(unittest.TestCase):
             "import requests, re, zlib\nr = requests.get(url)\nP = re.compile(r'(a+)+$')\nzlib.decompress(data)\n"
         )
         controls = {(f["control_id"], f["severity"]) for f in result["findings"]}
-        self.assertIn(("SNIPER-DOS-02", "medium"), controls)
-        self.assertIn(("SNIPER-DOS-01", "high"), controls)
-        self.assertIn(("SNIPER-DOS-03", "medium"), controls)
+        self.assertIn(("VULKILL-DOS-02", "medium"), controls)
+        self.assertIn(("VULKILL-DOS-01", "high"), controls)
+        self.assertIn(("VULKILL-DOS-03", "medium"), controls)
 
     def test_safe_code_has_no_findings(self):
         result = audit_dos_resilience_inline(

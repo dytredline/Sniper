@@ -66,7 +66,7 @@ class RlsExactTableMatchTests(unittest.TestCase):
             "ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;\n"
         )
         result = audit_database_schema_inline(schema, filename="schema.sql")
-        rls = [f for f in result["findings"] if f["control_id"] == "SNIPER-AUTHZ-04"]
+        rls = [f for f in result["findings"] if f["control_id"] == "VULKILL-AUTHZ-04"]
         self.assertEqual(len(rls), 1)
         self.assertIn("'t'", rls[0]["title"])
 
@@ -78,7 +78,7 @@ class RlsExactTableMatchTests(unittest.TestCase):
             "CREATE POLICY tenant_isolation ON invoices USING (org_id = current_setting('app.org')::uuid);\n"
         )
         result = audit_database_schema_inline(schema, filename="schema.sql")
-        self.assertFalse([f for f in result["findings"] if f["control_id"] == "SNIPER-AUTHZ-04"])
+        self.assertFalse([f for f in result["findings"] if f["control_id"] == "VULKILL-AUTHZ-04"])
 
 
 if __name__ == "__main__":

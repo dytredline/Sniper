@@ -79,7 +79,7 @@ class _BudgetHTTPServer(ThreadingHTTPServer):
 
 class _PingHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.0"
-    server_version = "SniperSyntheticFixture/1"
+    server_version = "VulKillSyntheticFixture/1"
     sys_version = ""
 
     def parse_request(self) -> bool:

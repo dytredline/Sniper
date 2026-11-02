@@ -6,7 +6,6 @@ import io
 import json
 import os
 from pathlib import Path
-import stat
 import subprocess
 import tempfile
 import unittest
@@ -26,8 +25,8 @@ import trivy_image_archive_active
 
 class CodeQLNonPathProductGuardTests(unittest.TestCase):
     @staticmethod
-    def _handler() -> server.SniperHandler:
-        handler = server.SniperHandler.__new__(server.SniperHandler)
+    def _handler() -> server.VulKillHandler:
+        handler = server.VulKillHandler.__new__(server.VulKillHandler)
         handler.command = "GET"
         handler.request_version = "HTTP/1.1"
         handler.requestline = "GET /codeql-product-guard HTTP/1.1"
@@ -91,18 +90,18 @@ class CodeQLNonPathProductGuardTests(unittest.TestCase):
             database_bytes = b"synthetic trivy db"
             (database / "trivy.db").write_bytes(database_bytes)
 
+            argv_capture = root / "trivy-argv.json"
             fake_trivy = root / "fake-trivy"
             fake_trivy.write_text(
                 "#!/usr/bin/python3\n"
                 "import json, os, pathlib, sys\n"
-                "pathlib.Path(os.environ['SNIPER_ARGV_CAPTURE']).write_text(json.dumps(sys.argv[1:]))\n"
+                f"pathlib.Path({str(argv_capture)!r}).write_text(json.dumps(sys.argv[1:]))\n"
                 "out = sys.argv[sys.argv.index('--output') + 1]\n"
                 "pathlib.Path(out).write_text(json.dumps({'SchemaVersion': 2, 'Results': []}))\n",
                 encoding="utf-8",
             )
-            fake_trivy.chmod(fake_trivy.stat().st_mode | stat.S_IXUSR)
+            fake_trivy.chmod(0o700)
             sentinel = root / "command-injection-sentinel.tar"
-            argv_capture = root / "trivy-argv.json"
 
             environment = {
                 "SNIPER_DATA_DIR": str(data_dir),
@@ -111,7 +110,6 @@ class CodeQLNonPathProductGuardTests(unittest.TestCase):
                 "SNIPER_TRIVY_VULN_CACHE_DIR": str(cache),
                 "SNIPER_TRIVY_VULN_DB_SHA256": hashlib.sha256(database_bytes).hexdigest(),
                 "SNIPER_SENTINEL": str(sentinel.with_suffix("")),
-                "SNIPER_ARGV_CAPTURE": str(argv_capture),
             }
             with mock.patch.dict(os.environ, environment, clear=False):
                 result = trivy_image_archive_active.run_local_trivy_image_archive_vulnerability(

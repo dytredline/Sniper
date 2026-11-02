@@ -23,6 +23,7 @@
       <label>Parola<input name="password" id="auth-password" type="password" autocomplete="current-password" maxlength="256" required></label>
       <button class="button primary" type="submit">Giriş yap</button>
     </form>
+    <a id="auth-oidc-login" class="button hidden" href="/api/auth/oidc/start">Kurumsal hesapla giriş yap</a>
     <form id="auth-totp-form" class="hidden" autocomplete="off">
       <label>Doğrulama kodu (6 hane)<input name="code" id="auth-totp-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6"></label>
       <label>ya da kurtarma kodu<input name="recovery_code" id="auth-recovery-code" autocomplete="off" maxlength="16" placeholder="xxxxx-xxxxx"></label>

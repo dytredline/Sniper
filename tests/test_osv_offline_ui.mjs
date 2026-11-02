@@ -19,7 +19,7 @@ function load() {
   const document = { createElement: (tag) => node(tag) };  // readyState/addEventListener yok → otomatik bağlama atlanır
   const window = {};
   vm.runInNewContext(source, { window, globalThis: window, document, String, Number, Object, JSON, Error, Promise, Array, Date });
-  return window.SniperOsvOffline;
+  return window.VulKillOsvOffline;
 }
 
 function texts(root) {

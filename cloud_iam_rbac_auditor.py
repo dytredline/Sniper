@@ -15,12 +15,12 @@ MAX_INLINE_BYTES = 512_000
 MAX_PROJECT_FILES = 1_500
 
 CLOUD_IAM_CONTROLS_EVALUATED: list[str] = [
-    "SNIPER-CONF-08",
-    "SNIPER-AUTHZ-02",
-    "SNIPER-DATA-02",
-    "SNIPER-CRYP-03",
-    "SNIPER-INFR-01",
-    "SNIPER-INFR-03",
+    "VULKILL-CONF-08",
+    "VULKILL-AUTHZ-02",
+    "VULKILL-DATA-02",
+    "VULKILL-CRYP-03",
+    "VULKILL-INFR-01",
+    "VULKILL-INFR-03",
 ]
 
 CLOUD_SCAN_EXTENSIONS: set[str] = {".json", ".yaml", ".yml", ".tf", ".tfvars"}
@@ -229,7 +229,7 @@ def audit_cloud_iam_and_k8s_rbac(
                                 "hizmet eylemlerini ve belirli ARN kaynaklarını tanımlayın."
                             ),
                             cwe="CWE-250",
-                            control_id="SNIPER-CONF-08",
+                            control_id="VULKILL-CONF-08",
                             filename=clean_filename,
                             line=1,
                         )
@@ -259,7 +259,7 @@ def audit_cloud_iam_and_k8s_rbac(
                                 "sts:AssumeRole izinlerini belirli hedef ARN'ler ve IAM Conditions ile kısıtlayın."
                             ),
                             cwe="CWE-269",
-                            control_id="SNIPER-AUTHZ-02",
+                            control_id="VULKILL-AUTHZ-02",
                             filename=clean_filename,
                             line=1,
                         )
@@ -281,7 +281,7 @@ def audit_cloud_iam_and_k8s_rbac(
                                 "etkinleştirin ve erişimi belirli IAM rolleri veya VPC uç noktalarıyla sınırlandırın."
                             ),
                             cwe="CWE-284",
-                            control_id="SNIPER-DATA-02",
+                            control_id="VULKILL-DATA-02",
                             filename=clean_filename,
                             line=1,
                         )
@@ -311,7 +311,7 @@ def audit_cloud_iam_and_k8s_rbac(
                     "hizmet eylemlerini ve belirli ARN kaynaklarını tanımlayın."
                 ),
                 cwe="CWE-250",
-                control_id="SNIPER-CONF-08",
+                control_id="VULKILL-CONF-08",
                 filename=clean_filename,
                 line=line_no,
             )
@@ -341,7 +341,7 @@ def audit_cloud_iam_and_k8s_rbac(
                         "(ör. iam:PassedToService, MFA) kontrolleri ekleyin."
                     ),
                     cwe="CWE-269",
-                    control_id="SNIPER-AUTHZ-02",
+                    control_id="VULKILL-AUTHZ-02",
                     filename=clean_filename,
                     line=line_no,
                 )
@@ -375,7 +375,7 @@ def audit_cloud_iam_and_k8s_rbac(
                     "ve nesne erişimini imzalı URL'ler veya özel IAM rolleri üzerinden sağlayın."
                 ),
                 cwe="CWE-284",
-                control_id="SNIPER-DATA-02",
+                control_id="VULKILL-DATA-02",
                 filename=clean_filename,
                 line=line_no,
             )
@@ -403,7 +403,7 @@ def audit_cloud_iam_and_k8s_rbac(
                     "şifrelemesini (encrypted = true, storage_encrypted = true) zorunlu kılın."
                 ),
                 cwe="CWE-311",
-                control_id="SNIPER-CRYP-03",
+                control_id="VULKILL-CRYP-03",
                 filename=clean_filename,
                 line=line_no,
             )
@@ -425,7 +425,7 @@ def audit_cloud_iam_and_k8s_rbac(
                     evidence=snippet,
                     recommendation="Kaynak bloğuna encrypted = true / storage_encrypted = true ve kms_key_id ekleyin.",
                     cwe="CWE-311",
-                    control_id="SNIPER-CRYP-03",
+                    control_id="VULKILL-CRYP-03",
                     filename=clean_filename,
                     line=line_no,
                 )
@@ -460,7 +460,7 @@ def audit_cloud_iam_and_k8s_rbac(
                         "VPN/Bastion, özel alt ağ (private subnet) veya belirli güvenlik gruplarıyla sınırlandırın."
                     ),
                     cwe="CWE-284",
-                    control_id="SNIPER-INFR-01",
+                    control_id="VULKILL-INFR-01",
                     filename=clean_filename,
                     line=line_no,
                 )
@@ -488,7 +488,7 @@ def audit_cloud_iam_and_k8s_rbac(
                     "kapsamlı ve yalnızca gerekli fiilleri içeren özel Role tanımları kullanın."
                 ),
                 cwe="CWE-250",
-                control_id="SNIPER-CONF-08",
+                control_id="VULKILL-CONF-08",
                 filename=clean_filename,
                 line=line_no,
             )
@@ -508,7 +508,7 @@ def audit_cloud_iam_and_k8s_rbac(
                 evidence=snippet,
                 recommendation="Wildcard ('*') fiillerini kaldırıp yalnızca get, list, watch gibi gerekli fiilleri belirtin.",
                 cwe="CWE-250",
-                control_id="SNIPER-CONF-08",
+                control_id="VULKILL-CONF-08",
                 filename=clean_filename,
                 line=line_no,
             )
@@ -538,7 +538,7 @@ def audit_cloud_iam_and_k8s_rbac(
                         "genel rollerden kaldırın ve RBAC kapsamını daraltın."
                     ),
                     cwe="CWE-250",
-                    control_id="SNIPER-CONF-08",
+                    control_id="VULKILL-CONF-08",
                     filename=clean_filename,
                     line=line_no,
                 )
@@ -566,7 +566,7 @@ def audit_cloud_iam_and_k8s_rbac(
                     "automountServiceAccountToken: false ayarlayın."
                 ),
                 cwe="CWE-284",
-                control_id="SNIPER-INFR-03",
+                control_id="VULKILL-INFR-03",
                 filename=clean_filename,
                 line=line_no,
             )
@@ -595,7 +595,7 @@ def audit_cloud_iam_and_k8s_rbac(
                     "ingress/egress kuralları içeren bir Kubernetes NetworkPolicy ekleyin."
                 ),
                 cwe="CWE-284",
-                control_id="SNIPER-INFR-03",
+                control_id="VULKILL-INFR-03",
                 filename=clean_filename,
                 line=line_no,
             )
@@ -624,7 +624,7 @@ def audit_cloud_iam_and_k8s_rbac(
                     "http_put_response_hop_limit = 1 ayarlarını zorunlu kılın."
                 ),
                 cwe="CWE-918",
-                control_id="SNIPER-INFR-03",
+                control_id="VULKILL-INFR-03",
                 filename=clean_filename,
                 line=line_no,
             )
@@ -654,7 +654,7 @@ def audit_cloud_iam_and_k8s_rbac(
                     "docker.sock/containerd.sock hostPath bağlamalarını kaldırın ve Pod Security Standards 'restricted' profilini uygulayın."
                 ),
                 cwe="CWE-250",
-                control_id="SNIPER-CONF-08",
+                control_id="VULKILL-CONF-08",
                 filename=clean_filename,
                 line=line_no,
             )
@@ -742,7 +742,7 @@ def audit_cloud_privesc_chains(
             seen_keys.add(key)
             findings.append(finding)
 
-    # (a) SNIPER-CLOUD-PRIVESC-01: AWS IAM PassRole + Workload Execution chain
+    # (a) VULKILL-CLOUD-PRIVESC-01: AWS IAM PassRole + Workload Execution chain
     passrole_re = re.compile(r"\biam:(?:PassRole|\*)", re.IGNORECASE)
     workload_exec_re = re.compile(
         r"\b(?:ec2:(?:RunInstances|\*)|lambda:(?:CreateFunction|\*)|"
@@ -771,14 +771,14 @@ def audit_cloud_privesc_chains(
                     "iam:PassedToService koşulunu zorunlu kılın."
                 ),
                 cwe="CWE-269",
-                control_id="SNIPER-CLOUD-PRIVESC-01",
+                control_id="VULKILL-CLOUD-PRIVESC-01",
                 filename=clean_filename,
                 line=line_no,
             ),
             desc,
         )
 
-    # (b) SNIPER-CLOUD-OIDC-02: GitHub Actions OIDC AssumeRoleWithWebIdentity missing/wildcard sub condition
+    # (b) VULKILL-CLOUD-OIDC-02: GitHub Actions OIDC AssumeRoleWithWebIdentity missing/wildcard sub condition
     web_id_match = re.search(r"\b(?:sts:)?AssumeRoleWithWebIdentity\b", raw_content, re.IGNORECASE)
     gh_oidc_match = re.search(r"token\.actions\.githubusercontent\.com", raw_content, re.IGNORECASE)
     if web_id_match and gh_oidc_match:
@@ -786,7 +786,7 @@ def audit_cloud_privesc_chains(
             re.finditer(r"token\.actions\.githubusercontent\.com:sub\b", raw_content, re.IGNORECASE)
         )
         wildcard_sub_re = re.compile(
-            r'["\']\s*+(?:\*|repo:\*(?:[:/][^"\']*+)?|repo:[^/"\']++/\*(?:[:/][^"\']*+)?)\s*+["\']',
+            r'["\']\s*(?:\*|repo:\*(?:[:/][^"\']*)?|repo:[^/"\']+/\*(?:[:/][^"\']*)?)\s*["\']',
             re.IGNORECASE,
         )
         has_missing_or_wildcard_sub = False
@@ -822,14 +822,14 @@ def audit_cloud_privesc_chains(
                         "'repo:ORG/REPO:ref:refs/heads/main' gibi belirli organizasyon, depo ve dal ile sınırlandırın."
                     ),
                     cwe="CWE-287",
-                    control_id="SNIPER-CLOUD-OIDC-02",
+                    control_id="VULKILL-CLOUD-OIDC-02",
                     filename=clean_filename,
                     line=line_no,
                 ),
                 desc,
             )
 
-    # (c) SNIPER-K8S-ESCAPE-03: Kubernetes Pod-Escape chain (hostPID/hostIPC/hostNetwork/privileged/docker.sock)
+    # (c) VULKILL-K8S-ESCAPE-03: Kubernetes Pod-Escape chain (hostPID/hostIPC/hostNetwork/privileged/docker.sock)
     k8s_escape_chain_re = re.compile(
         r"(?im)(?:\b(?:privileged|hostPID|hostIPC|hostNetwork|host_pid|host_ipc|host_network)\s*[:=]\s*true\b"
         r"|(?:/var/run/docker\.sock|/run/containerd/containerd\.sock|/var/run/crio/crio\.sock))"
@@ -854,7 +854,7 @@ def audit_cloud_privesc_chains(
                     "docker.sock ve containerd.sock hostPath bağlamalarını kaldırın."
                 ),
                 cwe="CWE-250",
-                control_id="SNIPER-K8S-ESCAPE-03",
+                control_id="VULKILL-K8S-ESCAPE-03",
                 filename=clean_filename,
                 line=line_no,
             ),

@@ -156,11 +156,11 @@ def test_rendered_report_bytes_match_r58_contract() -> None:
     }
     expected = {
         "scan_html": "f86502fda870e78ed8bd65c18e967a0af404989827ec64715633416fdd08e314",
-        "scan_sarif": "17f1876fa7ed2d29d16754938be1f968964338ec8a8f3983c721e567709074f4",
+        "scan_sarif": "67ebd6c1d3378385bea1e5d59fd13120462b1d1aa3fecc71bb665a043f6a9843",
         "diff_html": "98bdb4be62ebc1659a2882d2c4d34e93f98cb5728bb8ecfe08150c2c355a386b",
         "diff_csv": "607658c1122cf0b45788ec957b4823e9d29bb5ac898594e8698e6fdf6408d902",
         "eng_html": "7aa73c2dcb48a70a7dccc3d2567784036e9bbb8cd3f58f1dcc84b63827c96840",
         "eng_csv": "f273755eec394d48b2426aaa74f61cd8a096ea9efe4651e93dc5c79694f40af4",
-        "eng_sarif": "d6b7079e8ffb0b87c3d872a7f9f13b4a02dddb8d51779e78703903aa41c04963",
+        "eng_sarif": "d0178bc2e7e9591df78ea7220992e0453719cce52c87d1f459d9d4cda46810c5",
     }
     assert {name: hashlib.sha256(value).hexdigest() for name, value in outputs.items()} == expected

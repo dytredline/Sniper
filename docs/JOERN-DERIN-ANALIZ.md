@@ -7,18 +7,18 @@ Python ve JS/TS projeleri için VulKill'ın kendi fonksiyonlar/dosyalar arası v
 ## Kurulum (root gerekmez)
 
 1. Resmî arşivleri indirin:
-   - Eclipse Temurin 25 LTS JDK (`OpenJDK25U-jdk_aarch64_linux_hotspot_25.0.4.1_1.tar.gz`), Adoptium.
-   - Joern v4.0.647 `joern-cli-linux-arm64.zip` ve `joern-cli-linux-arm64.zip.sha512`, GitHub.
+   - Eclipse Temurin 25 LTS JDK (`OpenJDK25U-jdk_aarch64_linux_hotspot_25.0.5_8.tar.gz`), Adoptium.
+   - Joern v4.0.670 `joern-cli-linux-arm64.zip` ve `joern-cli-linux-arm64.zip.sha512`, GitHub.
 2. Kurun ve doğrulayın:
    ```bash
    python3 /ABSOLUTE/PATH/TO/vulkill/scripts/install_joern.py \
-     --jdk-archive OpenJDK25U-jdk_aarch64_linux_hotspot_25.0.4.1_1.tar.gz \
+     --jdk-archive OpenJDK25U-jdk_aarch64_linux_hotspot_25.0.5_8.tar.gz \
      --joern-archive joern-cli-linux-arm64.zip --joern-sha512 joern-cli-linux-arm64.zip.sha512
    ```
    Betik şunları yapar:
    - JDK arşivini Adoptium SHA-256 değeriyle, Joern arşivini GitHub varlık özeti (SHA-256) ve resmî SHA-512 dosyasıyla doğrular.
    - Arşivleri yol aşımı ve dışarıyı gösteren bağlara karşı güvenli biçimde açar.
-   - Kurulumu salt okunur yapar ve dosya başına SHA-256 içeren `SNIPER-INSTALL-MANIFEST.json` üretir.
+   - Kurulumu salt okunur yapar ve dosya başına SHA-256 içeren `VULKILL-INSTALL-MANIFEST.json` üretir.
 3. Çıktıdaki değerler kodda sabitlidir:
    - `java_sha256` → `tool_pins.PINS["joern-jdk"]`
    - `manifest_sha256` → `joern_active.JOERN_MANIFEST_SHA256`
@@ -26,14 +26,14 @@ Python ve JS/TS projeleri için VulKill'ın kendi fonksiyonlar/dosyalar arası v
    Farklı bir kurulum için `SNIPER_JOERN_JDK_SHA256` ve `SNIPER_JOERN_MANIFEST_SHA256` değişkenlerini kullanın.
 
    JDK'nin `bin/java` ikilisi SHA-256 doğrulamasından sonra aynı açık dosya tanıtıcısından `java -version`
-   ile de denetlenir. Yalnız Temurin 25.0.4.1+1 GA/LTS'nin üç satırlı resmî sürüm biçimi kabul edilir;
+   ile de denetlenir. Yalnız Temurin 25.0.5+8 GA/LTS'nin üç satırlı resmî sürüm biçimi kabul edilir;
    `-ea`, `internal`, farklı vendor ve ek sonekler fail-closed reddedilir. Operatörün eklediği bir SHA için
    bu sürüm çıktısı kötü niyetli bir ikilinin kendi sürümünü yanlış bildirmesine karşı kriptografik köken
    kanıtı değildir.
 
 Kurulum yolları:
-- `~/.local/share/sniper/tools/jdk/25.0.4.1+1/`
-- `~/.local/share/sniper/tools/joern/4.0.647/joern-cli/`
+- `~/.local/share/sniper/tools/jdk/25.0.5+8/`
+- `~/.local/share/sniper/tools/joern/4.0.670/joern-cli/`
 
 ## Çalıştırma
 
@@ -254,7 +254,7 @@ kalıcı XSS (xss_s: `INSERT INTO guestbook` → `dvwaGuestbook()` `SELECT` → 
 - **Koşullu arındırma (dinamik diller):** arındırıcı bir `if` dalında ve hedef dal dışındaysa, arındırılmış değerin
   atandığı değişkenin dal dışında başka tanımı varsa (ya da parametreyse) koşullu sayılır; `if (isset($_GET['x']))
   { $x = htmlspecialchars($_GET['x']); … }` artık arındırılmış kabul edilir.
-- **C# süslü parantezsiz gövdeler:** csharpsrc2cpg 4.0.647 `if/else/for/foreach/while/do/using/lock/fixed`
+- **C# süslü parantezsiz gövdeler:** csharpsrc2cpg 4.0.670 `if/else/for/foreach/while/do/using/lock/fixed`
   gövdelerini süslü parantez yoksa CPG'ye hiç koymuyor (`if (x) Sink(x);`, `if (x == null) return;`). Hem açık
   kaçırma hem de koruma (`return`/`throw`) görülmediği için yanlış alarm üretiyordu. `joern_source_prep.py` C#
   dosyalarını çalışma dizinine kopyalarken gövdeleri `{ … }` ile sarar (dize/yorum/ön işlemci farkında, yalnız

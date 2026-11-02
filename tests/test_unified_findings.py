@@ -106,7 +106,7 @@ class UnifiedFindingsTests(unittest.TestCase):
 
 class UnifiedFindingsApiTests(unittest.TestCase):
     def setUp(self) -> None:
-        self.client = server.SniperHandler.__new__(server.SniperHandler)
+        self.client = server.VulKillHandler.__new__(server.VulKillHandler)
         self.responses: list[tuple[int, dict]] = []
         self.client._json = lambda body, status=200, **_kw: self.responses.append((int(status), body))
         self.client._error = lambda status, message: self.responses.append((int(status), {"error": message}))

@@ -22,11 +22,11 @@ MAX_CHAIN_ISSUES = 1_000
 FUNCTION_WINDOW_LINES = 40
 
 AUDIT_LOGGING_CONTROLS_EVALUATED: list[str] = [
-    "SNIPER-LOGG-01",
-    "SNIPER-LOGG-03",
-    "SNIPER-LOGG-04",
-    "SNIPER-LOGG-05",
-    "SNIPER-LOGG-06",
+    "VULKILL-LOGG-01",
+    "VULKILL-LOGG-03",
+    "VULKILL-LOGG-04",
+    "VULKILL-LOGG-05",
+    "VULKILL-LOGG-06",
 ]
 
 AUDIT_LOGGING_EXTENSIONS: set[str] = {
@@ -756,7 +756,7 @@ def audit_logging_inline(
                     "veya kodlayın (ör. repr()/json.dumps()); yapılandırılmış (JSON) günlük biçimi kullanın."
                 ),
                 cwe="CWE-117",
-                control_id="SNIPER-LOGG-03",
+                control_id="VULKILL-LOGG-03",
                 filename=clean_filename,
                 line=flow.line,
             )
@@ -794,13 +794,13 @@ def audit_logging_inline(
                     "veya kodlayın (ör. repr()/json.dumps()); yapılandırılmış (JSON) günlük biçimi kullanın."
                 ),
                 cwe="CWE-117",
-                control_id="SNIPER-LOGG-03",
+                control_id="VULKILL-LOGG-03",
                 filename=clean_filename,
                 line=idx + 1,
             )
         )
 
-    # 2. Log4Shell: vulnerable log4j-core (critical) and literal JNDI lookups (high), CWE-917, SNIPER-LOGG-04.
+    # 2. Log4Shell: vulnerable log4j-core (critical) and literal JNDI lookups (high), CWE-917, VULKILL-LOGG-04.
     for regex in (LOG4J_GRADLE_RE, LOG4J_MAVEN_RE):
         for match in regex.finditer(raw_content):
             major = int(match.group(1))
@@ -825,7 +825,7 @@ def audit_logging_inline(
                         "JndiLookup sınıfını kaldırın ve bağımlılık ağacını (transitive) doğrulayın."
                     ),
                     cwe="CWE-917",
-                    control_id="SNIPER-LOGG-04",
+                    control_id="VULKILL-LOGG-04",
                     filename=clean_filename,
                     line=line_no,
                 )
@@ -847,13 +847,13 @@ def audit_logging_inline(
                     "(log4j2.formatMsgNoLookups / 2.17.1+) ve test yüklerini üretim kodundan kaldırın."
                 ),
                 cwe="CWE-917",
-                control_id="SNIPER-LOGG-04",
+                control_id="VULKILL-LOGG-04",
                 filename=clean_filename,
                 line=line_no,
             )
         )
 
-    # 4. Unlogged sensitive mutation endpoints ("sessiz uç nokta"), CWE-778, SNIPER-LOGG-01.
+    # 4. Unlogged sensitive mutation endpoints ("sessiz uç nokta"), CWE-778, VULKILL-LOGG-01.
     routes = _detect_mutation_routes(lines, is_python)
     covered_defs: set[int] = set()
     sensitive_count = 0
@@ -884,13 +884,13 @@ def audit_logging_inline(
                     "ve sonuç (outcome) alanlarını içeren yapılandırılmış bir denetim kaydı üretin."
                 ),
                 cwe="CWE-778",
-                control_id="SNIPER-LOGG-01",
+                control_id="VULKILL-LOGG-01",
                 filename=clean_filename,
                 line=int(route["line"]),
             )
         )
 
-    # 5. Audit calls missing actor / outcome fields (low, CWE-778, SNIPER-LOGG-05).
+    # 5. Audit calls missing actor / outcome fields (low, CWE-778, VULKILL-LOGG-05).
     for idx, line in enumerate(lines):
         stripped = line.strip()
         if not stripped or _is_comment(stripped) or AUDIT_DEFINITION_LINE_RE.match(line):
@@ -923,13 +923,13 @@ def audit_logging_inline(
                     "(OWASP Logging Cheat Sheet 'Which events to log' bölümü)."
                 ),
                 cwe="CWE-778",
-                control_id="SNIPER-LOGG-05",
+                control_id="VULKILL-LOGG-05",
                 filename=clean_filename,
                 line=idx + 1,
             )
         )
 
-    # 6. Log tampering surface (medium, CWE-117, SNIPER-LOGG-06).
+    # 6. Log tampering surface (medium, CWE-117, VULKILL-LOGG-06).
     for idx, line in enumerate(lines):
         stripped = line.strip()
         if not stripped or _is_comment(stripped):
@@ -950,7 +950,7 @@ def audit_logging_inline(
                         "kanalını uygulama ayarlarından bağımsız ve kapatılamaz biçimde yapılandırın."
                     ),
                     cwe="CWE-778",
-                    control_id="SNIPER-LOGG-06",
+                    control_id="VULKILL-LOGG-06",
                     filename=clean_filename,
                     line=idx + 1,
                 )
@@ -971,13 +971,13 @@ def audit_logging_inline(
                     "ile yapın ve denetim kayıtlarını değiştirilemez (WORM / hash zincirli) bir depoya iletin."
                 ),
                 cwe="CWE-117",
-                control_id="SNIPER-LOGG-06",
+                control_id="VULKILL-LOGG-06",
                 filename=clean_filename,
                 line=idx + 1,
             )
         )
 
-    # 7. Authentication functions without any log call (low, CWE-778, SNIPER-LOGG-01).
+    # 7. Authentication functions without any log call (low, CWE-778, VULKILL-LOGG-01).
     for idx, line in enumerate(lines):
         stripped = line.strip()
         if not stripped or _is_comment(stripped) or idx in covered_defs:
@@ -1017,7 +1017,7 @@ def audit_logging_inline(
                     "zaman ve sonuç alanlarıyla günlüğe yazın."
                 ),
                 cwe="CWE-778",
-                control_id="SNIPER-LOGG-01",
+                control_id="VULKILL-LOGG-01",
                 filename=clean_filename,
                 line=idx + 1,
             )
@@ -1131,9 +1131,9 @@ def audit_forensic_log_integrity(
         if _FORENSIC_LOG_CRLF_RE.search(line_text) and not _FORENSIC_LOG_SANITIZE_RE.search(line_text):
             findings.append(
                 {
-                    "id": "SNIPER-LOG-CRLF-01",
-                    "rule_id": "SNIPER-LOG-CRLF-01",
-                    "control_id": "SNIPER-LOG-CRLF-01",
+                    "id": "VULKILL-LOG-CRLF-01",
+                    "rule_id": "VULKILL-LOG-CRLF-01",
+                    "control_id": "VULKILL-LOG-CRLF-01",
                     "severity": "high",
                     "cwe": "CWE-117",
                     "reference": "CWE-117",
@@ -1153,9 +1153,9 @@ def audit_forensic_log_integrity(
             line_no = _line_number_for_offset(text, match.start())
             findings.append(
                 {
-                    "id": "SNIPER-LOG-MISSING-02",
-                    "rule_id": "SNIPER-LOG-MISSING-02",
-                    "control_id": "SNIPER-LOG-MISSING-02",
+                    "id": "VULKILL-LOG-MISSING-02",
+                    "rule_id": "VULKILL-LOG-MISSING-02",
+                    "control_id": "VULKILL-LOG-MISSING-02",
                     "severity": "medium",
                     "cwe": "CWE-778",
                     "reference": "CWE-778",

@@ -1,4 +1,4 @@
-[mcp_servers.vulkill-triage]
+[mcp_servers.sniper-triage]
 command = "/ABSOLUTE/PATH/TO/vulkill/.venv/bin/python"
 args = [
   "/ABSOLUTE/PATH/TO/vulkill/scripts/vulkill-mcp",
