@@ -10,7 +10,11 @@ import authorized_tool_targets
 import authz_routes
 
 
-LINEAR_BUDGET_SECONDS = 0.20
+# GitHub's shared Python 3.15 runners have measured the 250,000-character
+# linear fixture at 0.269 seconds.  Keep a strict sub-second ceiling while
+# leaving enough scheduler/runner variance that the complexity guard is not a
+# timing-flake gate.
+LINEAR_BUDGET_SECONDS = 0.75
 
 
 class RegexComplexityBatchATests(unittest.TestCase):
