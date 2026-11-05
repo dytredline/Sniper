@@ -13,10 +13,13 @@
   }));
   const post = (path, body) => request(path, { method: "POST", body: JSON.stringify({ confirm: true, ...body }) });
   const notify = (message, type) => (typeof globalThis.toast === "function" ? globalThis.toast(message, type) : undefined);
-  const state = { project: "", settings: null, suggestions: [], role: { admin: true, analyst: true }, filter: "pending" };
+  const state = { project: "", settings: null, suggestions: [], role: { admin: false, analyst: false }, filter: "pending" };
 
   function roleFrom(status) {
-    if (!status || !status.enabled) return { admin: true, analyst: true };
+    // Only an explicit auth-disabled response enables local single-user mode.
+    // A failed or malformed status request must not reveal privileged controls.
+    if (status && status.enabled === false) return { admin: true, analyst: true };
+    if (!status || status.enabled !== true) return { admin: false, analyst: false };
     const role = status.user && status.user.role;
     return { admin: role === "admin", analyst: role === "admin" || role === "analyst" };
   }

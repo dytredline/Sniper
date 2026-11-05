@@ -15,7 +15,9 @@ def test_success_with_valid_args(tmp_path: Path) -> None:
     # Create a fake executable Python script in tmp_path
     marker = tmp_path / 'marker_ok'
     fake_script = tmp_path / 'fake_executable.py'
-    fake_script.write_text(f'#!/usr/bin/python3\nfrom pathlib import Path\nPath("{marker}").write_bytes(b"OK")\n')
+    # Use the interpreter running the suite; container images do not always
+    # provide /usr/bin/python3 even when Python itself is available.
+    fake_script.write_text(f'#!{sys.executable}\nfrom pathlib import Path\nPath("{marker}").write_bytes(b"OK")\n')
     # Make executable
     st = fake_script.stat()
     fake_script.chmod(st.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
