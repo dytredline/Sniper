@@ -97,6 +97,9 @@ test('ayar kartı: izin varsayılan kapalı, yönetici düğmeleri yalnız yöne
   assert.doesNotMatch(html, /data-ai-consent|data-ai-auto|ai-local-form/);
   assert.deepEqual(JSON.parse(JSON.stringify(internals.roleFrom({ enabled: true, user: { role: 'reader' } }))), { admin: false, analyst: false });
   assert.deepEqual(JSON.parse(JSON.stringify(internals.roleFrom({ enabled: false }))), { admin: true, analyst: true });
+  assert.deepEqual(JSON.parse(JSON.stringify(internals.roleFrom({}))), { admin: false, analyst: false });
+  assert.deepEqual(JSON.parse(JSON.stringify(internals.roleFrom(null))), { admin: false, analyst: false });
+  assert.deepEqual(JSON.parse(JSON.stringify(internals.roleFrom({ enabled: true, user: { role: 'analyst' } }))), { admin: false, analyst: true });
 });
 
 test('bulgu takibi satırı AI rozetini ve yerel model açıksa AI düğmesini gösterir', () => {
